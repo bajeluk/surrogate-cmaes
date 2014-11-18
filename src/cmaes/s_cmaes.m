@@ -173,6 +173,12 @@ function [xmin, ...      % minimum search point of last iteration
 
 cmaVersion = '3.62.beta'; 
 
+% ----------- Surrogate modelling extensions ------------
+if (~isempty(varargin) && isstr(varargin{1}) && strcmpi(varargin{1}, 'surrogateoptions'))
+  surrogateOpts = varargin{2};
+  varargin = varargin(3:end);
+end
+
 % ----------- Set Defaults for Input Parameters and Options -------------
 % These defaults may be edited for convenience
 
@@ -880,10 +886,29 @@ while isempty(stopflag)
   % Surrogate CMA-ES begin
 
   % Generate and evaluate lambda offspring
-  % TODO: rewrite this!!!
+  
+  % Convert fitness function string to function handle
   fitfun_handle = str2func(fitfun);
-  [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, N, fitfun_handle, diagD, noiseReevals, bnd, lbounds, ubounds, varargin, counteval, flgEvalParallel, flgDiagonalOnly, @xintobounds);
 
+  % Set CMA-ES internal variables/parameters for sampling
+  sampleOpts.noiseReevals = noiseReevals;
+  sampleOpts.isBoundActive = bnd.isactive;
+  sampleOpts.lbounds = lbounds;
+  sampleOpts.ubounds = ubounds;
+  sampleOpts.counteval = counteval;
+  sampleOpts.flgEvalParallel = flgEvalParallel;
+  sampleOpts.flgDiagonalOnly = flgDiagonalOnly;
+  sampleOpts.xintobounds = @xintobounds;
+
+  if (~exist('surrogateOpts'))
+    % use standard CMA-ES (no surrogate at all)
+    [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, varargin, sampleOpts);
+  else
+    % hand over the control to surrogateManager()
+    surrogateOpts.sampleOpts = sampleOpts;
+    [fitness.raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, sigma, lambda, BD, diagD, fitfun_handle, varargin, surrogateOpts);
+  end
+  
   % Surrogate CMA-ES end
 
   fitness.sel = fitness.raw; 

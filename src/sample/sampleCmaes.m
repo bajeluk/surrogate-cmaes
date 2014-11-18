@@ -1,10 +1,22 @@
-function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, N, fitfun, diagD, noiseReevals, bnd, lbounds, ubounds, fitargs, counteval, flgEvalParallel, flgDiagonalOnly, xintobounds)
+function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun, fitargs, opts)
 
-  bnd.isactive = any(lbounds > -Inf) || any(ubounds < Inf); 
+  % CMA-ES sampling options
+  noiseReevals = opts.noiseReevals;
+  bnd.isactive = opts.isBoundActive;
+  lbounds = opts.lbounds;
+  ubounds = opts.ubounds;
+  counteval = opts.counteval;
+  flgEvalParallel = opts.flgEvalParallel;
+  flgDiagonalOnly = opts.flgDiagonalOnly;
+  xintobounds = opts.xintobounds;
+
+  isBoundActive = any(lbounds > -Inf) || any(ubounds < Inf); 
+  N = size(xmean, 1);
 
   % Generate and evaluate lambda offspring
  
-  fitness_raw = repmat(NaN, 1, lambda + noiseReevals);
+  fitness_raw = NaN(1, lambda + noiseReevals);
+  countevalNaN = 0;
 
   % parallel evaluation
   if flgEvalParallel
@@ -36,7 +48,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma
       % recalculate arx accordingly. Do not change arx or arz in any
       % other way.
  
-      if ~bnd.isactive
+      if ~isBoundActive
         arxvalid = arx;
       else
         arxvalid = xintobounds(arx, lbounds, ubounds);
