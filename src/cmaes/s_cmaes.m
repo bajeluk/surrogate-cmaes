@@ -5,7 +5,7 @@ function [xmin, ...      % minimum search point of last iteration
 	  out, ...     % struct with various histories and solutions
 	  bestever, ... % struct containing overall best solution (for convenience)
 	  y_eval...     % BAJELUK BEST/COUNTEVAL RECORDING
-	 ] = cmaes( ...
+	 ] = s_cmaes( ...
     fitfun, ...    % name of objective/fitness function
     xstart, ...    % objective variables initial point, determines N
     insigma, ...   % initial coordinate wise standard deviation(s)
@@ -1850,7 +1850,7 @@ end
       % next three lines can replace previous three lines from MATLAB 
       % version 6.5.0 on
       %   opts.(defname) = ...
-      %      getoptions(val, defopts.(defname)); 
+      %      getoptions(val, defopts.(defname), nargin); 
       % elseif isstruct(defopts.(defname)) 
 	warning(['option "' name '" disregarded (must be struct)']); 
       elseif ~isempty(val) % empty value: do nothing, i.e. stick to default
