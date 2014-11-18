@@ -881,7 +881,8 @@ while isempty(stopflag)
 
   % Generate and evaluate lambda offspring
   % TODO: rewrite this!!!
-  fitness.raw = sampleCmaes(xmean, lambda, BD, N, diagD);
+  fitfun_handle = str2func(fitfun);
+  [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, N, fitfun_handle, diagD, noiseReevals, bnd, lbounds, ubounds, varargin, counteval, flgEvalParallel, flgDiagonalOnly, @xintobounds);
 
   % Surrogate CMA-ES end
 

@@ -1,8 +1,10 @@
-[fitness_raw] = sampleCmaes(xmean, lambda, BD, N, diagD)
+function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, N, fitfun, diagD, noiseReevals, bnd, lbounds, ubounds, fitargs, counteval, flgEvalParallel, flgDiagonalOnly, xintobounds)
+
+  bnd.isactive = any(lbounds > -Inf) || any(ubounds < Inf); 
 
   % Generate and evaluate lambda offspring
  
-  fitness.raw = repmat(NaN, 1, lambda + noiseReevals);
+  fitness_raw = repmat(NaN, 1, lambda + noiseReevals);
 
   % parallel evaluation
   if flgEvalParallel
@@ -42,19 +44,19 @@
       % You may handle constraints here.  You may copy and alter
       % (columns of) arxvalid(:,k) only for the evaluation of the
       % fitness function. arx and arxvalid should not be changed.
-      fitness.raw = feval(fitfun, arxvalid, varargin{:}); 
-      countevalNaN = countevalNaN + sum(isnan(fitness.raw));
-      counteval = counteval + sum(~isnan(fitness.raw)); 
+      fitness_raw = feval(fitfun, arxvalid, fitargs{:}); 
+      countevalNaN = countevalNaN + sum(isnan(fitness_raw));
+      counteval = counteval + sum(~isnan(fitness_raw)); 
   end
 
   % non-parallel evaluation and remaining NaN-values
   % set also the reevaluated solution to NaN
-  fitness.raw(lambda + find(isnan(fitness.raw(1:noiseReevals)))) = NaN;  
-  for k=find(isnan(fitness.raw)), 
-    % fitness.raw(k) = NaN; 
+  fitness_raw(lambda + find(isnan(fitness_raw(1:noiseReevals)))) = NaN;  
+  for k=find(isnan(fitness_raw)), 
+    % fitness_raw(k) = NaN; 
     tries = flgEvalParallel;  % in parallel case this is the first re-trial
     % Resample, until fitness is not NaN
-    while isnan(fitness.raw(k))
+    while isnan(fitness_raw(k))
       if k <= lambda  % regular samples (not the re-evaluation-samples)
         arz(:,k) = randn(N,1); % (re)sample
 
@@ -85,9 +87,9 @@
       % You may handle constraints here.  You may copy and alter
       % (columns of) arxvalid(:,k) only for the evaluation of the
       % fitness function. arx should not be changed.
-      fitness.raw(k) = feval(fitfun, arxvalid(:,k), varargin{:}); 
+      fitness_raw(k) = feval(fitfun, arxvalid(:,k), fitargs{:}); 
       tries = tries + 1;
-      if isnan(fitness.raw(k))
+      if isnan(fitness_raw(k))
 	countevalNaN = countevalNaN + 1;
       end
       if mod(tries, 100) == 0
