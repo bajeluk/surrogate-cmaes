@@ -1,4 +1,8 @@
-function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun, fitargs, opts)
+function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun, fitargs, opts)
+% sampleCmaesOnlyFitness  evaluation of the individuals in @arx/@arxvalid with fitness
+%
+% It generates new samples for the individuals for which NaN function value is
+% returned according to @xmean, @sigma, @BD and @diagD
 
   % CMA-ES sampling options
   noiseReevals = opts.noiseReevals;
@@ -8,7 +12,6 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma
   counteval = opts.counteval;
   flgEvalParallel = opts.flgEvalParallel;
   flgDiagonalOnly = opts.flgDiagonalOnly;
-  noiseHandling = opts.noiseHandling;
   xintobounds = opts.xintobounds;
 
   isBoundActive = any(lbounds > -Inf) || any(ubounds < Inf); 
@@ -21,39 +24,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma
 
   % parallel evaluation
   if flgEvalParallel
-      arz = randn(N,lambda);
 
-      if ~flgDiagonalOnly
-        arx = repmat(xmean, 1, lambda) + sigma * (BD * arz); % Eq. (1)
-      else
-        arx = repmat(xmean, 1, lambda) + repmat(sigma * diagD, 1, lambda) .* arz; 
-      end
-
-      if noiseHandling 
-        if noiseEpsilon == 0
-          arx = [arx arx(:,1:noiseReevals)]; 
-        elseif flgDiagonalOnly
-          arx = [arx arx(:,1:noiseReevals) + ...
-                 repmat(noiseEpsilon * sigma * diagD, 1, noiseReevals) ...
-                 .* randn(N,noiseReevals)]; 
-        else 
-          arx = [arx arx(:,1:noiseReevals) + ...
-                 noiseEpsilon * sigma * ...
-                 (BD * randn(N,noiseReevals))]; 
-        end
-      end
-
-      % You may handle constraints here. You may either resample
-      % arz(:,k) and/or multiply it with a factor between -1 and 1
-      % (the latter will decrease the overall step size) and
-      % recalculate arx accordingly. Do not change arx or arz in any
-      % other way.
- 
-      if ~isBoundActive
-        arxvalid = arx;
-      else
-        arxvalid = xintobounds(arx, lbounds, ubounds);
-      end
       % You may handle constraints here.  You may copy and alter
       % (columns of) arxvalid(:,k) only for the evaluation of the
       % fitness function. arx and arxvalid should not be changed.

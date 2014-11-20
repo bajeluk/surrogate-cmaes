@@ -898,6 +898,7 @@ while isempty(stopflag)
   sampleOpts.counteval = counteval;
   sampleOpts.flgEvalParallel = flgEvalParallel;
   sampleOpts.flgDiagonalOnly = flgDiagonalOnly;
+  sampleOpts.noiseHandling = noiseHandling;
   sampleOpts.xintobounds = @xintobounds;
 
   if (~exist('surrogateOpts'))
