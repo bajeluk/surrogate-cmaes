@@ -1,14 +1,15 @@
-function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, inOpts)
+function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter, fitfun_handle, fitargs, inOpts)
 % surrogateManager  controls sampling of new solutions and using a surrogate model
 %
 % @xmean, @sigma, @lambda, @BD, @diagD -- CMA-ES internal variables
+% @countiter            the number of the current generation
 % @fitfun_handle        handle to fitness function (CMA-ES uses string name of the function)
 % @fitargs              arguments for the fitness function (varargin from CMA-ES)
 % @surrogateOpts        options/settings for surrogate modelling
 
   % Defaults for surrogateOpts
   sDefaults.evoControl  = 'none';               % none | individual | generation
-  sDefaults.sampleFcn   = @sampleCmaes;        % sampleCmaes | ??? TODO ???
+  sDefaults.sampleFcn   = @sampleCmaes;         % sampleCmaes | ??? TODO ???
 
   % copy the defaults settings...
   surrogateOpts = sDefaults;
@@ -40,6 +41,17 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
         sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
     [fitness_raw, arx, arxvalid, arz, counteval] = ...
         sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+
+    % % surrogateOpts.evoControlOrigGenerations
+    % % surrogateOpts.evoControlModelGenerations
+    % cycleLength = surrogateOpts.evoControlOrigGenerations + surrogateOpts.evoControlModelGenerations;
+    % 
+    % if (generationEC.evaluateOriginal)
+    %   [fitness_raw, arx, arxvalid, arz, counteval] = ...
+    %       sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+    %   archive.save(arx, fitness_raw);
+    %   gens = generationEC.getLastOriginalGenerationSession();
+    %   [X, y] = archive.getDataFromGeneration(gens);
 
   else
     error('surrogateManager: wrong evolution control method');

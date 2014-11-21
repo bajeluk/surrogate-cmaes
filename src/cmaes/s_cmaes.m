@@ -907,7 +907,7 @@ while isempty(stopflag)
   else
     % hand over the control to surrogateManager()
     surrogateOpts.sampleOpts = sampleOpts;
-    [fitness.raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, sigma, lambda, BD, diagD, fitfun_handle, varargin, surrogateOpts);
+    [fitness.raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter, fitfun_handle, varargin, surrogateOpts);
   end
   
   % Surrogate CMA-ES end
