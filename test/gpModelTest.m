@@ -9,7 +9,7 @@ function setupOnce(testCase)
 end
 
 function test1DSinTest(testCase)
-  X = 0:0.1:2';
+  X = (0:0.1:2)';
   y = sin(X);
   
   % Test this:
