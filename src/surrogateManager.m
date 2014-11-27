@@ -18,6 +18,17 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     surrogateOpts.(fname{1}) = inOpts.(fname{1});
   end
 
+  % Call this only once (during the first generation)
+  if (countiter == 1)
+    if (isfield(surrogateOpts, 'evoControlInitialGenerations'))
+      initialGens = surrogateOpts.evoControlInitialGenerations;
+    else
+      initialGens = 0;
+    end
+    generationEC = GenerationEC(surrogateOpts.evoControlOrigGenerations, ...
+      surrogateOpts.evoControlModelGenerations, initialGens);
+  end
+
   % evolution control -- use model? individual? generation?
   if (strcmpi(surrogateOpts.evoControl, 'none'))
     % No model at all
@@ -42,16 +53,15 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     [fitness_raw, arx, arxvalid, arz, counteval] = ...
         sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
 
-    % % surrogateOpts.evoControlOrigGenerations
-    % % surrogateOpts.evoControlModelGenerations
-    % cycleLength = surrogateOpts.evoControlOrigGenerations + surrogateOpts.evoControlModelGenerations;
-    % 
-    % if (generationEC.evaluateOriginal)
-    %   [fitness_raw, arx, arxvalid, arz, counteval] = ...
-    %       sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
-    %   archive.save(arx, fitness_raw);
-    %   gens = generationEC.getLastOriginalGenerationSession();
-    %   [X, y] = archive.getDataFromGeneration(gens);
+    if (generationEC.evaluateOriginal)
+      [fitness_raw, arx, arxvalid, arz, counteval] = ...
+          sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+      archive.save(arx, fitness_raw);
+      gen = generationEC.getLastOriginalGeneration();
+      [X, y] = archive.getDataFromGeneration(gen);
+      % vyrob model, pokud mas dost dat
+      % ...
+    end
 
   else
     error('surrogateManager: wrong evolution control method');
