@@ -7,6 +7,15 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
 % @fitargs              arguments for the fitness function (varargin from CMA-ES)
 % @surrogateOpts        options/settings for surrogate modelling
 
+  persistent generationEC;              
+  % generationEC - one such instance for evolution control, persistent between
+  % different calls of the surrogateManager() function
+  % TODO: test, if generationEC really works; GenerationEC is now derived from handle
+
+  persistent lastModel;         % last successfully trained model
+
+  % TODO: make an array with all the status variables from each generation
+
   % Defaults for surrogateOpts
   sDefaults.evoControl  = 'none';               % none | individual | generation
   sDefaults.sampleFcn   = @sampleCmaes;         % sampleCmaes | ??? TODO ???
@@ -27,6 +36,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     end
     generationEC = GenerationEC(surrogateOpts.evoControlOrigGenerations, ...
       surrogateOpts.evoControlModelGenerations, initialGens);
+    lastModel = [];
   end
 
   % evolution control -- use model? individual? generation?
@@ -37,8 +47,14 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     else
       error('surrogateManager: the only sampling method without model is "sampleCmaes()"');
     end
+    return;
+  end
 
-  elseif (strcmpi(surrogateOpts.evoControl, 'individual'))
+  % some evolution control should be used (individual- or generation-based)
+  newModel = ModelFactory.createModel(surrogateOpts.modelType, ...
+      surrogateOpts.modelOpts, xmean);
+
+  if (strcmpi(surrogateOpts.evoControl, 'individual'))
     % Individual-based evolution control
     % TODO: write this!
     warning('surrogateManager: Individual control is not yet written :(');
@@ -57,13 +73,41 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
       [fitness_raw, arx, arxvalid, arz, counteval] = ...
           sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
       archive.save(arx, fitness_raw);
-      gen = generationEC.getLastOriginalGeneration();
-      [X, y] = archive.getDataFromGeneration(gen);
-      % vyrob model, pokud mas dost dat
-      % ...
+      if (~ generationEC.isNextOriginal())
+        % we will switch to 'model'-mode in the next generation
+        % prepare data for a new model
+        nRequired = newModel.getNTrainData();
+        X = []; y = [];
+        if (length(fitness_raw) < nRequired)
+          pointsWeNeed = nRequired - length(fitness_raw);
+          gensWeNeed = ceil(pointsWeNeed / lambda);
+          gens = generationEC.getLastOriginalGenerations(gensWeNeed);
+          [X, y] = archive.getDataFromGeneration(gen);
+        end
+        X = [arx; X];
+        y = [fitness_raw; y];
+        if (length(y) >= nRequired)
+          % we have got enough data for new model! hurraayh!
+          newModel = newModel.train(X, y, xmean, countiter);
+          % TODO: archive the lastModel...?
+          lastModel = newModel;
+        else
+          % not enough training data :( -- continue with another
+          % 'original'-evaluated generation
+          generationEC = generationEC.holdOn();
+        end
+      end       % ~ generationEC.isNextOriginal()
+
+    else
+      % evalute the current population with the @lastModel
+      % generationEC.evaluateModel() == true
+      % TODO: implement other re-fitting strategies for an old model
+
+      assert(~isempty(lastModel), 'surrogateManager(): we are asked to use an EMPTY MODEL!');
+      
     end
 
   else
-    error('surrogateManager: wrong evolution control method');
+    error('surrogateManager(): wrong evolution control method');
   end
 end

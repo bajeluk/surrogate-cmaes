@@ -1,7 +1,7 @@
 classdef GpModel < Model
   properties    % derived from abstract class "Model"
     dim                 % dimension of the input space X (determined from x_mean)
-    trainGeneration     % # of the generation when the model was built
+    trainGeneration = -1; % # of the generation when the model was built
     trainMean           % mean of the generation when the model was built
     options
 
@@ -54,7 +54,17 @@ classdef GpModel < Model
 
     function [y, dev] = predict(obj, X)
       % predicts the function values in new points X
-      [y, dev] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, obj.dataset.y, X);
+      if (obj.isTrained())
+        [y, dev] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, obj.dataset.y, X);
+      else
+        y = []; dev = [];
+        warning('GpModel.predict(): the model is not yet trained!');
+      end
+    end
+
+    function trained = isTrained(obj)
+      % check whether the model is already trained
+      trained = (obj.trainGeneration >= 0);
     end
   end
 

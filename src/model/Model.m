@@ -17,5 +17,9 @@ classdef (Abstract) Model
 
     [y, dev] = predict(obj, X)
     % predicts the function values in new points X
+    % returns empty @y on error
+
+    trained = isTrained(obj)
+    % check whether the model is already trained
   end
 end

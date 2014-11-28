@@ -44,7 +44,17 @@ classdef RfModel < Model
 
     function [y, dev] = predict(obj, X)
       % predicts the function values in new points X
-          [y,dev] = predict(obj.forest,X);
+      if (obj.isTrained())
+        [y,dev] = predict(obj.forest,X);
+      else
+        y = []; dev = [];
+        warning('RfModel.predict(): the model is not yet trained!');
+      end
+    end
+
+    function trained = isTrained(obj)
+      % check whether the model is already trained
+      trained = (obj.trainGeneration >= 0);
     end
   end
 

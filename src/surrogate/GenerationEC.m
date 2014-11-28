@@ -1,10 +1,10 @@
-classdef GenerationEC
+classdef GenerationEC < handle
   properties
     origGenerations;
     modelGenerations;
     currentMode         = 'original';
     currentGeneration   = 1;
-    lastOriginalGeneration = -1;
+    lastOriginalGenerations = [];
     remaining           = 2;
   end
 
@@ -31,12 +31,18 @@ classdef GenerationEC
       result = strcmp(currentMode, {'original', 'initial'});
     end
 
+    function result = isNextOriginal(obj)
+      % check whether there will be 'original' mode after calling next()
+      result = (strcmp(obj.currentMode, {'original', 'initial'}) && (obj.remaining > 1)) ...
+          || (strcmp(obj.currentMode, 'model') && obj.remaining == 1);
+    end
+
     function result = evaluateModel(obj)
       % test whether evalute with a model
       result = strcmp(currentMode, 'model');
     end 
 
-    function next(obj)
+    function obj = next(obj)
       % change the currentMode if all the generations from
       % the current mode have passed
       obj.remaining = obj.remaining - 1;
@@ -46,13 +52,13 @@ classdef GenerationEC
             obj.currentMode = 'original';
             obj.remaining = obj.origGenerations;
           end
-          obj.lastOriginalGeneration = obj.currentGeneration;
+          obj.lastOriginalGenerations = [obj.lastOriginalGenerations obj.currentGeneration];
         case 'original'
           if (obj.remaining == 0)
             obj.currentMode = 'model';
             obj.remaining = obj.modelGenerations;
           end
-          obj.lastOriginalGeneration = obj.currentGeneration;
+          obj.lastOriginalGenerations = [obj.lastOriginalGenerations obj.currentGeneration];
         case 'model'
           if (obj.remaining == 0)
             obj.currentMode = 'original';
@@ -64,17 +70,21 @@ classdef GenerationEC
       obj.currentGeneration = obj.currentGeneration + 1;
     end
 
-    function holdOn(obj)
+    function obj = holdOn(obj)
       % call this instead of next() if you want to
       % leave the current mode
       obj.currentGeneration = obj.currentGeneration + 1;
     end
 
-    function gen = getLastOriginalGeneration(obj)
-      % get the number of the last generation when the original
+    function gens = getLastOriginalGenerations(obj, n)
+      % get the numbers of the last n generations when the original
       % model was used
-      % TODO: add a parameter how many generations to return
-      gen = obj.lastOriginalGeneration;
+      startID = length(obj.lastOriginalGenerations) - n + 1;
+      if (startID <= 0)
+        warning('GenerationEC.getLastOriginalGenerations(): not enough data in the archive');
+        startID = 1;
+      end
+      gens = obj.lastOriginalGenerations(startID:end);
     end
   end
 end
