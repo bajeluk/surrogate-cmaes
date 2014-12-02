@@ -3,6 +3,9 @@ classdef GpModel < Model
     dim                 % dimension of the input space X (determined from x_mean)
     trainGeneration = -1; % # of the generation when the model was built
     trainMean           % mean of the generation when the model was built
+    dataset             % .X and .y
+    shiftMean           % vector of the shift in the X-space
+    shiftY = 0;         % shift in the f-space
     options
 
     hyp
@@ -10,7 +13,6 @@ classdef GpModel < Model
     covFcn
     likFcn
     infFcn
-    dataset
   end
 
   methods
@@ -18,6 +20,8 @@ classdef GpModel < Model
       % constructor
       obj.options = modelOptions;
       obj.dim     = size(xMean, 2);
+      obj.shiftMean = zeros(1, obj.dim);
+      obj.shiftY  = 0;
 
       % this is a MOCK/TEST IMPLEMENTATION!
       obj.hyp.cov = log([0.05 0.1]);
@@ -46,16 +50,21 @@ classdef GpModel < Model
       obj.dataset.y = y;
 
       % modelTrainNErrors = 0;
-      hyp = minimize(obj.hyp, @gp, -100, @infExactCountErrors, obj.meanFcn, obj.covFcn, obj.likFcn, X, y);
+      hyp_ = minimize(obj.hyp, @gp, -100, @infExactCountErrors, obj.meanFcn, obj.covFcn, obj.likFcn, X, y);
       % FIXME: holds for infExact() only -- do not be sticked to infExact!!!
       % nErrors = modelTrainNErrors;
-      obj.hyp = hyp;
+      obj.hyp = hyp_;
     end
 
     function [y, dev] = predict(obj, X)
       % predicts the function values in new points X
       if (obj.isTrained())
-        [y, dev] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, obj.dataset.y, X);
+        % apply the shift if the model is already shifted
+        XWithShift = X - repmat(obj.shiftMean, size(X,1), 1);
+        % calculate GP models' prediction in X
+        [y, dev] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, obj.dataset.y, XWithShift);
+        % apply the shift in the f-space (if there is any)
+        y = y + obj.shiftY;
       else
         y = []; dev = [];
         warning('GpModel.predict(): the model is not yet trained!');

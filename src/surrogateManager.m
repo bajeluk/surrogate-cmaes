@@ -27,23 +27,12 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     surrogateOpts.(fname{1}) = inOpts.(fname{1});
   end
 
-  % Call this only once (during the first generation)
-  if (countiter == 1)
-    if (isfield(surrogateOpts, 'evoControlInitialGenerations'))
-      initialGens = surrogateOpts.evoControlInitialGenerations;
-    else
-      initialGens = 0;
-    end
-    generationEC = GenerationEC(surrogateOpts.evoControlOrigGenerations, ...
-      surrogateOpts.evoControlModelGenerations, initialGens);
-    lastModel = [];
-  end
-
   % evolution control -- use model? individual? generation?
   if (strcmpi(surrogateOpts.evoControl, 'none'))
     % No model at all
     if (strcmpi(func2str(surrogateOpts.sampleFcn), 'samplecmaes'))
       [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+      surrogateOpts.sampleOpts.counteval = counteval;
     else
       error('surrogateManager: the only sampling method without model is "sampleCmaes()"');
     end
@@ -60,18 +49,33 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     warning('surrogateManager: Individual control is not yet written :(');
     warning('surrogateManager: Using "sampleCmaes()"...');
     [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+    surrogateOpts.sampleOpts.counteval = counteval;
     return;
 
   elseif (strcmpi(surrogateOpts.evoControl, 'generation'))
     % Generation-based evolution control
+
+    % Call this only once (during the first generation)
+    if (countiter == 1)
+      if (isfield(surrogateOpts, 'evoControlInitialGenerations'))
+        initialGens = surrogateOpts.evoControlInitialGenerations;
+      else
+        initialGens = 0;
+      end
+      generationEC = GenerationEC(surrogateOpts.evoControlOrigGenerations, ...
+        surrogateOpts.evoControlModelGenerations, initialGens);
+      lastModel = [];
+    end
+
     [arx, arxvalid, arz] = ...
         sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
-    [fitness_raw, arx, arxvalid, arz, counteval] = ...
-        sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+    % [fitness_raw, arx, arxvalid, arz, counteval] = ...
+    %     sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
 
     if (generationEC.evaluateOriginal)
       [fitness_raw, arx, arxvalid, arz, counteval] = ...
           sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+      surrogateOpts.sampleOpts.counteval = counteval;
       archive.save(arx, fitness_raw);
       if (~ generationEC.isNextOriginal())
         % we will switch to 'model'-mode in the next generation
@@ -95,17 +99,31 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
           % not enough training data :( -- continue with another
           % 'original'-evaluated generation
           generationEC = generationEC.holdOn();
+          return;
         end
       end       % ~ generationEC.isNextOriginal()
 
-    else
+    else        % generationEC.evaluateModel() == true
       % evalute the current population with the @lastModel
-      % generationEC.evaluateModel() == true
+      % 
       % TODO: implement other re-fitting strategies for an old model
 
       assert(~isempty(lastModel), 'surrogateManager(): we are asked to use an EMPTY MODEL!');
-      
+
+      [shiftedModel, evals] = lastModel.shiftReevaluate(xmean, fitfun_handle, fitargs);
+      if (evals > 0)
+        [fitness_raw, dev] = shiftedModel.predict(arx);
+      else
+        % we cannot use the model -- it always returns NaNs
+        % evaluate the current sample with the original fitness
+        sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+        % and set the next as original-evaluated (later .next() will be called)
+        generationEC = generationEC.setNextOriginal();
+      end
     end
+    generationEC = generationEC.next();
+    %
+    % end of Generation-based evolution control
 
   else
     error('surrogateManager(): wrong evolution control method');

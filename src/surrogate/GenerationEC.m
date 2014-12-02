@@ -76,6 +76,13 @@ classdef GenerationEC < handle
       obj.currentGeneration = obj.currentGeneration + 1;
     end
 
+    function obj = setNextOriginal(obj)
+      % set the next generation and currentMode to 'original'
+      % later in the same generation, next() is expected to be called
+      obj.currentMode = 'original';
+      obj.remaining = 2;
+    end
+
     function gens = getLastOriginalGenerations(obj, n)
       % get the numbers of the last n generations when the original
       % model was used
