@@ -14,7 +14,8 @@ function test1DSinTest(testCase)
   y = sin(X);
   
   % Test this:
-  m = GpModel([], 1);
+  modelOpts = [];
+  m = GpModel(modelOpts, 1);
   warning('off');
   m = m.train(X, y, 1, 1);
   warning('on');

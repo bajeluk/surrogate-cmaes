@@ -19,6 +19,20 @@ classdef GpModel < Model
     function obj = GpModel(modelOptions, xMean)
       % constructor
       assert(size(xMean,1) == 1, 'GpModel (constructor): xMean is not a row-vector.');
+      
+      % persistent isInitialized;
+      %
+      % % intialize GPML library
+      % if (isempty(isInitialized) || ~isInitialized)
+      %   if (isfield(modelOptions, 'path') && ~isempty(modelOptions.path))
+      %     addpath(modelOptions.path);
+      %   end
+      %   % if (isfield(modelOptions, 'initScript') && ~isempty(modelOptions.initScript))
+      %   %   run(modelOptions.initScript);
+      %   % end
+      %   isInitialized = true;
+      % end
+      
       obj.options = modelOptions;
       obj.dim     = size(xMean, 2);
       obj.shiftMean = zeros(1, obj.dim);
@@ -38,7 +52,7 @@ classdef GpModel < Model
       % returns the required number of data for training the model
       % TODO: *write this* properly according to dimension and
       %       covariance function set in options
-      nData = 3 * obj.dim;
+      nData = 5 * obj.dim;
     end
 
     function obj = train(obj, X, y, xMean, generation)

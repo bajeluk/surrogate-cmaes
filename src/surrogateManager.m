@@ -1,13 +1,13 @@
-function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter, fitfun_handle, fitargs, inOpts)
+function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter, fitfun_handle, inOpts, varargin)
 % surrogateManager  controls sampling of new solutions and using a surrogate model
 %
 % @xmean, @sigma, @lambda, @BD, @diagD -- CMA-ES internal variables
 % @countiter            the number of the current generation
 % @fitfun_handle        handle to fitness function (CMA-ES uses string name of the function)
-% @fitargs              arguments for the fitness function (varargin from CMA-ES)
 % @surrogateOpts        options/settings for surrogate modelling
+% @varargin             arguments for the fitness function (varargin from CMA-ES)
 
-  persistent generationEC;              
+  persistent generationEC;
   % generationEC - one such instance for evolution control, persistent between
   % different calls of the surrogateManager() function
   % TODO: test, if generationEC really works; GenerationEC is now derived from handle
@@ -39,7 +39,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
   if (strcmpi(surrogateOpts.evoControl, 'none'))
     % No model at all
     if (strcmpi(func2str(surrogateOpts.sampleFcn), 'samplecmaes'))
-      [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+      [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
     else
       error('surrogateManager: the only sampling method without model is "sampleCmaes()"');
@@ -52,7 +52,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
       surrogateOpts.modelOpts, xmean');
   if (isempty(newModel))
     % model could not be created :( use the standard CMA-ES
-    [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+    [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
     surrogateOpts.sampleOpts.counteval = counteval;
     return;
   end
@@ -62,7 +62,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     % TODO: write this!
     warning('surrogateManager: Individual control is not yet written :(');
     warning('surrogateManager: Using "sampleCmaes()"...');
-    [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+    [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
     surrogateOpts.sampleOpts.counteval = counteval;
     return;
 
@@ -85,14 +85,14 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     [arx, arxvalid, arz] = ...
         sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
     % [fitness_raw, arx, arxvalid, arz, counteval] = ...
-    %     sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+    %     sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
     % surrogateOpts.sampleOpts.counteval = counteval;
 
     if (generationEC.evaluateOriginal)
       [fitness_raw, arx, arxvalid, arz, counteval] = ...
-          sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+          sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
-      archive.save(arx', fitness_raw', countiter);
+      archive = archive.save(arx', fitness_raw', countiter);
       if (~ generationEC.isNextOriginal())
         % we will switch to 'model'-mode in the next generation
         % prepare data for a new model
@@ -126,12 +126,12 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
 
       if (isempty(lastModel))
         warning('surrogateManager(): we are asked to use an EMPTY MODEL! Using CMA-ES.');
-        [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+        [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
         surrogateOpts.sampleOpts.counteval = counteval;
         return;
       end
 
-      [shiftedModel, evals] = lastModel.shiftReevaluate(xmean', fitfun_handle, fitargs);
+      [shiftedModel, evals] = lastModel.shiftReevaluate(xmean', fitfun_handle, varargin{:});
       if (evals > 0)
         [fitness_raw_, ~] = shiftedModel.predict(arx');
         fitness_raw = fitness_raw_';
@@ -141,7 +141,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
         % we cannot use the model -- it always returns NaNs
         % evaluate the current sample with the original fitness
         [fitness_raw, arx, arxvalid, arz, counteval] = ...
-            sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, fitargs, surrogateOpts.sampleOpts);
+            sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
         surrogateOpts.sampleOpts.counteval = counteval;
         % and set the next as original-evaluated (later .next() will be called)
         generationEC = generationEC.setNextOriginal();

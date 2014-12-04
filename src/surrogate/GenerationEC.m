@@ -11,14 +11,14 @@ classdef GenerationEC < handle
   methods
     function obj = GenerationEC(origGenerations, modelGenerations, varargin)
       % initGenerations' default value 0
-      if (nargin >= 3)
+      if (nargin >= 3  &&  varargin{1} > 0)
         initGenerations = varargin{1};
-        currentMode = 'initial';
-        remaining = initGenerations;
+        obj.currentMode = 'initial';
+        obj.remaining = initGenerations;
       else
         initGenerations = 0;
-        currentMode = 'original';
-        remaining = origGenerations;
+        obj.currentMode = 'original';
+        obj.remaining = origGenerations;
       end
 
       obj.origGenerations = origGenerations;
@@ -73,6 +73,9 @@ classdef GenerationEC < handle
     function obj = holdOn(obj)
       % call this instead of next() if you want to
       % leave the current mode
+      if (any(strcmp(obj.currentMode, {'original', 'initial'})))
+        obj.lastOriginalGenerations = [obj.lastOriginalGenerations obj.currentGeneration];
+      end
       obj.currentGeneration = obj.currentGeneration + 1;
     end
 

@@ -1,4 +1,4 @@
-function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun, fitargs, opts)
+function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun, opts, varargin)
 % sampleCmaesOnlyFitness  evaluation of the individuals in @arx/@arxvalid with fitness
 %
 % It generates new samples for the individuals for which NaN function value is
@@ -14,7 +14,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
   flgDiagonalOnly = opts.flgDiagonalOnly;
   xintobounds = opts.xintobounds;
 
-  isBoundActive = any(lbounds > -Inf) || any(ubounds < Inf); 
+  isBoundActive = any(lbounds > -Inf) || any(ubounds < Inf);
   N = size(xmean, 1);
 
   % Generate and evaluate lambda offspring
@@ -28,16 +28,16 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
       % You may handle constraints here.  You may copy and alter
       % (columns of) arxvalid(:,k) only for the evaluation of the
       % fitness function. arx and arxvalid should not be changed.
-      fitness_raw = feval(fitfun, arxvalid, fitargs{:}); 
+      fitness_raw = feval(fitfun, arxvalid, varargin{:});
       countevalNaN = countevalNaN + sum(isnan(fitness_raw));
-      counteval = counteval + sum(~isnan(fitness_raw)); 
+      counteval = counteval + sum(~isnan(fitness_raw));
   end
 
   % non-parallel evaluation and remaining NaN-values
   % set also the reevaluated solution to NaN
-  fitness_raw(lambda + find(isnan(fitness_raw(1:noiseReevals)))) = NaN;  
+  fitness_raw(lambda + find(isnan(fitness_raw(1:noiseReevals)))) = NaN;
   for k=find(isnan(fitness_raw)), 
-    % fitness_raw(k) = NaN; 
+    % fitness_raw(k) = NaN;
     tries = flgEvalParallel;  % in parallel case this is the first re-trial
     % Resample, until fitness is not NaN
     while isnan(fitness_raw(k))
@@ -71,7 +71,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
       % You may handle constraints here.  You may copy and alter
       % (columns of) arxvalid(:,k) only for the evaluation of the
       % fitness function. arx should not be changed.
-      fitness_raw(k) = feval(fitfun, arxvalid(:,k), fitargs{:}); 
+      fitness_raw(k) = feval(fitfun, arxvalid(:,k), varargin{:});
       tries = tries + 1;
       if isnan(fitness_raw(k))
 	countevalNaN = countevalNaN + 1;

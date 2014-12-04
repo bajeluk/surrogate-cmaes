@@ -72,7 +72,7 @@ classdef (Abstract) Model
           return;
         end
         invShiftedX = x - obj.shiftMean;
-        y = feval(fitfun_handle, invShiftedX, varargin{:}); 
+        y = feval(fitfun_handle, invShiftedX', varargin{:});
         countevalNaN = countevalNaN + sum(isnan(y));
         counteval = counteval + sum(~isnan(y));
         deniedIdxs = [deniedIdxs datasetIdx];

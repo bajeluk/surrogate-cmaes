@@ -1,4 +1,4 @@
-function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun, fitargs, opts)
+function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun, opts, varargin)
 
   % CMA-ES sampling options
   noiseReevals = opts.noiseReevals;
@@ -57,9 +57,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma
       % You may handle constraints here.  You may copy and alter
       % (columns of) arxvalid(:,k) only for the evaluation of the
       % fitness function. arx and arxvalid should not be changed.
-      fitness_raw = feval(fitfun, arxvalid, fitargs{:}); 
+      fitness_raw = feval(fitfun, arxvalid, varargin{:});
       countevalNaN = countevalNaN + sum(isnan(fitness_raw));
-      counteval = counteval + sum(~isnan(fitness_raw)); 
+      counteval = counteval + sum(~isnan(fitness_raw));
   end
 
   % non-parallel evaluation and remaining NaN-values
@@ -100,7 +100,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma
       % You may handle constraints here.  You may copy and alter
       % (columns of) arxvalid(:,k) only for the evaluation of the
       % fitness function. arx should not be changed.
-      fitness_raw(k) = feval(fitfun, arxvalid(:,k), fitargs{:}); 
+      fitness_raw(k) = feval(fitfun, arxvalid(:,k), varargin{:});
       tries = tries + 1;
       if isnan(fitness_raw(k))
 	countevalNaN = countevalNaN + 1;
