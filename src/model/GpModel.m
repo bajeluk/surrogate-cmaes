@@ -66,7 +66,14 @@ classdef GpModel < Model
       obj.dataset.y = y;
 
       % modelTrainNErrors = 0;
-      hyp_ = minimize(obj.hyp, @gp, -100, @infExactCountErrors, obj.meanFcn, obj.covFcn, obj.likFcn, X, y);
+      warning('off');
+      [hyp_, fX, iters] = minimize(obj.hyp, @gp, -100, @infExactCountErrors, obj.meanFcn, obj.covFcn, obj.likFcn, X, y);
+      % DEBUG OUTPUT:
+      fprintf('  minimize() %f --> %f in %d iterations.\n', fX(1), fX(end), iters);
+      warning('on');
+      % TODO: do not use the model if it is not able to be learn,
+      %       i.e. when (fX(1) - fX(end)) is almost zero
+
       % FIXME: holds for infExact() only -- do not be sticked to infExact!!!
       % nErrors = modelTrainNErrors;
       obj.hyp = hyp_;

@@ -26,12 +26,14 @@ function testGpModelGenEvoControl(testCase)
   surrogateOpts.modelType = 'gp';
   surrogateOpts.modelOpts.path = '../gpeda/src/vendor/gpml-matlab-v3.2/';
   surrogateOpts.modelOpts.initScript = '../gpeda/src/vendor/gpml-matlab-v3.2/startup.m';
+  surrogateOpts.evoControlOrigGenerations = 3;      % 1..inf
+  surrogateOpts.evoControlModelGenerations = 1;     % 0..inf
 
   dim = 2;
 
-  [xmin, fmin, counteval] = s_cmaes('fellii', 2*ones(dim,1), 2, [], 'SurrogateOptions', surrogateOpts);
+  [xmin, fmin, counteval] = s_cmaes('frosen', 2*ones(dim,1), 2, [], 'SurrogateOptions', surrogateOpts);
 
-  verifyEqual(testCase, counteval, 1100, 'RelTol', 0.2);
-  verifyEqual(testCase, fmin, 0, 'AbsTol', 1e-10);
-  verifyEqual(testCase, xmin, zeros(dim,1), 'AbsTol', 1e-7);
+  % verifyEqual(testCase, counteval, 1100, 'RelTol', 0.2);
+  verifyEqual(testCase, fmin, 0, 'AbsTol', 1e-7);
+  % verifyEqual(testCase, xmin, zeros(dim,1), 'AbsTol', 1e-7);
 end
