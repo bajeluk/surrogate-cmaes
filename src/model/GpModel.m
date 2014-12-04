@@ -18,6 +18,7 @@ classdef GpModel < Model
   methods
     function obj = GpModel(modelOptions, xMean)
       % constructor
+      assert(size(xMean,1) == 1, 'GpModel (constructor): xMean is not a row-vector.');
       obj.options = modelOptions;
       obj.dim     = size(xMean, 2);
       obj.shiftMean = zeros(1, obj.dim);
@@ -43,6 +44,7 @@ classdef GpModel < Model
     function obj = train(obj, X, y, xMean, generation)
       % train the GP model based on the data (X,y)
 
+      assert(size(xMean,1) == 1, 'GpModel.train(): xMean is not a row-vector.');
       obj.trainGeneration = generation;
       obj.trainMean = xMean;
       obj.hyp.mean = mean(y);

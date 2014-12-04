@@ -14,6 +14,7 @@ classdef RfModel < Model
   methods
     function obj = RfModel(modelOptions, xMean)
       % constructor
+      assert(size(xMean,1) == 1, 'RfModel (constructor): xMean is not a row-vector.');
       obj.options = modelOptions;
       obj.dim     = size(xMean, 2);
 
@@ -33,6 +34,7 @@ classdef RfModel < Model
     function obj = train(obj, X, y, xMean, generation)
       % train the GP model based on the data (X,y)
 
+      assert(size(xMean,1) == 1, 'RfModel.train(): xMean is not a row-vector.');
       obj.trainGeneration = generation;
       obj.trainMean = xMean;
 

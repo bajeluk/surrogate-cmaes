@@ -28,18 +28,18 @@ classdef GenerationEC < handle
 
     function result = evaluateOriginal(obj)
       % test whether evalute with the original function
-      result = strcmp(currentMode, {'original', 'initial'});
+      result = any(strcmp(obj.currentMode, {'original', 'initial'}));
     end
 
     function result = isNextOriginal(obj)
       % check whether there will be 'original' mode after calling next()
-      result = (strcmp(obj.currentMode, {'original', 'initial'}) && (obj.remaining > 1)) ...
+      result = (any(strcmp(obj.currentMode, {'original', 'initial'})) && (obj.remaining > 1)) ...
           || (strcmp(obj.currentMode, 'model') && obj.remaining == 1);
     end
 
     function result = evaluateModel(obj)
       % test whether evalute with a model
-      result = strcmp(currentMode, 'model');
+      result = strcmp(obj.currentMode, 'model');
     end 
 
     function obj = next(obj)
