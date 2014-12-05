@@ -46,22 +46,30 @@ classdef (Abstract) Model
       obj.shiftY = median(obj.dataset.y - invShiftedY);
     end
 
-    function [obj, counteval] = shiftReevaluate(obj, xMean, fitfun_handle, varargin)
+    function [obj, counteval, newX, newY] = shiftReevaluate(obj, xMean, xValid, nOrigEvals, fitfun_handle, varargin)
     % transforms the trained model to new coordinates of @xMean
     % further predictions will be made according to this shift
     % does not re-train the model, but estimates the shift in the f-values
     %   according to the evaluation of a point from the Model.dataset (shifted
     %   in the new position)
-    % @varargin  - arguments for the fitfun_handle function
+    % @xValid      -- set of CMA-ES-generated points (from sigma*N(xMean, BD) )
+    % @nOrigEvals  -- the number of allowed orig. evaluations for this run, >= 1
+    % @varargin    -- arguments for the fitfun_handle function
+    % returns:
+    %   @counteval -- the number of used original evaluations (non NaN)
+    %   @newX      -- coordinates of the new evaluated points
+    %   @newY      -- f-values of the new evaluated points
     %
     % FUTURE WORK: 
     % * TODO more points to reevaluate because of conrolling the model precision
+    %        (@nOrigEvals parameter)
     % * TODO add a feedback if the model is not sufficiently precise
 
       % vector of the shift
       obj.shiftMean = xMean - obj.trainMean; 
 
       y = NaN; x = zeros(1,obj.dim);
+      newX = []; newY = [];
       deniedIdxs = [];
       counteval = 0;
       countevalNaN = 0;
@@ -69,16 +77,31 @@ classdef (Abstract) Model
         [x, datasetIdx] = getNearMean(obj, xMean, deniedIdxs);
         if (isempty(x))
           warning(['Model.shiftReevaluate(): fitness in shifted dataset is all NaN. Stopping using model. CountEvalNaN = ' num2str(countevalNaN)]);
+          obj = [];
           return;
         end
         invShiftedX = x - obj.shiftMean;
+        % evaluate the shifted archive point
         y = feval(fitfun_handle, invShiftedX', varargin{:});
-        countevalNaN = countevalNaN + sum(isnan(y));
         counteval = counteval + sum(~isnan(y));
+        countevalNaN = countevalNaN + sum(isnan(y));
+        if (~any(isnan(y)))
+          newX = [newX; invShiftedX];
+          newY = [newY; y'];
+        end
         deniedIdxs = [deniedIdxs datasetIdx];
+        % calculate new shiftY
+        obj.shiftY = obj.dataset.y(datasetIdx) - y;
+        % check that the model is not flat
+        yValid = obj.predict(xValid);
+        ySort = sort(yValid);
+        thirdY = ySort(ceil(1.1+end/3));
+        if ((1 - ySort(1)/thirdY) < 1e-2)
+          disp('Model.shiftReevaluate(): fitness is flat. Stopping using model.');
+          obj = [];
+          return;
+        end
       end
-      % calculate new shiftY
-      obj.shiftY = obj.dataset.y(datasetIdx) - y;
     end
   end
 

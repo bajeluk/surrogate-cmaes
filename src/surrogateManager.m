@@ -131,15 +131,45 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
         return;
       end
 
-      [shiftedModel, evals] = lastModel.shiftReevaluate(xmean', fitfun_handle, varargin{:});
+      % generate validating population
+      [xValid] = ...
+          sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
+      % shift the model (and possibly evaluate some new points newX, newY = f(newX) )
+      newX = []; newY = []; newZ = [];
+      [shiftedModel, evals, newX, newY] = lastModel.shiftReevaluate(xmean', xValid', surrogateOpts.evoControlValidatePoints, fitfun_handle, varargin{:});
       if (evals > 0)
-        [fitness_raw_, ~] = shiftedModel.predict(arx');
-        fitness_raw = fitness_raw_';
+        % count the original evaluations
         surrogateOpts.sampleOpts.counteval = surrogateOpts.sampleOpts.counteval + evals;
         counteval = surrogateOpts.sampleOpts.counteval;
+      end
+      if (~isempty(shiftedModel))
+        [fitness_raw_, ~] = shiftedModel.predict(arx');
+        fitness_raw = fitness_raw_';
       else
         % we cannot use the model -- it always returns NaNs
         % evaluate the current sample with the original fitness
+
+        % TODO: does it have any meaning to implement @newX?!
+        %       it is an individual near PREVIOUS mean, so it will probably
+        %       confuse CMA-ES :(
+        % TODO: solution: take only those in 2*sigma distance from @xmean
+        %
+        % if (~isempty(newX))
+        %   % replace the sampled individuals in @arx with @newX -- those 
+        %   % original-evaluated from shiftReevaluate()
+        %   nEvaluated = size(newX,1);
+        %   arx = arx(:,nEvaluated+1:end);
+        %   arxvalid = arxvalid(:,nEvaluated+1:end);      % TODO: does it work? :)
+        %   arz = arz(:,nEvaluated+1:end);
+        %   newZ = (BD \ (newX - xmean')') ./ sigma;      % TODO: does it work?
+        % end
+        % [fitness_raw_, arx_, arxvalid_, arz_, counteval] = ...
+        %     sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+        % fitness_raw = [newY' fitness_raw_];
+        % arx = [newX' arx_];
+        % arxvalid = [newX' arxvalid_];                   % TODO: does it work?
+        % arz = [newZ arz_];
+
         [fitness_raw, arx, arxvalid, arz, counteval] = ...
             sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
         surrogateOpts.sampleOpts.counteval = counteval;
@@ -151,6 +181,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     %
     % end of Generation-based evolution control
 
+    % DEBUG
+    % disp(fitness_raw);
+    
   else
     error('surrogateManager(): wrong evolution control method');
   end
