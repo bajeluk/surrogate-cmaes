@@ -54,6 +54,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     % model could not be created :( use the standard CMA-ES
     [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
     surrogateOpts.sampleOpts.counteval = counteval;
+    archive = archive.save(arx', fitness_raw', countiter);
     return;
   end
 
@@ -64,6 +65,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     warning('surrogateManager: Using "sampleCmaes()"...');
     [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
     surrogateOpts.sampleOpts.counteval = counteval;
+    archive = archive.save(arx', fitness_raw', countiter);
     return;
 
   elseif (strcmpi(surrogateOpts.evoControl, 'generation'))
@@ -84,9 +86,6 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
 
     [arx, arxvalid, arz] = ...
         sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
-    % [fitness_raw, arx, arxvalid, arz, counteval] = ...
-    %     sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
-    % surrogateOpts.sampleOpts.counteval = counteval;
 
     if (generationEC.evaluateOriginal)
       [fitness_raw, arx, arxvalid, arz, counteval] = ...
@@ -128,6 +127,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
         warning('surrogateManager(): we are asked to use an EMPTY MODEL! Using CMA-ES.');
         [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
         surrogateOpts.sampleOpts.counteval = counteval;
+        archive = archive.save(arx', fitness_raw', countiter);
         return;
       end
 
@@ -141,6 +141,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
         % count the original evaluations
         surrogateOpts.sampleOpts.counteval = surrogateOpts.sampleOpts.counteval + evals;
         counteval = surrogateOpts.sampleOpts.counteval;
+        archive = archive.save(newX, newY, countiter);
       end
       if (~isempty(shiftedModel))
         [fitness_raw_, ~] = shiftedModel.predict(arx');
@@ -173,6 +174,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
         [fitness_raw, arx, arxvalid, arz, counteval] = ...
             sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
         surrogateOpts.sampleOpts.counteval = counteval;
+        archive = archive.save(arx', fitness_raw', countiter);
         % and set the next as original-evaluated (later .next() will be called)
         generationEC = generationEC.setNextOriginal();
       end

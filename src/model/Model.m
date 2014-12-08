@@ -56,6 +56,7 @@ classdef (Abstract) Model
     % @nOrigEvals  -- the number of allowed orig. evaluations for this run, >= 1
     % @varargin    -- arguments for the fitfun_handle function
     % returns:
+    %   @obj       -- is empty if the model is not sufficient for prediction
     %   @counteval -- the number of used original evaluations (non NaN)
     %   @newX      -- coordinates of the new evaluated points
     %   @newY      -- f-values of the new evaluated points

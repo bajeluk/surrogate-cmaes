@@ -91,7 +91,7 @@ classdef GenerationEC < handle
       % model was used
       startID = length(obj.lastOriginalGenerations) - n + 1;
       if (startID <= 0)
-        warning('GenerationEC.getLastOriginalGenerations(): not enough data in the archive');
+        disp('GenerationEC.getLastOriginalGenerations(): not enough data in the archive');
         startID = 1;
       end
       gens = obj.lastOriginalGenerations(startID:end);
