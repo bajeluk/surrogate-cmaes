@@ -46,20 +46,24 @@ classdef (Abstract) Model
       obj.shiftY = median(obj.dataset.y - invShiftedY);
     end
 
-    function [obj, counteval, newX, newY] = shiftReevaluate(obj, xMean, xValid, nOrigEvals, fitfun_handle, varargin)
+    function [obj, counteval, newX, newY, newZ] = shiftReevaluate(obj, xMean, xValid, zValid, nOrigEvals, fitfun_handle, varargin)
     % transforms the trained model to new coordinates of @xMean
     % further predictions will be made according to this shift
     % does not re-train the model, but estimates the shift in the f-values
     %   according to the evaluation of a point from the Model.dataset (shifted
     %   in the new position)
     % @xValid      -- set of CMA-ES-generated points (from sigma*N(xMean, BD) )
+    % @zValid      -- set of CMA-ES-generated points (from N(0,1) )
     % @nOrigEvals  -- the number of allowed orig. evaluations for this run, >= 1
     % @varargin    -- arguments for the fitfun_handle function
     % returns:
     %   @obj       -- is empty if the model is not sufficient for prediction
     %   @counteval -- the number of used original evaluations (non NaN)
-    %   @newX      -- coordinates of the new evaluated points
+    %   @newX      -- new evaluated points (starting from the second, 
+    %                 they should be copied from xValid)
     %   @newY      -- f-values of the new evaluated points
+    %   @newZ      -- correspoing vectors from normal N(0,1), the first row, which
+    %                 corresponds to the shifted archive point, will not be computed!
     %
     % FUTURE WORK: 
     % * TODO more points to reevaluate because of conrolling the model precision
@@ -70,10 +74,10 @@ classdef (Abstract) Model
       obj.shiftMean = xMean - obj.trainMean; 
 
       y = NaN; x = zeros(1,obj.dim);
-      newX = []; newY = [];
-      deniedIdxs = [];
+      newX = []; newY = []; newZ = [];
       counteval = 0;
       countevalNaN = 0;
+      deniedIdxs = [];
       while (isnan(y) && ~isempty(x))
         [x, datasetIdx] = getNearMean(obj, xMean, deniedIdxs);
         if (isempty(x))
@@ -86,9 +90,10 @@ classdef (Abstract) Model
         y = feval(fitfun_handle, invShiftedX', varargin{:});
         counteval = counteval + sum(~isnan(y));
         countevalNaN = countevalNaN + sum(isnan(y));
-        if (~any(isnan(y)))
+        if (all(~isnan(y)))
           newX = [newX; invShiftedX];
           newY = [newY; y'];
+          newZ = [newZ; zeros(1,obj.dim)];
         end
         deniedIdxs = [deniedIdxs datasetIdx];
         % calculate new shiftY
@@ -98,10 +103,35 @@ classdef (Abstract) Model
         ySort = sort(yValid);
         thirdY = ySort(ceil(1.1+end/3));
         if ((1 - ySort(1)/thirdY) < 1e-2)
-          disp('Model.shiftReevaluate(): fitness is flat. Stopping using model.');
+          % disp('Model.shiftReevaluate(): fitness is flat. Stopping using model.');
           obj = [];
           return;
         end
+      end
+      % Evaluate validating points
+      nOrigEvals = min((nOrigEvals - 1), size(xValid, 1));
+      xValid2 = xValid(1:nOrigEvals,:) - repmat(obj.shiftMean,nOrigEvals,1);
+      for i = 1:nOrigEvals
+        % evaluate the shifted archive point
+        y = feval(fitfun_handle, xValid2(i,:)', varargin{:});
+        counteval = counteval + sum(~isnan(y));
+        countevalNaN = countevalNaN + sum(isnan(y));
+        if (all(~isnan(y)))
+          newX = [newX; xValid2(i,:)];
+          newY = [newY; y'];
+          newZ = [newZ; zValid(i,:)];
+        end
+      end
+      % calculate how precise the model is on the validating set
+      % TODO: decide the criterion more sophistically
+      yPredict = obj.predict(newX(2:end,:));
+      mae = sum(abs(newY(2:end) - yPredict)) / (size(newY,1)-1);
+      relativeMAE = mae / (max(newY) - min(newY));
+      if ( (nOrigEvals >= 2  &&  relativeMAE > 0.2) ...
+           ||  (nOrigEvals == 1  &&  relativeMAE > 0.4) )
+        % disp('Model.shiftReevaluate(): The model is not precise enough, skipping using the model.');
+        obj = [];
+        return;
       end
     end
   end

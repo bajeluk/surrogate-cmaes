@@ -131,53 +131,50 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
         return;
       end
 
-      % generate validating population
-      [xValid] = ...
+      % generate validating population (for measuring error of the prediction)
+      [xValid, ~, zValid] = ...
           sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
       % shift the model (and possibly evaluate some new points newX, newY = f(newX) )
-      newX = []; newY = []; newZ = [];
-      [shiftedModel, evals, newX, newY] = lastModel.shiftReevaluate(xmean', xValid', surrogateOpts.evoControlValidatePoints, fitfun_handle, varargin{:});
+      % newX = []; newY = []; newZ = []; evals = 0;
+      [shiftedModel, evals, newX, newY, newZ] = lastModel.shiftReevaluate(xmean', xValid', zValid', surrogateOpts.evoControlValidatePoints, fitfun_handle, varargin{:});
+      % count the original evaluations
+      surrogateOpts.sampleOpts.counteval = surrogateOpts.sampleOpts.counteval + evals;
+      counteval = surrogateOpts.sampleOpts.counteval;
+      % use the original-evaluated xValid points to the new generation:
+      xValidUsedIdx = 1:(evals-1);
       if (evals > 0)
-        % count the original evaluations
-        surrogateOpts.sampleOpts.counteval = surrogateOpts.sampleOpts.counteval + evals;
-        counteval = surrogateOpts.sampleOpts.counteval;
         archive = archive.save(newX, newY, countiter);
+        % calculate 'z' for the shifted archive near-mean point
+        newZ(1,:) = ((BD \ (newX(1,:)' - xmean)) ./ sigma)';
+        if (~isempty(xValidUsedIdx))
+          % some of the 'xValid' points were evaluated, too, so save them
+          % to the final population 'arx'
+          arx(:,xValidUsedIdx) = newX(2:end,:)';
+          % this is a hack :/ -- we suppose that all the newX are valid
+          arxvalid(:,xValidUsedIdx) = newX(2:end,:)';
+          arz(:,xValidUsedIdx) = newZ(2:end,:)';
+          fitness_raw(xValidUsedIdx) = newY(2:end)';
+        end
       end
+      % calculate/predict the fitness of the not-so-far evaluated points
+      remainingIdx = 1:lambda;
+      remainingIdx(xValidUsedIdx) = [];
       if (~isempty(shiftedModel))
-        [fitness_raw_, ~] = shiftedModel.predict(arx');
-        fitness_raw = fitness_raw_';
+        % we've got a valid model, so we'll use it!
+        [fitness_raw_, ~] = shiftedModel.predict(arx(:,remainingIdx)');
+        disp(['Model.shiftReevaluate(): We are using the model for ' num2str(length(remainingIdx)) ' individuals.']);
+        fitness_raw_ = fitness_raw_';
       else
-        % we cannot use the model -- it always returns NaNs
-        % evaluate the current sample with the original fitness
-
-        % TODO: does it have any meaning to implement @newX?!
-        %       it is an individual near PREVIOUS mean, so it will probably
-        %       confuse CMA-ES :(
-        % TODO: solution: take only those in 2*sigma distance from @xmean
-        %
-        % if (~isempty(newX))
-        %   % replace the sampled individuals in @arx with @newX -- those 
-        %   % original-evaluated from shiftReevaluate()
-        %   nEvaluated = size(newX,1);
-        %   arx = arx(:,nEvaluated+1:end);
-        %   arxvalid = arxvalid(:,nEvaluated+1:end);      % TODO: does it work? :)
-        %   arz = arz(:,nEvaluated+1:end);
-        %   newZ = (BD \ (newX - xmean')') ./ sigma;      % TODO: does it work?
-        % end
-        % [fitness_raw_, arx_, arxvalid_, arz_, counteval] = ...
-        %     sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
-        % fitness_raw = [newY' fitness_raw_];
-        % arx = [newX' arx_];
-        % arxvalid = [newX' arxvalid_];                   % TODO: does it work?
-        % arz = [newZ arz_];
-
-        [fitness_raw, arx, arxvalid, arz, counteval] = ...
-            sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
-        surrogateOpts.sampleOpts.counteval = counteval;
-        archive = archive.save(arx', fitness_raw', countiter);
-        % and set the next as original-evaluated (later .next() will be called)
+        % we don't have a model, so original fitness will be used
+        [fitness_raw_, arx_, arxvalid_, arz_, counteval] = ...
+            sampleCmaesOnlyFitness(arx(:,remainingIdx), arxvalid(:,remainingIdx), arz(:,remainingIdx), xmean, sigma, length(remainingIdx), BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+        arx(:,remainingIdx) = arx_;
+        arxvalid(:,remainingIdx) = arxvalid_;
+        arz(:,remainingIdx) = arz_;
         generationEC = generationEC.setNextOriginal();
       end
+      fitness_raw(remainingIdx) = fitness_raw_;
+      % and set the next as original-evaluated (later .next() will be called)
     end
     generationEC = generationEC.next();
     %
