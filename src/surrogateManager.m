@@ -163,7 +163,13 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
         % we've got a valid model, so we'll use it!
         [fitness_raw_, ~] = shiftedModel.predict(arx(:,remainingIdx)');
         disp(['Model.shiftReevaluate(): We are using the model for ' num2str(length(remainingIdx)) ' individuals.']);
-        fitness_raw_ = fitness_raw_';
+        % shift the predicted fitness: the best predicted fitness
+        % could not be better than the so-far best fitness -- it would fool CMA-ES!
+        % TODO: test if shifting ALL THE INDIVIDUALS (not only predicted) would help?
+        bestFitnessDataset = min(archive.y);
+        bestFitnessPredicted = min(fitness_raw_);
+        diff = max(bestFitnessDataset - bestFitnessPredicted, 0);
+        fitness_raw_ = fitness_raw_' + diff;
       else
         % we don't have a model, so original fitness will be used
         [fitness_raw_, arx_, arxvalid_, arz_, counteval] = ...
