@@ -60,12 +60,13 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
 
   if (strcmpi(surrogateOpts.evoControl, 'individual'))
     % Individual-based evolution control
-    % TODO: write this!
-    warning('surrogateManager: Individual control is not yet written :(');
-    warning('surrogateManager: Using "sampleCmaes()"...');
-    [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
-    surrogateOpts.sampleOpts.counteval = counteval;
-    archive = archive.save(arx', fitness_raw', countiter);
+    % [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+    % surrogateOpts.sampleOpts.counteval = counteval;
+    % archive = archive.save(arx', fitness_raw', countiter);
+  
+    nRequired = newModel.getNTrainData();
+    nPreSample = floor(surrogateOpts.evoControlPreSampleSize * lambda);
+
     return;
 
   elseif (strcmpi(surrogateOpts.evoControl, 'generation'))

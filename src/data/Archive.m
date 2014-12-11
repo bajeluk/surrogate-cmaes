@@ -28,5 +28,42 @@ classdef Archive
       X = obj.X(dataIdxs, :);
       y = obj.y(dataIdxs);
     end
+
+    function [X, y] = getDataNearPoint(obj, n, x, sigma, BD)
+      % returns up to 'n' data within distance of 2 along the point 'x'
+      % using (sigma*BD)-metric
+      % if more than 'n' data are closer than 2, k-means clustering is
+      % performed
+      % TODO: test this!!!
+      nData = length(y);
+      X = []; y = [];
+
+      % compute coordinates in the (sigma*BD)-basis
+      BDinv = inv(sigma*BD);
+      xTransf = ( BDinv * (obj.X - repmat(x,nData,1))' )';
+      
+      % take the points closer than 2*sigma
+      diff = sum(xTransf.^2, 2);
+      closerThan2Sigma = diff < 4;
+
+      if (sum(closerThan2Sigma) <= n)
+        X = obj.X(closerThan2Sigma,:);
+        y = obj.y(closerThan2Sigma);
+      else
+        % cluster the transformed data into n clusters
+        closerDataX = xTransf(closerThan2Sigma,:);
+        closerDataY = obj.y(closerThan2Sigma);
+        closerThan2SigmaIdx = find(closerThan2Sigma);
+        [~, ~, ~, D] = clusterdata(closerDataX, n);
+        % D = ('n' x 'k') distances to the clusters' centroids
+        % find the points nearest to the clusters' centers
+        for i = 1:n
+          [~, closestToCentroid] = min(D(:,i));
+          % return the original coordinates, not the transformed
+          X = [X; obj.X(closerThan2SigmaIdx(closestToCentroid),:)];
+          y = [y; closerDataY(closestToCentroid)];
+        end
+      end
+    end
   end
 end
