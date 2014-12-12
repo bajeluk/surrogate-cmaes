@@ -43,6 +43,7 @@ function testNoModelNoEvoControl(testCase)
   % verifyEqual(testCase, xmin, zeros(evocontrolTest_dim,1), 'AbsTol', 1e-3);
 end
 
+%{
 function testGpModelGenEvoControl(testCase)
   global evocontrolTest_cmaesOpts;
   global evocontrolTest_fitness;
@@ -65,6 +66,7 @@ function testGpModelGenEvoControl(testCase)
   verifyEqual(testCase, fmin, 0, 'AbsTol', 1e-7);
   % verifyEqual(testCase, xmin, zeros(evocontrolTest_dim,1), 'AbsTol', 1e-7);
 end
+%}
 
 function testGpModelIndEvoControl(testCase)
   global evocontrolTest_cmaesOpts;
@@ -75,7 +77,7 @@ function testGpModelIndEvoControl(testCase)
   surrogateOpts.modelType = 'gp';
   surrogateOpts.modelOpts.path = '../gpeda/src/vendor/gpml-matlab-v3.2/';
   surrogateOpts.modelOpts.initScript = '../gpeda/src/vendor/gpml-matlab-v3.2/startup.m';
-  surrogateOpts.evoControlPreSampleSize = 0.3;
+  surrogateOpts.evoControlPreSampleSize = 0.4;
 
   [xmin, fmin, counteval, stopflag] = s_cmaes(evocontrolTest_fitness, 2*ones(evocontrolTest_dim,1), 2, evocontrolTest_cmaesOpts, 'SurrogateOptions', surrogateOpts);
 

@@ -35,8 +35,12 @@ classdef Archive
       % if more than 'n' data are closer than 2, k-means clustering is
       % performed
       % TODO: test this!!!
-      nData = length(y);
+      nData = length(obj.y);
       X = []; y = [];
+      
+      if (nData == 0)
+        return;
+      end
 
       % compute coordinates in the (sigma*BD)-basis
       BDinv = inv(sigma*BD);
@@ -54,7 +58,7 @@ classdef Archive
         closerDataX = xTransf(closerThan2Sigma,:);
         closerDataY = obj.y(closerThan2Sigma);
         closerThan2SigmaIdx = find(closerThan2Sigma);
-        [~, ~, ~, D] = clusterdata(closerDataX, n);
+        [~, ~, ~, D] = kmeans(closerDataX, n);
         % D = ('n' x 'k') distances to the clusters' centroids
         % find the points nearest to the clusters' centers
         for i = 1:n

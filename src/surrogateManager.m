@@ -50,6 +50,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
   % some evolution control should be used (individual- or generation-based)
   newModel = ModelFactory.createModel(surrogateOpts.modelType, ...
       surrogateOpts.modelOpts, xmean');
+  if (countiter == 1)
+    lastModel = [];
+    archive = Archive(dim);
+  end
+  
   if (isempty(newModel))
     % model could not be created :( use the standard CMA-ES
     [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
@@ -60,14 +65,23 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
 
   if (strcmpi(surrogateOpts.evoControl, 'individual'))
     % Individual-based evolution control
-    % [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
-    % surrogateOpts.sampleOpts.counteval = counteval;
-    % archive = archive.save(arx', fitness_raw', countiter);
   
     nRequired = newModel.getNTrainData();
     nPreSample = floor(surrogateOpts.evoControlPreSampleSize * lambda);
 
-    return;
+    [xTrain, yTrain] = archive.getDataNearPoint((nRequired - nPreSample), xmean', sigma, BD);
+    nToSample = nRequired - size(xTrain, 1);
+
+    if (nToSample > nPreSample)
+      disp('surrogateManager(): not enough data for training model.');
+      [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+      surrogateOpts.sampleOpts.counteval = counteval;
+      archive = archive.save(arx', fitness_raw', countiter);
+      return;
+    end
+
+    if (nToSample > 0)
+    end
 
   elseif (strcmpi(surrogateOpts.evoControl, 'generation'))
     % Generation-based evolution control
@@ -81,8 +95,6 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
       end
       generationEC = GenerationEC(surrogateOpts.evoControlOrigGenerations, ...
         surrogateOpts.evoControlModelGenerations, initialGens);
-      lastModel = [];
-      archive = Archive(dim);
     end
 
     [arx, arxvalid, arz] = ...
