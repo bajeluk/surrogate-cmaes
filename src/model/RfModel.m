@@ -9,6 +9,7 @@ classdef RfModel < Model
     options
 
     nTrees
+    nBestPoints         % number of n best training points ordered correctly by prediction of each tree
     minLeaf
     inputFraction
     forest
@@ -25,8 +26,9 @@ classdef RfModel < Model
 
       % this is a MOCK/TEST IMPLEMENTATION!
       obj.nTrees = 100;
-      obj.minLeaf = 5;
+      obj.minLeaf = 2;
       obj.inputFraction = 1;
+      obj.nBestPoints = 1;
     end
 
     function nData = getNTrainData(obj)
@@ -44,11 +46,78 @@ classdef RfModel < Model
       obj.trainMean = xMean;
       obj.dataset.X = X;
       obj.dataset.y = y;
-
-      % learning
-      obj.forest = TreeBagger(obj.nTrees,X,y,'method','regression',... 
+      
+      % weird learning
+      if obj.nBestPoints > 0
+          obj.forest = [];
+          [~,yIdx] = sort(y,1,'descend');
+          badTrees = 0;
+          
+          % find one tree predicting points in the right order
+          while (isempty(obj.forest) && badTrees < obj.nTrees)
+              simpleForest = TreeBagger(1,X,y,'method','regression',... 
+                'MinLeaf',obj.minLeaf,...
+                'FBoot',obj.inputFraction);
+              yPredict = predict(simpleForest,X);
+              [~,yPredictIdx] = sort(yPredict,1,'descend');
+              if (all( yIdx(1:obj.nBestPoints) == yPredictIdx(1:obj.nBestPoints)))
+                  obj.forest = simpleForest;
+              else
+                  badTrees = badTrees + 1;
+              end
+          end
+          
+          % if there was not enough elite trees train normal forest
+          if badTrees == obj.nTrees
+              obj.forest = TreeBagger(obj.nTrees,X,y,'method','regression',... 
             'MinLeaf',obj.minLeaf,...
             'FBoot',obj.inputFraction);
+          else
+              % append trees predicting points in the right order to the first
+              % one
+              while obj.forest.NTrees < obj.nTrees
+                  simpleForest = TreeBagger(1,X,y,'method','regression',... 
+                    'MinLeaf',obj.minLeaf,...
+                    'FBoot',obj.inputFraction);
+                  yPredict = predict(simpleForest,X);
+                  [~,yPredictIdx] = sort(yPredict,1,'descend');
+                  if (all( yIdx(1:obj.nBestPoints) == yPredictIdx(1:obj.nBestPoints)))
+                      obj.forest = append(obj.forest,simpleForest);
+                  end
+              end
+          end
+              
+          
+          
+      else %simple case no elitism
+          obj.forest = TreeBagger(obj.nTrees,X,y,'method','regression',... 
+            'MinLeaf',obj.minLeaf,...
+            'FBoot',obj.inputFraction);
+      end
+      
+      
+      % learning
+%       obj.forest = TreeBagger(obj.nTrees,X,y,'method','regression',... 
+%             'MinLeaf',obj.minLeaf,...
+%             'FBoot',obj.inputFraction);
+%       
+%       correctTrees = [];
+%       if obj.nBestPoints > 0
+%           [~,yIdx] = sort(y,1,'descend');
+%           for i = 1:obj.nTrees
+%               yPredict = predict(obj.Forest.Trees{i},X);
+%               [~,yPredictIdx] = sort(yPredict,1,'descend');
+%               if (all( yIdx(1:obj.nBestPoints) == yPredictIdx(1:obj.nBestPoints)))
+%                   correctTrees = [correctTrees i];
+%               end
+%           end
+%           
+%           while length(correctTrees) < obj.nTrees
+%               
+%           end
+%       end
+        
+      % count train MSE
       trainMSE = mean((y - obj.predict(X)).^2);
       fprintf('  TreeBagger: train MSE = %f\n', trainMSE);
     end
