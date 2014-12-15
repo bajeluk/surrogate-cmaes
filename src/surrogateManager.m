@@ -81,6 +81,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     end
 
     if (nToSample > 0)
+      % sample new points, preferably in areas where we don't have
+      % the points yet
+      [arx, arxvalid, arz] = ...
+          sampleCmaesNoFitness(xmean, sigma, 2*lambda, BD, diagD, surrogateOpts.sampleOpts);
+      [xPreSample, zPreSample] = chooseDistantPoints(nToSample, arx', arz', xTrain, xmean, sigma, BD);
     end
 
   elseif (strcmpi(surrogateOpts.evoControl, 'generation'))
