@@ -73,6 +73,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     nToSample = nRequired - size(xTrain, 1);
 
     if (nToSample > nPreSample)
+      % TODO: shouldn't we use an old model?
       disp('surrogateManager(): not enough data for training model.');
       [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
@@ -85,8 +86,42 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
       % the points yet
       [arx, arxvalid, arz] = ...
           sampleCmaesNoFitness(xmean, sigma, 2*lambda, BD, diagD, surrogateOpts.sampleOpts);
-      [xPreSample, zPreSample] = chooseDistantPoints(nToSample, arx', arz', xTrain, xmean, sigma, BD);
+      [xPreSample, zPreSample] = SurrogateSelector.chooseDistantPoints(nToSample, arx', arz', xTrain, xmean, sigma, BD);
+      % evaluate the 'preSample' with the original fitness
+      [fitness_raw, arx, arxvalid, arz, counteval] = ...
+          sampleCmaesOnlyFitness(xPreSample, xPreSample, zPreSample, xmean, sigma, nToSample, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+      surrogateOpts.sampleOpts.counteval = counteval;
+      archive = archive.save(arx', fitness_raw', countiter);
+      xTrain = [xTrain; arx'];
+      yTrain = [yTrain; fitness_raw'];
     end
+    % train the model
+    newModel = newModel.train(xTrain, yTrain, xmean', countiter);
+    % sample the enlarged population of size 'gamma * (lambda - nToSample)'
+    extendSize = ceil(surrogateOpts.evoControlIndividualExtension ...
+        * (lambda - nToSample));
+    [xExtend, xExtendValid, zExtend] = ...
+        sampleCmaesNoFitness(xmean, sigma, extendSize, BD, diagD, surrogateOpts.sampleOpts);
+    % calculate the model prediction for the extended population
+    yExtend = newModel.predict(xExtend');
+
+    nBest = surrogateOpts.evoControlNBestFromExtension;
+    nCluster = lambda - size(arx,2) - nBest;
+    [xToReeval, xToReevalValid, zToReeval] = ...
+        SurrogateSelector.choosePointsToReevaluate(...
+        xExtend, xExtendValid, zExtend, yExtend, nBest, nCluster);
+
+    % original-evaluate the chosen points
+    [yNew, xNew, xNewValid, zNew, counteval] = ...
+        sampleCmaesOnlyFitness(xToReeval', xToReevalValid', zToReeval', xmean, sigma, nCluster + nBest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+    surrogateOpts.sampleOpts.counteval = counteval;
+    archive = archive.save(xNew', yNew', countiter);
+
+    % save the resulting re-evaluated population as the returning parameters
+    fitness_raw = [fitness_raw yNew];
+    arx = [arx xNew];
+    arxvalid = [arxvalid xNewValid];
+    arz = [arz zNew];
 
   elseif (strcmpi(surrogateOpts.evoControl, 'generation'))
     % Generation-based evolution control
