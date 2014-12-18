@@ -61,7 +61,7 @@ classdef Archive
         [~, ~, ~, D] = kmeans(closerDataX, n);
         % D = ('n' x 'k') distances to the clusters' centroids
         % find the points nearest to the clusters' centers
-        [~, closestToCentroid] = min(D, 1);
+        [~, closestToCentroid] = min(D, [], 1);
         for closestIdx = closestToCentroid
           % return the original coordinates, not the transformed
           X = [X; obj.X(closerThan2SigmaIdx(closestIdx),:)];

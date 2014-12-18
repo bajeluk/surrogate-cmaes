@@ -78,6 +78,8 @@ function testGpModelIndEvoControl(testCase)
   surrogateOpts.modelOpts.path = '../gpeda/src/vendor/gpml-matlab-v3.2/';
   surrogateOpts.modelOpts.initScript = '../gpeda/src/vendor/gpml-matlab-v3.2/startup.m';
   surrogateOpts.evoControlPreSampleSize = 0.4;
+  surrogateOpts.evoControlIndividualExtension = 10;
+  surrogateOpts.evoControlNBestFromExtension = ceil(0.2 * evocontrolTest_cmaesOpts.PopSize);
 
   [xmin, fmin, counteval, stopflag] = s_cmaes(evocontrolTest_fitness, 2*ones(evocontrolTest_dim,1), 2, evocontrolTest_cmaesOpts, 'SurrogateOptions', surrogateOpts);
 
