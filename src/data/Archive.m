@@ -29,12 +29,11 @@ classdef Archive
       y = obj.y(dataIdxs);
     end
 
-    function [X, y] = getDataNearPoint(obj, n, x, sigma, BD)
-      % returns up to 'n' data within distance of 2 along the point 'x'
+    function [X, y] = getDataNearPoint(obj, n, x, rangeSigma, sigma, BD)
+      % returns up to 'n' data within distance of 'rangeSigma' along the point 'x'
       % using (sigma*BD)-metric
-      % if more than 'n' data are closer than 2, k-means clustering is
+      % if more than 'n' data are closer than 'rangeSigma', k-means clustering is
       % performed
-      % TODO: test this!!!
       nData = length(obj.y);
       X = []; y = [];
       
@@ -48,16 +47,16 @@ classdef Archive
       
       % take the points closer than 2*sigma
       diff = sum(xTransf.^2, 2);
-      closerThan2Sigma = diff < 4;
+      isInRange = diff < (rangeSigma ^ 2);
 
-      if (sum(closerThan2Sigma) <= n)
-        X = obj.X(closerThan2Sigma,:);
-        y = obj.y(closerThan2Sigma);
+      if (sum(isInRange) <= n)
+        X = obj.X(isInRange,:);
+        y = obj.y(isInRange);
       else
         % cluster the transformed data into n clusters
-        closerDataX = xTransf(closerThan2Sigma,:);
-        closerDataY = obj.y(closerThan2Sigma);
-        closerThan2SigmaIdx = find(closerThan2Sigma);
+        closerDataX = xTransf(isInRange,:);
+        closerDataY = obj.y(isInRange);
+        closerThan2SigmaIdx = find(isInRange);
         [~, ~, ~, D] = kmeans(closerDataX, n);
         % D = ('n' x 'k') distances to the clusters' centroids
         % find the points nearest to the clusters' centers

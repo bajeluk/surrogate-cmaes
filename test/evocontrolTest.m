@@ -8,7 +8,7 @@ function setupOnce(testCase)
   global evocontrolTest_dim;
 
   evocontrolTest_fitness        = 'frosen';
-  evocontrolTest_dim            = 2;
+  evocontrolTest_dim            = 5;
   evocontrolTest_cmaesOpts.DispModulo = '5';
   evocontrolTest_cmaesOpts.StopFitness = 1e-8;
 
@@ -79,7 +79,8 @@ function testGpModelIndEvoControl(testCase)
   surrogateOpts.modelOpts.initScript = '../gpeda/src/vendor/gpml-matlab-v3.2/startup.m';
   surrogateOpts.evoControlPreSampleSize = 0.4;
   surrogateOpts.evoControlIndividualExtension = 10;
-  surrogateOpts.evoControlNBestFromExtension = ceil(0.2 * evocontrolTest_cmaesOpts.PopSize);
+  surrogateOpts.evoControlNBestFromExtension = ceil(0.1 * evocontrolTest_cmaesOpts.PopSize);
+  surrogateOpts.evoControlIndividualTrainRange = 4;
 
   [xmin, fmin, counteval, stopflag] = s_cmaes(evocontrolTest_fitness, 2*ones(evocontrolTest_dim,1), 2, evocontrolTest_cmaesOpts, 'SurrogateOptions', surrogateOpts);
 

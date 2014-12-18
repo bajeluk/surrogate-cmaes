@@ -52,7 +52,7 @@ classdef GpModel < Model
       % returns the required number of data for training the model
       % TODO: *write this* properly according to dimension and
       %       covariance function set in options
-      nData = 5 * obj.dim;
+      nData = 3 * obj.dim;
     end
 
     function obj = train(obj, X, y, xMean, generation)

@@ -67,9 +67,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     % Individual-based evolution control
   
     nRequired = newModel.getNTrainData();
-    nPreSample = floor(surrogateOpts.evoControlPreSampleSize * lambda);
+    nPreSample = ceil(surrogateOpts.evoControlPreSampleSize * lambda);
+    fitness_raw = []; arx = []; arxvalid = []; arz = [];
 
-    [xTrain, yTrain] = archive.getDataNearPoint((nRequired - nPreSample), xmean', sigma, BD);
+    [xTrain, yTrain] = archive.getDataNearPoint((nRequired - nPreSample), ...
+        xmean', surrogateOpts.evoControlIndividualTrainRange, sigma, BD);
     nToSample = nRequired - size(xTrain, 1);
 
     if (nToSample > nPreSample)
@@ -82,9 +84,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     end
 
     if (nToSample > 0)
-      % sample new points, preferably in areas where we don't have
+      % pre-sample new points, preferably in areas where we don't have
       % the points yet
-      [arx, arxvalid, arz] = ...
+      [arx, ~, arz] = ...
           sampleCmaesNoFitness(xmean, sigma, 2*lambda, BD, diagD, surrogateOpts.sampleOpts);
       [xPreSample, zPreSample] = SurrogateSelector.chooseDistantPoints(nToSample, arx', arz', xTrain, xmean, sigma, BD);
       % evaluate the 'preSample' with the original fitness
@@ -105,17 +107,18 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     % calculate the model prediction for the extended population
     yExtend = newModel.predict(xExtend');
 
-    nBest = surrogateOpts.evoControlNBestFromExtension;
-    nCluster = lambda - size(arx,2) - nBest;
+    nBest = min(surrogateOpts.evoControlNBestFromExtension, lambda - nToSample - 1);
+    nCluster = lambda - nToSample - nBest;
     [xToReeval, xToReevalValid, zToReeval] = ...
         SurrogateSelector.choosePointsToReevaluate(...
         xExtend, xExtendValid, zExtend, yExtend, nBest, nCluster);
 
     % original-evaluate the chosen points
     [yNew, xNew, xNewValid, zNew, counteval] = ...
-        sampleCmaesOnlyFitness(xToReeval', xToReevalValid', zToReeval', xmean, sigma, nCluster + nBest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+        sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, sigma, nCluster + nBest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
     surrogateOpts.sampleOpts.counteval = counteval;
     archive = archive.save(xNew', yNew', countiter);
+    fprintf('  model (%d new preSamples) was used to pre-evaluate %d points.\n', nToSample, nCluster + nBest);
 
     % save the resulting re-evaluated population as the returning parameters
     fitness_raw = [fitness_raw yNew];

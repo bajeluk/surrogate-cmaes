@@ -4,10 +4,12 @@ classdef SurrogateSelector
       % choose 'n' of the xSample data, preferably not near to the xTrain data
       %
       % n       -- the number of points to return
-      % xSample, zSample (n x dim) -- random sample according to CMA-ES
+      % xSample, zSample (n x dim) -- random sample according to CMA-ES, row-vectors
       % xTrain  -- chosen archive evaluated points
       % xmean   -- current CMA-ES xmean
       % sigma, BD -- from CMA-ES
+      %
+      % returns column-wise vectors
 
       if (size(zSample,1) <= n)
         warning('SurrogateSelector.chooseDistantPoints(): not enough data to choose from!');
@@ -45,8 +47,8 @@ classdef SurrogateSelector
       % return the points nerest to the last 'n' centroids
       [~, closestToCentroid] = min(D, [], 1);
       xDistantIdx = find(isXDistant);
-      xPreSample = xSample(xDistantIdx(closestToCentroid),:);
-      zPreSample = zSample(xDistantIdx(closestToCentroid),:);
+      xPreSample = xSample(xDistantIdx(closestToCentroid),:)';
+      zPreSample = zSample(xDistantIdx(closestToCentroid),:)';
     end
 
     function [xToReeval, xToReevalValid, zToReeval] = choosePointsToReevaluate(...
@@ -65,15 +67,17 @@ classdef SurrogateSelector
       zExtend(:,bestIdx) = [];
       yExtend(bestIdx) = [];
       % cluster the rest of the points
-      idx = kmeans(zExtend, nCluster);
-      for cl = 1:nCluster
-        % put the best from each cluster into 'xToReeval', 'zToReeval'
-        thisClusterIdx = find(idx == cl);
-        [~, clusterBestIdx] = min(yExtend(thisClusterIdx));
-        clusterBestIdx = thisClusterIdx(clusterBestIdx);
-        xToReeval = [xToReeval; xExtend(:,clusterBestIdx)'];
-        xToReevalValid = [xToReevalValid; xExtendValid(:,clusterBestIdx)'];
-        zToReeval = [zToReeval; zExtend(:,clusterBestIdx)'];
+      if (nCluster > 0)
+        idx = kmeans(zExtend', nCluster);
+        for cl = 1:nCluster
+          % put the best from each cluster into 'xToReeval', 'zToReeval'
+          thisClusterIdx = find(idx == cl);
+          [~, clusterBestIdx] = min(yExtend(thisClusterIdx));
+          clusterBestIdx = thisClusterIdx(clusterBestIdx);
+          xToReeval = [xToReeval, xExtend(:,clusterBestIdx)];
+          xToReevalValid = [xToReevalValid, xExtendValid(:,clusterBestIdx)];
+          zToReeval = [zToReeval, zExtend(:,clusterBestIdx)];
+        end
       end
     end
   end
