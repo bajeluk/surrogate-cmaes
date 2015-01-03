@@ -27,7 +27,7 @@ classdef SurrogateSelector
       D = pdist2(C, xTrainTrans, 'euclidean');
       % find the nearest clusters from the points in 'xTrain'
       [~, nearestClusters] = min(D, [], 1);
-      nearestClusters = sort(nearestClusters);
+      nearestClusters = unique(nearestClusters);
       isXDistant = true(1,size(zSample,1));
       % omit the data of these clusters from xSample
       % but leave at least 'n' points in isXDistant

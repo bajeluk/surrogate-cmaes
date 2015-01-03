@@ -45,7 +45,7 @@ classdef Archive
       BDinv = inv(sigma*BD);
       xTransf = ( BDinv * (obj.X - repmat(x,nData,1))' )';
       
-      % take the points closer than 2*sigma
+      % take the points closer than *rangeSigma*
       diff = sum(xTransf.^2, 2);
       isInRange = diff < (rangeSigma ^ 2);
 

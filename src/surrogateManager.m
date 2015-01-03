@@ -71,7 +71,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     fitness_raw = []; arx = []; arxvalid = []; arz = [];
 
     [xTrain, yTrain] = archive.getDataNearPoint((nRequired - nPreSample), ...
-        xmean', surrogateOpts.evoControlIndividualTrainRange, sigma, BD);
+        xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
     nToSample = nRequired - size(xTrain, 1);
 
     if (nToSample > nPreSample)
@@ -118,7 +118,10 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
         sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, sigma, nCluster + nBest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
     surrogateOpts.sampleOpts.counteval = counteval;
     archive = archive.save(xNew', yNew', countiter);
-    fprintf('  model (%d new preSamples) was used to pre-evaluate %d points.\n', nToSample, nCluster + nBest);
+    yPredict = newModel.predict(xNew');
+    fprintf('  model (%d new preSamples) was used to pre-evaluate %d points, RMSE = %f, Kendl. corr = %f.\n', nToSample, nCluster + nBest, sqrt(sum((yPredict' - yNew).^2))/length(yNew), corr(yPredict, yNew', 'type', 'Kendall'));
+
+    % TODO: control the evolution process according to the model precision
 
     % save the resulting re-evaluated population as the returning parameters
     fitness_raw = [fitness_raw yNew];
@@ -154,10 +157,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
         nRequired = newModel.getNTrainData();
         X = []; y = [];
         if (length(fitness_raw) < nRequired)
-          pointsWeNeed = nRequired - length(fitness_raw);
-          gensWeNeed = ceil(pointsWeNeed / lambda);
-          gens = generationEC.getLastOriginalGenerations(gensWeNeed);
-          [X, y] = archive.getDataFromGenerations(gens);
+          [X, y] = archive.getDataNearPoint(nRequired - length(fitness_raw), ...
+              xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
         end
         X = [arx'; X];
         y = [fitness_raw'; y];
