@@ -8,10 +8,11 @@ classdef RfModel < Model
     shiftY = 0;         % shift in the f-space
     options
 
-    nTrees
-    minLeaf
-    inputFraction
-    forest
+    nTrees              % number of regression trees
+    nBestPoints         % number of n best training points ordered correctly by prediction of each tree
+    minLeaf             % minimum of points in each leaf
+    inputFraction       % fraction of points used in training
+    forest              % ensemble of regression trees
   end
 
   methods
@@ -25,8 +26,22 @@ classdef RfModel < Model
 
       % this is a MOCK/TEST IMPLEMENTATION!
       obj.nTrees = 100;
-      obj.minLeaf = 5;
+      obj.minLeaf = 2;
       obj.inputFraction = 1;
+      obj.nBestPoints = 1;
+      
+      if isfield(modelOptions,'nTrees')
+          obj.nTrees = modelOptions.nTrees;
+      end
+      if isfield(modelOptions,'minLeaf')
+          obj.minLeaf = modelOptions.minLeaf;
+      end
+      if isfield(modelOptions,'inputFraction')
+          obj.inputFraction = modelOptions.inputFraction;
+      end
+      if isfield(modelOptions,'nBestPoints')
+          obj.nBestPoints = modelOptions.nBestPoints;
+      end
     end
 
     function nData = getNTrainData(obj)
@@ -44,13 +59,70 @@ classdef RfModel < Model
       obj.trainMean = xMean;
       obj.dataset.X = X;
       obj.dataset.y = y;
-
-      % learning
-      obj.forest = TreeBagger(obj.nTrees,X,y,'method','regression',... 
-            'MinLeaf',obj.minLeaf,...
-            'FBoot',obj.inputFraction);
+      obj.forest = {};
+      
+      % if we want tree elitism
+      if obj.nBestPoints > 0
+          nBest = min(obj.nBestPoints, length(y));
+          [~,yIdx] = sort(y);
+          sumGoodTrees = 0; allTrees = 0;
+          iter = 0; maxTrees = 100*obj.nTrees;
+          
+          % train new trees until you have not enough good ones
+          while ((sumGoodTrees < obj.nTrees) && allTrees < maxTrees)
+              iter = iter + 1;
+              newForestSize = min([ceil((obj.nTrees-sumGoodTrees)*allTrees/sumGoodTrees),...
+                  obj.nTrees*2^(iter-1),maxTrees-allTrees]);
+              allTrees = allTrees + newForestSize;
+              goodTrees = false(1,newForestSize);
+              
+              % train forest
+              trainForest = TreeBagger(newForestSize,X,y,'method','regression',... 
+                'MinLeaf',obj.minLeaf,...
+                'FBoot',obj.inputFraction);
+              fprintf('Forest with %d trained\n',newForestSize);
+              Trees=trainForest.Trees;
+            
+              % find trees with elitism
+              parfor treeNum = 1:newForestSize
+                  yPredict = predict(Trees{treeNum},X);              
+                  yPredict = yPredict(yIdx);
+                  if ( issorted(yPredict(1:nBest)) && all(yPredict(nBest+1:end)>=yPredict(nBest)) )
+                      goodTrees(treeNum) = 1;
+                  end
+              end
+              
+              % save trees with elitism
+              newGoodTrees = sum(goodTrees);
+              obj.forest(end+1:end+newGoodTrees) = Trees(goodTrees);
+              sumGoodTrees = sumGoodTrees + newGoodTrees;
+              fprintf('%d: %d good trees from %d, remaining %d\n',iter,newGoodTrees, newForestSize,obj.nTrees-sumGoodTrees);
+          end
+          
+          % check if we have all trees we wanted, fill the rest with
+          % ordinary ones
+          if (allTrees == maxTrees && (sumGoodTrees < obj.nTrees))
+              fprintf('Cannot create forest with %d best poits. Appending %d remaining ordinary trees.\n', ...
+                  obj.nBestPoints,obj.nTrees-sumGoodTrees);
+              trainForest = TreeBagger(obj.nTrees-sumGoodTrees,X,y,'method','regression',... 
+                'MinLeaf',obj.minLeaf,...
+                'FBoot',obj.inputFraction);
+              obj.forest(end+1:obj.nTrees) = trainForest.Trees;
+          else
+              obj.forest = obj.forest(1:obj.nTrees);
+          end
+          
+      % simple forest without elitism
+      else
+          trainForest = TreeBagger(obj.NTrees,X,y,'method','regression',... 
+                'MinLeaf',obj.minLeaf,...
+                'FBoot',obj.inputFraction);
+          obj.forest = trainForest.Trees;
+      end
+        
+      % count train MSE
       trainMSE = mean((y - obj.predict(X)).^2);
-      fprintf('  TreeBagger: train MSE = %f\n', trainMSE);
+      fprintf('  TreeBagger: train MSE = %f\n', trainMSE); 
     end
 
     function [y, dev] = predict(obj, X)
@@ -58,8 +130,15 @@ classdef RfModel < Model
       if (obj.isTrained())
         % apply the shift if the model is already shifted
         XWithShift = X - repmat(obj.shiftMean, size(X,1), 1);
-        [y,dev] = predict(obj.forest,X);
-        y = y + obj.shiftY;
+        trees = obj.forest;
+        yPredictions = NaN(size(X,1),obj.nTrees);
+        % each tree prediction
+        parfor treeNum = 1:obj.nTrees
+            yPredictions(:,treeNum) = predict(trees{treeNum},XWithShift);
+        end
+        % averaging results
+        y = sum(yPredictions,2)./obj.nTrees + obj.shiftY;
+        dev = sqrt(sum((yPredictions - repmat(y,1,obj.nTrees)).^2)./obj.nTrees);
       else
         y = []; dev = [];
         warning('RfModel.predict(): the model is not yet trained!');
@@ -69,3 +148,4 @@ classdef RfModel < Model
   end
 
 end
+
