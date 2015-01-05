@@ -107,7 +107,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     % calculate the model prediction for the extended population
     yExtend = newModel.predict(xExtend');
 
-    nBest = min(surrogateOpts.evoControlNBestFromExtension, lambda - nToSample - 1);
+    nBest = min(ceil(lambda*surrogateOpts.evoControlBestFromExtension), lambda - nToSample - 1);
     nCluster = lambda - nToSample - nBest;
     [xToReeval, xToReevalValid, zToReeval] = ...
         SurrogateSelector.choosePointsToReevaluate(...
