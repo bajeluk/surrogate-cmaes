@@ -1,5 +1,8 @@
 doc/.~*
+tmp/*
+log/*
 outcmaes*
 variablescmaes.mat
 *.asv
 *~
+exp/experiments/*/

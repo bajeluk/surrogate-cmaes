@@ -80,7 +80,7 @@ classdef RfModel < Model
               trainForest = TreeBagger(newForestSize,X,y,'method','regression',... 
                 'MinLeaf',obj.minLeaf,...
                 'FBoot',obj.inputFraction);
-              fprintf('Forest with %d trained\n',newForestSize);
+              % fprintf('Forest with %d trained\n',newForestSize);
               Trees=trainForest.Trees;
             
               % find trees with elitism
@@ -96,7 +96,7 @@ classdef RfModel < Model
               newGoodTrees = sum(goodTrees);
               obj.forest(end+1:end+newGoodTrees) = Trees(goodTrees);
               sumGoodTrees = sumGoodTrees + newGoodTrees;
-              fprintf('%d: %d good trees from %d, remaining %d\n',iter,newGoodTrees, newForestSize,obj.nTrees-sumGoodTrees);
+              % fprintf('%d: %d good trees from %d, remaining %d\n',iter,newGoodTrees, newForestSize,obj.nTrees-sumGoodTrees);
           end
           
           % check if we have all trees we wanted, fill the rest with
@@ -121,8 +121,8 @@ classdef RfModel < Model
       end
         
       % count train MSE
-      trainMSE = mean((y - obj.predict(X)).^2);
-      fprintf('  TreeBagger: train MSE = %f\n', trainMSE); 
+      % trainMSE = mean((y - obj.predict(X)).^2);
+      % fprintf('  TreeBagger: train MSE = %f\n', trainMSE); 
     end
 
     function [y, dev] = predict(obj, X)

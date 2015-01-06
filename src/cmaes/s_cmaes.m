@@ -1588,10 +1588,10 @@ while isempty(stopflag)
 	  end
 	  fclose(fid); 
 	end
-
-	y_eval = [y_eval; out.solutions.bestever.f counteval];  % BAJELUK BEST/COUNTEVAL RECORDING
                     
-  end
+      end
+
+    y_eval = [y_eval; out.solutions.bestever.f counteval];  % BAJELUK BEST/COUNTEVAL RECORDING
 
     % get average time for recording data
     time.t2 = clock;
