@@ -1591,8 +1591,6 @@ while isempty(stopflag)
                     
       end
 
-    y_eval = [y_eval; out.solutions.bestever.f counteval];  % BAJELUK BEST/COUNTEVAL RECORDING
-
     % get average time for recording data
     time.t2 = clock;
     time.recording = time.recording + time.c * max(0,etime(time.t2, time.t1)); 
@@ -1622,6 +1620,8 @@ while isempty(stopflag)
       % disp(['++savemodulo == ' num2str(savemodulo) ' at ' num2str(countiter)]); %qqq
     end
   end % if output
+
+  y_eval = [y_eval; out.solutions.bestever.f counteval];  % BAJELUK BEST/COUNTEVAL RECORDING
 
   % save everything
   time.t3 = clock;
