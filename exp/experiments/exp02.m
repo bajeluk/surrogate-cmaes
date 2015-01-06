@@ -44,8 +44,8 @@ cmParamDef(2).values = {4};
 
 % path to current file -- do not change this
 pathstr = fileparts(mfilename('fullpath'));
-exppath  = [pathstr filesep 'experiments' filesep exp_id];
-exppath_short  = [pathstr filesep 'experiments'];
+exppath  = [pathstr filesep exp_id];
+exppath_short  = pathstr;
 [s,mess,messid] = mkdir(exppath);
 addpath(exppath);
 save([exppath filesep 'scmaes_params.mat'], 'bbParamDef', 'sgParamDef', 'cmParamDef');
