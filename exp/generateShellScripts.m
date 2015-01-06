@@ -17,6 +17,13 @@ for i = 1:nMachines
   machine = machines{i};
   fName = [exppath filesep exp_id '_' machine '.sh'];
 
+  % Logging of Matlab output
+  if (exist('logMatlabOutput', 'var') && logMatlabOutput)
+    logString = [' | tee -a ' exppath filesep exp_id '__log__' machine '.txt'];
+  else
+    logString = '';
+  end
+
   fprintf(fMng, 'ssh %s@%s "screen -d -m \\"%s\\""\n', login, machine, fName);
 
   fid = fopen(fName, 'w'); 
@@ -24,13 +31,20 @@ for i = 1:nMachines
   fprintf(fid, '# Script for experiment "%s" on machine "%s", created on %s\n', exp_id, machine, char(datetime('now')));
   fprintf(fid, 'cd ~/prg/surrogate-cmaes; ulimit -t unlimited;\n');
   for id = startIdxs(i):endIdxs(i)
-    fprintf(fid, 'echo ###########################################\n');
-    fprintf(fid, 'echo      Matlab call %d / %d\n', id - startIdxs(i)+1, combsPerMachine);
-    fprintf(fid, 'echo ###########################################\n');
-    matlabCall = ['nice -n 19 ' matlabcommand ' -nodisplay -r "bbob_test_01(' num2str(id) ', ''' exp_id ''', ''' exppath_short '''); exit"'];
-    fprintf(fid, [matlabCall '\n']);
-    disp(matlabCall);
+    idFrom1 = id-startIdxs(i)+1;
+    fprintf(fid, '\necho "###########################################"%s\n', logString);
+    fprintf(fid, 'echo "     Matlab call %d / %d"%s\n', idFrom1, combsPerMachine, logString);
+    fprintf(fid, 'echo "###########################################"%s\n', logString);
+    fprintf(fid, 'nice -n 19 %s -nodisplay -r "bbob_test_01(%d, ''%s'', ''%s''); exit"%s\n', matlabcommand, id, exp_id, exppath_short, logString);
+
+    % log progress each 5 Matlab callings
+    if (mod(idFrom1, 5) == 0)
+      fprintf(fid, 'echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] progress: %d / %d. >> ~/WWW/phd/cmaes.txt\n', exp_id, machine, idFrom1, combsPerMachine);
+    end
   end
+  
+  fprintf(fid, 'echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] ==== FINISHED ==== >> ~/WWW/phd/cmaes.txt\n', exp_id, machine);
+
   fclose(fid);
   fileattrib(fName, '+x');
 end

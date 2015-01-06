@@ -4,7 +4,8 @@ exp_description = 'Pure CMA-ES';
 
 machines = {'u-pl28'};
 login = 'bajel3am';
-matlabcommand = '/afs/ms/@sys/bin/matlab';
+matlabcommand = 'matlab_mff_2014b'; % '/afs/ms/@sys/bin/matlab';
+logMatlabOutput = true;
 
 % BBOB parameters
 bbParamDef(1).name   = 'dimensions';
