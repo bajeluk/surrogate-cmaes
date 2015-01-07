@@ -53,7 +53,7 @@ function bbob_test_01(id, exp_id, path, varargin)
 
       % ===== PURE CMAES RESULTS =====
 
-      cmaesId = floor(id / nNonBbobValues) * nNonBbobValues;
+      cmaesId = floor((id-1) / nNonBbobValues) * nNonBbobValues + 1;
       % test if pure CMA-ES results exist; if no, generate them
       cmaesResultsFile = [exppath filesep 'cmaes_results' filesep exp_id '_' num2str(ifun) '_CMAES_' num2str(dim) 'D_' num2str(cmaesId) '.mat'];
       if (~ exist(cmaesResultsFile, 'file'))
