@@ -1,15 +1,15 @@
 
 exp_id = 'exp02';
-exp_description = 'First-sight settings experiment';
+exp_description = 'Surrogate CMA-ES on 2,5,10D - first GP and RF models, basic settings';
 
-machines = {'u-pl27', 'u-pl28', 'u-pl29'};
+machines = {'u-pl22', 'u-pl23', 'u-pl24', 'u-pl25', 'u-pl26', 'u-pl27', 'u-pl28', 'u-pl29'};
 login = 'bajel3am';
 matlabcommand = '/afs/ms/@sys/bin/matlab';
 logMatlabOutput = true;
 
 % BBOB parameters
 bbParamDef(1).name   = 'dimensions';
-bbParamDef(1).values = {2};             % {2, 5 10};
+bbParamDef(1).values = {2, 5, 10};      % {2, 5 10};
 bbParamDef(2).name   = 'functions';
 bbParamDef(2).values = {2, 3, 8};       % {2, 3, 8};
 % dimensions  = [10];     % which dimensions to optimize, subset of [2 3 5 10 20 40];
@@ -35,7 +35,7 @@ sgParamDef(4).values = {10};
 sgParamDef(5).name   = 'evoControlBestFromExtension';
 sgParamDef(5).values = {0.1};
 sgParamDef(6).name   = 'evoControlTrainRange';
-sgParamDef(6).values = {4}; % {2, 3, 4, 6, 8};
+sgParamDef(6).values = {4, 6}; % {2, 3, 4, 6, 8};
 
 % CMA-ES parameters
 cmParamDef(1).name   = 'PopSize';
