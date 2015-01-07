@@ -28,9 +28,7 @@ for i = 1:nMachines
     logString = '';
   end
 
-  % Running in 'screen' was disabled due to not-usability
-  % fprintf(fMng, 'ssh %s@%s "screen -d -m \\"%s\\""\n', login, machine, fName);
-  fprintf(fMng, 'ssh %s@%s "%s"\n', login, machine, fName);
+  fprintf(fMng, 'ssh %s@%s "screen -d -m \\"%s\\""\n', login, machine, fName);
 
   fid = fopen(fName, 'w'); 
   fprintf(fid, '#!/bin/sh\n');
