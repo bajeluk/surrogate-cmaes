@@ -91,10 +91,6 @@ function bbob_test_01(id, exp_id, path, varargin)
     end
     disp(sprintf('---- dimension %d-D done ----', dim));
   end
-
-  if (nargin == 3)
-    exit(23);
-  end
 end
 
 function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_settings, datapath, opt, maxrestarts, maxfunevals, minfunevals, t0, exppath)
