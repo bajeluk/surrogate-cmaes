@@ -37,12 +37,12 @@ for i = 1:nMachines
   fprintf(fid, 'LOGS="%s"\n\n', logFile);
   fprintf(fid, 'testMatlabFinished () {\n');
   fprintf(fid, '  if [ -f "$1" -a "$1" -nt "%s" ]; then\n', fNameMng);
-  fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / %d succeeded. >> ~/WWW/phd/cmaes.txt\n', exp_id, machine, combsPerMachine);
-  fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / %d succeeded. >> %s\n', exp_id, machine, combsPerMachine, logFile);
+  fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / $3 succeeded. >> ~/WWW/phd/cmaes.txt\n', exp_id, machine);
+  fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / $3 succeeded. >> %s\n', exp_id, machine, logFile);
   fprintf(fid, '  else\n');
-  fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / %d !!!  FAILED !!! >> ~/WWW/phd/cmaes.txt\n', exp_id, machine, combsPerMachine);
-  fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / %d !!!  FAILED !!! >> %s\n', exp_id, machine, combsPerMachine, logFile);
-  fprintf(fid, '    mail -s "[surrogate-cmaes] Script failed =%s= [%s] $2 / %d" "%s" <<EOM\n', exp_id, machine, combsPerMachine, mailTo);
+  fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / $3 !!!  FAILED !!! >> ~/WWW/phd/cmaes.txt\n', exp_id, machine);
+  fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / $3 !!!  FAILED !!! >> %s\n', exp_id, machine, logFile);
+  fprintf(fid, '    mail -s "[surrogate-cmaes] Script failed =%s= [%s] $2 / $3" "%s" <<EOM\n', exp_id, machine, mailTo);
   fprintf(fid, 'Script **%s** has failed on machine [%s].\n', exp_id, machine);
   fprintf(fid, '`date "+%%Y-%%m-%%d %%H:%%M:%%S"`\n');
   fprintf(fid, 'EOM\n');
@@ -50,13 +50,14 @@ for i = 1:nMachines
   fprintf(fid, '}\n');
   for id = startIdxs(i):endIdxs(i)
     idFrom1 = id-startIdxs(i)+1;
+    nCombsForThisMachine = endIdxs(i)-startIdxs(i)+1;
     [bbParams, sgParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
 
     lastResultsFileID = [num2str(bbParams.functions(end)) '_' num2str(bbParams.dimensions(end)) 'D_' num2str(id)];
     resultsFile = [exppath filesep exp_id '_results_' lastResultsFileID '.mat'];
 
     fprintf(fid, '\necho "###########################################"%s\n', logString);
-    fprintf(fid, 'echo "     Matlab call %d / %d"%s\n', idFrom1, combsPerMachine, logString);
+    fprintf(fid, 'echo "     Matlab call %d / %d"%s\n', idFrom1, nCombsForThisMachine, logString);
     fprintf(fid, 'echo ""%s\n', logString);
     fprintf(fid, 'echo "  dim(s): %s    f(s): %s    N(inst): %d"%s\n', num2str(bbParams.dimensions), num2str(bbParams.functions), length(bbParams.instances), logString);
     if (isfield(sgParams, 'modelType'))
@@ -67,7 +68,7 @@ for i = 1:nMachines
     fprintf(fid, 'echo "  model: %s    maxfunevals: %s"%s\n', model, bbParams.maxfunevals, logString);
     fprintf(fid, 'echo "###########################################"%s\n', logString);
     fprintf(fid, 'nice -n 19 %s -nodisplay -r "bbob_test_01(%d, ''%s'', ''%s''); exit(0);"%s\n', matlabcommand, id, exp_id, exppath_short, logString);
-    fprintf(fid, 'testMatlabFinished "%s" %d\n', resultsFile, idFrom1);
+    fprintf(fid, 'testMatlabFinished "%s" %d %d\n', resultsFile, idFrom1, nCombsForThisMachine);
   end
   
   fprintf(fid, 'echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] ==== FINISHED ==== >> ~/WWW/phd/cmaes.txt\n', exp_id, machine);
