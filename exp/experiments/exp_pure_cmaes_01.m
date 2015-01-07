@@ -38,6 +38,7 @@ pathstr = fileparts(mfilename('fullpath'));
 exppath  = [pathstr filesep exp_id];
 exppath_short  = pathstr;
 [s,mess,messid] = mkdir(exppath);
+[s,mess,messid] = mkdir([exppath filesep 'cmaes_results']);
 addpath(exppath);
 save([exppath filesep 'scmaes_params.mat'], 'bbParamDef', 'sgParamDef', 'cmParamDef');
 

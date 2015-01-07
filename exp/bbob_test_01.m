@@ -1,7 +1,14 @@
-function bbob_test_01(id, exp_id, path)
+function bbob_test_01(id, exp_id, path, varargin)
+%BBOB_TEST_01 Run BBOB experiment with parameters defined by number 'id'
+% parameters:
+%   id          the number which correspond to one set of parameters
+%               (BBOB parameters, surrogateOpts and CMA-ES parameters)
+%   exp_id      unique string identifier of the experiment
+%   path        directory where experiment output data will be placed
+
   exppath = [path filesep exp_id];
   load([exppath filesep 'scmaes_params.mat']);
-  [bbParams, surrogateParams, cmaesParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
+  [bbParams, surrogateParams, cmaesParams, nNonBbobValues] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
   addpath(exppath);
   
   % BBOB constant parameters
@@ -24,8 +31,6 @@ function bbob_test_01(id, exp_id, path)
   t0 = clock;
   rand('state', sum(100 * t0));
 
-  results = cell(0);
-  y_evals = cell(0);
   instances = bbParams.instances;
   maxfunevals = bbParams.maxfunevals;
 
@@ -33,87 +38,143 @@ function bbob_test_01(id, exp_id, path)
     % for ifun = benchmarks('FunctionIndices')  % or benchmarksnoisy(...)
     for ifun = bbParams.functions          % or benchmarksnoisy(...)
 
-      t = tic;
+      % ===== OUR INTERESTING RESULTS =====
+
       exp_settings.dim = dim;
       exp_settings.bbob_function = ifun;
       exp_settings.exp_id = exp_id;
       exp_settings.instances = instances;
-      inst_results_evals = [];
-      inst_results_restarts = [];
-      inst_results_fbests = [];
-      inst_results_f025 = [];
-      inst_results_f050 = [];
-      inst_results_f075 = [];
-      inst_results_stopflags = {};
-      fmin = Inf;
-      evalsRestartCorrection = 0;
 
-      for iinstance = instances   % 15 function instances
-        fgeneric('initialize', ifun, iinstance, datapath, opt); 
+      [exp_results, tmpFile] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath);
 
-        % independent restarts until maxfunevals or ftarget is reached
-        for restarts = 0:maxrestarts
-          if restarts > 0  % write additional restarted info
-            fgeneric('restart', 'independent restart')
-          end
-          [xopt, ilaunch, ye, stopflag] = bbParams.opt_function('fgeneric', dim, fgeneric('ftarget'), ...
-                      eval(maxfunevals) - fgeneric('evaluations'), id);
-          % we don't have this information from CMA-ES :(
-          % results = cat(1,results,res);
-          % ye = [res.deltasY res.evaluations];
+      y_evals = exp_results.y_evals;
 
-          if (fmin < Inf)
-            ye(:,1) = min([ye(:,1) repmat(fmin,size(ye,1),1)], [], 2);
-            ye(:,2) = ye(:,2) + evalsRestartCorrection;
-          end
-          fmin = min([ye(:,1); fmin]);
-          evalsRestartCorrection = fgeneric('evaluations');
-          y_evals = cat(1,y_evals,ye);
+      save([exppath filesep exp_id '_' num2str(ifun) '_' num2str(dim) 'D_' num2str(id) '.mat'], 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams');
 
-          if fgeneric('fbest') < fgeneric('ftarget') || ...
-            fgeneric('evaluations') + eval(minfunevals) > eval(maxfunevals)
-            break;
-          end  
+      % ===== PURE CMAES RESULTS =====
+
+      cmaesId = floor(id / nNonBbobValues) * nNonBbobValues;
+      % test if pure CMA-ES results exist; if no, generate them
+      cmaesResultsFile = [exppath filesep 'cmaes_results' filesep exp_id '_' num2str(ifun) '_CMAES_' num2str(dim) 'D_' num2str(cmaesId) '.mat'];
+      if (~ exist(cmaesResultsFile, 'file'))
+        exp_cmaes_results = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath);
+
+        % test if the results still doesn't exist, if no, save them :)
+        if (~ exist(cmaesResultsFile, 'file'))
+          y_evals = exp_results.y_evals;
+          save(cmaesResultsFile, 'exp_id', 'exp_settings', 'exp_cmaes_results', 'y_evals', 'surrogateParams', 'cmaesParams');
         end
-
-        disp(sprintf(['  f%d in %d-D, instance %d: FEs=%d with %d restarts,' ...
-                      ' fbest-ftarget=%.4e, elapsed time [h]: %.2f'], ...
-                    ifun, dim, iinstance, ...
-                    fgeneric('evaluations'), ...
-                    restarts, ...
-                    fgeneric('fbest') - fgeneric('ftarget'), ...
-                    etime(clock, t0)/60/60));
-
-        inst_results_evals = [inst_results_evals fgeneric('evaluations')];
-        inst_results_restarts = [inst_results_restarts restarts];
-        inst_results_fbests = [inst_results_fbests min(y_evals{end}(:,1))];
-        inst_results_f025   = [inst_results_f025 y_evals{end}( floor(size(y_evals{end},1)/4) ,1)];
-        inst_results_f050   = [inst_results_f050 y_evals{end}( floor(size(y_evals{end},1)/2) ,1)];
-        inst_results_f075   = [inst_results_f075 y_evals{end}( floor(3*size(y_evals{end},1)/4) ,1)];
-        inst_results_stopflags{end+1} = stopflag;
-
-        fgeneric('finalize');
-        tmpFile = [exppath filesep exp_id '_' num2str(id) '_tmp.mat'];
-        save(tmpFile, 'results', 'y_evals');
       end
-      disp(['      date and time: ' num2str(clock, ' %.0f')]);
 
-      elapsedTime = toc(t);
+      % ===== GENERATE PICTURE =====
 
-      exp_results.evals = inst_results_evals;
-      exp_results.restarts = inst_results_restarts;
-      exp_results.f025 = inst_results_f025;
-      exp_results.f050 = inst_results_f050;
-      exp_results.f075 = inst_results_f075;
-      exp_results.fbests = inst_results_fbests;
-      exp_results.stopflags = inst_results_stopflags;
-      exp_results.y_evals = y_evals;
-      exp_results.time = elapsedTime;
+      % Load the pure CMA-ES results
+      load(cmaesResultsFile, 'exp_cmaes_results');
 
-      save([exppath filesep exp_id '_' num2str(ifun) '_' num2str(dim) 'D_' num2str(id) '.mat'], 'exp_id', 'exp_settings', 'exp_results', 'results', 'y_evals', 'surrogateParams', 'cmaesParams');
+      % Save the data for gnuplot
+      gnuplotFile = [exppath filesep exp_id '_' num2str(ifun) '_gnuplot_' num2str(dim) 'D_' num2str(id)];
+      generateGnuplotData([gnuplotFile '.dat'], exp_results, exp_cmaes_results, eval(maxfunevals));
+
+      % call gnuplot
+      system(['sed "s#DATAFILE#' gnuplotFile '.dat#;s#OUTPUTFILE#' gnuplotFile '#" exp/twoAlgsPlot.gnu | gnuplot'], '-echo');
 
       delete(tmpFile);
     end
     disp(sprintf('---- dimension %d-D done ----', dim));
   end
+
+  if (nargin == 3)
+    exit(23);
+  end
+end
+
+function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_settings, datapath, opt, maxrestarts, maxfunevals, minfunevals, t0, exppath)
+  y_evals = cell(0);
+
+  t = tic;
+  inst_results_evals = [];
+  inst_results_restarts = [];
+  inst_results_fbests = [];
+  inst_results_f025 = [];
+  inst_results_f050 = [];
+  inst_results_f075 = [];
+  inst_results_stopflags = {};
+  evalsRestartCorrection = 0;
+
+  for iinstance = exp_settings.instances   % 15 function instances
+    fmin = Inf;
+
+    fgeneric('initialize', exp_settings.bbob_function, iinstance, datapath, opt); 
+
+    % independent restarts until maxfunevals or ftarget is reached
+    for restarts = 0:maxrestarts
+      if restarts > 0  % write additional restarted info
+        fgeneric('restart', 'independent restart')
+      end
+      [xopt, ilaunch, ye, stopflag] = opt_function('fgeneric', exp_settings.dim, fgeneric('ftarget'), ...
+                  maxfunevals - fgeneric('evaluations'), id);
+      % we don't have this information from CMA-ES :(
+      % ye = [res.deltasY res.evaluations];
+
+      if (fmin < Inf)
+        ye(:,1) = min([ye(:,1) repmat(fmin,size(ye,1),1)], [], 2);
+        ye(:,2) = ye(:,2) + evalsRestartCorrection;
+      end
+      fmin = min([ye(:,1); fmin]);
+      evalsRestartCorrection = fgeneric('evaluations');
+      y_evals = cat(1,y_evals,ye);
+
+      if fgeneric('fbest') < fgeneric('ftarget') || ...
+        fgeneric('evaluations') + minfunevals > maxfunevals
+        break;
+      end  
+    end
+
+    disp(sprintf(['  f%d in %d-D, instance %d: FEs=%d with %d restarts,' ...
+                  ' fbest-ftarget=%.4e, elapsed time [h]: %.2f'], ...
+                exp_settings.bbob_function, exp_settings.dim, iinstance, ...
+                fgeneric('evaluations'), ...
+                restarts, ...
+                fgeneric('fbest') - fgeneric('ftarget'), ...
+                etime(clock, t0)/60/60));
+
+    inst_results_evals = [inst_results_evals fgeneric('evaluations')];
+    inst_results_restarts = [inst_results_restarts restarts];
+    inst_results_fbests = [inst_results_fbests min(y_evals{end}(:,1))];
+    inst_results_f025   = [inst_results_f025 y_evals{end}( floor(size(y_evals{end},1)/4) ,1)];
+    inst_results_f050   = [inst_results_f050 y_evals{end}( floor(size(y_evals{end},1)/2) ,1)];
+    inst_results_f075   = [inst_results_f075 y_evals{end}( floor(3*size(y_evals{end},1)/4) ,1)];
+    inst_results_stopflags{end+1} = stopflag;
+
+    fgeneric('finalize');
+    tmpFile = [exppath filesep exp_settings.exp_id '_' num2str(id) '_tmp.mat'];
+    exp_id = exp_settings.exp_id;
+    save(tmpFile, 'exp_settings', 'exp_id', 'y_evals');
+  end
+  disp(['      date and time: ' num2str(clock, ' %.0f')]);
+
+  elapsedTime = toc(t);
+
+  exp_results.evals = inst_results_evals;
+  exp_results.restarts = inst_results_restarts;
+  exp_results.f025 = inst_results_f025;
+  exp_results.f050 = inst_results_f050;
+  exp_results.f075 = inst_results_f075;
+  exp_results.fbests = inst_results_fbests;
+  exp_results.stopflags = inst_results_stopflags;
+  exp_results.y_evals = y_evals;
+  exp_results.time = elapsedTime;
+end
+
+function generateGnuplotData(gnuplotFile, exp_results, exp_cmaes_results, maxfunevals)
+  fid = fopen(gnuplotFile, 'w');
+  [mData, q1Data, q3Data] = statisticsFromYEvals(exp_results.y_evals, maxfunevals);
+  [mCmaes, q1Cmaes, q3Cmaes] = statisticsFromYEvals(exp_cmaes_results.y_evals, maxfunevals);
+
+  fprintf(fid, '# evals DataMedian DataQ1 DataQ3 CmaesMedian CmaesQ1 CmaesQ3\n');
+  for i = 1:maxfunevals
+    fprintf(fid, '%d %e %e %e %e %e %e\n', i, mData(i), q1Data(i), q3Data(i), mCmaes(i), q1Cmaes(i), q3Cmaes(i));
+  end
+
+  fclose(fid);
 end
