@@ -6,8 +6,8 @@ nCombinations = structReduce(params, @(s,x) s*length(x.values), 1);
 nMachines = length(machines);
 
 combsPerMachine = ceil(nCombinations / nMachines);
-startIdxs = 1:combsPerMachine:(nCombinations-1);
-endIdxs =   combsPerMachine:combsPerMachine:nCombinations;
+startIdxs = 1:combsPerMachine:nCombinations;
+endIdxs =   min(startIdxs + (combsPerMachine-1), nCombinations);
 
 % Generate .sh scripts
 fNameMng = [exppath filesep exp_id '_manager.sh'];
