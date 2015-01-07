@@ -28,7 +28,9 @@ for i = 1:nMachines
     logString = '';
   end
 
-  fprintf(fMng, 'ssh %s@%s "screen -d -m \\"%s\\""\n', login, machine, fName);
+  % Running in 'screen' was disabled due to not-usability
+  % fprintf(fMng, 'ssh %s@%s "screen -d -m \\"%s\\""\n', login, machine, fName);
+  fprintf(fMng, 'ssh %s@%s "%s"\n', login, machine, fName);
 
   fid = fopen(fName, 'w'); 
   fprintf(fid, '#!/bin/sh\n');
@@ -50,8 +52,17 @@ for i = 1:nMachines
   fprintf(fid, '}\n');
   for id = startIdxs(i):endIdxs(i)
     idFrom1 = id-startIdxs(i)+1;
+    [bbParams, sgParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
     fprintf(fid, '\necho "###########################################"%s\n', logString);
     fprintf(fid, 'echo "     Matlab call %d / %d"%s\n', idFrom1, combsPerMachine, logString);
+    fprintf(fid, 'echo ""%s\n', logString);
+    fprintf(fid, 'echo "  dim(s): %s    f(s): %s    N(inst): %d"%s\n', num2str(bbParams.dimensions), num2str(bbParams.functions), length(bbParams.instances), logString);
+    if (isfield(sgParams, 'modelType'))
+      model = sgParams.modelType;
+    else
+      model = 'NONE';
+    end
+    fprintf(fid, 'echo "  model: %s    maxfunevals: %s"%s\n', model, bbParams.maxfunevals, logString);
     fprintf(fid, 'echo "###########################################"%s\n', logString);
     fprintf(fid, 'nice -n 19 %s -nodisplay -r "bbob_test_01(%d, ''%s'', ''%s''); exit(24);"%s\n', matlabcommand, id, exp_id, exppath_short, logString);
     fprintf(fid, 'testMatlabFinished $? %d\n', idFrom1);

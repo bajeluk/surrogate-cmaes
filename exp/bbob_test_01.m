@@ -6,6 +6,8 @@ function bbob_test_01(id, exp_id, path, varargin)
 %   exp_id      unique string identifier of the experiment
 %   path        directory where experiment output data will be placed
 
+  gnuplotScript = 'exp/twoAlgsPlot.gpi';
+
   exppath = [path filesep exp_id];
   load([exppath filesep 'scmaes_params.mat']);
   [bbParams, surrogateParams, cmaesParams, nNonBbobValues] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
@@ -49,15 +51,17 @@ function bbob_test_01(id, exp_id, path, varargin)
 
       y_evals = exp_results.y_evals;
 
-      save([exppath filesep exp_id '_' num2str(ifun) '_' num2str(dim) 'D_' num2str(id) '.mat'], 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams');
+      expFileID = [num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
+      resultsFile = [exppath filesep exp_id '_results_' expFileID];
+      save([resultsFile '.mat'], 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams');
 
       % ===== PURE CMAES RESULTS =====
 
       cmaesId = floor((id-1) / nNonBbobValues) * nNonBbobValues + 1;
       % test if pure CMA-ES results exist; if no, generate them
-      cmaesResultsFile = [exppath filesep 'cmaes_results' filesep exp_id '_' num2str(ifun) '_CMAES_' num2str(dim) 'D_' num2str(cmaesId) '.mat'];
+      cmaesResultsFile = [exppath filesep 'cmaes_results' filesep exp_id '_purecmaes_' expFileID '.mat'];
       if (~ exist(cmaesResultsFile, 'file'))
-        exp_cmaes_results = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath);
+        exp_cmaes_results = runTestsForAllInstances(@opt_cmaes, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath);
 
         % test if the results still doesn't exist, if no, save them :)
         if (~ exist(cmaesResultsFile, 'file'))
@@ -72,11 +76,16 @@ function bbob_test_01(id, exp_id, path, varargin)
       load(cmaesResultsFile, 'exp_cmaes_results');
 
       % Save the data for gnuplot
-      gnuplotFile = [exppath filesep exp_id '_' num2str(ifun) '_gnuplot_' num2str(dim) 'D_' num2str(id)];
+      gnuplotFile = [exppath filesep exp_id '_gnuplot_' num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
       generateGnuplotData([gnuplotFile '.dat'], exp_results, exp_cmaes_results, eval(maxfunevals));
 
+      % save gnuplot script
+      system(['sed "s#\<DATAFILE\>#' gnuplotFile '.dat#; s#\<OUTPUTFILE\>#' resultsFile '#; s#\<TITLE\>#f' num2str(ifun) ', ' num2str(dim) 'D#; s#\<DATALINETITLE\>#' upper(surrogateParams.modelType) ' surrogate, ' surrogateParams.evoControl ' EC#" ' gnuplotScript ' > ' gnuplotFile '.gpi']);
       % call gnuplot
-      system(['sed "s#DATAFILE#' gnuplotFile '.dat#;s#OUTPUTFILE#' gnuplotFile '#" exp/twoAlgsPlot.gnu | gnuplot'], '-echo');
+      system(['gnuplot ' gnuplotFile '.gpi']);
+
+      % print out settings into the text-file
+      printSettings([resultsFile '.txt'], exp_settings, exp_results, surrogateParams, cmaesParams);
 
       delete(tmpFile);
     end
@@ -147,7 +156,7 @@ function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_
     inst_results_stopflags{end+1} = stopflag;
 
     fgeneric('finalize');
-    tmpFile = [exppath filesep exp_settings.exp_id '_' num2str(id) '_tmp.mat'];
+    tmpFile = [exppath filesep exp_settings.exp_id '_tmp_' num2str(id) '.mat'];
     exp_id = exp_settings.exp_id;
     save(tmpFile, 'exp_settings', 'exp_id', 'y_evals');
   end
@@ -176,5 +185,37 @@ function generateGnuplotData(gnuplotFile, exp_results, exp_cmaes_results, maxfun
     fprintf(fid, '%d %e %e %e %e %e %e\n', i, mData(i), q1Data(i), q3Data(i), mCmaes(i), q1Cmaes(i), q3Cmaes(i));
   end
 
+  fclose(fid);
+end
+
+function fprintStruct(fid, s)
+  for fname = fieldnames(s)'
+    str = [];
+    if (isnumeric(s.(fname{1})))
+      str = num2str(s.(fname{1}));
+    elseif (isstr(s.(fname{1})))
+      str = s.(fname{1});
+    end
+    if (~isempty(str))
+      fprintf(fid, '%15s: %s\n', fname{1}, str);
+    end
+  end
+end
+
+function printSettings(settingsFile, exp_settings, exp_results, surrogateParams, cmaesParams)
+  fid = fopen(settingsFile, 'w');
+  fprintf(fid, '===== Experiment: %s =====\n\n', exp_settings.exp_id);
+  fprintf(fid, '== BBOB experiment settings: ==\n');
+  fprintStruct(fid, exp_settings);
+  fprintf(fid, '%15s: %f\n', 'time elapsed', exp_results.time);
+  fprintf(fid, '\n== Surrogate model parameters: ==\n');
+  fprintStruct(fid, surrogateParams);
+  fprintf(fid, '\n== CMA-ES parameters: ==\n');
+  fprintStruct(fid, cmaesParams);
+  fprintf(fid, '\n== Numerical results: ==\n\n');
+  fprintf(fid, 'fbests:\n%s\n\n', num2str(exp_results.fbests));
+  fprintf(fid, 'f075:\n%s\n\n', num2str(exp_results.f075));
+  fprintf(fid, 'f050:\n%s\n\n', num2str(exp_results.f050));
+  fprintf(fid, 'f025:\n%s\n\n', num2str(exp_results.f025));
   fclose(fid);
 end
