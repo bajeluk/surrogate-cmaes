@@ -1,7 +1,7 @@
 # wxt
 # set terminal wxt size 410,250 enhanced font 'Verdana,9' persist
 # png
-set terminal pngcairo size 600,370 enhanced font 'Verdana,9'
+set terminal pngcairo size 600,600 enhanced font 'Verdana,9'
 set output 'OUTPUTFILE.png'
 # svg
 #set terminal svg size 410,250 fname 'Verdana, Helvetica, Arial, sans-serif' \

@@ -56,13 +56,13 @@ function bbob_test_01(id, exp_id, path, varargin)
 
       y_evals = exp_results.y_evals;
 
-      save([resultsFile '.mat'], 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams');
+      save([resultsFile '.mat'], 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams', 'bbParams');
 
       % ===== PURE CMAES RESULTS =====
 
       cmaesId = floor((id-1) / nNonBbobValues) * nNonBbobValues + 1;
       % test if pure CMA-ES results exist; if no, generate them
-      cmaesResultsFile = [exppath filesep 'cmaes_results' filesep exp_id '_purecmaes_' expFileID '.mat'];
+      cmaesResultsFile = [exppath filesep 'cmaes_results' filesep exp_id '_purecmaes_' num2str(ifun) '_' num2str(dim) 'D_' num2str(cmaesId) '.mat'];
       if (~ exist(cmaesResultsFile, 'file'))
         exp_cmaes_results = runTestsForAllInstances(@opt_cmaes, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath);
 
@@ -83,12 +83,14 @@ function bbob_test_01(id, exp_id, path, varargin)
       generateGnuplotData([gnuplotFile '.dat'], exp_results, exp_cmaes_results, eval(maxfunevals));
 
       % save gnuplot script
-      system(['sed "s#\<DATAFILE\>#' gnuplotFile '.dat#; s#\<OUTPUTFILE\>#' resultsFile '#; s#\<TITLE\>#f' num2str(ifun) ', ' num2str(dim) 'D#; s#\<DATALINETITLE\>#' upper(surrogateParams.modelType) ' surrogate, ' surrogateParams.evoControl ' EC#; s#\<PARAMS1\>#' sprintfStruct(surrogateParams) '#; s#\<PARAMS2\>#' bbParams '#" ' gnuplotScript ' > ' gnuplotFile '.gpi']);
+      gnuplotScriptCommand = ['sed "s#\<DATAFILE\>#' gnuplotFile '.dat#; s#\<OUTPUTFILE\>#' resultsFile '#; s#\<TITLE\>#f' num2str(ifun) ', ' num2str(dim) 'D#; s#\<DATALINETITLE\>#' upper(surrogateParams.modelType) ' surrogate, ' surrogateParams.evoControl ' EC#; s#\<PARAMS1\>#' sprintfStruct(surrogateParams, 'escape') '#; s#\<PARAMS2\>#' sprintfStruct(exp_settings, 'escape') '#" ' gnuplotScript ' > ' gnuplotFile '.gpi'];
+      disp(gnuplotScriptCommand);
+      system(gnuplotScriptCommand);
       % call gnuplot
       system(['gnuplot ' gnuplotFile '.gpi']);
 
       % print out settings into the text-file
-      fid = fopen([resultsFile '.txt']);
+      fid = fopen([resultsFile '.txt'], 'w');
       printSettings(fid, exp_settings, exp_results, surrogateParams, cmaesParams);
       fclose(fid);
 
@@ -205,20 +207,6 @@ function generateGnuplotData(gnuplotFile, exp_results, exp_cmaes_results, maxfun
   end
 
   fclose(fid);
-end
-
-function str = sprintfStruct(s)
-  for fname = fieldnames(s)'
-    str = [];
-    if (isnumeric(s.(fname{1})))
-      str = [str num2str(s.(fname{1})) '\n'];
-    elseif (isstr(s.(fname{1})))
-      str = [str s.(fname{1}) '\n'];
-    end
-    if (~isempty(str))
-      str = [str sprintf('%15s: %s\n', fname{1}, str)];
-    end
-  end
 end
 
 function printSettings(fid, exp_settings, exp_results, surrogateParams, cmaesParams)
