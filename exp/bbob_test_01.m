@@ -98,6 +98,7 @@ function bbob_test_01(id, exp_id, path, varargin)
   end
 
   catch err
+    save([resultsFile '_ERROR.mat']);
     fprintf('#########################################################\n'); 
     fprintf('#########################################################\n'); 
     fprintf('              Matlab ended with error!\n');
@@ -111,7 +112,6 @@ function bbob_test_01(id, exp_id, path, varargin)
     end
     fprintf('#########################################################\n'); 
     fprintf('#########################################################\n'); 
-    save([resultsFile '_ERROR.mat']);
     exit(1);
   end
 end
@@ -216,7 +216,7 @@ function str = sprintfStruct(s)
       str = [str s.(fname{1}) '\n'];
     end
     if (~isempty(str))
-      str = [str sprintf(fid, '%15s: %s\n', fname{1}, str)];
+      str = [str sprintf('%15s: %s\n', fname{1}, str)];
     end
   end
 end
