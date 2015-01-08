@@ -5,23 +5,24 @@ params = [bbParamDef, sgParamDef, cmParamDef];
 nCombinations = structReduce(params, @(s,x) s*length(x.values), 1);
 nMachines = length(machines);
 
-combsPerMachine = ceil(nCombinations / nMachines);
-startIdxs = 1:combsPerMachine:nCombinations;
-endIdxs =   min(startIdxs + (combsPerMachine-1), nCombinations);
+% combsPerMachine = ceil(nCombinations / nMachines);
+lspace = floor(linspace(1,nCombinations+1,min([nCombinations+1,nMachines+1])));
+startIdxs = lspace(1:(end-1));
+endIdxs =   lspace(2:end)-1;
 
 % Generate .sh scripts
-fNameMng = [exppath filesep exp_id '_manager.sh'];
-fMng = fopen(fNameMng, 'w'); 
+fNameMng = [exp_id '_manager.sh'];
+fMng = fopen([exppath filesep fNameMng], 'w'); 
 fprintf(fMng, '#!/bin/sh\n');
 fprintf(fMng, '# Manager for experiment "%s", created on %s\n', exp_id, char(datetime('now')));
 
-for i = 1:nMachines
+for i = 1:min([nMachines nCombinations])
   machine = machines{i};
   fName = [exppath filesep exp_id '_' machine '.sh'];
 
   % Logging of Matlab output
   if (exist('logMatlabOutput', 'var') && logMatlabOutput)
-    logFile = [exppath filesep exp_id '__log__' machine '.txt'];
+    logFile = ['$EXPPATH' filesep exp_id '__log__' machine '.txt'];
     logString = ' | tee -a $LOGS';
   else
     logFile = '/dev/null';
@@ -34,9 +35,11 @@ for i = 1:nMachines
   fprintf(fid, '#!/bin/sh\n');
   fprintf(fid, '# Script for experiment "%s" on machine "%s", created on %s\n', exp_id, machine, char(datetime('now')));
   fprintf(fid, 'cd ~/prg/surrogate-cmaes; ulimit -t unlimited;\n');
+  fprintf(fid, 'EXPPATH_SHORT="%s"\n', exppath_short);
+  fprintf(fid, 'EXPPATH="$EXPPATH_SHORT%s"\n', [filesep exp_id]);
   fprintf(fid, 'LOGS="%s"\n\n', logFile);
   fprintf(fid, 'testMatlabFinished () {\n');
-  fprintf(fid, '  if [ -f "$1" -a "$1" -nt "%s" ]; then\n', fNameMng);
+  fprintf(fid, '  if [ -f "$1" -a "$1" -nt "$EXPPATH%s" ]; then\n', [filesep fNameMng]);
   fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / $3 succeeded. >> ~/WWW/phd/cmaes.txt\n', exp_id, machine);
   fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / $3 succeeded. >> %s\n', exp_id, machine, logFile);
   fprintf(fid, '  else\n');
@@ -54,7 +57,7 @@ for i = 1:nMachines
     [bbParams, sgParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
 
     lastResultsFileID = [num2str(bbParams.functions(end)) '_' num2str(bbParams.dimensions(end)) 'D_' num2str(id)];
-    resultsFile = [exppath filesep exp_id '_results_' lastResultsFileID '.mat'];
+    resultsFile = ['$EXPPATH' filesep exp_id '_results_' lastResultsFileID '.mat'];
 
     fprintf(fid, '\necho "###########################################"%s\n', logString);
     fprintf(fid, 'echo "     Matlab call %d / %d"%s\n', idFrom1, nCombsForThisMachine, logString);
@@ -67,7 +70,7 @@ for i = 1:nMachines
     end
     fprintf(fid, 'echo "  model: %s    maxfunevals: %s"%s\n', model, bbParams.maxfunevals, logString);
     fprintf(fid, 'echo "###########################################"%s\n', logString);
-    fprintf(fid, 'nice -n 19 %s -nodisplay -r "bbob_test_01(%d, ''%s'', ''%s''); exit(0);"%s\n', matlabcommand, id, exp_id, exppath_short, logString);
+    fprintf(fid, 'nice -n 19 %s -nodisplay -r "bbob_test_01(%d, ''%s'', ''$EXPPATH_SHORT''); exit(0);" 2>&1 %s\n', matlabcommand, id, exp_id, logString);
     fprintf(fid, 'testMatlabFinished "%s" %d %d\n', resultsFile, idFrom1, nCombsForThisMachine);
   end
   
@@ -78,4 +81,4 @@ for i = 1:nMachines
 end
 
 fclose(fMng);
-fileattrib(fNameMng, '+x');
+fileattrib([exppath filesep fNameMng], '+x');

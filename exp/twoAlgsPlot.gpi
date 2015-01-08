@@ -32,6 +32,10 @@ set ylabel 'y'
 # set xrange [0:1]
 # set yrange [0:1]
 
+set bmargin at screen 0.4
+set label 1 "PARAMS1" at screen 0.05, screen 0.27
+set label 2 "PARAMS2" at screen 0.55, screen 0.27
+
 set logscale y
 
 set title 'TITLE'

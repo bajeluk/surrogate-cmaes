@@ -36,6 +36,8 @@ function bbob_test_01(id, exp_id, path, varargin)
   instances = bbParams.instances;
   maxfunevals = bbParams.maxfunevals;
 
+  try
+
   for dim = bbParams.dimensions            % small dimensions first, for CPU reasons
     % for ifun = benchmarks('FunctionIndices')  % or benchmarksnoisy(...)
     for ifun = bbParams.functions          % or benchmarksnoisy(...)
@@ -47,12 +49,13 @@ function bbob_test_01(id, exp_id, path, varargin)
       exp_settings.exp_id = exp_id;
       exp_settings.instances = instances;
 
+      expFileID = [num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
+      resultsFile = [exppath filesep exp_id '_results_' expFileID];
+
       [exp_results, tmpFile] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath);
 
       y_evals = exp_results.y_evals;
 
-      expFileID = [num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
-      resultsFile = [exppath filesep exp_id '_results_' expFileID];
       save([resultsFile '.mat'], 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams');
 
       % ===== PURE CMAES RESULTS =====
@@ -80,16 +83,36 @@ function bbob_test_01(id, exp_id, path, varargin)
       generateGnuplotData([gnuplotFile '.dat'], exp_results, exp_cmaes_results, eval(maxfunevals));
 
       % save gnuplot script
-      system(['sed "s#\<DATAFILE\>#' gnuplotFile '.dat#; s#\<OUTPUTFILE\>#' resultsFile '#; s#\<TITLE\>#f' num2str(ifun) ', ' num2str(dim) 'D#; s#\<DATALINETITLE\>#' upper(surrogateParams.modelType) ' surrogate, ' surrogateParams.evoControl ' EC#" ' gnuplotScript ' > ' gnuplotFile '.gpi']);
+      system(['sed "s#\<DATAFILE\>#' gnuplotFile '.dat#; s#\<OUTPUTFILE\>#' resultsFile '#; s#\<TITLE\>#f' num2str(ifun) ', ' num2str(dim) 'D#; s#\<DATALINETITLE\>#' upper(surrogateParams.modelType) ' surrogate, ' surrogateParams.evoControl ' EC#; s#\<PARAMS1\>#' sprintfStruct(surrogateParams) '#; s#\<PARAMS2\>#' bbParams '#" ' gnuplotScript ' > ' gnuplotFile '.gpi']);
       % call gnuplot
       system(['gnuplot ' gnuplotFile '.gpi']);
 
       % print out settings into the text-file
-      printSettings([resultsFile '.txt'], exp_settings, exp_results, surrogateParams, cmaesParams);
+      fid = fopen([resultsFile '.txt']);
+      printSettings(fid, exp_settings, exp_results, surrogateParams, cmaesParams);
+      fclose(fid);
 
       delete(tmpFile);
     end
     disp(sprintf('---- dimension %d-D done ----', dim));
+  end
+
+  catch err
+    fprintf('#########################################################\n'); 
+    fprintf('#########################################################\n'); 
+    fprintf('              Matlab ended with error!\n');
+    fprintf('---------------------------------------------------------\n');
+    fprintf('%s\n', err.identifier);
+    fprintf('%s\n', err.message);
+    disp(err.stack);
+    if (exist('exp_results', 'var'))
+      fprintf('---------------------------------------------------------\n');
+      printSettings(1,  exp_settings, exp_results, surrogateParams, cmaesParams);
+    end
+    fprintf('#########################################################\n'); 
+    fprintf('#########################################################\n'); 
+    save([resultsFile '_ERROR.mat']);
+    exit(1);
   end
 end
 
@@ -184,34 +207,32 @@ function generateGnuplotData(gnuplotFile, exp_results, exp_cmaes_results, maxfun
   fclose(fid);
 end
 
-function fprintStruct(fid, s)
+function str = sprintfStruct(s)
   for fname = fieldnames(s)'
     str = [];
     if (isnumeric(s.(fname{1})))
-      str = num2str(s.(fname{1}));
+      str = [str num2str(s.(fname{1})) '\n'];
     elseif (isstr(s.(fname{1})))
-      str = s.(fname{1});
+      str = [str s.(fname{1}) '\n'];
     end
     if (~isempty(str))
-      fprintf(fid, '%15s: %s\n', fname{1}, str);
+      str = [str sprintf(fid, '%15s: %s\n', fname{1}, str)];
     end
   end
 end
 
-function printSettings(settingsFile, exp_settings, exp_results, surrogateParams, cmaesParams)
-  fid = fopen(settingsFile, 'w');
+function printSettings(fid, exp_settings, exp_results, surrogateParams, cmaesParams)
   fprintf(fid, '===== Experiment: %s =====\n\n', exp_settings.exp_id);
   fprintf(fid, '== BBOB experiment settings: ==\n');
-  fprintStruct(fid, exp_settings);
+  fprintf(fid, sprintfStruct(exp_settings));
   fprintf(fid, '%15s: %f\n', 'time elapsed', exp_results.time);
   fprintf(fid, '\n== Surrogate model parameters: ==\n');
-  fprintStruct(fid, surrogateParams);
+  fprintf(fid, sprintfStruct(surrogateParams));
   fprintf(fid, '\n== CMA-ES parameters: ==\n');
-  fprintStruct(fid, cmaesParams);
+  fprintf(fid, sprintfStruct(cmaesParams));
   fprintf(fid, '\n== Numerical results: ==\n\n');
   fprintf(fid, 'fbests:\n%s\n\n', num2str(exp_results.fbests));
   fprintf(fid, 'f075:\n%s\n\n', num2str(exp_results.f075));
   fprintf(fid, 'f050:\n%s\n\n', num2str(exp_results.f050));
   fprintf(fid, 'f025:\n%s\n\n', num2str(exp_results.f025));
-  fclose(fid);
 end
