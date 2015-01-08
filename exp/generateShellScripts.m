@@ -5,10 +5,12 @@ params = [bbParamDef, sgParamDef, cmParamDef];
 nCombinations = structReduce(params, @(s,x) s*length(x.values), 1);
 nMachines = length(machines);
 
-% combsPerMachine = ceil(nCombinations / nMachines);
-lspace = floor(linspace(1,nCombinations+1,min([nCombinations+1,nMachines+1])));
-startIdxs = lspace(1:(end-1));
-endIdxs =   lspace(2:end)-1;
+dimensions = zeros(1,nCombinations);
+for id = 1:nCombinations
+  bbParams = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
+  dimensions(id) = bbParams.dimensions;
+end
+cellCombsForMachines = divideTasksForMachines(nMachines, dimensions, @(x) x.^(1.3));
 
 % Generate .sh scripts
 fNameMng = [exp_id '_manager.sh'];
@@ -51,9 +53,10 @@ for i = 1:min([nMachines nCombinations])
   fprintf(fid, 'EOM\n');
   fprintf(fid, '  fi\n');
   fprintf(fid, '}\n');
-  for id = startIdxs(i):endIdxs(i)
-    idFrom1 = id-startIdxs(i)+1;
-    nCombsForThisMachine = endIdxs(i)-startIdxs(i)+1;
+  idFrom1 = 0;
+  for id = cellCombsForMachines{i}
+    idFrom1 = idFrom1 + 1;
+    nCombsForThisMachine = length(cellCombsForMachines{i});
     [bbParams, sgParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
 
     lastResultsFileID = [num2str(bbParams.functions(end)) '_' num2str(bbParams.dimensions(end)) 'D_' num2str(id)];
