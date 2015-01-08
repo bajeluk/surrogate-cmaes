@@ -904,10 +904,11 @@ while isempty(stopflag)
   if (~exist('surrogateOpts'))
     % use standard CMA-ES (no surrogate at all)
     [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, sampleOpts, varargin{:});
+    surrogateStats = [];
   else
     % hand over the control to surrogateManager()
     surrogateOpts.sampleOpts = sampleOpts;
-    [fitness.raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter, fitfun_handle, surrogateOpts, varargin{:});
+    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter, fitfun_handle, surrogateOpts, varargin{:});
   end
   
   % Surrogate CMA-ES end
@@ -1621,7 +1622,7 @@ while isempty(stopflag)
     end
   end % if output
 
-  y_eval = [y_eval; out.solutions.bestever.f counteval];  % BAJELUK BEST/COUNTEVAL RECORDING
+  y_eval = [y_eval; out.solutions.bestever.f counteval surrogateStats];  % BAJELUK BEST/COUNTEVAL/SURROGATE_STATS RECORDING
 
   % save everything
   time.t3 = clock;

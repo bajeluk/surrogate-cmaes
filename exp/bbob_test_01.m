@@ -6,7 +6,7 @@ function bbob_test_01(id, exp_id, path, varargin)
 %   exp_id      unique string identifier of the experiment
 %   path        directory where experiment output data will be placed
 
-  gnuplotScript = 'exp/twoAlgsPlot.gpi';
+  gnuplotScript = 'exp/twoAlgsPlotExtended.gpi';
 
   exppath = [path filesep exp_id];
   load([exppath filesep 'scmaes_params.mat']);
@@ -80,7 +80,7 @@ function bbob_test_01(id, exp_id, path, varargin)
 
       % Save the data for gnuplot
       gnuplotFile = [exppath filesep exp_id '_gnuplot_' num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
-      generateGnuplotData([gnuplotFile '.dat'], exp_results, exp_cmaes_results, eval(maxfunevals));
+      generateGnuplotDataExtended([gnuplotFile '.dat'], exp_results, exp_cmaes_results, eval(maxfunevals));
 
       % save gnuplot script
       gnuplotScriptCommand = ['sed "s#\<DATAFILE\>#' gnuplotFile '.dat#; s#\<OUTPUTFILE\>#' resultsFile '#; s#\<TITLE\>#f' num2str(ifun) ', ' num2str(dim) 'D#; s#\<DATALINETITLE\>#' upper(surrogateParams.modelType) ' surrogate, ' surrogateParams.evoControl ' EC#; s#\<PARAMS1\>#' sprintfStruct(surrogateParams, 'escape') '#; s#\<PARAMS2\>#' sprintfStruct(exp_settings, 'escape') '#" ' gnuplotScript ' > ' gnuplotFile '.gpi'];
@@ -107,7 +107,9 @@ function bbob_test_01(id, exp_id, path, varargin)
     fprintf('---------------------------------------------------------\n');
     fprintf('%s\n', err.identifier);
     fprintf('%s\n', err.message);
-    disp(err.stack);
+    for sti = 1:length(err.stack)
+      disp(err.stack(sti));
+    end
     if (exist('exp_results', 'var'))
       fprintf('---------------------------------------------------------\n');
       printSettings(1,  exp_settings, exp_results, surrogateParams, cmaesParams);
@@ -194,19 +196,6 @@ function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_
   exp_results.stopflags = inst_results_stopflags;
   exp_results.y_evals = y_evals;
   exp_results.time = elapsedTime;
-end
-
-function generateGnuplotData(gnuplotFile, exp_results, exp_cmaes_results, maxfunevals)
-  fid = fopen(gnuplotFile, 'w');
-  [mData, q1Data, q3Data] = statisticsFromYEvals(exp_results.y_evals, maxfunevals);
-  [mCmaes, q1Cmaes, q3Cmaes] = statisticsFromYEvals(exp_cmaes_results.y_evals, maxfunevals);
-
-  fprintf(fid, '# evals DataMedian DataQ1 DataQ3 CmaesMedian CmaesQ1 CmaesQ3\n');
-  for i = 1:maxfunevals
-    fprintf(fid, '%d %e %e %e %e %e %e\n', i, mData(i), q1Data(i), q3Data(i), mCmaes(i), q1Cmaes(i), q3Cmaes(i));
-  end
-
-  fclose(fid);
 end
 
 function printSettings(fid, exp_settings, exp_results, surrogateParams, cmaesParams)

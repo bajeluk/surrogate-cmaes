@@ -39,7 +39,7 @@ for ilaunch = 1:1e4; % up to 1e4 times
   [x fmin counteval stopflag out bestever y_eval] = s_cmaes(FUN, xstart, 8/3, cmOptions);
 
   n_y_evals = size(y_eval,1);
-  y_eval = y_eval - ([(ftarget - fDelta) * ones(n_y_evals,1) zeros(n_y_evals,1)]);
+  y_eval(:,1) = y_eval(:,1) - (ftarget - fDelta) * ones(n_y_evals,1);
   y_evals = [y_evals; y_eval];
   % terminate if ftarget or maxfunevals reached
   if (feval(FUN, 'fbest') < ftarget || ...

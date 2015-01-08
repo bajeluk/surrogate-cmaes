@@ -1,4 +1,4 @@
-function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter, fitfun_handle, inOpts, varargin)
+function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter, fitfun_handle, inOpts, varargin)
 % surrogateManager  controls sampling of new solutions and using a surrogate model
 %
 % @xmean, @sigma, @lambda, @BD, @diagD -- CMA-ES internal variables
@@ -6,6 +6,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
 % @fitfun_handle        handle to fitness function (CMA-ES uses string name of the function)
 % @surrogateOpts        options/settings for surrogate modelling
 % @varargin             arguments for the fitness function (varargin from CMA-ES)
+%
+% returns:
+% @surrogateStats       vector of numbers with variable model/surrogate statsitics
 
   persistent generationEC;
   % generationEC - one such instance for evolution control, persistent between
@@ -24,6 +27,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
   sDefaults.evoControlModelGenerations = 1;     % 0..inf
   sDefaults.modelType = '';                     % gp | rf
   sDefaults.modelOpts = [];                     % model specific options
+  
+  surrogateStats = zeros(1, 2);
 
   % copy the defaults settings...
   surrogateOpts = sDefaults;
@@ -119,8 +124,10 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = surrogateManager(xmean, 
     surrogateOpts.sampleOpts.counteval = counteval;
     archive = archive.save(xNew', yNew', countiter);
     yPredict = newModel.predict(xNew');
-    fprintf('  model (%d new preSamples) was used to pre-evaluate %d points, RMSE = %f, Kendl. corr = %f.\n', nToSample, nCluster + nBest, sqrt(sum((yPredict' - yNew).^2))/length(yNew), corr(yPredict, yNew', 'type', 'Kendall'));
-
+    kendall = corr(yPredict, yNew', 'type', 'Kendall');
+    rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
+    fprintf('  model: %d preSamples, reevaluated %d pts, RMSE = %f, Kendl. corr = %f.\n', nToSample, nCluster + nBest, rmse, kendall);
+    surrogateStats = [rmse kendall];
     % TODO: control the evolution process according to the model precision
 
     % save the resulting re-evaluated population as the returning parameters

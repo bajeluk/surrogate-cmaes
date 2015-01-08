@@ -5,6 +5,8 @@ params = [bbParamDef, sgParamDef, cmParamDef];
 nCombinations = structReduce(params, @(s,x) s*length(x.values), 1);
 nMachines = length(machines);
 
+% Estimate the running time based on the dimensions and inline function
+% provided to divideTasksForMachines()
 dimensions = zeros(1,nCombinations);
 for id = 1:nCombinations
   bbParams = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
@@ -47,6 +49,7 @@ for i = 1:min([nMachines nCombinations])
   fprintf(fid, '  else\n');
   fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / $3 !!!  FAILED !!! >> ~/WWW/phd/cmaes.txt\n', exp_id, machine);
   fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / $3 !!!  FAILED !!! >> %s\n', exp_id, machine, logFile);
+  % Sending mail on error
   fprintf(fid, '    mail -s "[surrogate-cmaes] Script failed =%s= [%s] $2 / $3" "%s" <<EOM\n', exp_id, machine, mailTo);
   fprintf(fid, 'Script **%s** has failed on machine [%s].\n', exp_id, machine);
   fprintf(fid, '`date "+%%Y-%%m-%%d %%H:%%M:%%S"`\n');
