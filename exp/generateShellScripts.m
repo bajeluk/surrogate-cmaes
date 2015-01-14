@@ -8,17 +8,21 @@ nMachines = length(machines);
 % Estimate the running time based on the dimensions and inline function
 % provided to divideTasksForMachines()
 dimensions = zeros(1,nCombinations);
+models = zeros(1,nCombinations);
+estTimes = zeros(1,nCombinations);
 for id = 1:nCombinations
-  bbParams = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
+  [bbParams, sgParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
   dimensions(id) = bbParams.dimensions;
+  models(id) = strcmpi(sgParams.modelType, 'rf');
 end
-cellCombsForMachines = divideTasksForMachines(nMachines, dimensions, @(x) x.^(1.3));
+estTimes = dimensions + 3*models.*dimensions;
+cellCombsForMachines = divideTasksForMachines(nMachines, estTimes, @(x) x.^(1.3));
 
 % Generate .sh scripts
 fNameMng = [exp_id '_manager.sh'];
 fMng = fopen([exppath filesep fNameMng], 'w'); 
 fprintf(fMng, '#!/bin/sh\n');
-fprintf(fMng, '# Manager for experiment "%s", created on %s\n', exp_id, char(datetime('now')));
+fprintf(fMng, '# Manager for experiment "%s", created on %s\n', exp_id, datestr(now,'yyyy-mm-dd HH:MM:SS'));
 
 for i = 1:min([nMachines nCombinations])
   machine = machines{i};
@@ -37,7 +41,7 @@ for i = 1:min([nMachines nCombinations])
 
   fid = fopen(fName, 'w'); 
   fprintf(fid, '#!/bin/sh\n');
-  fprintf(fid, '# Script for experiment "%s" on machine "%s", created on %s\n', exp_id, machine, char(datetime('now')));
+  fprintf(fid, '# Script for experiment "%s" on machine "%s", created on %s\n', exp_id, machine, datestr(now,'yyyy-mm-dd HH:MM:SS'));
   fprintf(fid, 'cd ~/prg/surrogate-cmaes; ulimit -t unlimited;\n');
   fprintf(fid, 'EXPPATH_SHORT="%s"\n', exppath_short);
   fprintf(fid, 'EXPPATH="$EXPPATH_SHORT%s"\n', [filesep exp_id]);
