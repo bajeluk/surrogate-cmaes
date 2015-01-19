@@ -175,9 +175,9 @@ function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_
     inst_results_evals = [inst_results_evals fgeneric('evaluations')];
     inst_results_restarts = [inst_results_restarts restarts];
     inst_results_fbests = [inst_results_fbests min(y_evals{end}(:,1))];
-    inst_results_f025   = [inst_results_f025 y_evals{end}( floor(size(y_evals{end},1)/4) ,1)];
-    inst_results_f050   = [inst_results_f050 y_evals{end}( floor(size(y_evals{end},1)/2) ,1)];
-    inst_results_f075   = [inst_results_f075 y_evals{end}( floor(3*size(y_evals{end},1)/4) ,1)];
+    inst_results_f025   = [inst_results_f025 y_evals{end}( max([1 floor(size(y_evals{end},1)/4)]) ,1)];
+    inst_results_f050   = [inst_results_f050 y_evals{end}( max([1 floor(size(y_evals{end},1)/2)]) ,1)];
+    inst_results_f075   = [inst_results_f075 y_evals{end}( max([1 floor(3*size(y_evals{end},1)/4)]) ,1)];
     inst_results_stopflags{end+1} = stopflag;
 
     fgeneric('finalize');

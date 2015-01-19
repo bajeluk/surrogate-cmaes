@@ -1,4 +1,5 @@
 mailTo = 'bajeluk@gmail.com,z.pitra@gmail.com';
+sendMail = false;
 
 % Divide instances to machines
 params = [bbParamDef, sgParamDef, cmParamDef];
@@ -54,10 +55,12 @@ for i = 1:min([nMachines nCombinations])
   fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / $3 !!!  FAILED !!! >> ~/WWW/phd/cmaes.txt\n', exp_id, machine);
   fprintf(fid, '    echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] $2 / $3 !!!  FAILED !!! >> %s\n', exp_id, machine, logFile);
   % Sending mail on error
-  fprintf(fid, '    mail -s "[surrogate-cmaes] Script failed =%s= [%s] $2 / $3" "%s" <<EOM\n', exp_id, machine, mailTo);
-  fprintf(fid, 'Script **%s** has failed on machine [%s].\n', exp_id, machine);
-  fprintf(fid, '`date "+%%Y-%%m-%%d %%H:%%M:%%S"`\n');
-  fprintf(fid, 'EOM\n');
+  if (sendMail)
+    fprintf(fid, '    mail -s "[surrogate-cmaes] Script failed =%s= [%s] $2 / $3" "%s" <<EOM\n', exp_id, machine, mailTo);
+    fprintf(fid, 'Script **%s** has failed on machine [%s].\n', exp_id, machine);
+    fprintf(fid, '`date "+%%Y-%%m-%%d %%H:%%M:%%S"`\n');
+    fprintf(fid, 'EOM\n');
+  end
   fprintf(fid, '  fi\n');
   fprintf(fid, '}\n');
   idFrom1 = 0;
