@@ -4,7 +4,7 @@ exp_description = 'Surrogate CMA-ES on 2,5,10,20,40D - first GP and RF models, b
 
 machines = {'u-pl22', 'u-pl23', 'u-pl24', 'u-pl25', 'u-pl26', 'u-pl27', 'u-pl28'};
 login = 'bajel3am';
-if (strfind(exp_id, 'afs'))
+if (strfind(mfilename('fullpath'), 'afs'))
   matlabcommand = '/afs/ms/@sys/bin/matlab';
 else
   matlabcommand = 'matlab_mff_2014b';

@@ -6,7 +6,8 @@ function bbob_test_01(id, exp_id, path, varargin)
 %   exp_id      unique string identifier of the experiment
 %   path        directory where experiment output data will be placed
 
-  gnuplotScript = 'exp/twoAlgsPlotExtended.gpi';
+  % GNUPlot script where special strings will be replaced
+  gnuplotScript = 'twoAlgsPlotExtended.gpi';
 
   exppath = [path filesep exp_id];
   load([exppath filesep 'scmaes_params.mat']);
@@ -21,6 +22,7 @@ function bbob_test_01(id, exp_id, path, varargin)
     pathstr = fileparts(mfilename('fullpath'));
     datapath = [pathstr filesep datapath];
     addpath([pathstr filesep bbobpath]);
+    gnuplotScript = [pathstr filesep gnuplotScript];
   % opt.algName = exp_description;
   opt.comments = '';
 

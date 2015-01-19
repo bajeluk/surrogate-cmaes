@@ -28,7 +28,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   sDefaults.modelType = '';                     % gp | rf
   sDefaults.modelOpts = [];                     % model specific options
   
-  surrogateStats = zeros(1, 2);
+  surrogateStats = NaN(1, 2);
 
   % copy the defaults settings...
   surrogateOpts = sDefaults;
@@ -75,8 +75,14 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     nPreSample = ceil(surrogateOpts.evoControlPreSampleSize * lambda);
     fitness_raw = []; arx = []; arxvalid = []; arz = [];
 
-    [xTrain, yTrain] = archive.getDataNearPoint((nRequired - nPreSample), ...
-        xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
+    % TODO: let the model to be trained on larger dataset
+    %       than is really needed if there are the data available
+    if (nRequired > nPreSample)
+      [xTrain, yTrain] = archive.getDataNearPoint((nRequired - nPreSample), ...
+          xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
+    else
+      xTrain = []; yTrain = [];
+    end
     nToSample = nRequired - size(xTrain, 1);
 
     if (nToSample > nPreSample)

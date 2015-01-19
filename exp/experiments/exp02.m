@@ -4,7 +4,11 @@ exp_description = 'Surrogate CMA-ES on 2,5,10D - first GP and RF models, basic s
 
 machines = {'u-pl22', 'u-pl23', 'u-pl24', 'u-pl25', 'u-pl26', 'u-pl27', 'u-pl28', 'u-pl29'};
 login = 'bajel3am';
-matlabcommand = '/afs/ms/@sys/bin/matlab';
+if (strfind(mfilename('fullpath'), 'afs'))
+  matlabcommand = '/afs/ms/@sys/bin/matlab';
+else
+  matlabcommand = 'matlab_mff_2014b';
+end
 logMatlabOutput = true;
 
 % BBOB parameters

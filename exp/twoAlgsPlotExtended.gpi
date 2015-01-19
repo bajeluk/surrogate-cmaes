@@ -18,8 +18,8 @@ set grid back ls 12
 
 # color definitions
 # set style line 1 lc rgb '#8b1a0e' pt 1 ps 1 linetype 1 linewidth 2 # --- red
-set style line 1 linecolor rgb '#8b1a0e' linetype 1 linewidth 3 # --- red
-set style line 2 linecolor rgb '#8b1a0e' linetype 1 linewidth 1 # --- red
+set style line 1 linecolor rgb '#c1170e' linetype 1 linewidth 3 # --- red
+set style line 2 linecolor rgb '#c1170e' linetype 1 linewidth 1 # --- red
 # set style line 2 lc rgb '#5e9c36' pt 6 ps 1 linetype 1 linewidth 2 # --- green
 set style line 3 linecolor rgb '#5e9c36' linetype 1 linewidth 3 # --- green
 set style line 4 linecolor rgb '#5e9c36' linetype 1 linewidth 1 # --- green
@@ -35,6 +35,7 @@ set xlabel 'function evaluations'
 set ylabel 'y'
 set y2label "f-values order correlation"
 set y2tics border out scale 1,0.5 nomirror norotate  autojustify
+set y2range [-0.5:1]
 # set xrange [0:1]
 # set yrange [0:1]
 
@@ -46,12 +47,12 @@ set logscale y
 
 set title 'TITLE'
 
-plot 'DATAFILE' using 1:2 title 'DATALINETITLE' w lines linestyle 1 axes x1y1, \
-     '' using 1:3 notitle w lines linestyle 2 axes x1y1, \
-     '' using 1:4 notitle w lines linestyle 2 axes x1y1, \
-     '' using 1:5 title 'CMA-ES' w lines linestyle 3 axes x1y1, \
+plot 'DATAFILE' using 1:5 title 'CMA-ES' w lines linestyle 3 axes x1y1, \
      '' using 1:6 notitle w lines linestyle 4 axes x1y1, \
      '' using 1:7 notitle w lines linestyle 4 axes x1y1, \
+     '' using 1:2 title 'DATALINETITLE' w lines linestyle 1 axes x1y1, \
+     '' using 1:3 notitle w lines linestyle 2 axes x1y1, \
+     '' using 1:4 notitle w lines linestyle 2 axes x1y1, \
      '' using 1:8 title 'model RMSE' w points linestyle 5 axes x1y1, \
      '' using 1:9 title 'corr' w points linestyle 6 axes x1y2
 
