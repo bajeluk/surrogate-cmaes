@@ -62,6 +62,9 @@ function bbob_test_01(id, exp_id, path, varargin)
 
       % ===== PURE CMAES RESULTS =====
 
+      % Tripple the number of pure CMA-ES instances
+      exp_settings.instances = [instances instances+50 instances+100];
+
       cmaesId = floor((id-1) / nNonBbobValues) * nNonBbobValues + 1;
       % test if pure CMA-ES results exist; if no, generate them
       cmaesResultsFile = [exppath filesep 'cmaes_results' filesep exp_id '_purecmaes_' num2str(ifun) '_' num2str(dim) 'D_' num2str(cmaesId) '.mat'];
@@ -70,10 +73,13 @@ function bbob_test_01(id, exp_id, path, varargin)
 
         % test if the results still doesn't exist, if no, save them :)
         if (~ exist(cmaesResultsFile, 'file'))
-          y_evals = exp_results.y_evals;
+          y_evals = exp_cmaes_results.y_evals;
           save(cmaesResultsFile, 'exp_id', 'exp_settings', 'exp_cmaes_results', 'y_evals', 'surrogateParams', 'cmaesParams');
         end
       end
+
+      % Set the number of instances back to the original value
+      exp_settings.instances = instances;
 
       % ===== GENERATE PICTURE =====
 

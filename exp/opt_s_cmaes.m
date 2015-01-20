@@ -25,7 +25,7 @@ cmOptions = struct( ...
 y_evals = [];
 
 load('scmaes_params.mat', 'bbParamDef', 'sgParamDef', 'cmParamDef');
-[~, sgParams, cmParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
+[bbParams, sgParams, cmParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
 
 for fname = fieldnames(cmParams)'
   cmOptions.(fname{1}) = cmParams.(fname{1});
@@ -36,6 +36,11 @@ for ilaunch = 1:1e4; % up to 1e4 times
   % % try fminsearch from Matlab, modified to take usual_delta as arg
   % x = fminsearch_mod(FUN, xstart, usual_delta, cmOptions);
   % standard fminsearch()
+
+  % Info about tested function is for debugging purposes
+  bbob_handlesF = benchmarks('handles');
+  sgParams.modelOpts.bbob_func = bbob_handlesF{bbParams.functions(1)};
+
   [x fmin counteval stopflag out bestever y_eval] = s_cmaes(FUN, xstart, 8/3, cmOptions, 'SurrogateOptions', sgParams);
 
   n_y_evals = size(y_eval,1);

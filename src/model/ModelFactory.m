@@ -6,6 +6,8 @@ classdef ModelFactory
           obj = GpModel(modelOptions, xMean);
         case 'rf'
           obj = RfModel(modelOptions, xMean);
+        case 'bbob'
+          obj = PreciseModel(modelOptions, xMean);
         otherwise
           warning(['ModelFactory.createModel: ' str ' -- no such model available']);
           obj = [];

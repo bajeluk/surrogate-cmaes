@@ -104,8 +104,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       [fitness_raw, arx, arxvalid, arz, counteval] = ...
           sampleCmaesOnlyFitness(xPreSample, xPreSample, zPreSample, xmean, sigma, nToSample, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
-      archive = archive.save(arx', fitness_raw', countiter);
-      xTrain = [xTrain; arx'];
+      archive = archive.save(arxvalid', fitness_raw', countiter);
+      xTrain = [xTrain; arxvalid'];
       yTrain = [yTrain; fitness_raw'];
     end
     % train the model
@@ -128,8 +128,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     [yNew, xNew, xNewValid, zNew, counteval] = ...
         sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, sigma, nCluster + nBest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
     surrogateOpts.sampleOpts.counteval = counteval;
-    archive = archive.save(xNew', yNew', countiter);
-    yPredict = newModel.predict(xNew');
+    archive = archive.save(xNewValid', yNew', countiter);
+    yPredict = newModel.predict(xNewValid');
     kendall = corr(yPredict, yNew', 'type', 'Kendall');
     rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
     fprintf('  model: %d preSamples, reevaluated %d pts, RMSE = %f, Kendl. corr = %f.\n', nToSample, nCluster + nBest, rmse, kendall);
@@ -163,7 +163,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       [fitness_raw, arx, arxvalid, arz, counteval] = ...
           sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
-      archive = archive.save(arx', fitness_raw', countiter);
+      archive = archive.save(arxvalid', fitness_raw', countiter);
       if (~ generationEC.isNextOriginal())
         % we will switch to 'model'-mode in the next generation
         % prepare data for a new model
@@ -173,7 +173,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
           [X, y] = archive.getDataNearPoint(nRequired - length(fitness_raw), ...
               xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
         end
-        X = [arx'; X];
+        X = [arxvalid'; X];
         y = [fitness_raw'; y];
         if (length(y) >= nRequired)
           % we have got enough data for new model! hurraayh!
@@ -197,7 +197,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         warning('surrogateManager(): we are asked to use an EMPTY MODEL! Using CMA-ES.');
         [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
         surrogateOpts.sampleOpts.counteval = counteval;
-        archive = archive.save(arx', fitness_raw', countiter);
+        archive = archive.save(arxvalid', fitness_raw', countiter);
         return;
       end
 

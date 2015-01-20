@@ -110,28 +110,30 @@ classdef (Abstract) Model
       end
       % Evaluate validating points
       nOrigEvals = min((nOrigEvals - 1), size(xValid, 1));
-      xValid2 = xValid(1:nOrigEvals,:) - repmat(obj.shiftMean,nOrigEvals,1);
-      for i = 1:nOrigEvals
-        % evaluate the shifted archive point
-        y = feval(fitfun_handle, xValid2(i,:)', varargin{:});
-        counteval = counteval + sum(~isnan(y));
-        countevalNaN = countevalNaN + sum(isnan(y));
-        if (all(~isnan(y)))
-          newX = [newX; xValid2(i,:)];
-          newY = [newY; y'];
-          newZ = [newZ; zValid(i,:)];
+      if (nOrigEvals > 0)
+        xValid2 = xValid(1:nOrigEvals,:) - repmat(obj.shiftMean,nOrigEvals,1);
+        for i = 1:nOrigEvals
+          % evaluate the shifted archive point
+          y = feval(fitfun_handle, xValid2(i,:)', varargin{:});
+          counteval = counteval + sum(~isnan(y));
+          countevalNaN = countevalNaN + sum(isnan(y));
+          if (all(~isnan(y)))
+            newX = [newX; xValid2(i,:)];
+            newY = [newY; y'];
+            newZ = [newZ; zValid(i,:)];
+          end
         end
-      end
-      % calculate how precise the model is on the validating set
-      % TODO: decide the criterion more sophistically
-      yPredict = obj.predict(newX(2:end,:));
-      mae = sum(abs(newY(2:end) - yPredict)) / (size(newY,1)-1);
-      relativeMAE = mae / (max(newY) - min(newY));
-      if ( (nOrigEvals >= 2  &&  relativeMAE > 0.2) ...
-           ||  (nOrigEvals == 1  &&  relativeMAE > 0.4) )
-        % disp('Model.shiftReevaluate(): The model is not precise enough, skipping using the model.');
-        obj = [];
-        return;
+        % calculate how precise the model is on the validating set
+        % TODO: decide the criterion more sophistically
+        yPredict = obj.predict(newX(2:end,:));
+        mae = sum(abs(newY(2:end) - yPredict)) / (size(newY,1)-1);
+        relativeMAE = mae / (max(newY) - min(newY));
+        if ( (nOrigEvals >= 2  &&  relativeMAE > 0.2) ...
+             ||  (nOrigEvals == 1  &&  relativeMAE > 0.4) )
+          % disp('Model.shiftReevaluate(): The model is not precise enough, skipping using the model.');
+          obj = [];
+          return;
+        end
       end
     end
   end
