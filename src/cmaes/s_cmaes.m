@@ -362,6 +362,10 @@ if ~isempty(i)
 end
 opts.SaveFilename = deblank(opts.SaveFilename); % remove trailing white spaces
 
+
+y_eval = [];  % BAJELUK BEST/COUNTEVAL RECORDING
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
 counteval = 0; countevalNaN = 0; 
 irun = 0;
@@ -750,8 +754,6 @@ else % flgresume
   end % irun == 1
   
 end % else flgresume 
-
-y_eval = [];  % BAJELUK BEST/COUNTEVAL RECORDING
 
 % -------------------- Generation Loop --------------------------------
 stopflag = {};

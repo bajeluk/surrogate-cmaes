@@ -123,13 +123,11 @@ classdef (Abstract) Model
             newZ = [newZ; zValid(i,:)];
           end
         end
-        % calculate how precise the model is on the validating set
-        % TODO: decide the criterion more sophistically
-        yPredict = obj.predict(newX(2:end,:));
-        mae = sum(abs(newY(2:end) - yPredict)) / (size(newY,1)-1);
-        relativeMAE = mae / (max(newY) - min(newY));
-        if ( (nOrigEvals >= 2  &&  relativeMAE > 0.2) ...
-             ||  (nOrigEvals == 1  &&  relativeMAE > 0.4) )
+        % calculate how good the model estimates ordering on the validating set
+        yPredict = obj.predict(newX);
+        kendall = corr(yPredict, newY, 'type', 'Kendall');
+        % TODO: this test is a rule of thumb!!! Test it!
+        if (~isnan(kendall)  &&  kendall < 0.3)
           % disp('Model.shiftReevaluate(): The model is not precise enough, skipping using the model.');
           obj = [];
           return;

@@ -34,6 +34,7 @@ classdef Archive
       % using (sigma*BD)-metric
       % if more than 'n' data are closer than 'rangeSigma', k-means clustering is
       % performed
+      % if (n == 0), all the available data are returned
       nData = length(obj.y);
       X = []; y = [];
       
@@ -49,7 +50,7 @@ classdef Archive
       diff = sum(xTransf.^2, 2);
       isInRange = diff < (rangeSigma ^ 2);
 
-      if (sum(isInRange) <= n)
+      if (sum(isInRange) <= n  ||  n <= 0)
         X = obj.X(isInRange,:);
         y = obj.y(isInRange);
       else

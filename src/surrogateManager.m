@@ -75,6 +75,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     nPreSample = ceil(surrogateOpts.evoControlPreSampleSize * lambda);
     fitness_raw = []; arx = []; arxvalid = []; arz = [];
 
+    expandedSigma = surrogateOpts.evoControlSampleRangeRatio * surrogateOpts.evoControlTrainRange * sigma;
+
     % TODO: let the model to be trained on larger dataset
     %       than is really needed if there are the data available
     if (nRequired > nPreSample)
@@ -98,11 +100,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       % pre-sample new points, preferably in areas where we don't have
       % the points yet
       [arx, ~, arz] = ...
-          sampleCmaesNoFitness(xmean, sigma, 2*lambda, BD, diagD, surrogateOpts.sampleOpts);
-      [xPreSample, zPreSample] = SurrogateSelector.chooseDistantPoints(nToSample, arx', arz', xTrain, xmean, sigma, BD);
+          sampleCmaesNoFitness(xmean, expandedSigma, 2*lambda, BD, diagD, surrogateOpts.sampleOpts);
+      [xPreSample, zPreSample] = SurrogateSelector.chooseDistantPoints(nToSample, arx', arz', xTrain, xmean, expandedSigma, BD);
       % evaluate the 'preSample' with the original fitness
       [fitness_raw, arx, arxvalid, arz, counteval] = ...
-          sampleCmaesOnlyFitness(xPreSample, xPreSample, zPreSample, xmean, sigma, nToSample, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+          sampleCmaesOnlyFitness(xPreSample, xPreSample, zPreSample, xmean, expandedSigma, nToSample, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
       archive = archive.save(arxvalid', fitness_raw', countiter);
       xTrain = [xTrain; arxvalid'];
@@ -114,7 +116,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     extendSize = ceil(surrogateOpts.evoControlIndividualExtension ...
         * (lambda - nToSample));
     [xExtend, xExtendValid, zExtend] = ...
-        sampleCmaesNoFitness(xmean, sigma, extendSize, BD, diagD, surrogateOpts.sampleOpts);
+        sampleCmaesNoFitness(xmean, expandedSigma, extendSize, BD, diagD, surrogateOpts.sampleOpts);
     % calculate the model prediction for the extended population
     yExtend = newModel.predict(xExtend');
 
@@ -126,7 +128,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
 
     % original-evaluate the chosen points
     [yNew, xNew, xNewValid, zNew, counteval] = ...
-        sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, sigma, nCluster + nBest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+        sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, expandedSigma, nCluster + nBest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
     surrogateOpts.sampleOpts.counteval = counteval;
     archive = archive.save(xNewValid', yNew', countiter);
     yPredict = newModel.predict(xNewValid');
@@ -170,24 +172,12 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       if (~ generationEC.isNextOriginal())
         % we will switch to 'model'-mode in the next generation
         % prepare data for a new model
-        nRequired = newModel.getNTrainData();
-        X = []; y = [];
-        if (length(fitness_raw) < nRequired)
-          [X, y] = archive.getDataNearPoint(nRequired - length(fitness_raw), ...
-              xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
-        end
-        X = [arxvalid'; X];
-        y = [fitness_raw'; y];
-        if (length(y) >= nRequired)
-          % we have got enough data for new model! hurraayh!
-          newModel = newModel.train(X, y, xmean', countiter);
+
+        [newModel, surrogateStats, isTrained] = trainModel(newModel, archive, fitness_raw, arxvalid, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
+
+        if (isTrained)
           % TODO: archive the lastModel...?
           lastModel = newModel;
-
-          % DEBUG: print and save the statistics about the currently 
-          % trained model on testing data (RMSE and Kendall's correlation)
-          surrogateStats = getModelStatistics(newModel, xmean, sigma, lambda, BD, diagD, surrogateOpts);
-
         else
           % not enough training data :( -- continue with another
           % 'original'-evaluated generation
@@ -211,7 +201,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       end
 
       % generate validating population (for measuring error of the prediction)
-      [xValid, xValidValid, zValid] = ...
+      [~, xValidValid, zValid] = ...
           sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
       % shift the model (and possibly evaluate some new points newX, newY = f(newX) )
       % newX = []; newY = []; newZ = []; evals = 0;
@@ -257,13 +247,29 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         surrogateStats = getModelStatistics(shiftedModel, xmean, sigma, lambda, BD, diagD, surrogateOpts);
 
       else
-        % we don't have a model, so original fitness will be used
+        % we don't have a good model, so original fitness will be used
         [fitness_raw_, arx_, arxvalid_, arz_, counteval] = ...
             sampleCmaesOnlyFitness(arx(:,remainingIdx), arxvalid(:,remainingIdx), arz(:,remainingIdx), xmean, sigma, length(remainingIdx), BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+        surrogateOpts.sampleOpts.counteval = counteval;
         arx(:,remainingIdx) = arx_;
         arxvalid(:,remainingIdx) = arxvalid_;
         arz(:,remainingIdx) = arz_;
-        generationEC = generationEC.setNextOriginal();
+        archive = archive.save(arxvalid_', fitness_raw_', countiter);
+
+        % train a new model for the next generation
+        [newModel, surrogateStats, isTrained] = trainModel(newModel, archive, fitness_raw_, arxvalid_, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
+
+        if (isTrained)
+          % TODO: archive the lastModel...?
+          lastModel = newModel;
+          % leave the next generation as a model-evaluated:
+          generationEC = generationEC.holdOn();
+        else
+          % not enough training data :( -- continue with
+          % 'original'-evaluated generation
+          generationEC = generationEC.setNextOriginal();
+        end
+
       end
       fitness_raw(remainingIdx) = fitness_raw_;
       % and set the next as original-evaluated (later .next() will be called)
@@ -282,9 +288,9 @@ end
 
 
 function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, diagD, surrogateOpts)
-  % print and save the statistics about the currently 
-  % trained model on testing data
-  [xTest, xValidTest, zTest] = ...
+% print and save the statistics about the currently 
+% trained model on testing data
+  [~, xValidTest, ~] = ...
       sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
   preciseModel = ModelFactory.createModel('bbob', surrogateOpts.modelOpts, xmean');
   yTest = preciseModel.predict(xValidTest');
@@ -293,4 +299,30 @@ function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, di
   rmse = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
   fprintf('  model trained. Test RMSE = %f, Kendl. corr = %f.\n', rmse, kendall);
   surrogateStats = [rmse kendall];
+end
+
+
+
+function [newModel, surrogateStats, isTrained] = trainModel(model, archive, fitness_raw, arxvalid, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter)
+  surrogateStats = NaN(1, 2);
+% train the 'model' on the data in 'arxvalid' and relevant data in 'archive'
+  isTrained = false;
+
+  nRequired = model.getNTrainData();
+  X = []; y = [];
+  if (length(fitness_raw) < nRequired)
+    [X, y] = archive.getDataNearPoint(nRequired - length(fitness_raw), ...
+        xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
+  end
+  X = [arxvalid'; X];
+  y = [fitness_raw'; y];
+  if (length(y) >= nRequired)
+    % we have got enough data for new model! hurraayh!
+    newModel = model.train(X, y, xmean', countiter);
+    isTrained = true;
+
+    % DEBUG: print and save the statistics about the currently 
+    % trained model on testing data (RMSE and Kendall's correlation)
+    surrogateStats = getModelStatistics(newModel, xmean, sigma, lambda, BD, diagD, surrogateOpts);
+  end
 end

@@ -145,6 +145,7 @@ function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_
     fmin = Inf;
 
     fgeneric('initialize', exp_settings.bbob_function, iinstance, datapath, opt); 
+    yeRestarts = [];
 
     % independent restarts until maxfunevals or ftarget is reached
     for restarts = 0:maxrestarts
@@ -161,14 +162,16 @@ function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_
         ye(:,2) = ye(:,2) + evalsRestartCorrection;
       end
       fmin = min([ye(:,1); fmin]);
+      yeRestarts = [yeRestarts; ye];
       evalsRestartCorrection = fgeneric('evaluations');
-      y_evals = cat(1,y_evals,ye);
 
       if fgeneric('fbest') < fgeneric('ftarget') || ...
         fgeneric('evaluations') + minfunevals > maxfunevals
         break;
       end  
     end
+
+    y_evals = cat(1,y_evals,yeRestarts);
 
     disp(sprintf(['  f%d in %d-D, instance %d: FEs=%d with %d restarts,' ...
                   ' fbest-ftarget=%.4e, elapsed time [h]: %.2f'], ...
