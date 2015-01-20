@@ -64,7 +64,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     % model could not be created :( use the standard CMA-ES
     [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
     surrogateOpts.sampleOpts.counteval = counteval;
-    archive = archive.save(arx', fitness_raw', countiter);
+    archive = archive.save(arxvalid', fitness_raw', countiter);
     return;
   end
 
@@ -90,7 +90,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       disp('surrogateManager(): not enough data for training model.');
       [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
-      archive = archive.save(arx', fitness_raw', countiter);
+      archive = archive.save(arxvalid', fitness_raw', countiter);
       return;
     end
 
@@ -160,6 +160,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
 
     if (generationEC.evaluateOriginal)
+      %
+      % original-evaluated generation
+      %
       [fitness_raw, arx, arxvalid, arz, counteval] = ...
           sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
@@ -180,6 +183,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
           newModel = newModel.train(X, y, xmean', countiter);
           % TODO: archive the lastModel...?
           lastModel = newModel;
+
+          % DEBUG: print and save the statistics about the currently 
+          % trained model on testing data (RMSE and Kendall's correlation)
+          surrogateStats = getModelStatistics(newModel, xmean, sigma, lambda, BD, diagD, surrogateOpts);
+
         else
           % not enough training data :( -- continue with another
           % 'original'-evaluated generation
@@ -189,6 +197,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       end       % ~ generationEC.isNextOriginal()
 
     else        % generationEC.evaluateModel() == true
+      %
       % evalute the current population with the @lastModel
       % 
       % TODO: implement other re-fitting strategies for an old model
@@ -202,11 +211,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       end
 
       % generate validating population (for measuring error of the prediction)
-      [xValid, ~, zValid] = ...
+      [xValid, xValidValid, zValid] = ...
           sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
       % shift the model (and possibly evaluate some new points newX, newY = f(newX) )
       % newX = []; newY = []; newZ = []; evals = 0;
-      [shiftedModel, evals, newX, newY, newZ] = lastModel.shiftReevaluate(xmean', xValid', zValid', surrogateOpts.evoControlValidatePoints, fitfun_handle, varargin{:});
+      [shiftedModel, evals, newX, newY, newZ] = lastModel.shiftReevaluate(xmean', xValidValid', zValid', surrogateOpts.evoControlValidatePoints, fitfun_handle, varargin{:});
       % count the original evaluations
       surrogateOpts.sampleOpts.counteval = surrogateOpts.sampleOpts.counteval + evals;
       counteval = surrogateOpts.sampleOpts.counteval;
@@ -219,8 +228,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         if (~isempty(xValidUsedIdx))
           % some of the 'xValid' points were evaluated, too, so save them
           % to the final population 'arx'
+          % Note: 'newX' is in fact from 'xValidValid', so it should be placed
+          %       in 'arxvalid'. But this is not a problem, anyway :)
           arx(:,xValidUsedIdx) = newX(2:end,:)';
-          % this is a hack :/ -- we suppose that all the newX are valid
+          % this is a little hack :/ -- we suppose that all the newX are valid
+          % but this should be true since 'newX' is derived from 'xValidValid'
           arxvalid(:,xValidUsedIdx) = newX(2:end,:)';
           arz(:,xValidUsedIdx) = newZ(2:end,:)';
           fitness_raw(xValidUsedIdx) = newY(2:end)';
@@ -240,6 +252,10 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         bestFitnessPredicted = min(fitness_raw_);
         diff = max(bestFitnessDataset - bestFitnessPredicted, 0);
         fitness_raw_ = fitness_raw_' + diff;
+
+        % DEBUG:
+        surrogateStats = getModelStatistics(shiftedModel, xmean, sigma, lambda, BD, diagD, surrogateOpts);
+
       else
         % we don't have a model, so original fitness will be used
         [fitness_raw_, arx_, arxvalid_, arz_, counteval] = ...
@@ -262,4 +278,19 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   else
     error('surrogateManager(): wrong evolution control method');
   end
+end
+
+
+function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, diagD, surrogateOpts)
+  % print and save the statistics about the currently 
+  % trained model on testing data
+  [xTest, xValidTest, zTest] = ...
+      sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
+  preciseModel = ModelFactory.createModel('bbob', surrogateOpts.modelOpts, xmean');
+  yTest = preciseModel.predict(xValidTest');
+  yPredict = model.predict(xValidTest');
+  kendall = corr(yPredict, yTest, 'type', 'Kendall');
+  rmse = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
+  fprintf('  model trained. Test RMSE = %f, Kendl. corr = %f.\n', rmse, kendall);
+  surrogateStats = [rmse kendall];
 end

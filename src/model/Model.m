@@ -102,7 +102,7 @@ classdef (Abstract) Model
         yValid = obj.predict(xValid);
         ySort = sort(yValid);
         thirdY = ySort(ceil(1.1+end/3));
-        if ((1 - ySort(1)/thirdY) < 1e-2)
+        if ((thirdY - ySort(1)) < 1e-8)
           % disp('Model.shiftReevaluate(): fitness is flat. Stopping using model.');
           obj = [];
           return;

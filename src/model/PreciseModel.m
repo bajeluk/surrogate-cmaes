@@ -27,7 +27,7 @@ classdef PreciseModel < Model
       if (isfield(modelOptions, 'bbob_func'))
         obj.bbob_func = modelOptions.bbob_func;
       else
-        error('PreciseModel: no BBOB function number spedified!');
+        error('PreciseModel: no BBOB function handle spedified!');
       end
     end
 
@@ -55,8 +55,8 @@ classdef PreciseModel < Model
     end
 
     function trained = isTrained(obj)
-      % check whether the model is already trained
-      trained = (obj.trainGeneration >= 0);
+      % the precise model is always trained :)
+      trained = true;
     end
   end
 
