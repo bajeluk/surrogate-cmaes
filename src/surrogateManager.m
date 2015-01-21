@@ -324,5 +324,8 @@ function [newModel, surrogateStats, isTrained] = trainModel(model, archive, fitn
     % DEBUG: print and save the statistics about the currently 
     % trained model on testing data (RMSE and Kendall's correlation)
     surrogateStats = getModelStatistics(newModel, xmean, sigma, lambda, BD, diagD, surrogateOpts);
+  else
+    newModel = model;
+    isTrained = false;
   end
 end
