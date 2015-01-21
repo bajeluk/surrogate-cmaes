@@ -13,6 +13,7 @@ classdef RfModel < Model
     minLeaf             % minimum of points in each leaf
     inputFraction       % fraction of points used in training
     forest              % ensemble of regression trees
+    ordinalRegression   % indicates usage of ordinal regression
   end
 
   methods
@@ -29,6 +30,7 @@ classdef RfModel < Model
       obj.minLeaf = 2;
       obj.inputFraction = 1;
       obj.nBestPoints = 1;
+      obj.ordinalRegression = false;
       
       if isfield(modelOptions,'nTrees')
           obj.nTrees = modelOptions.nTrees;
@@ -41,6 +43,9 @@ classdef RfModel < Model
       end
       if isfield(modelOptions,'nBestPoints')
           obj.nBestPoints = modelOptions.nBestPoints;
+      end
+       if isfield(modelOptions,'ordinalRegression')
+          obj.ordinalRegression = modelOptions.ordinalRegression;
       end
     end
 
@@ -60,11 +65,16 @@ classdef RfModel < Model
       obj.dataset.X = X;
       obj.dataset.y = y;
       obj.forest = {};
+      [~,yIdx] = sort(y);
+      if obj.ordinalRegression
+          yTrain = yIdx(yIdx);
+      else
+          yTrain = y;
+      end
       
       % if we want tree elitism
       if obj.nBestPoints > 0
           nBest = min(obj.nBestPoints, length(y));
-          [~,yIdx] = sort(y);
           sumGoodTrees = 0; allTrees = 0;
           iter = 0; maxTrees = 100*obj.nTrees;
           
@@ -77,7 +87,7 @@ classdef RfModel < Model
               goodTrees = false(1,newForestSize);
               
               % train forest
-              trainForest = TreeBagger(newForestSize,X,y,'method','regression',... 
+              trainForest = TreeBagger(newForestSize,X,yTrain,'method','regression',...
                 'MinLeaf',obj.minLeaf,...
                 'FBoot',obj.inputFraction);
               % fprintf('Forest with %d trained\n',newForestSize);
@@ -85,7 +95,7 @@ classdef RfModel < Model
             
               % find trees with elitism
               parfor treeNum = 1:newForestSize
-                  yPredict = predict(Trees{treeNum},X);              
+                  yPredict = predict(Trees{treeNum},X);
                   yPredict = yPredict(yIdx);
                   if ( issorted(yPredict(1:nBest)) && all(yPredict(nBest+1:end)>=yPredict(nBest)) )
                       goodTrees(treeNum) = 1;
@@ -104,7 +114,7 @@ classdef RfModel < Model
           if (allTrees == maxTrees && (sumGoodTrees < obj.nTrees))
               fprintf('Cannot create forest with %d best poits. Appending %d remaining ordinary trees.\n', ...
                   obj.nBestPoints,obj.nTrees-sumGoodTrees);
-              trainForest = TreeBagger(obj.nTrees-sumGoodTrees,X,y,'method','regression',... 
+              trainForest = TreeBagger(obj.nTrees-sumGoodTrees,X,yTrain,'method','regression',...
                 'MinLeaf',obj.minLeaf,...
                 'FBoot',obj.inputFraction);
               obj.forest(end+1:obj.nTrees) = trainForest.Trees;
@@ -114,7 +124,7 @@ classdef RfModel < Model
           
       % simple forest without elitism
       else
-          trainForest = TreeBagger(obj.NTrees,X,y,'method','regression',... 
+          trainForest = TreeBagger(obj.NTrees,X,yTrain,'method','regression',...
                 'MinLeaf',obj.minLeaf,...
                 'FBoot',obj.inputFraction);
           obj.forest = trainForest.Trees;
@@ -122,7 +132,7 @@ classdef RfModel < Model
         
       % count train MSE
       % trainMSE = mean((y - obj.predict(X)).^2);
-      % fprintf('  TreeBagger: train MSE = %f\n', trainMSE); 
+      % fprintf('  TreeBagger: train MSE = %f\n', trainMSE);
     end
 
     function [y, dev] = predict(obj, X)

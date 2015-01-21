@@ -50,7 +50,10 @@ classdef PreciseModel < Model
 
     function [y, dev] = predict(obj, X)
       % predicts the function values in new points X
-      y = (feval(obj.bbob_func, X'))';
+      % y = (feval(obj.bbob_func, X'))';
+      XWithShift = X - repmat(obj.shiftMean, size(X,1), 1);
+      y = (feval(obj.bbob_func, XWithShift'))';
+      y = y + obj.shiftY;
       dev = zeros(size(X,1),1);
     end
 
