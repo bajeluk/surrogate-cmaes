@@ -17,9 +17,15 @@ classdef Archive
       assert(size(X,1) == size(y,1), 'Archive.save: dimensions X and y mismatch.');
       assert(size(y,2) == 1, 'Archive.save: y is not a column vector.');
       assert(size(X,2) == obj.dim, 'Archive.save: dimension of X''s and Archive.dim mismatch.');
-      obj.X = [obj.X; X];
-      obj.y = [obj.y; y];
-      obj.gens = [obj.gens; generation * ones(length(y),1)];
+      if (~isempty(obj.X))
+        isNotYetSaved = ~(ismember(X, obj.X, 'rows'));
+        % TODO: put here some TolX criterion, not this silly 'ismember()'
+      else
+        isNotYetSaved = true(size(X,1),1);
+      end
+      obj.X = [obj.X; X(isNotYetSaved,:)];
+      obj.y = [obj.y; y(isNotYetSaved,:)];
+      obj.gens = [obj.gens; generation * ones(sum(isNotYetSaved),1)];
     end
 
     function [X, y] = getDataFromGenerations(obj, generations)

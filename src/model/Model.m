@@ -4,6 +4,7 @@ classdef (Abstract) Model
     trainGeneration     % # of the generation when the model was built
     trainMean           % mean of the generation when the model was built
     dataset             % .X and .y
+    useShift            % whether use shift during generationUpdate()
     shiftMean           % vector of the shift in the X-space
     shiftY              % shift in the f-space
   end
@@ -37,6 +38,7 @@ classdef (Abstract) Model
 
       % simulate "older" dataset and predict there y-values
       invShiftedDataset = obj.dataset.X - (xMean - obj.trainMean);
+      obj.shiftMean = zeros(size(xMean));
       invShiftedY = predict(obj, invShiftedDataset);
       % set the vector of the shift (this has to be after calling
       % predict()!!!)
@@ -46,7 +48,7 @@ classdef (Abstract) Model
       obj.shiftY = median(obj.dataset.y - invShiftedY);
     end
 
-    function [obj, counteval, newX, newY, newZ] = shiftReevaluate(obj, xMean, xValid, zValid, nOrigEvals, fitfun_handle, varargin)
+    function [obj, counteval, newX, newY, newZ] = generationUpdate(obj, xMean, xValid, zValid, nOrigEvals, fitfun_handle, varargin)
     % transforms the trained model to new coordinates of @xMean
     % further predictions will be made according to this shift
     % does not re-train the model, but estimates the shift in the f-values
@@ -71,27 +73,39 @@ classdef (Abstract) Model
     % * TODO add a feedback if the model is not sufficiently precise
 
       % vector of the shift
-      obj.shiftMean = xMean - obj.trainMean; 
+      if (obj.useShift)
+        obj.shiftMean = xMean - obj.trainMean;
+      else
+        obj.shiftMean = zeros(size(xMean));
+      end
 
       y = NaN; x = zeros(1,obj.dim);
       newX = []; newY = []; newZ = [];
       counteval = 0;
       countevalNaN = 0;
+
+      if (nOrigEvals <= 0)
+        % we are not allowed to use any original evaluations
+        return;
+      end
+
       deniedIdxs = [];
       while (isnan(y) && ~isempty(x))
         [x, datasetIdx] = getNearMean(obj, xMean, deniedIdxs);
         if (isempty(x))
-          warning(['Model.shiftReevaluate(): fitness in shifted dataset is all NaN. Stopping using model. CountEvalNaN = ' num2str(countevalNaN)]);
+          warning(['Model.generationUpdate(): fitness in shifted dataset is all NaN. Stopping using model. CountEvalNaN = ' num2str(countevalNaN)]);
           obj = [];
           return;
         end
-        invShiftedX = x - obj.shiftMean;
-        % evaluate the shifted archive point
-        y = feval(fitfun_handle, invShiftedX', varargin{:});
+        % possibly shift 'x' in the X-space
+        % 'shiftMean' can be 0 (if obj.useShift == false)
+        shiftedX = x + obj.shiftMean;
+        % evaluate the (shifted) archive point
+        y = feval(fitfun_handle, shiftedX', varargin{:});
         counteval = counteval + sum(~isnan(y));
         countevalNaN = countevalNaN + sum(isnan(y));
         if (all(~isnan(y)))
-          newX = [newX; invShiftedX];
+          newX = [newX; shiftedX];
           newY = [newY; y'];
           newZ = [newZ; zeros(1,obj.dim)];
         end
@@ -103,12 +117,12 @@ classdef (Abstract) Model
         ySort = sort(yValid);
         thirdY = ySort(ceil(1.1+end/3));
         if ((thirdY - ySort(1)) < 1e-8)
-          % disp('Model.shiftReevaluate(): fitness is flat. Stopping using model.');
+          % disp('Model.generationUpdate(): fitness is flat. Stopping using model.');
           obj = [];
           return;
         end
       end
-      % Evaluate validating points
+      % Evaluate other validating points, if there are any
       nOrigEvals = min((nOrigEvals - 1), size(xValid, 1));
       if (nOrigEvals > 0)
         xValid2 = xValid(1:nOrigEvals,:) - repmat(obj.shiftMean,nOrigEvals,1);
@@ -128,7 +142,7 @@ classdef (Abstract) Model
         kendall = corr(yPredict, newY, 'type', 'Kendall');
         % TODO: this test is a rule of thumb!!! Test it!
         if (~isnan(kendall)  &&  kendall < 0.3)
-          % disp('Model.shiftReevaluate(): The model is not precise enough, skipping using the model.');
+          % disp('Model.generationUpdate(): The model is not precise enough, skipping using the model.');
           obj = [];
           return;
         end
@@ -140,7 +154,7 @@ classdef (Abstract) Model
     function [x, datasetIdx] = getNearMean(obj, xMean, deniedIdxs)
     % Returns a point @x from the training dataset (with datasetIdx) near the
     % @trainMean, possibly in the direction of the new @xMean. 
-    % This point is to be evaluated and used for shiftReevaluate()
+    % This point is to be evaluated and used for generationUpdate()
     % @deniedIdxs       vector of indices to the @database which are not
     %                   allowed to use
 

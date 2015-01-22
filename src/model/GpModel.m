@@ -4,6 +4,7 @@ classdef GpModel < Model
     trainGeneration = -1; % # of the generation when the model was built
     trainMean           % mean of the generation when the model was built
     dataset             % .X and .y
+    useShift = false;
     shiftMean           % vector of the shift in the X-space
     shiftY = 0;         % shift in the f-space
     options
@@ -34,6 +35,9 @@ classdef GpModel < Model
       % end
       
       obj.options = modelOptions;
+      if (~isempty(modelOptions) && isfield(modelOptions, 'useShift'))
+        obj.useShift = modelOptions.useShift;
+      end
       obj.dim     = size(xMean, 2);
       obj.shiftMean = zeros(1, obj.dim);
       obj.shiftY  = 0;

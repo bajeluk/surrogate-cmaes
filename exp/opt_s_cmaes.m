@@ -1,4 +1,4 @@
-function [x, ilaunch, y_evals, stopflag] = opt_s_cmaes(FUN, DIM, ftarget, maxfunevals, id)
+function [x, ilaunch, y_evals, stopflag] = opt_s_cmaes(FUN, dim, ftarget, maxfunevals, id)
 % minimizes FUN in DIM dimensions by multistarts of fminsearch.
 % ftarget and maxfunevals are additional external termination conditions,
 % where at most 2 * maxfunevals function evaluations are conducted.
@@ -9,12 +9,12 @@ function [x, ilaunch, y_evals, stopflag] = opt_s_cmaes(FUN, DIM, ftarget, maxfun
 
 % Be aware: 'id' is an additional parameter!
 
-xstart = 8 * rand(DIM, 1) - 4; % random start solution
+xstart = 8 * rand(dim, 1) - 4; % random start solution
 
 fDelta = 1e-8;
 
 cmOptions = struct( ...
-  'MaxFunEvals', min(1e8*DIM, maxfunevals), ...
+  'MaxFunEvals', min(1e8*dim, maxfunevals), ...
   'StopFitness', ftarget, ...
   'LBounds', -5, ...
   'UBounds',  5, ...

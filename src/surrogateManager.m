@@ -23,8 +23,13 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   % Defaults for surrogateOpts
   sDefaults.evoControl  = 'none';               % none | individual | generation
   sDefaults.sampleFcn   = @sampleCmaes;         % sampleCmaes | ??? TODO ???
-  sDefaults.evoControlOrigGenerations = 1;      % 1..inf
-  sDefaults.evoControlModelGenerations = 1;     % 0..inf
+  sDefaults.evoControlPreSampleSize     = 0.2;  % 0..1
+  sDefaults.evoControlIndividualExtension = 20; % 1..inf (reasonable 10-100)
+  sDefaults.evoControlBestFromExtension = 0.2;  % 0..1
+  sDefaults.evoControlTrainRange        = 8;    % 1..inf (reasonable 1--20)
+  sDefaults.evoControlSampleRange       = 1;    % 1..inf (reasonable 1--20)
+  sDefaults.evoControlOrigGenerations   = 1;    % 1..inf
+  sDefaults.evoControlModelGenerations  = 1;    % 0..inf
   sDefaults.modelType = '';                     % gp | rf
   sDefaults.modelOpts = [];                     % model specific options
   
@@ -72,25 +77,21 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     % Individual-based evolution control
   
     nRequired = newModel.getNTrainData();
-    nPreSample = ceil(surrogateOpts.evoControlPreSampleSize * lambda);
+    % The number of points to be 'pre-sampled'
+    nEvaluated = ceil(surrogateOpts.evoControlPreSampleSize * lambda);
     fitness_raw = []; arx = []; arxvalid = []; arz = [];
 
-    expandedSigma = surrogateOpts.evoControlSampleRangeRatio * surrogateOpts.evoControlTrainRange * sigma;
+    expandedSigma = surrogateOpts.evoControlTrainRange * sigma;
 
-    % TODO: let the model to be trained on larger dataset
-    %       than is really needed if there are the data available
-    if (nRequired > nPreSample)
-      [xTrain, yTrain] = archive.getDataNearPoint((nRequired - nPreSample), ...
-          xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
-    else
-      xTrain = []; yTrain = [];
-    end
+    nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
+    [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
+        xmean', surrogateOpts.evoControlTrainRange, expandedSigma, BD);
     nToSample = nRequired - size(xTrain, 1);
 
-    if (nToSample > nPreSample)
+    if (nToSample > nEvaluated)
       % TODO: shouldn't we use an old model?
       disp('surrogateManager(): not enough data for training model.');
-      [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+      [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, expandedSigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
       archive = archive.save(arxvalid', fitness_raw', countiter);
       return;
@@ -100,7 +101,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       % pre-sample new points, preferably in areas where we don't have
       % the points yet
       [arx, ~, arz] = ...
-          sampleCmaesNoFitness(xmean, expandedSigma, 2*lambda, BD, diagD, surrogateOpts.sampleOpts);
+          sampleCmaesNoFitness(xmean, expandedSigma, dim*lambda, BD, diagD, surrogateOpts.sampleOpts);
       [xPreSample, zPreSample] = SurrogateSelector.chooseDistantPoints(nToSample, arx', arz', xTrain, xmean, expandedSigma, BD);
       % evaluate the 'preSample' with the original fitness
       [fitness_raw, arx, arxvalid, arz, counteval] = ...
@@ -158,22 +159,21 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         surrogateOpts.evoControlModelGenerations, initialGens);
     end
 
-    [arx, arxvalid, arz] = ...
-        sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
+    sampleSigma = surrogateOpts.evoControlSampleRange * sigma;
 
     if (generationEC.evaluateOriginal)
       %
       % original-evaluated generation
       %
-      [fitness_raw, arx, arxvalid, arz, counteval] = ...
-          sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+      [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sampleSigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+
       surrogateOpts.sampleOpts.counteval = counteval;
       archive = archive.save(arxvalid', fitness_raw', countiter);
       if (~ generationEC.isNextOriginal())
         % we will switch to 'model'-mode in the next generation
         % prepare data for a new model
 
-        [newModel, surrogateStats, isTrained] = trainModel(newModel, archive, fitness_raw, arxvalid, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
+        [newModel, surrogateStats, isTrained] = trainGenerationECModel(newModel, archive, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
 
         if (isTrained)
           % TODO: archive the lastModel...?
@@ -194,56 +194,60 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
 
       if (isempty(lastModel))
         warning('surrogateManager(): we are asked to use an EMPTY MODEL! Using CMA-ES.');
-        [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+        [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sampleSigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
         surrogateOpts.sampleOpts.counteval = counteval;
         archive = archive.save(arxvalid', fitness_raw', countiter);
         return;
       end
 
+      % generate the new population (to be evaluated by the model)
+      [arx, arxvalid, arz] = ...
+          sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
+
       % generate validating population (for measuring error of the prediction)
+      % this is with the *original* sigma
       [~, xValidValid, zValid] = ...
           sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
       % shift the model (and possibly evaluate some new points newX, newY = f(newX) )
       % newX = []; newY = []; newZ = []; evals = 0;
-      [shiftedModel, evals, newX, newY, newZ] = lastModel.shiftReevaluate(xmean', xValidValid', zValid', surrogateOpts.evoControlValidatePoints, fitfun_handle, varargin{:});
+      [shiftedModel, evals, newX, newY, newZ] = lastModel.generationUpdate(xmean', xValidValid', zValid', surrogateOpts.evoControlValidatePoints, fitfun_handle, varargin{:});
       % count the original evaluations
       surrogateOpts.sampleOpts.counteval = surrogateOpts.sampleOpts.counteval + evals;
       counteval = surrogateOpts.sampleOpts.counteval;
+      fitness_raw = zeros(1,lambda);
       % use the original-evaluated xValid points to the new generation:
-      xValidUsedIdx = 1:(evals-1);
       if (evals > 0)
         archive = archive.save(newX, newY, countiter);
         % calculate 'z' for the shifted archive near-mean point
+        % because this near-mean is not sampled as Z ~ N(0,1)
         newZ(1,:) = ((BD \ (newX(1,:)' - xmean)) ./ sigma)';
-        if (~isempty(xValidUsedIdx))
-          % some of the 'xValid' points were evaluated, too, so save them
-          % to the final population 'arx'
-          % Note: 'newX' is in fact from 'xValidValid', so it should be placed
-          %       in 'arxvalid'. But this is not a problem, anyway :)
-          arx(:,xValidUsedIdx) = newX(2:end,:)';
-          % this is a little hack :/ -- we suppose that all the newX are valid
-          % but this should be true since 'newX' is derived from 'xValidValid'
-          arxvalid(:,xValidUsedIdx) = newX(2:end,:)';
-          arz(:,xValidUsedIdx) = newZ(2:end,:)';
-          fitness_raw(xValidUsedIdx) = newY(2:end)';
-        end
+        % save this point to the final population
+        arx(:,1) = newX(1,:)';
+        % this is a little hack :/ -- we suppose that all the newX are valid
+        % but this should be true since 'newX' is derived from 'xValidValid'
+        arxvalid(:,1) = newX(1,:)';
+        arz(:,1) = newZ(1,:)';
+        fitness_raw(1) = newY(1)';
+        remainingIdx = 2:lambda;
+      else
+        remainingIdx = 1:lambda;
       end
       % calculate/predict the fitness of the not-so-far evaluated points
-      remainingIdx = 1:lambda;
-      remainingIdx(xValidUsedIdx) = [];
       if (~isempty(shiftedModel))
         % we've got a valid model, so we'll use it!
-        [fitness_raw_, ~] = shiftedModel.predict(arx(:,remainingIdx)');
-        disp(['Model.shiftReevaluate(): We are using the model for ' num2str(length(remainingIdx)) ' individuals.']);
+        [predict_fitness_raw, ~] = shiftedModel.predict(arx(:,remainingIdx)');
+        fitness_raw(remainingIdx) = predict_fitness_raw';
+        disp(['Model.generationUpdate(): We are using the model for ' num2str(length(remainingIdx)) ' individuals.']);
         % shift the predicted fitness: the best predicted fitness
         % could not be better than the so-far best fitness -- it would fool CMA-ES!
         % TODO: test if shifting ALL THE INDIVIDUALS (not only predicted) would help?
-        bestFitnessDataset = min(archive.y);
-        bestFitnessPredicted = min(fitness_raw_);
-        diff = max(bestFitnessDataset - bestFitnessPredicted, 0);
-        fitness_raw_ = fitness_raw_' + diff;
+        bestFitnessArchive = min(archive.y);
+        bestFitnessPopulation = min(fitness_raw);
+        diff = max(bestFitnessArchive - bestFitnessPopulation, 0);
+        fitness_raw = fitness_raw + diff;
 
         % DEBUG:
+        fprintf('  test ');
         surrogateStats = getModelStatistics(shiftedModel, xmean, sigma, lambda, BD, diagD, surrogateOpts);
 
       else
@@ -254,10 +258,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         arx(:,remainingIdx) = arx_;
         arxvalid(:,remainingIdx) = arxvalid_;
         arz(:,remainingIdx) = arz_;
+        fitness_raw(remainingIdx) = fitness_raw_;
         archive = archive.save(arxvalid_', fitness_raw_', countiter);
 
         % train a new model for the next generation
-        [newModel, surrogateStats, isTrained] = trainModel(newModel, archive, fitness_raw_, arxvalid_, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
+        [newModel, surrogateStats, isTrained] = trainGenerationECModel(newModel, archive, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
 
         if (isTrained)
           % TODO: archive the lastModel...?
@@ -269,9 +274,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
           % 'original'-evaluated generation
           generationEC = generationEC.setNextOriginal();
         end
-
       end
-      fitness_raw(remainingIdx) = fitness_raw_;
       % and set the next as original-evaluated (later .next() will be called)
     end
     generationEC = generationEC.next();
@@ -297,25 +300,24 @@ function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, di
   yPredict = model.predict(xValidTest');
   kendall = corr(yPredict, yTest, 'type', 'Kendall');
   rmse = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
-  fprintf('  model trained. Test RMSE = %f, Kendl. corr = %f.\n', rmse, kendall);
+  fprintf(' RMSE = %f, Kendl. corr = %f.\n', rmse, kendall);
   surrogateStats = [rmse kendall];
 end
 
 
 
-function [newModel, surrogateStats, isTrained] = trainModel(model, archive, fitness_raw, arxvalid, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter)
+function [newModel, surrogateStats, isTrained] = trainGenerationECModel(model, archive, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter)
   surrogateStats = NaN(1, 2);
-% train the 'model' on the data in 'arxvalid' and relevant data in 'archive'
+% train the 'model' on the relevant data in 'archive'
   isTrained = false;
+  dim = model.dim;
+
+  trainSigma = surrogateOpts.evoControlTrainRange * sigma;
+  nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
 
   nRequired = model.getNTrainData();
-  X = []; y = [];
-  if (length(fitness_raw) < nRequired)
-    [X, y] = archive.getDataNearPoint(nRequired - length(fitness_raw), ...
-        xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
-  end
-  X = [arxvalid'; X];
-  y = [fitness_raw'; y];
+  [X, y] = archive.getDataNearPoint(nArchivePoints, ...
+      xmean', surrogateOpts.evoControlTrainRange, trainSigma, BD);
   if (length(y) >= nRequired)
     % we have got enough data for new model! hurraayh!
     newModel = model.train(X, y, xmean', countiter);
@@ -323,9 +325,20 @@ function [newModel, surrogateStats, isTrained] = trainModel(model, archive, fitn
 
     % DEBUG: print and save the statistics about the currently 
     % trained model on testing data (RMSE and Kendall's correlation)
+    fprintf('  model trained on %d points, train ', nArchivePoints);
     surrogateStats = getModelStatistics(newModel, xmean, sigma, lambda, BD, diagD, surrogateOpts);
   else
     newModel = model;
     isTrained = false;
+  end
+end
+
+% ---------------------------------------------------------------
+% ---------------------------------------------------------------
+function res=myeval(s)
+  if ischar(s)
+    res = evalin('caller', s);
+  else
+    res = s;
   end
 end
