@@ -1,8 +1,8 @@
 
-exp_id = 'exp_geneEC_03';
+exp_id = 'exp_geneEC_04_modeltrain';
 exp_description = 'Surrogate CMA-ES with totally precise model, individual EC';
 
-machines = { 'u-pl1', 'u-pl2', 'u-pl3', 'u-pl4', 'u-pl5', 'u-pl6', 'u-pl7', 'u-pl8', 'u-pl9', 'u-pl10', 'u-pl11', 'u-pl12', 'u-pl13', 'u-pl14', 'u-pl15', 'u-pl16', 'u-pl17', 'u-pl18', 'u-pl19', 'u-pl20', 'u-pl21', 'u-pl22', 'u-pl23', 'u-pl24', 'u-pl25', 'u-pl26'};
+machines = { 'u-pl1', 'u-pl2', 'u-pl3', 'u-pl4', 'u-pl5', 'u-pl6', 'u-pl7'}; % , 'u-pl8', 'u-pl9', 'u-pl10', 'u-pl11', 'u-pl12', 'u-pl13', 'u-pl14', 'u-pl15', 'u-pl16', 'u-pl17', 'u-pl18', 'u-pl19', 'u-pl20', 'u-pl21', 'u-pl22', 'u-pl23', 'u-pl24', 'u-pl25', 'u-pl26'};
 
 login = 'bajel3am';
 if (strfind(mfilename('fullpath'), 'afs'))
@@ -16,7 +16,7 @@ logMatlabOutput = true;
 bbParamDef(1).name   = 'dimensions';
 bbParamDef(1).values = {2, 5, 10};      % {2, 5 10};
 bbParamDef(2).name   = 'functions';
-bbParamDef(2).values = {2, 3, 8};       % {1, 2, 5, 6, 8, 10, 20, 21};
+bbParamDef(2).values = {1, 2, 5, 6, 8, 10, 20, 21};       % {1, 2, 5, 6, 8, 10, 20, 21};
 % dimensions  = [10];     % which dimensions to optimize, subset of [2 3 5 10 20 40];
 % functions   = [8];      % function ID's to optimize (2 Sphere, 3 Rastrigin, 8 Rosenbrock)
 bbParamDef(3).name   = 'opt_function';
@@ -24,7 +24,7 @@ bbParamDef(3).values = {@opt_s_cmaes};
 % opt_function = @opt_s_cmaes;    % function being optimized -- BBOB wrap-around with header
 %                                 % xbest = function( fun, dim, ftarget, maxfunevals )
 bbParamDef(4).name   = 'instances';
-bbParamDef(4).values = {[1:10 31:40]}; % 31:40]};   % default is [1:5, 31:40]
+bbParamDef(4).values = {[1]}; % 31:40]};   % default is [1:5, 31:40]
 bbParamDef(5).name   = 'maxfunevals';   % MAXFUNEVALS - 10*dim is a short test-experiment
 bbParamDef(5).values = {'250 * dim'};   % increment maxfunevals successively
                                 
@@ -32,7 +32,7 @@ bbParamDef(5).values = {'250 * dim'};   % increment maxfunevals successively
 sgParamDef(1).name   = 'evoControl';            % 'none', 'individual', 'generation'
 sgParamDef(1).values = {'generation'};
 sgParamDef(2).name   = 'modelType';             % 'gp', 'rf', 'bbob'
-sgParamDef(2).values = {'gp', 'rf'};
+sgParamDef(2).values = {'rf'};
 sgParamDef(3).name   = 'evoControlPreSampleSize';       % will be multip. by lambda
 sgParamDef(3).values = { [] }; % {0.25, 0.5, 0.75};
 sgParamDef(4).name   = 'evoControlIndividualExtension'; % will be multip. by lambda

@@ -248,7 +248,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
 
         % DEBUG:
         fprintf('  test ');
-        surrogateStats = getModelStatistics(shiftedModel, xmean, sigma, lambda, BD, diagD, surrogateOpts);
+        surrogateStats = getModelStatistics(shiftedModel, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
 
       else
         % we don't have a good model, so original fitness will be used
@@ -290,7 +290,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
 end
 
 
-function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, diagD, surrogateOpts)
+function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter)
 % print and save the statistics about the currently 
 % trained model on testing data
   [~, xValidTest, ~] = ...
@@ -302,8 +302,34 @@ function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, di
   rmse = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
   fprintf(' RMSE = %f, Kendl. corr = %f.\n', rmse, kendall);
   surrogateStats = [rmse kendall];
-end
 
+  % save the training and testing data for model-training enhancements
+  if (model.trainGeneration == (countiter - 1) ...
+      % ... the model is fresh
+      && isfield(surrogateOpts, 'saveModelTrainingData') ...
+      % ... and we'd like to save the training data
+      && isfield(surrogateOpts, 'experimentPath') ...
+      && ~isempty(surrogateOpts.saveModelTrainingData))
+    currentEvals = surrogateOpts.sampleOpts.counteval;
+    % the numbers of evaluations which will trigger data saving:
+    testingEvals = surrogateOpts.saveModelTrainingData;
+    idxLastReached = find(currentEvals > testingEvals);
+    if (~isempty(idxLastReached))
+      idxLastReached = idxLastReached(end);
+      evalsReached = surrogateOpts.saveModelTrainingData(idxLastReached);
+      filename = sprintf([surrogateOpts.experimentPath filesep 'modeltrain_f%s_%d.mat'], surrogateOpts.expFileID, evalsReached);
+      if (~exist(filename, 'file'))
+        trainsetX = model.dataset.X;
+        trainsetY = model.dataset.y;
+        testsetX = xValidTest';
+        testsetY = yTest;
+        surrogateOpts.modelOpts.bbob_func = [];
+        surrogateOpts.sampleOpts.xintobounds = [];
+        save(filename, 'trainsetX', 'trainsetY', 'testsetX', 'testsetY', 'evalsReached', 'surrogateOpts', 'lambda', 'sigma', 'xmean', 'BD', 'diagD', 'kendall', 'rmse');
+      end
+    end
+  end
+end
 
 
 function [newModel, surrogateStats, isTrained] = trainGenerationECModel(model, archive, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter)
@@ -325,8 +351,8 @@ function [newModel, surrogateStats, isTrained] = trainGenerationECModel(model, a
 
     % DEBUG: print and save the statistics about the currently 
     % trained model on testing data (RMSE and Kendall's correlation)
-    fprintf('  model trained on %d points, train ', nArchivePoints);
-    surrogateStats = getModelStatistics(newModel, xmean, sigma, lambda, BD, diagD, surrogateOpts);
+    fprintf('  model trained on %d points, train ', length(y));
+    surrogateStats = getModelStatistics(newModel, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
   else
     newModel = model;
     isTrained = false;
