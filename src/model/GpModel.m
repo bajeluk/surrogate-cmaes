@@ -16,23 +16,24 @@ classdef GpModel < Model
     infFcn
   end
 
-  methods
+  properties (Access = protected)
+    defaultFminconOpts = optimset( ...
+      'GradObj', 'on', ...
+      'TolFun', 1e-8, ...
+      'TolX', 1e-8, ...
+      'MaxIter', 1000, ...
+      'MaxFunEvals', 1000, ...
+      'Display', 'final' ...
+      )
+  end
+
+  % TODO:
+  %   [ ] use the CMA-ES' covariance for Mahalanobis distance
+
+  methods (Access = public)
     function obj = GpModel(modelOptions, xMean)
       % constructor
       assert(size(xMean,1) == 1, 'GpModel (constructor): xMean is not a row-vector.');
-      
-      % persistent isInitialized;
-      %
-      % % intialize GPML library
-      % if (isempty(isInitialized) || ~isInitialized)
-      %   if (isfield(modelOptions, 'path') && ~isempty(modelOptions.path))
-      %     addpath(modelOptions.path);
-      %   end
-      %   % if (isfield(modelOptions, 'initScript') && ~isempty(modelOptions.initScript))
-      %   %   run(modelOptions.initScript);
-      %   % end
-      %   isInitialized = true;
-      % end
       
       obj.options = modelOptions;
       if (~isempty(modelOptions) && isfield(modelOptions, 'useShift'))
@@ -42,7 +43,7 @@ classdef GpModel < Model
       obj.shiftMean = zeros(1, obj.dim);
       obj.shiftY  = 0;
 
-      % this is a MOCK/TEST IMPLEMENTATION!
+      % this is a MOCK/TEST INITIALIZATION!
       obj.hyp.cov = log([0.05 0.1]);
       obj.hyp.inf = log(1e-2);
       obj.hyp.lik = log(0.0001);
@@ -61,6 +62,9 @@ classdef GpModel < Model
 
     function obj = train(obj, X, y, xMean, generation)
       % train the GP model based on the data (X,y)
+      % TODO
+      %   [ ] implement choosing the best covariance function according to
+      %       the test ordinal regression capabilities
 
       assert(size(xMean,1) == 1, 'GpModel.train(): xMean is not a row-vector.');
       obj.trainGeneration = generation;
@@ -69,18 +73,49 @@ classdef GpModel < Model
       obj.dataset.X = X;
       obj.dataset.y = y;
 
-      % modelTrainNErrors = 0;
-      warning('off');
-      [hyp_, fX, iters] = minimize(obj.hyp, @gp, -100, @infExactCountErrors, obj.meanFcn, obj.covFcn, obj.likFcn, X, y);
-      % DEBUG OUTPUT:
-      % fprintf('  minimize() %f --> %f in %d iterations.\n', fX(1), fX(end), iters);
-      warning('on');
-      % TODO: do not use the model if it is not able to be learn,
-      %       i.e. when (fX(1) - fX(end)) is almost zero
+      if (~isfield(obj.options, 'trainAlgorithm'))
+        obj.options.trainAlgorithm = 'minimize';
+      end
 
-      % FIXME: holds for infExact() only -- do not be sticked to infExact!!!
-      % nErrors = modelTrainNErrors;
-      obj.hyp = hyp_;
+      if (strcmpi(obj.options.trainAlgorithm, 'minimize')
+        % modelTrainNErrors = 0;
+        warning('off');
+        [hyp_, fX, iters] = minimize(obj.hyp, @gp, -100, @infExactCountErrors, obj.meanFcn, obj.covFcn, obj.likFcn, X, y);
+        % DEBUG OUTPUT:
+        fprintf('  ... minimize() %f --> %f in %d iterations.\n', fX(1), fX(end), iters);
+        warning('on');
+
+        % FIXME: holds for infExact() only -- do not be sticked to infExact!!!
+        % nErrors = modelTrainNErrors;
+        obj.hyp = hyp_;
+
+      else
+        % gp() with linearized version of the hyper-parameters
+        f = @(par) linear_gp(par, obj.hyp, @infExactCountErrors, obj.meanFcn, obj.covFcn, obj.likFcn, X, y);
+
+        linear_hyp = unwrap(obj.hyp)';
+        l_cov = length(obj.hyp.cov);
+        
+        % lower and upper bounds
+        lb_hyp.cov = -2 * ones(size(obj.hyp.cov));
+        lb_hyp.inf = log(1e-7);
+        lb_hyp.lik = log(1e-7);
+        lb_hyp.mean = -Inf;
+        lb = unwrap(lb_hyp)';
+        ub_hyp.cov = 25 * ones(size(obj.hyp.cov));
+        ub_hyp.inf = log(7);
+        ub_hyp.lik = log(7);
+        ub_hyp.mean = Inf;
+        ub = unwrap(ub_hyp)';
+
+        if (strcmpi(obj.options.trainAlg, 'fmincon'))
+         fminconOpts = defaultFminconOpts;
+        end
+        if (strcmpi(obj.options.trainAlg, 'cmaes'))
+        else
+          error('GpModel.train(): train algorithm "%s" is not known.\n', obj.options.trainAlgorithm);
+        end
+      end
     end
 
     function [y, dev] = predict(obj, X)
@@ -104,6 +139,8 @@ classdef GpModel < Model
     end
   end
 
+  methods (Access = private)
+  end
 end
 
 function [post, nlZ, dnlZ] = infExactCountErrors(hyp, mean, cov, lik, x, y)
@@ -113,4 +150,21 @@ function [post, nlZ, dnlZ] = infExactCountErrors(hyp, mean, cov, lik, x, y)
     % modelTrainNErrors = modelTrainNErrors + 1;
     throw(err);
   end
+end
+
+function [nlZ dnlZ] = linear_gp(linear_hyp, s_hyp, inf, mean, cov, lik, x, y)
+  hyp = rewrap(s_hyp, linear_hyp');
+  [nlZ s_dnlZ] = gp(hyp, inf, mean, cov, lik, x, y);
+  dnlZ = unwrap(s_dnlZ)';
+end
+
+function [c ceq] = nonlincons(x)
+  % checks if the values x(1:(end-4)) are within 2.5 off median
+  MAX_DIFF = 2.5;
+  ceq = [];
+  assert(size(x,2) == 1, 'Argument for nonlincons is not a vector');
+  c = zeros(size(x));
+  % test only for covariance parameters
+  % TODO: are there always 4 more parameters?!
+  c = abs(x(1:end-4) - median(x(1:end-4))) - MAX_DIFF;
 end
