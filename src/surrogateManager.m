@@ -304,10 +304,10 @@ function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, di
   surrogateStats = [rmse kendall];
 
   % save the training and testing data for model-training enhancements
+  % if ... the model is fresh
+  %    ... and we'd like to save the training data
   if (model.trainGeneration == (countiter - 1) ...
-      % ... the model is fresh
       && isfield(surrogateOpts, 'saveModelTrainingData') ...
-      % ... and we'd like to save the training data
       && isfield(surrogateOpts, 'experimentPath') ...
       && ~isempty(surrogateOpts.saveModelTrainingData))
     currentEvals = surrogateOpts.sampleOpts.counteval;
