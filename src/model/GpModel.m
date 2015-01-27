@@ -17,14 +17,6 @@ classdef GpModel < Model
   end
 
   properties (Access = protected)
-    defaultFminconOpts = optimset( ...
-      'GradObj', 'on', ...
-      'TolFun', 1e-8, ...
-      'TolX', 1e-8, ...
-      'MaxIter', 1000, ...
-      'MaxFunEvals', 1000, ...
-      'Display', 'final' ...
-      )
   end
 
   % TODO:
@@ -38,15 +30,17 @@ classdef GpModel < Model
       obj.options = modelOptions;
       if (~isempty(modelOptions) && isfield(modelOptions, 'useShift'))
         obj.useShift = modelOptions.useShift;
+      else
+        obj.useShift = false;
       end
       obj.dim     = size(xMean, 2);
       obj.shiftMean = zeros(1, obj.dim);
       obj.shiftY  = 0;
 
       % this is a MOCK/TEST INITIALIZATION!
-      obj.hyp.cov = log([0.05 0.1]);
+      obj.hyp.cov = log([1 1e5]);
       obj.hyp.inf = log(1e-2);
-      obj.hyp.lik = log(0.0001);
+      obj.hyp.lik = log(0.001);
       obj.meanFcn = @meanConst;
       obj.covFcn  = @covSEiso;
       obj.likFcn  = @likGauss;
@@ -76,45 +70,72 @@ classdef GpModel < Model
       if (~isfield(obj.options, 'trainAlgorithm'))
         obj.options.trainAlgorithm = 'minimize';
       end
+      alg = obj.options.trainAlgorithm;
 
-      if (strcmpi(obj.options.trainAlgorithm, 'minimize')
-        % modelTrainNErrors = 0;
-        warning('off');
-        [hyp_, fX, iters] = minimize(obj.hyp, @gp, -100, @infExactCountErrors, obj.meanFcn, obj.covFcn, obj.likFcn, X, y);
-        % DEBUG OUTPUT:
-        fprintf('  ... minimize() %f --> %f in %d iterations.\n', fX(1), fX(end), iters);
-        warning('on');
+      if (strcmpi(alg, 'minimize'))
+        obj.trainMinimize(obj, X, y);
 
-        % FIXME: holds for infExact() only -- do not be sticked to infExact!!!
-        % nErrors = modelTrainNErrors;
-        obj.hyp = hyp_;
-
-      else
+      elseif (strcmpi(alg, 'fmincon') ...
+              || strcmp(alg, 'cmaes'))
         % gp() with linearized version of the hyper-parameters
         f = @(par) linear_gp(par, obj.hyp, @infExactCountErrors, obj.meanFcn, obj.covFcn, obj.likFcn, X, y);
 
         linear_hyp = unwrap(obj.hyp)';
         l_cov = length(obj.hyp.cov);
-        
+
         % lower and upper bounds
-        lb_hyp.cov = -2 * ones(size(obj.hyp.cov));
-        lb_hyp.inf = log(1e-7);
-        lb_hyp.lik = log(1e-7);
-        lb_hyp.mean = -Inf;
+        [lb_hyp, ub_hyp] = obj.defaultLUBounds();
         lb = unwrap(lb_hyp)';
-        ub_hyp.cov = 25 * ones(size(obj.hyp.cov));
-        ub_hyp.inf = log(7);
-        ub_hyp.lik = log(7);
-        ub_hyp.mean = Inf;
         ub = unwrap(ub_hyp)';
 
-        if (strcmpi(obj.options.trainAlg, 'fmincon'))
-         fminconOpts = defaultFminconOpts;
+        if (strcmpi(alg, 'fmincon'))
+          [fminconOpts, nonlnc] = obj.defaultFminconOpts();
+          initial = f(linear_hyp');
+          if isnan(initial)
+            % the initial point is not valid
+            alg = 'cmaes';
+          else
+            % training itself
+            disp(['  Model training (fmincon), init fval = ' num2str(initial)]);
+            try
+              [opt1, fval1] = fmincon(f, linear_hyp', [], [], [], [], lb, ub, nonlnc, fminconOpts);
+              if (isnan(fval1))
+                alg = 'cmaes';
+              end
+              fval = fval1;
+              opt = opt1;
+            catch err
+              warning('ERROR: fmincon() ended with an exception.');
+              alg = 'cmaes';
+            end
+          end
         end
-        if (strcmpi(obj.options.trainAlg, 'cmaes'))
-        else
-          error('GpModel.train(): train algorithm "%s" is not known.\n', obj.options.trainAlgorithm);
+        if (strcmpi(alg, 'cmaes'))
+          cmaesopt.LBounds = lb';
+          cmaesopt.UBounds = ub';
+          if (length(obj.hyp.cov) > 2)
+            % there is ARD covariance
+            % try run cmaes for 500 funevals to get bounds for covariances
+            MAX_DIFF = 2.5;
+            cmaesopt.MaxFunEvals = 500;
+            [opt, fval] = s_cmaes(f, linear_hyp', [0.3*(ub(1:(end-1)) - lb(1:(end-1))) 100]', cmaesopt);
+            cov_median = median(opt(1:(end-4)));
+            ub(1:(end-4)) = cov_median + MAX_DIFF;
+            lb(1:(end-4)) = cov_median - MAX_DIFF;
+            cmaesopt.LBounds = lb';
+            cmaesopt.UBounds = ub';
+          end
+          cmaesopt.MaxFunEvals = 2000;
+          [opt, fval] = s_cmaes(f, linear_hyp', [0.3*(ub(1:(end-1)) - lb(1:(end-1))) 100]', cmaesopt);
         end
+
+        obj.hyp = rewrap(obj.hyp, opt);
+
+        % DEBUG OUTPUT:
+        fprintf('Final fval = %f, hyperparameters: \n', fval);
+        disp(obj.hyp);
+      else
+        error('GpModel.train(): train algorithm "%s" is not known.\n', alg);
       end
     end
 
@@ -140,6 +161,57 @@ classdef GpModel < Model
   end
 
   methods (Access = private)
+    function obj = trainMinimize(obj, X, y)
+      % train the GP model using Rasmussen's minimize() function
+
+      % modelTrainNErrors = 0;
+      warning('off');
+      [hyp_, fX, iters] = minimize(obj.hyp, @gp, -100, @infExactCountErrors, obj.meanFcn, obj.covFcn, obj.likFcn, X, y);
+      % DEBUG OUTPUT:
+      fprintf('  ... minimize() %f --> %f in %d iterations.\n', fX(1), fX(end), iters);
+      warning('on');
+
+      % FIXME: holds for infExact() only -- do not be sticked to infExact!!!
+      % nErrors = modelTrainNErrors;
+      obj.hyp = hyp_;
+    end
+
+    function [opts, nonlnc] = defaultFminconOpts(obj)
+      % return the optimization parameters for fmincon()
+      %
+      opts = optimset('fmincon');
+      opts = optimset(opts, ...
+        'GradObj', 'on', ...
+        'TolFun', 1e-8, ...
+        'TolX', 1e-8, ...
+        'MaxIter', 1000, ...
+        'MaxFunEvals', 1000, ...
+        'Display', 'off' ...
+        );
+      covarianceDim = length(obj.hyp.cov) - 1;
+      if (covarianceDim > 1)
+        % ARD
+        opts = optimset(opts, 'Algorithm', 'interior-point');
+        nonlnc = @nonlincons;
+      else
+        % ISOtropic
+        opts = optimset(opts, 'Algorithm', 'trust-region-reflective');
+        nonlnc = [];
+      end
+    end
+
+    function [lb_hyp, ub_hyp] = defaultLUBounds(obj)
+      % return default lower/upper bounds for GP model hyperparameter training
+      %
+      lb_hyp.cov = -2 * ones(size(obj.hyp.cov));
+      lb_hyp.inf = log(1e-7);
+      lb_hyp.lik = log(1e-7);
+      lb_hyp.mean = -Inf;
+      ub_hyp.cov = 25 * ones(size(obj.hyp.cov));
+      ub_hyp.inf = log(10);
+      ub_hyp.lik = log(10);
+      ub_hyp.mean = Inf;
+    end
   end
 end
 
@@ -152,13 +224,13 @@ function [post, nlZ, dnlZ] = infExactCountErrors(hyp, mean, cov, lik, x, y)
   end
 end
 
-function [nlZ dnlZ] = linear_gp(linear_hyp, s_hyp, inf, mean, cov, lik, x, y)
+function [nlZ, dnlZ] = linear_gp(linear_hyp, s_hyp, inf, mean, cov, lik, x, y)
   hyp = rewrap(s_hyp, linear_hyp');
-  [nlZ s_dnlZ] = gp(hyp, inf, mean, cov, lik, x, y);
+  [nlZ, s_dnlZ] = gp(hyp, inf, mean, cov, lik, x, y);
   dnlZ = unwrap(s_dnlZ)';
 end
 
-function [c ceq] = nonlincons(x)
+function [c, ceq] = nonlincons(x)
   % checks if the values x(1:(end-4)) are within 2.5 off median
   MAX_DIFF = 2.5;
   ceq = [];

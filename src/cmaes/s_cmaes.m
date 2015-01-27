@@ -890,7 +890,11 @@ while isempty(stopflag)
   % Generate and evaluate lambda offspring
   
   % Convert fitness function string to function handle
-  fitfun_handle = str2func(fitfun);
+  if (isstr(fitfun))
+    fitfun_handle = str2func(fitfun);
+  else
+    fitfun_handle = fitfun;
+  end
 
   % Set CMA-ES internal variables/parameters for sampling
   sampleOpts.noiseReevals = noiseReevals;
