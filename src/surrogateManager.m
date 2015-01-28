@@ -113,6 +113,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     end
     % train the model
     newModel = newModel.train(xTrain, yTrain, xmean', countiter);
+    % TODO: if (newModel.trainGeneration <= 0) ==> DON'T USE THIS MODEL!!!
+
     % sample the enlarged population of size 'gamma * (lambda - nToSample)'
     extendSize = ceil(surrogateOpts.evoControlIndividualExtension ...
         * (lambda - nToSample));
@@ -347,12 +349,14 @@ function [newModel, surrogateStats, isTrained] = trainGenerationECModel(model, a
   if (length(y) >= nRequired)
     % we have got enough data for new model! hurraayh!
     newModel = model.train(X, y, xmean', countiter);
-    isTrained = true;
+    isTrained = (newModel.trainGeneration > 0);
 
     % DEBUG: print and save the statistics about the currently 
     % trained model on testing data (RMSE and Kendall's correlation)
-    fprintf('  model trained on %d points, train ', length(y));
-    surrogateStats = getModelStatistics(newModel, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
+    if (isTrained)
+      fprintf('  model trained on %d points, train ', length(y));
+      surrogateStats = getModelStatistics(newModel, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
+    end
   else
     newModel = model;
     isTrained = false;

@@ -46,7 +46,18 @@ function [bbParams, sgParams, cmParams, nNonBbobValues] = getParamsFromIndex(id,
   % Surrogate parameters
   sgParams = struct();
   for i = 1:length(sgAll)
-    sgParams.(sgAll(i).name) = sgAll(i).values{paramIDs(pid+i)};
+    fieldnames = strsplit(sgAll(i).name, '.');
+    switch length(fieldnames)
+    case 1
+      sgParams.(sgAll(i).name) = sgAll(i).values{paramIDs(pid+i)};
+    case 2
+      sgParams.(fieldnames{1}).(fieldnames{2}) = sgAll(i).values{paramIDs(pid+i)};
+    case 3
+      sgParams.(fieldnames{1}).(fieldnames{2}).(fieldnames{3}) = sgAll(i).values{paramIDs(pid+i)};
+    otherwise
+      % join the names with underscores
+      sgParams.(strjoin(C,'_')) = sgAll(i).values{paramIDs(pid+i)};
+    end
   end
   pid = pid + length(sgAll);
 

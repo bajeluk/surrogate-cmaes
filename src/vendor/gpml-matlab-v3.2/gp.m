@@ -109,15 +109,23 @@ try                                                  % call the inference method
     if nargout==1
       [post nlZ] = inf(hyp, mean, cov, lik, x, y); dnlZ = {};
     else
+      warning('off');
       [post nlZ dnlZ] = inf(hyp, mean, cov, lik, x, y);
+      warning('on');
     end
   end
-catch
+catch err
   msgstr = lasterr;
   if nargin > 7
     error('Inference method failed [%s]', msgstr); 
   else 
-    warning('GP:InferenceFailed','Inference method failed [%s] .. attempting to continue',msgstr)
+    % warning('GP:InferenceFailed','Inference method failed [%s] .. attempting to continue',msgstr)
+    global modelTrainNErrors;
+    if (~isempty(modelTrainNErrors) && modelTrainNErrors > 20)
+      % Too many errors, give it up
+      throw(err);
+    end
+    fprintf(2, '  gp(): Inference method failed (%d) .. attempting to continue.\n', modelTrainNErrors);
     % FIXED added inf into the dnlZ struct on the next line
     dnlZ = struct('cov',0*hyp.cov, 'mean',0*hyp.mean, 'lik',0*hyp.lik, 'inf', 0*hyp.inf);
     varargout = {NaN, dnlZ}; return                    % continue with a warning

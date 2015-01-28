@@ -1,4 +1,4 @@
-function [resRmse, resCorr] = modelTrainTest(modelStr, modelOpts, filelist)
+function [resRmse, resCorr, resTime, varargout] = modelTrainTest(modelStr, modelOpts, filelist)
   % run training and testing of model-regression
   %
   % modelStr  -- string of the model to be tested        'gp' | 'rf'
@@ -11,6 +11,7 @@ function [resRmse, resCorr] = modelTrainTest(modelStr, modelOpts, filelist)
   %   resCorr -- 3D array with Kendall's correlations on the testing sets
   
   % load list of training mat-files
+  pathList = fileparts(filelist);
   fid = fopen(filelist, 'r');
   files = cell(0);
   fnums = [];
@@ -21,7 +22,7 @@ function [resRmse, resCorr] = modelTrainTest(modelStr, modelOpts, filelist)
   while (ischar(tline))
     if (isempty(regexp(tline, '^#', 'ONCE')))
       files{i} = tline;
-      % collect function numbers and dimensions
+      % collect function numbers, dimensions and #fevals
       [regstrings] = regexpi(tline, '_f(\d+)_(\d+)D_\d+_(\d+)\.mat', 'tokens');
       fnum = str2num(regstrings{1}{1});
       fnums = [fnums fnum];
@@ -37,26 +38,62 @@ function [resRmse, resCorr] = modelTrainTest(modelStr, modelOpts, filelist)
   ufnums = unique(fnums);
   udims = unique(dims);
 
-  load(files{1}, 'surrogateOpts');
+  load([pathList filesep files{1}], 'surrogateOpts');
   trainEvals = surrogateOpts.saveModelTrainingData;
   % trainEvals = [ 10 25 50 100 200 300 470 700 900 1200 1500 2000 2400 ];
 
-  % 1st dim: functions
-  % 2nd dim: trainEvals
-  % 3rd dim: dimensions
+  % Output arrays:
+  %   1st dim: functions
+  %   2nd dim: trainEvals
+  %   3rd dim: dimensions
   resRmse = nan(length(trainEvals), length(ufnums), length(udims));
   resCorr = nan(length(trainEvals), length(ufnums), length(udims));
+  resTime = nan(length(trainEvals), length(ufnums), length(udims));
+  if (strcmpi(modelStr, 'gp'))
+    resLiks = nan(length(trainEvals), length(ufnums), length(udims));
+    resErrs = nan(length(trainEvals), length(ufnums), length(udims));
+  end
 
   for i = 1:length(files)
-    load(files{i}, 'BD', 'diagD', 'evalsReached', 'kendall', 'lambda', 'rmse', 'sigma', 'surrogateOpts', 'testsetX', 'testsetY', 'trainsetX', 'trainsetY', 'xmean');
+    load([pathList filesep files{i}], 'BD', 'diagD', 'evalsReached', 'kendall', 'lambda', 'rmse', 'sigma', 'surrogateOpts', 'testsetX', 'testsetY', 'trainsetX', 'trainsetY', 'xmean');
+    disp(['.. testing file ' files{i} ' ..']);
     md = ModelFactory.createModel(modelStr, modelOpts, xmean');
-    mdt = md.train(trainsetX, trainsetY, xmean', evals(i));
-    yPredict = mdt.predict(testsetX);
-
+    isTrained = false;
+    j = 0;
+    t = tic();
+    while (~isTrained && j < 5)
+      mdt = md.train(trainsetX, trainsetY, xmean', evals(i));
+      isTrained = mdt.isTrained();
+      j = j+1;
+    end
+    timeSpent = toc(t);
+    % indices of #evals, fnum and dimensionality of the test-case
     evalidx = find(trainEvals == evals(i));
     fnumidx = find(ufnums == fnums(i));
     dimidx = find(udims == dims(i));
-    resRmse(evalidx, fnumidx, dimidx) = frmse(yPredict - testsetY);
-    resCorr(evalidx, fnumidx, dimidx) = corr(yPredict, testsetY, 'type', 'kendall');
+    if (strcmpi(modelStr, 'gp'))
+      % record final the likelihood achieved by optimization
+      resLiks(evalidx, fnumidx, dimidx) = mdt.trainLikelihood;
+      resErrs(evalidx, fnumidx, dimidx) = j*mdt.nErrors;
+    end
+
+    if (isTrained)
+      % predict on the test-set
+      yPredict = mdt.predict(testsetX);
+      % record the RMSE, Kendall's correlation and CPU time
+      resRmse(evalidx, fnumidx, dimidx) = frmse(yPredict - testsetY);
+      resCorr(evalidx, fnumidx, dimidx) = corr(yPredict, testsetY, 'type', 'kendall');
+      resTime(evalidx, fnumidx, dimidx) = timeSpent;
+      if (strcmpi(modelStr, 'gp'))
+        quality = mdt.trainLikelihood;
+      else
+        quality = 0;
+      end
+      fprintf('.. rmse = %f ,  time = %0.2f s,  lik = %0.2f,  corr = %0.3f\n', resRmse(evalidx, fnumidx, dimidx), timeSpent, quality, resCorr(evalidx, fnumidx, dimidx));
+    end
+    % if (strcmpi(modelStr, 'gp'))
+    %   fprintf('.. final hyp = ');
+    %   disp(unwrap(mdt.hyp)');
+    % end
   end
 end
