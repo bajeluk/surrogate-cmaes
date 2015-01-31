@@ -8,3 +8,8 @@ variablescmaes.mat
 *.tgz
 *.zip
 exp/experiments/*/
+*.aux
+*.bbl
+*.blg
+doc/*/*.log
+tags
