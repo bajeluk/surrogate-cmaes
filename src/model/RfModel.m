@@ -79,14 +79,14 @@ classdef RfModel < Model
       % if we want tree elitism
       if obj.nBestPoints > 0
           nBest = min(obj.nBestPoints, length(y));
-          sumGoodTrees = 0; allTrees = 0;
+          sumGoodTrees = 0; allTrees = 0; actualGoodTrees = 0;
           iter = 0; maxTrees = 100*obj.nTrees;
           
           % train new trees until you have not enough good ones
-          while ((sumGoodTrees < obj.nTrees) && allTrees < maxTrees)
+          while ((sumGoodTrees < obj.nTrees) && allTrees < maxTrees && nBest > 0)
               iter = iter + 1;
-              newForestSize = min([ceil((obj.nTrees-sumGoodTrees)*allTrees/sumGoodTrees),...
-                  obj.nTrees*2^(iter-1),maxTrees-allTrees]);
+              newForestSize = max([2,min([ceil((obj.nTrees-actualGoodTrees)*allTrees/actualGoodTrees),...
+                  obj.nTrees*2^(iter-1),maxTrees-allTrees])]);
               allTrees = allTrees + newForestSize;
               goodTrees = false(1,newForestSize);
               
@@ -110,7 +110,18 @@ classdef RfModel < Model
               newGoodTrees = sum(goodTrees);
               obj.forest(end+1:end+newGoodTrees) = Trees(goodTrees);
               sumGoodTrees = sumGoodTrees + newGoodTrees;
+              actualGoodTrees = actualGoodTrees + newGoodTrees;
               % fprintf('%d: %d good trees from %d, remaining %d\n',iter,newGoodTrees, newForestSize,obj.nTrees-sumGoodTrees);
+              
+              if (maxTrees-allTrees == 0)
+                 fprintf('Cannot create forest with %d best poits. Trying to find %d remaining trees with %d best points.\n', ...
+                  nBest,obj.nTrees-sumGoodTrees,nBest-1);
+                  maxTrees = 10*(obj.nTrees-sumGoodTrees) + 1;  
+                  allTrees = 1;
+                  nBest = nBest - 1;
+                  actualGoodTrees = 0;
+                  iter = 1;
+              end
           end
           
           % check if we have all trees we wanted, fill the rest with
@@ -128,7 +139,7 @@ classdef RfModel < Model
           
       % simple forest without elitism
       else
-          trainForest = TreeBagger(obj.NTrees,X,yTrain,'method','regression',...
+          trainForest = TreeBagger(obj.nTrees,X,yTrain,'method','regression',...
                 'MinLeaf',obj.minLeaf,...
                 'FBoot',obj.inputFraction);
           obj.forest = trainForest.Trees;
