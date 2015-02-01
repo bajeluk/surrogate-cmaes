@@ -112,9 +112,6 @@ classdef RfModel < Model
               end
               
               % save trees with elitism
-              if sumGoodTrees > 10 && nBest > 0
-                  goodTrees = false(1,newForestSize);
-              end
               newGoodTrees = sum(goodTrees);
               obj.forest(end+1:end+newGoodTrees) = Trees(goodTrees);
               sumGoodTrees = sumGoodTrees + newGoodTrees;
