@@ -83,7 +83,7 @@ classdef RfModel < Model
           iter = 0; maxTrees = 100*obj.nTrees;
           
           % train new trees until you have not enough good ones
-          while ((sumGoodTrees < obj.nTrees) && allTrees < maxTrees && nBest > 0)
+          while ((sumGoodTrees < obj.nTrees) && allTrees < maxTrees)
               iter = iter + 1;
               newForestSize = max([2,min([ceil((obj.nTrees-actualGoodTrees)*allTrees/actualGoodTrees),...
                   obj.nTrees*2^(iter-1),maxTrees-allTrees])]);
@@ -95,46 +95,45 @@ classdef RfModel < Model
                 'MinLeaf',obj.minLeaf,...
                 'FBoot',obj.inputFraction);
               % fprintf('Forest with %d trained\n',newForestSize);
-              Trees=trainForest.Trees;
+              Trees = trainForest.Trees;
             
+              if (nBest > 0)
               % find trees with elitism
-              parfor treeNum = 1:newForestSize
-                  yPredict = predict(Trees{treeNum},X);
-                  yPredict = yPredict(yIdx);
-                  if ( issorted(yPredict(1:nBest)) && all(yPredict(nBest+1:end)>=yPredict(nBest)) )
-                      goodTrees(treeNum) = 1;
+                  parfor treeNum = 1:newForestSize
+                      yPredict = predict(Trees{treeNum},X);
+                      yPredict = yPredict(yIdx);
+                      if ( issorted(yPredict(1:nBest)) && all(yPredict(nBest+1:end)>=yPredict(nBest)) )
+                          goodTrees(treeNum) = 1;
+                      end
                   end
+              else
+              % fill the rest with ordinary ones
+                  goodTrees = true(1,newForestSize);
               end
               
               % save trees with elitism
+              if sumGoodTrees > 10 && nBest > 0
+                  goodTrees = false(1,newForestSize);
+              end
               newGoodTrees = sum(goodTrees);
               obj.forest(end+1:end+newGoodTrees) = Trees(goodTrees);
               sumGoodTrees = sumGoodTrees + newGoodTrees;
               actualGoodTrees = actualGoodTrees + newGoodTrees;
-              % fprintf('%d: %d good trees from %d, remaining %d\n',iter,newGoodTrees, newForestSize,obj.nTrees-sumGoodTrees);
+              fprintf('%d: %d good trees from %d, remaining %d\n',iter,newGoodTrees, newForestSize,obj.nTrees-sumGoodTrees);
               
-              if (maxTrees-allTrees == 0)
+              if (maxTrees-allTrees == 0 && nBest > 0)
                  fprintf('Cannot create forest with %d best poits. Trying to find %d remaining trees with %d best points.\n', ...
                   nBest,obj.nTrees-sumGoodTrees,nBest-1);
-                  maxTrees = 10*(obj.nTrees-sumGoodTrees) + 1;  
+                  if (nBest == 1)
+                      maxTrees = (obj.nTrees-sumGoodTrees) + 1;  
+                  else
+                      maxTrees = 10*(obj.nTrees-sumGoodTrees) + 1;  
+                  end
                   allTrees = 1;
                   nBest = nBest - 1;
                   actualGoodTrees = 0;
                   iter = 1;
               end
-          end
-          
-          % check if we have all trees we wanted, fill the rest with
-          % ordinary ones
-          if (allTrees == maxTrees && (sumGoodTrees < obj.nTrees))
-              fprintf('Cannot create forest with %d best poits. Appending %d remaining ordinary trees.\n', ...
-                  obj.nBestPoints,obj.nTrees-sumGoodTrees);
-              trainForest = TreeBagger(obj.nTrees-sumGoodTrees,X,yTrain,'method','regression',...
-                'MinLeaf',obj.minLeaf,...
-                'FBoot',obj.inputFraction);
-              obj.forest(end+1:obj.nTrees) = trainForest.Trees;
-          else
-              obj.forest = obj.forest(1:obj.nTrees);
           end
           
       % simple forest without elitism
