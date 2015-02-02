@@ -116,7 +116,7 @@ classdef RfModel < Model
               obj.forest(end+1:end+newGoodTrees) = Trees(goodTrees);
               sumGoodTrees = sumGoodTrees + newGoodTrees;
               actualGoodTrees = actualGoodTrees + newGoodTrees;
-              fprintf('%d: %d good trees from %d, remaining %d\n',iter,newGoodTrees, newForestSize,obj.nTrees-sumGoodTrees);
+              %fprintf('%d: %d good trees from %d, remaining %d\n',iter,newGoodTrees, newForestSize,obj.nTrees-sumGoodTrees);
               
               if (maxTrees-allTrees == 0 && nBest > 0)
                  fprintf('Cannot create forest with %d best poits. Trying to find %d remaining trees with %d best points.\n', ...
