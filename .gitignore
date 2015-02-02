@@ -13,3 +13,4 @@ exp/experiments/*/
 *.blg
 doc/*/*.log
 tags
+ownUtil/*
