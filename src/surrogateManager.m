@@ -115,31 +115,40 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     newModel = newModel.train(xTrain, yTrain, xmean', countiter);
     % TODO: if (newModel.trainGeneration <= 0) ==> DON'T USE THIS MODEL!!!
 
-    % sample the enlarged population of size 'gamma * (lambda - nToSample)'
-    extendSize = ceil(surrogateOpts.evoControlIndividualExtension ...
-        * (lambda - nToSample));
-    [xExtend, xExtendValid, zExtend] = ...
-        sampleCmaesNoFitness(xmean, expandedSigma, extendSize, BD, diagD, surrogateOpts.sampleOpts);
-    % calculate the model prediction for the extended population
-    yExtend = newModel.predict(xExtend');
+    if (newModel.isTrained())
+      % sample the enlarged population of size 'gamma * (lambda - nToSample)'
+      extendSize = ceil(surrogateOpts.evoControlIndividualExtension ...
+          * (lambda - nToSample));
+      [xExtend, xExtendValid, zExtend] = ...
+          sampleCmaesNoFitness(xmean, expandedSigma, extendSize, BD, diagD, surrogateOpts.sampleOpts);
+      % calculate the model prediction for the extended population
+      yExtend = newModel.predict(xExtend');
 
-    nBest = min(ceil(lambda*surrogateOpts.evoControlBestFromExtension), lambda - nToSample - 1);
-    nCluster = lambda - nToSample - nBest;
-    [xToReeval, xToReevalValid, zToReeval] = ...
-        SurrogateSelector.choosePointsToReevaluate(...
-        xExtend, xExtendValid, zExtend, yExtend, nBest, nCluster);
+      nBest = min(ceil(lambda*surrogateOpts.evoControlBestFromExtension), lambda - nToSample - 1);
+      nCluster = lambda - nToSample - nBest;
+      [xToReeval, xToReevalValid, zToReeval] = ...
+          SurrogateSelector.choosePointsToReevaluate(...
+          xExtend, xExtendValid, zExtend, yExtend, nBest, nCluster);
 
-    % original-evaluate the chosen points
-    [yNew, xNew, xNewValid, zNew, counteval] = ...
-        sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, expandedSigma, nCluster + nBest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
-    surrogateOpts.sampleOpts.counteval = counteval;
-    archive = archive.save(xNewValid', yNew', countiter);
-    yPredict = newModel.predict(xNewValid');
-    kendall = corr(yPredict, yNew', 'type', 'Kendall');
-    rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
-    fprintf('  model: %d preSamples, reevaluated %d pts, RMSE = %f, Kendl. corr = %f.\n', nToSample, nCluster + nBest, rmse, kendall);
-    surrogateStats = [rmse kendall];
-    % TODO: control the evolution process according to the model precision
+      % original-evaluate the chosen points
+      [yNew, xNew, xNewValid, zNew, counteval] = ...
+          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, expandedSigma, nCluster + nBest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+      surrogateOpts.sampleOpts.counteval = counteval;
+      archive = archive.save(xNewValid', yNew', countiter);
+      yPredict = newModel.predict(xNewValid');
+      kendall = corr(yPredict, yNew', 'type', 'Kendall');
+      rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
+      fprintf('  model: %d preSamples, reevaluated %d pts, RMSE = %f, Kendl. corr = %f.\n', nToSample, nCluster + nBest, rmse, kendall);
+      surrogateStats = [rmse kendall];
+      % TODO: control the evolution process according to the model precision
+
+    else
+      % the model was in fact not trained
+      disp('surrogateManager(): the model was not successfully trained.');
+      [yNew, xNew, xNewValid, zNew, counteval] = sampleCmaes(xmean, expandedSigma, lambda - nToSample, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+      surrogateOpts.sampleOpts.counteval = counteval;
+      archive = archive.save(arxvalid', fitness_raw', countiter);
+    end
 
     % save the resulting re-evaluated population as the returning parameters
     fitness_raw = [fitness_raw yNew];
