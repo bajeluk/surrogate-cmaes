@@ -147,7 +147,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       disp('surrogateManager(): the model was not successfully trained.');
       [yNew, xNew, xNewValid, zNew, counteval] = sampleCmaes(xmean, expandedSigma, lambda - nToSample, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
-      archive = archive.save(arxvalid', fitness_raw', countiter);
+      archive = archive.save(xNewValid', yNew', countiter);
     end
 
     % save the resulting re-evaluated population as the returning parameters
