@@ -16,7 +16,7 @@ for id = 1:nCombinations
   dimensions(id) = bbParams.dimensions;
   models(id) = strcmpi(sgParams.modelType, 'rf');
 end
-estTimes = dimensions + 3*models.*dimensions;
+estTimes = dimensions; % + 3*models.*dimensions;
 cellCombsForMachines = divideTasksForMachines(nMachines, estTimes, @(x) x.^(1.3));
 
 % Generate .sh scripts
