@@ -58,7 +58,14 @@ classdef GpModel < Model
       obj.hyp.inf = defopts(obj.options.hyp, 'inf', log(5e-3)); % should be roughly somewhere between log(1e-3) and log(1e-2)
       obj.hyp.lik = defopts(obj.options.hyp, 'lik', log(0.1));  % should be somewhere between log(0.01) and log(1)
       obj.hyp.cov = defopts(obj.options.hyp, 'cov', log([0.9; 5e3]));   % should be somewhere between log([0.1 2]) and log([2 1e6])
-      obj.covFcn  = str2func(defopts(obj.options, 'covFcn',  'covSEiso'));
+      covFcn = defopts(obj.options, 'covFcn',  'covSEiso');
+      if (exist(covFcn) == 2)
+        % string with name of an m-file function
+        obj.covFcn  = str2func(covFcn);
+      else
+        % something more complex, like '{@covMaterniso, 3}'
+        obj.covFcn  = eval(covFcn);
+      end
       obj.meanFcn = str2func(defopts(obj.options, 'meanFcn', 'meanConst'));
       obj.likFcn  = str2func(defopts(obj.options, 'likFcn',  'likGauss'));
       obj.infFcn  = str2func(defopts(obj.options, 'infFcn',  'infExactCountErrors'));

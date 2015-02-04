@@ -96,4 +96,10 @@ function [resRmse, resCorr, resTime, varargout] = modelTrainTest(modelStr, model
     %   disp(unwrap(mdt.hyp)');
     % end
   end
+
+  if (strcmpi(modelStr, 'gp') && nargout > 3)
+    % record final the likelihood achieved by optimization
+    varargout(1) = {resLiks};
+    varargout(2) = {resErrs};
+  end
 end
