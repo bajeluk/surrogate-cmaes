@@ -43,7 +43,7 @@ modelLabels={'GPb','GPm','RFb','RFm'};
 for f = 1:nFunc
     
     % plot correlation
-    figure('Name',['f',num2str(f),' corr'],'Units','centimeters','Position',[f/10,15-f,15 5]);  
+    figure('Name',[funcLabels{f},' corr'],'Units','centimeters','Position',[f/10,15-f,15 5]);  
     for D = 1:nDim
           subplot(1, nDim, D); % (f-1)*nDim + D
           boxplot([gpkor(:,f,D,bestCorr_gp(f,D)),gpkor(:,f,D,medCorr_gp(f,D)),...
@@ -53,17 +53,24 @@ for f = 1:nFunc
           if D == 1
                ylabel('Correlation');
           end
-          set(gca,'Position',[0.1+0.3*(D-1) 0.15 0.25 0.7])
+          set(gca,'Position',[0.1+0.32*(D-1) 0.15 0.25 0.7])
     end
     
     % plot RMSE
-    figure('Name',['f',num2str(f),' RMSE'],'Units','centimeters','Position',[17+f/10,15-f,15,5]);
+    figure('Name',[funcLabels{f},' RMSE'],'Units','centimeters','Position',[17+f/10,15-f,15,5]);
+    for D = 1:nDim
+        logRMSE(:,:,D) = log([gpRMSE(:,f,D,bestRMSE_gp(f,D)),gpRMSE(:,f,D,medRMSE_gp(f,D)),...
+              rfRMSE(:,f,D,bestRMSE_rf(f,D)),rfRMSE(:,f,D,medRMSE_rf(f,D))]);
+    end
+    
+    % get appropriate boundaries
+    boundaries = [ min(min(min(logRMSE)))-0.5,max(max(max(logRMSE)))+0.5];
+    
     for D = 1:nDim
           subplot(1, nDim, D); % (f-1)*nDim + D
-          boxplot(log([gpRMSE(:,f,D,bestRMSE_gp(f,D)),gpRMSE(:,f,D,medRMSE_gp(f,D)),...
-              rfRMSE(:,f,D,bestRMSE_rf(f,D)),rfRMSE(:,f,D,medRMSE_rf(f,D))]),modelLabels);
+          boxplot(logRMSE(:,:,D),modelLabels);
           title([int2str(dims(D)),'D']);
-          ylim([-20 2]);
+          ylim(boundaries);
           if D == 1
               ylabel('log RMSE');
           end
