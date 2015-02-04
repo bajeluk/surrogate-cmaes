@@ -69,6 +69,10 @@ classdef GpModel < Model
       obj.meanFcn = str2func(defopts(obj.options, 'meanFcn', 'meanConst'));
       obj.likFcn  = str2func(defopts(obj.options, 'likFcn',  'likGauss'));
       obj.infFcn  = str2func(defopts(obj.options, 'infFcn',  'infExactCountErrors'));
+
+      % use POI or EI?
+      obj.options.usePOI = defopts(obj.options, 'usePOI', false);
+      obj.options.useEI  = defopts(obj.options, 'useEI',  false);
     end
 
     function nData = getNTrainData(obj)
@@ -153,6 +157,20 @@ classdef GpModel < Model
         [y, dev] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, obj.dataset.y, XWithShift);
         % apply the shift in the f-space (if there is any)
         y = y + obj.shiftY;
+
+        % % Calculate POI if it should be used
+        % if (obj.options.usePOI)
+        %   % return -POI , because the smaller y-value (bigger probability) the better
+        %   y = - getPOI(X, y, dev, min(obj.dataset.y));
+        %   dev = zeros(size(dev));
+        % end
+        %
+        % % Calculate EI if it should be used
+        % if (obj.options.useEI)
+        %   % EI should be negative in promising regions, the lower the better
+        %   y = getEI(X, y, dev, min(obj.dataset.y));
+        %   dev = zeros(size(dev));
+        % end
       else
         y = []; dev = [];
         fprintf(2, 'GpModel.predict(): the model is not yet trained!\n');
