@@ -68,6 +68,10 @@ function [resRmse, resCorr, resTime, varargout] = modelTrainTest(modelStr, model
     end
     timeSpent = toc(t);
     % indices of #evals, fnum and dimensionality of the test-case
+    %
+    % TODO: this does not count with multiple test-cases with the
+    %   same f-num and dim!!! Rewrite this to calculate median/or mean!
+    %
     evalidx = find(trainEvals == evals(i));
     fnumidx = find(ufnums == fnums(i));
     dimidx = find(udims == dims(i));
