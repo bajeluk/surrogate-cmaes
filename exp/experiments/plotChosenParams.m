@@ -8,6 +8,7 @@ functionLabels = {'Sphere','Ellipsoid separable','Rastrigin','Linear slope','Att
                   'Discus with monotone x-transformation','Bent cigar',...
                   'Sharp ridge','Sum of different powers','Schwefel','Gallagher'};
 models = {'gp','rf'};
+plotResultsFolder = fullfile('doc','gecco2015paper','images');
  
 % gather all data
 for mod = models
@@ -37,7 +38,27 @@ end
 % matrix coordinates: 1 tresholds, 2 functions, 3 dimensions, 4 parameter settings
 [~, nFunc, nDim, ~] = size(gpRMSE); 
 
+% labels for graph columns
 modelLabels={'GPb','GPm','RFb','RFm'};
+
+% ask for overwritting previous images (if there were any)
+existingPDFs = 0;
+for f = 1:nFunc
+    if (exist([plotResultsFolder, filesep,'box_',funcLabels{f},'_corr.pdf'],'file') || ...
+        exist([plotResultsFolder, filesep,'box_',funcLabels{f},'_RMSE.pdf'],'file'))
+        existingPDFs = existingPDFs + 1;            
+    end
+end
+if existingPDFs
+    answer = questdlg(['Overwrite pdfs for ',num2str(existingPDFs),' functions?'],'Overwritting old files','Overwrite','No','Overwrite');
+    if strcmp('Overwrite',answer)
+        overwrite = 1;
+    else
+        overwrite = 0;
+    end
+else
+    overwrite = 1;
+end
 
 % draw boxplots of RMSE and correlation for every function and dimension
 for f = 1:nFunc
@@ -56,6 +77,12 @@ for f = 1:nFunc
           set(gca,'Position',[0.1+0.32*(D-1) 0.15 0.25 0.7])
     end
     
+    % print correlation plot to pdf
+    if overwrite    
+        set(gcf,'PaperPositionMode','auto')
+        print('-dpdf','-r0',[plotResultsFolder,'/box_',funcLabels{f},'_corr.pdf']);
+    end
+      
     % plot RMSE
     figure('Name',[funcLabels{f},' RMSE'],'Units','centimeters','Position',[17+f/10,15-f,15,5]);
     for D = 1:nDim
@@ -75,5 +102,11 @@ for f = 1:nFunc
               ylabel('log RMSE');
           end
           set(gca,'Position',[0.1+0.3*(D-1) 0.15 0.25 0.7])
+    end
+    
+    % print RMSE plot to pdf
+    if overwrite
+        set(gcf,'PaperPositionMode','auto')
+        print('-dpdf','-r0',[plotResultsFolder,'/box_',funcLabels{f},'_RMSE.pdf']);
     end
 end
