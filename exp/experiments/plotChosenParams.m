@@ -69,7 +69,7 @@ for f = 1:nFunc
           subplot(1, nDim, D); % (f-1)*nDim + D
           boxplot([gpkor(:,f,D,bestCorr_gp(f,D)),gpkor(:,f,D,medCorr_gp(f,D)),...
               rfkor(:,f,D,bestCorr_rf(f,D)),rfkor(:,f,D,medCorr_rf(f,D))],modelLabels);
-          title([int2str(dims(D)),' D']);
+          title([int2str(dims(D)),'-D']);
           ylim([-0.5 1.05]);
           if D == 1
                ylabel('Correlation');
@@ -96,7 +96,7 @@ for f = 1:nFunc
     for D = 1:nDim
           subplot(1, nDim, D); % (f-1)*nDim + D
           boxplot(logRMSE(:,:,D),modelLabels);
-          title([int2str(dims(D)),'D']);
+          title([int2str(dims(D)),'-D']);
           ylim(boundaries);
           if D == 1
               ylabel('log RMSE');
