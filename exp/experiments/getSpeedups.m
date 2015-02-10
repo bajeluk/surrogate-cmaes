@@ -1,5 +1,7 @@
 
-exp_id = 'exp_geneEC_06_gplite';
+exp_id = 'exp_geneEC_06';
+printFunctionHeader = true;
+standardSettings = [1; 3];
 
 %% Loading filenames
 
@@ -49,6 +51,7 @@ thresholds  = cell(length(functions), length(dimensions));
 speedups    = cell(length(functions), length(dimensions));
 filenames   = cell(length(functions), length(dimensions));
 params      = cell(length(functions), length(dimensions));
+bestSettings = cell(length(functions), length(dimensions));
 
 %% Files processing
 
@@ -123,40 +126,100 @@ for fun = 1:length(functions)
   % lines of text to the table, +1 for the average
   lines = cell(maxThresholds+1, 1);
 
-  fprintf(fid, '% ======  f%d  ======\n', functions(fun));
-  % first column spans multiple rows for all the threshodls
-  fprintf(fid, '\\hline \\hline\n\\multirow{%d}{*}{\\textbf{f%d}}\n', maxThresholds+1, functions(fun));
+  if (printFunctionHeader)
+    % fprintf(fid, '% ======  f%d  ======\n', functions(fun));
+    % first column spans multiple rows for all the threshodls
+    lines{1} = sprintf('\\hline \\hline \\multirow{%d}{*}{\\textbf{f%d}}     ', maxThresholds+1, functions(fun));
+  end
   
   for dim = 1:length(dimensions)
     % get the average speedups from each settings
     avgSpeedup = mapColumns(speedups{fun,dim}, @mean);
+    avgSpeedup(isnan(avgSpeedup)) = -Inf;
     % sort the settings according to this avg. speedups
     [~, settingsOrder] = sort(avgSpeedup, 'descend');
     % identify the best and median settings
     bestSettingsIdx = settingsOrder(1);
-    mediSettingsIdx  = settingsOrder(floor(length(settingsOrder)/2));
+    % mediSettingsIdx  = settingsOrder(floor(length(settingsOrder)/2));
+    standardSettingsIdx = find(all(params{fun,dim} == repmat(standardSettings,1,size(params{fun,dim},2))));
+    bestSettings{fun,dim} = params{fun,dim}(:,bestSettingsIdx);
 
     % add entries to the table
     for th = 1:length(thresholds{fun,dim})
-      if (wilcoxon{fun,dim}(th,bestSettingsIdx) <= 0.05)
-        speedupFormat = '\\textbf{%.2f}';
+      if (wilcoxon{fun,dim}(th,bestSettingsIdx) <= 0.05  &&  speedups{fun,dim}(th,bestSettingsIdx) > 1)
+        speedupFormatBest = '\\textbf{%.2f}';
       else
-        speedupFormat = '%.2f';
+        speedupFormatBest = '%.2f';
       end
-      lines{th} = [lines{th} sprintf([' & \\textbf{1e%d} & ' speedupFormat ' & (%.2f) & %.2f   '], thresholds{fun,dim}(th), speedups{fun,dim}(th,bestSettingsIdx), wilcoxon{fun,dim}(th,bestSettingsIdx), speedups{fun,dim}(th,mediSettingsIdx))];
+      % if (wilcoxon{fun,dim}(th,mediSettingsIdx) <= 0.05  &&  speedups{fun,dim}(th,mediSettingsIdx) > 1)
+      if (wilcoxon{fun,dim}(th,standardSettingsIdx) <= 0.05  &&  speedups{fun,dim}(th,standardSettingsIdx) > 1)
+        speedupFormatStd = '\\textbf{%.2f}';
+      else
+        speedupFormatStd = '%.2f';
+      end
+      if (printFunctionHeader)
+        lines{th} = [lines{th} sprintf(' & \\textbf{1e%d}', thresholds{fun,dim}(th))];
+      end
+      % lines{th} = [lines{th} sprintf([' & ' speedupFormatBest ' & %.2f & ' speedupFormatMedi '    '], speedups{fun,dim}(th,bestSettingsIdx), wilcoxon{fun,dim}(th,bestSettingsIdx), speedups{fun,dim}(th,standardSettingsIdx))];
+      lines{th} = [lines{th} sprintf([' & ' speedupFormatStd], speedups{fun,dim}(th,standardSettingsIdx))];
+      if (bestSettingsIdx ~= standardSettingsIdx)
+        lines{th} = [lines{th} sprintf([' & ' speedupFormatBest '    '], speedups{fun,dim}(th,bestSettingsIdx))];
+      else
+        lines{th} = [lines{th} ' &     '];
+      end
+      if (dim < length(dimensions))
+        lines{th} = [lines{th} sprintf('\n')];
+      end
     end
     % generate empty columns for missing thresholds
     for th = (length(thresholds{fun,dim})+1):maxThresholds
-      lines{th} = [lines{th} ' & & & &  '];
+      if (printFunctionHeader)
+        lines{th} = [lines{th} sprintf(' & & &    ')];
+      else
+        lines{th} = [lines{th} sprintf(' & &    ')];
+      end
+      if (dim < length(dimensions))
+        lines{th} = [lines{th} sprintf('\n')];
+      end
     end
-    lines{end} = [lines{end} sprintf(' & \\textbf{avg:} & %.2f & & %.2f   ', avgSpeedup(bestSettingsIdx), avgSpeedup(mediSettingsIdx))];
+    % add the line with settings...
+    if (printFunctionHeader)
+      lines{end} = [lines{end} ' & \textbf{par.:}'];
+    end
+    % lines{end} = [lines{end} sprintf(' & %.2f & ' , avgSpeedup(bestSettingsIdx))];
+    % ... params vector ...
+    paramsFormat = '[';
+    for j=1:size(params{fun,dim}, 1)
+      paramsFormat = [paramsFormat '%d,'];
+    end
+    paramsFormat(end) = ']';
+    lines{end} = [lines{end} sprintf([' & ' paramsFormat], params{fun,dim}(:,standardSettingsIdx)')];
+    if (bestSettingsIdx ~= standardSettingsIdx)
+      lines{end} = [lines{end} sprintf([' & ' paramsFormat], params{fun,dim}(:,bestSettingsIdx)')];
+    else
+      lines{end} = [lines{end} ' &   '];
+    end
+    % % ... and avg speedup of the average settings
+    % lines{end} = [lines{end} sprintf(' & %.2f    ', avgSpeedup(standardSettingsIdx))];
+    % settings of the average settings
+
+    if (dim < length(dimensions))
+      lines{end} = [lines{end} sprintf('\n')];
+    end
   end
 
   % print the lines
-  for l = 1:maxThresholds
-    fprintf(fid, '%s \\\\\n', lines{l});
+  if (printFunctionHeader)
+    for l = 1:maxThresholds
+      fprintf(fid, '%s \n', lines{l});
+    end
+    fprintf(fid, '\\cline{2-22} %s \n', lines{end});
+  else
+    for l = 1:maxThresholds
+      fprintf(fid, '%s \\\\\n', lines{l});
+    end
+    fprintf(fid, '%s \\\\\n', lines{end});
   end
-  fprintf(fid, '\\cline{2-13}\n');
-  fprintf(fid, '%s \\\\\n', lines{end});
 end
 
+  
