@@ -1,6 +1,8 @@
 
-exp_id = 'exp_geneEC_06';
-printFunctionHeader = true;
+% exp_id = 'exp_geneEC_06';
+% printFunctionHeader = true;
+exp_id = 'exp_geneEC_06_gplite2';
+printFunctionHeader = false;
 standardSettings = [1; 3];
 
 %% Loading filenames
@@ -93,7 +95,7 @@ for fi = fileIdxs
   % CMA-ES RESULTS
   cmaesFileMask = fullfile(path, 'cmaes_results', [exp_id '_purecmaes_' num2str(func) '_' num2str(dim) 'D_*.mat']);
   cmaesFileEntry = dir(cmaesFileMask);
-  load(fullfile(path, 'cmaes_results', cmaesFileEntry.name));
+  load(fullfile(path, 'cmaes_results', cmaesFileEntry.name), 'y_evals');
   cmaesEvals = evaluateYThresholds(y_evals, thisThresholds);
   cmaesExpectedEvals = expectedMedian(cmaesEvals, 2);
   cmaesEvaluations{funcId, dimId} = cmaesExpectedEvals;
@@ -115,7 +117,10 @@ end
 %% Print the results in LaTeX-friendly mode
 
 % print to stdout
-fid = 1;
+% fid = 1;
+
+% print to a file
+fid = fopen([exp_id '_tmp.txt'], 'w');
 
 for fun = 1:length(functions)
   % get the max. number of threshodls in this dimension
@@ -222,4 +227,6 @@ for fun = 1:length(functions)
   end
 end
 
-  
+if (fid ~= 1)
+  fclose(fid);
+end
