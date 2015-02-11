@@ -31,7 +31,7 @@ classdef GpModel < Model
 
       % modelOpts structure
       if (isempty(modelOptions))
-        obj.options = struct(0);
+        obj.options = struct();
       else
         obj.options = modelOptions;
       end

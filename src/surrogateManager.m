@@ -30,6 +30,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   sDefaults.evoControlSampleRange       = 1;    % 1..inf (reasonable 1--20)
   sDefaults.evoControlOrigGenerations   = 1;    % 1..inf
   sDefaults.evoControlModelGenerations  = 1;    % 0..inf
+  sDefaults.evoControlTrainNArchivePoints = 0;
+  sDefaults.evoControlValidatePoints    = 0;
   sDefaults.modelType = '';                     % gp | rf
   sDefaults.modelOpts = [];                     % model specific options
   
@@ -306,13 +308,18 @@ function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, di
 % trained model on testing data
   [~, xValidTest, ~] = ...
       sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
-  preciseModel = ModelFactory.createModel('bbob', surrogateOpts.modelOpts, xmean');
-  yTest = preciseModel.predict(xValidTest');
-  yPredict = model.predict(xValidTest');
-  kendall = corr(yPredict, yTest, 'type', 'Kendall');
-  rmse = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
-  fprintf(' RMSE = %f, Kendl. corr = %f.\n', rmse, kendall);
-  surrogateStats = [rmse kendall];
+  surrogateStats = [NaN NaN];
+  if (isfield(surrogateOpts.modelOpts, 'bbob_func'))
+    preciseModel = ModelFactory.createModel('bbob', surrogateOpts.modelOpts, xmean');
+    yTest = preciseModel.predict(xValidTest');
+    yPredict = model.predict(xValidTest');
+    kendall = corr(yPredict, yTest, 'type', 'Kendall');
+    rmse = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
+    fprintf(' RMSE = %f, Kendl. corr = %f.\n', rmse, kendall);
+    surrogateStats = [rmse kendall];
+  else
+    fprintf('\n');
+  end
 
   % save the training and testing data for model-training enhancements
   % if ... the model is fresh
