@@ -1,9 +1,10 @@
 
 % exp_id = 'exp_geneEC_06';
 % printFunctionHeader = true;
-exp_id = 'exp_geneEC_06_gplite2';
+% standardSettings = [1; 3];
+exp_id = 'exp_geneEC_06_rflite';
 printFunctionHeader = false;
-standardSettings = [1; 3];
+standardSettings = [1; 1];
 
 %% Loading filenames
 
