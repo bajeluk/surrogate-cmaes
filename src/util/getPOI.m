@@ -4,7 +4,7 @@ function poi = getPOI(x, y, s2, target)
 % poi = getPOI(y, s2, x, target)
 %   returns probability of improvement (POI) for specified @target (usually 
 %   somewhat better than the best f(x) sofar)
-%   at @x's where the model predicted @y with deviation @s2
+%   at @x's where the model predicted @y with variance @s2
 % 
 % x     vector or matrix of size n by D (n = # of samples, D = dimension)
 
