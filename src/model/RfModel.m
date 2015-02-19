@@ -146,7 +146,7 @@ classdef RfModel < Model
       % fprintf('  TreeBagger: train MSE = %f\n', trainMSE);
     end
 
-    function [y, dev] = predict(obj, X)
+    function [y, sd2] = predict(obj, X)
       % predicts the function values in new points X
       if (obj.isTrained())
         % apply the shift if the model is already shifted
@@ -159,9 +159,9 @@ classdef RfModel < Model
         end
         % averaging results
         y = sum(yPredictions,2)./obj.nTrees + obj.shiftY;
-        dev = sqrt(sum((yPredictions - repmat(y,1,obj.nTrees)).^2)./obj.nTrees);
+        sd2 = sum((yPredictions - repmat(y,1,obj.nTrees)).^2)./obj.nTrees;
       else
-        y = []; dev = [];
+        y = []; sd2 = [];
         warning('RfModel.predict(): the model is not yet trained!');
       end
     end
