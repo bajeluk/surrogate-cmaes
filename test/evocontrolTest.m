@@ -91,3 +91,28 @@ function testGpModelIndEvoControl(testCase)
   verifyEqual(testCase, fmin, 0, 'AbsTol', 1e-7);
   % verifyEqual(testCase, xmin, zeros(evocontrolTest_dim,1), 'AbsTol', 1e-7);
 end
+
+function testModelPredictionType(testCase)
+  global evocontrolTest_cmaesOpts;
+  global evocontrolTest_fitness;
+  global evocontrolTest_dim;
+
+  surrogateOpts.evoControl = 'individual';
+  surrogateOpts.modelType = 'gp';
+  surrogateOpts.modelOpts.path = 'src/vendor/gpml-matlab-v3.2/';
+  surrogateOpts.modelOpts.initScript = 'src/vendor/gpml-matlab-v3.2/startup.m';
+  surrogateOpts.modelOpts.predictionType = 'fValues';
+  surrogateOpts.evoControlPreSampleSize = 0.4;
+  surrogateOpts.evoControlIndividualExtension = 10;
+  surrogateOpts.evoControlBestFromExtension = 0.1;
+  surrogateOpts.evoControlTrainRange = 4;
+
+  [xmin, fmin, counteval, stopflag] = s_cmaes(evocontrolTest_fitness, 2*ones(evocontrolTest_dim,1), 2, evocontrolTest_cmaesOpts, 'SurrogateOptions', surrogateOpts);
+
+  fprintf('\nCMA-ES ended:\n');
+  celldisp(stopflag);
+
+  % verifyEqual(testCase, counteval, 1100, 'RelTol', 0.2);
+  verifyEqual(testCase, fmin, 0, 'AbsTol', 1e-7);
+  % verifyEqual(testCase, xmin, zeros(evocontrolTest_dim,1), 'AbsTol', 1e-7);
+end

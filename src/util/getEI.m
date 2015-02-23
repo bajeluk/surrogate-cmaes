@@ -10,7 +10,6 @@ function ei = getEI(x, y, s2, best_y)
 %
 % x     vector or matrix of size n by D (n = # of samples, D = dimension)
 
-  dim = size(x, 2);
   n = size(x,1);
 
   null_variance = (abs(s2) < eps);

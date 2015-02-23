@@ -146,7 +146,7 @@ classdef RfModel < Model
       % fprintf('  TreeBagger: train MSE = %f\n', trainMSE);
     end
 
-    function [y, sd2] = predict(obj, X)
+    function [y, sd2] = modelPredict(obj, X)
       % predicts the function values in new points X
       if (obj.isTrained())
         % apply the shift if the model is already shifted

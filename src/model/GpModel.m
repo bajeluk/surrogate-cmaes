@@ -148,7 +148,7 @@ classdef GpModel < Model
       end
     end
 
-    function [y, dev] = predict(obj, X)
+    function [y, dev] = modelPredict(obj, X)
       % predicts the function values in new points X
       if (obj.isTrained())
         % apply the shift if the model is already shifted

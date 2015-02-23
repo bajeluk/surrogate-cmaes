@@ -7,6 +7,7 @@ classdef (Abstract) Model
     useShift            % whether use shift during generationUpdate()
     shiftMean           % vector of the shift in the X-space
     shiftY              % shift in the f-space
+    predictionType      % type of prediction (f-values, PoI, EI)
   end
 
   methods (Abstract)
@@ -19,7 +20,7 @@ classdef (Abstract) Model
     obj = train(obj, X, y, xMean, generation)
     % train the model based on the data (X,y)
 
-    [y, dev] = predict(obj, X)
+    [y, sd2] = modelPredict(obj, X)
     % predicts the function values in new points X
     % returns empty @y on error
   end
@@ -148,6 +149,35 @@ classdef (Abstract) Model
         end
       end
     end
+    
+    function [fy, sd2] = predict(obj, X)
+    % predicts the function values, the probability of improvement, or expected improvment in new points X
+    
+    [y,sd2] = modelPredict(obj,X);
+    
+        switch obj.predictionType
+            case 'fValues'
+                fy = y;
+            case 'PoI'
+                fmin = min(obj.dataset.y);
+                fmax = max(obj.dataset.y);
+                target = fmin-0.05*(fmax-fmin);
+                poi = getPOI(X, y, sd2, target);
+                poiMax = max(poi);
+                poiMin = min(poi);
+                % map the higest PoI to the smallest function value and vice versa
+                fy = (fmax-fmin)*(poiMax - poi)/(poiMax-poiMin)+fmin;
+            case 'EI'
+                fmin = min(obj.dataset.y);
+                fmax = max(obj.dataset.y);
+                ei = getEI(X, y, sd2, fmin);
+                eiMax = max(ei);
+                eiMin = min(ei);
+                % map the higest EI to the smallest function value and vice versa
+                fy = (fmax-fmin)*(eiMax-ei)/(eiMax-eiMin)+fmin;
+        end
+    end
+    
   end
 
   methods (Access = protected)
