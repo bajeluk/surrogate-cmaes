@@ -8,6 +8,7 @@ classdef GpModel < Model
     shiftMean           % vector of the shift in the X-space
     shiftY = 0;         % shift in the f-space
     options
+    predictionType = 'fValues';     % type of prediction (f-values, PoI, EI)
 
     hyp
     meanFcn

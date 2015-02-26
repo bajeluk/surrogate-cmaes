@@ -64,14 +64,21 @@ classdef Archive
         closerDataX = xTransf(isInRange,:);
         closerDataY = obj.y(isInRange);
         closerThan2SigmaIdx = find(isInRange);
-        [~, ~, ~, D] = kmeans(closerDataX, n);
-        % D = ('n' x 'k') distances to the clusters' centroids
-        % find the points nearest to the clusters' centers
-        [~, closestToCentroid] = min(D, [], 1);
-        for closestIdx = closestToCentroid
-          % return the original coordinates, not the transformed
-          X = [X; obj.X(closerThan2SigmaIdx(closestIdx),:)];
-          y = [y; closerDataY(closestIdx)];
+        try
+          [~, ~, ~, D] = kmeans(closerDataX, n);
+          % D = ('n' x 'k') distances to the clusters' centroids
+          % find the points nearest to the clusters' centers
+          [~, closestToCentroid] = min(D, [], 1);
+          for closestIdx = closestToCentroid
+            % return the original coordinates, not the transformed
+            X = [X; obj.X(closerThan2SigmaIdx(closestIdx),:)];
+            y = [y; closerDataY(closestIdx)];
+          end
+        catch err
+          warning('Archive.getDataNearPoint(): %s\n', err.message);
+          randp = randperm(length(closerThan2SigmaIdx));
+          X = [X; obj.X(closerThan2SigmaIdx(randp(1:n)),:)];
+          y = [y; closerDataY(randp(1:n))];
         end
       end
     end

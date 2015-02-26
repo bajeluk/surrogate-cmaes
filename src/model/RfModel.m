@@ -15,6 +15,7 @@ classdef RfModel < Model
     inputFraction       % fraction of points used in training
     forest              % ensemble of regression trees
     ordinalRegression   % indicates usage of ordinal regression
+    predictionType = 'fValues';     % type of prediction (f-values, PoI, EI)
   end
 
   methods

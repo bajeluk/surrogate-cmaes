@@ -10,6 +10,7 @@ classdef PreciseModel < Model
     options
     
     bbob_func
+    predictionType = 'fValues';     % type of prediction (f-values, PoI, EI)
   end
 
   methods
@@ -52,7 +53,7 @@ classdef PreciseModel < Model
       obj.dataset.y = y;
     end
 
-    function [y, dev] = predict(obj, X)
+    function [y, dev] = modelPredict(obj, X)
       % predicts the function values in new points X
       % y = (feval(obj.bbob_func, X'))';
       XWithShift = X - repmat(obj.shiftMean, size(X,1), 1);
