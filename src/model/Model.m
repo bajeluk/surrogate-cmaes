@@ -1,13 +1,16 @@
 classdef (Abstract) Model
   properties (Abstract)
-    dim                 % dimension of the input space X (determined from x_mean)
-    trainGeneration     % # of the generation when the model was built
-    trainMean           % mean of the generation when the model was built
-    dataset             % .X and .y
-    useShift            % whether use shift during generationUpdate()
-    shiftMean           % vector of the shift in the X-space
-    shiftY              % shift in the f-space
-    predictionType      % type of prediction (f-values, PoI, EI)
+    dim                  % dimension of the input space X (determined from x_mean)
+    trainGeneration      % # of the generation when the model was built
+    trainMean            % mean of the generation when the model was built
+    trainSigma           % sigma of the generation when the model was built
+    trainBD              % BD of the generation when the model was built
+    dataset              % .X and .y
+    useShift             % whether use shift during generationUpdate()
+    shiftMean            % vector of the shift in the X-space
+    shiftY               % shift in the f-space
+    predictionType       % type of prediction (f-values, PoI, EI)
+    transformCoordinates % whether use transformation in the X-space
   end
 
   methods (Abstract)
@@ -17,7 +20,7 @@ classdef (Abstract) Model
     nData = getNTrainData(obj)
     % returns the required number of data for training the model
 
-    obj = train(obj, X, y, xMean, generation)
+    obj = trainModel(obj, X, y, xMean, generation)
     % train the model based on the data (X,y)
 
     [y, sd2] = modelPredict(obj, X)
@@ -152,8 +155,17 @@ classdef (Abstract) Model
     
     function [fy, sd2] = predict(obj, X)
     % predicts the function values, the probability of improvement, or expected improvment in new points X
+
+        % transform input variables using Mahalanobis distance
+        if obj.transformCoordinates
+              % compute coordinates in the (sigma*BD)-basis
+              %BDinv = inv(sigma*BD);
+              XTransf =( (obj.trainSigma * obj.trainBD) \ X')';
+        else
+              XTransf = X;
+        end
     
-    [y,sd2] = modelPredict(obj,X);
+        [y,sd2] = modelPredict(obj,XTransf);
     
         switch obj.predictionType
             case 'fValues'
@@ -176,6 +188,23 @@ classdef (Abstract) Model
                 % map the higest EI to the smallest function value and vice versa
                 fy = (fmax-fmin)*(eiMax-ei)/(eiMax-eiMin)+fmin;
         end
+    end
+    
+    function obj = train(obj, X, y, xMean, generation,sigma,BD)
+    % train the model based on the data (X,y)
+        
+        % transform input variables using Mahalanobis distance
+        if obj.transformCoordinates
+              % compute coordinates in the (sigma*BD)-basis
+              %BDinv = inv(sigma*BD);
+            obj.trainSigma = sigma;
+            obj.trainBD = BD;
+            XTransf =( (sigma * BD) \ X')';
+        else
+            XTransf = X;
+        end
+        
+        obj = trainModel(obj, XTransf, y, xMean, generation);
     end
     
   end

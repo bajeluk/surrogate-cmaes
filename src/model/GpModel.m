@@ -1,14 +1,17 @@
 classdef GpModel < Model
   properties    % derived from abstract class "Model"
-    dim                 % dimension of the input space X (determined from x_mean)
+    dim                   % dimension of the input space X (determined from x_mean)
     trainGeneration = -1; % # of the generation when the model was built
-    trainMean           % mean of the generation when the model was built
-    dataset             % .X and .y
+    trainMean             % mean of the generation when the model was built
+    trainSigma           % sigma of the generation when the model was built
+    trainBD              % BD of the generation when the model was built
+    dataset               % .X and .y
     useShift = false;
-    shiftMean           % vector of the shift in the X-space
-    shiftY = 0;         % shift in the f-space
+    shiftMean             % vector of the shift in the X-space
+    shiftY = 0;           % shift in the f-space
     options
-    predictionType = 'fValues';     % type of prediction (f-values, PoI, EI)
+    transformCoordinates  % transform X-space
+    predictionType        % type of prediction (f-values, PoI, EI)
 
     hyp
     meanFcn
@@ -71,9 +74,9 @@ classdef GpModel < Model
       obj.likFcn  = str2func(defopts(obj.options, 'likFcn',  'likGauss'));
       obj.infFcn  = str2func(defopts(obj.options, 'infFcn',  'infExactCountErrors'));
 
-      % use POI or EI?
-      obj.options.usePOI = defopts(obj.options, 'usePOI', false);
-      obj.options.useEI  = defopts(obj.options, 'useEI',  false);
+      % general model prediction options
+      obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
+      obj.transformCoordinates = defopts(modelOptions, 'transformCoordinates', false);
     end
 
     function nData = getNTrainData(obj)
@@ -83,7 +86,7 @@ classdef GpModel < Model
       nData = 3 * obj.dim;
     end
 
-    function obj = train(obj, X, y, xMean, generation)
+    function obj = trainModel(obj, X, y, xMean, generation)
       % train the GP model based on the data (X,y)
       % TODO
       %   [ ] implement choosing the best covariance function according to

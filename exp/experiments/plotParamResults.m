@@ -1,3 +1,5 @@
+% plot results of RfModel parameters testing 
+
 paramFolder = fullfile('exp','experiments','modeltrain_rf_01'); %'RFparams');
 
 fileList = dir([paramFolder filesep '*.mat']);

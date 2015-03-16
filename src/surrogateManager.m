@@ -114,7 +114,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       yTrain = [yTrain; fitness_raw'];
     end
     % train the model
-    newModel = newModel.train(xTrain, yTrain, xmean', countiter);
+    newModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD);
     % TODO: if (newModel.trainGeneration <= 0) ==> DON'T USE THIS MODEL!!!
 
     if (newModel.isTrained())
@@ -364,7 +364,7 @@ function [newModel, surrogateStats, isTrained] = trainGenerationECModel(model, a
       xmean', surrogateOpts.evoControlTrainRange, trainSigma, BD);
   if (length(y) >= nRequired)
     % we have got enough data for new model! hurraayh!
-    newModel = model.train(X, y, xmean', countiter);
+    newModel = model.train(X, y, xmean', countiter, sigma, BD);
     isTrained = (newModel.trainGeneration > 0);
 
     % DEBUG: print and save the statistics about the currently 

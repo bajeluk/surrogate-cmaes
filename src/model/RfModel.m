@@ -3,6 +3,8 @@ classdef RfModel < Model
     dim                 % dimension of the input space X (determined from x_mean)
     trainGeneration = -1; % # of the generation when the model was built
     trainMean           % mean of the generation when the model was built
+    trainSigma           % sigma of the generation when the model was built
+    trainBD              % BD of the generation when the model was built
     dataset             % .X and .y
     useShift = false;
     shiftMean           % vector of the shift in the X-space
@@ -15,7 +17,8 @@ classdef RfModel < Model
     inputFraction       % fraction of points used in training
     forest              % ensemble of regression trees
     ordinalRegression   % indicates usage of ordinal regression
-    predictionType = 'fValues';     % type of prediction (f-values, PoI, EI)
+    predictionType      % type of prediction (f-values, PoI, EI)
+    transformCoordinates  % transform X-space
   end
 
   methods
@@ -23,35 +26,24 @@ classdef RfModel < Model
       % constructor
       assert(size(xMean,1) == 1, 'RfModel (constructor): xMean is not a row-vector.');
       obj.options = modelOptions;
-      if (~isempty(modelOptions) && isfield(modelOptions, 'useShift'))
-        obj.useShift = modelOptions.useShift;
-      end
-      obj.dim     = size(xMean, 2);
-      obj.shiftMean = zeros(1, obj.dim);
-      obj.shiftY  = 0;
-
-      % this is a MOCK/TEST IMPLEMENTATION!
-      obj.nTrees = 100;
-      obj.minLeaf = 2;
-      obj.inputFraction = 1;
-      obj.nBestPoints = 1;
-      obj.ordinalRegression = false;
       
-      if isfield(modelOptions,'nTrees')
-          obj.nTrees = modelOptions.nTrees;
-      end
-      if isfield(modelOptions,'minLeaf')
-          obj.minLeaf = modelOptions.minLeaf;
-      end
-      if isfield(modelOptions,'inputFraction')
-          obj.inputFraction = modelOptions.inputFraction;
-      end
-      if isfield(modelOptions,'nBestPoints')
-          obj.nBestPoints = modelOptions.nBestPoints;
-      end
-       if isfield(modelOptions,'ordinalRegression')
-          obj.ordinalRegression = modelOptions.ordinalRegression;
-      end
+      % computed values
+      obj.useShift  = defopts(obj.options, 'useShift', false);
+      obj.dim       = size(xMean, 2);
+      obj.shiftMean = zeros(1, obj.dim);
+      obj.shiftY    = 0;
+      
+      % general model prediction options
+      obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
+      obj.transformCoordinates = defopts(modelOptions, 'transformCoordinates', false);
+      
+      % forest options
+      obj.nTrees = defopts(modelOptions, 'nTrees', 100);
+      obj.minLeaf = defopts(modelOptions, 'minLeaf', 2);
+      obj.inputFraction = defopts(modelOptions, 'inputFraction', 1);
+      obj.nBestPoints = defopts(modelOptions, 'nBestPoints', 1);
+      obj.ordinalRegression = defopts(modelOptions, 'ordinalRegression', false);
+      
     end
 
     function nData = getNTrainData(obj)
@@ -61,7 +53,7 @@ classdef RfModel < Model
       nData = obj.minLeaf * obj.dim;
     end
 
-    function obj = train(obj, X, y, xMean, generation)
+    function obj = trainModel(obj, X, y, xMean, generation)
       % train the GP model based on the data (X,y)
 
       assert(size(xMean,1) == 1, 'RfModel.train(): xMean is not a row-vector.');
@@ -160,7 +152,7 @@ classdef RfModel < Model
         end
         % averaging results
         y = sum(yPredictions,2)./obj.nTrees + obj.shiftY;
-        sd2 = sum((yPredictions - repmat(y,1,obj.nTrees)).^2)./obj.nTrees;
+        sd2 = sum((yPredictions - repmat(y,1,obj.nTrees)).^2,2)./obj.nTrees;
       else
         y = []; sd2 = [];
         warning('RfModel.predict(): the model is not yet trained!');
