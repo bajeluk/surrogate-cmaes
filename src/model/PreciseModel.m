@@ -2,6 +2,8 @@ classdef PreciseModel < Model
   properties    % derived from abstract class "Model"
     dim                 % dimension of the input space X (determined from x_mean)
     trainGeneration = -1; % # of the generation when the model was built
+    trainSigma           % sigma of the generation when the model was built
+    trainBD              % BD of the generation when the model was built
     trainMean           % mean of the generation when the model was built
     dataset             % .X and .y
     useShift = false;
@@ -18,13 +20,11 @@ classdef PreciseModel < Model
       % constructor
       assert(size(xMean,1) == 1, 'GpModel (constructor): xMean is not a row-vector.');
       
-      obj.options = modelOptions;
-      if (~isempty(modelOptions) && isfield(modelOptions, 'useShift'))
-        obj.useShift = modelOptions.useShift;
-      end
-      obj.dim     = size(xMean, 2);
+      obj.options   = modelOptions;
+      obj.useShift  = defopts(obj.options, 'useShift', false);
+      obj.dim       = size(xMean, 2);
       obj.shiftMean = zeros(1, obj.dim);
-      obj.shiftY  = 0;
+      obj.shiftY    = 0;
 
       % BBOB function ID
       % this has to called in opt_s_cmaes due to the speed optimization
@@ -43,7 +43,7 @@ classdef PreciseModel < Model
       nData = 2 * obj.dim;
     end
 
-    function obj = train(obj, X, y, xMean, generation)
+    function obj = trainModel(obj, X, y, xMean, generation)
       % train the GP model based on the data (X,y)
 
       assert(size(xMean,1) == 1, 'GpModel.train(): xMean is not a row-vector.');
