@@ -1,18 +1,19 @@
 classdef PreciseModel < Model
   properties    % derived from abstract class "Model"
-    dim                 % dimension of the input space X (determined from x_mean)
+    dim                   % dimension of the input space X (determined from x_mean)
     trainGeneration = -1; % # of the generation when the model was built
-    trainSigma           % sigma of the generation when the model was built
-    trainBD              % BD of the generation when the model was built
-    trainMean           % mean of the generation when the model was built
-    dataset             % .X and .y
+    trainSigma            % sigma of the generation when the model was built
+    trainBD               % BD of the generation when the model was built
+    trainMean             % mean of the generation when the model was built
+    dataset               % .X and .y
     useShift = false;
-    shiftMean           % vector of the shift in the X-space
-    shiftY = 0;         % shift in the f-space
+    shiftMean             % vector of the shift in the X-space
+    shiftY = 0;           % shift in the f-space
     options
+    predictionType = 'fValues';     % type of prediction (f-values, PoI, EI)
+    transformCoordinates = false;   % whether use transformation in the X-space
     
     bbob_func
-    predictionType = 'fValues';     % type of prediction (f-values, PoI, EI)
   end
 
   methods
@@ -53,13 +54,13 @@ classdef PreciseModel < Model
       obj.dataset.y = y;
     end
 
-    function [y, dev] = modelPredict(obj, X)
+    function [y, sd2] = modelPredict(obj, X)
       % predicts the function values in new points X
       % y = (feval(obj.bbob_func, X'))';
       XWithShift = X - repmat(obj.shiftMean, size(X,1), 1);
       y = (feval(obj.bbob_func, XWithShift'))';
       y = y + obj.shiftY;
-      dev = zeros(size(X,1),1);
+      sd2 = zeros(size(X,1),1);
     end
 
     function trained = isTrained(obj)
