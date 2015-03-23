@@ -128,10 +128,11 @@ classdef RfModel < Model
           
       % simple forest without elitism
       else
-          trainForest = TreeBagger(obj.nTrees,X,yTrain,'method','regression',...
-                'MinLeaf',obj.minLeaf,...
-                'FBoot',obj.inputFraction);
-          obj.forest = trainForest.Trees;
+%           trainForest = TreeBagger(obj.nTrees,X,yTrain,'method','regression',...
+%                 'MinLeaf',obj.minLeaf,...
+%                 'FBoot',obj.inputFraction);
+%           obj.forest = trainForest.Trees;
+            obj.forest = trainForest(obj,X,yTrain);
       end
         
       % count train MSE
@@ -159,6 +160,24 @@ classdef RfModel < Model
       end
     end
 
+  end
+  
+  methods (Access = protected)
+      
+      function ensemble = trainForest(obj,X,y)
+          
+          ensemble = cell(1,obj.nTrees);
+          minLeaves = obj.minLeaf;
+          IF = obj.inputFraction;
+          nData = size(X,1);
+          
+          parfor n = 1:obj.nTrees
+              X4Tree = X;
+              Xperm = randperm(nData);
+              Xtrain = X4Tree(Xperm(1:round(nData*IF)));
+              ensemble{n} = fitrtree(Xtrain,y,'MinLeaf',minLeaves);
+          end
+      end
   end
 
 end

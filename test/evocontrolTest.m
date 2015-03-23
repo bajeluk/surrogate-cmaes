@@ -128,11 +128,14 @@ function testModelTransformationType(testCase)
   global evocontrolTest_dim;
 
   surrogateOpts.evoControl = 'generation';
-  surrogateOpts.modelType = 'gp';
+  surrogateOpts.modelType = 'rf';
+%   bbob_handlesF = benchmarks('handles');
+%   surrogateOpts.modelOpts.bbob_func = bbob_handlesF{1};
   surrogateOpts.modelOpts.path = '../gpeda/src/vendor/gpml-matlab-v3.2/';
   surrogateOpts.modelOpts.initScript = '../gpeda/src/vendor/gpml-matlab-v3.2/startup.m';
-  surrogateOpts.modelOpts.predictionType = 'PoI';
+  surrogateOpts.modelOpts.predictionType = 'fValues';
   surrogateOpts.modelOpts.nTrees = 50;
+  surrogateOpts.modelOpts.nBestPoints = 0;
   surrogateOpts.modelOpts.transformCoordinates = false;
   surrogateOpts.evoControlOrigGenerations = 1;      % 1..inf
   surrogateOpts.evoControlModelGenerations = 1;     % 0..inf

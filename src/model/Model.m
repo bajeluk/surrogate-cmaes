@@ -220,7 +220,7 @@ classdef (Abstract) Model
       % take a point on the line from the trainMean towards the new xMean
       middlePoint = obj.trainMean + 0.25 * (xMean - obj.trainMean);
       % take only not-denied entries in the dataset
-      isAllowed = logical(ones(size(obj.dataset.y)));
+      isAllowed = logical(true(size(obj.dataset.y)));
       isAllowed(deniedIdxs) = 0;
       if (sum(isAllowed) == 0)
         % there is no more allowed dataset entries
