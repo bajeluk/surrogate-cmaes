@@ -84,11 +84,11 @@ classdef RfModel < Model
               goodTrees = false(1,newForestSize);
               
               % train forest
-              trainForest = TreeBagger(newForestSize,X,yTrain,'method','regression',...
+              trForest = TreeBagger(newForestSize,X,yTrain,'method','regression',...
                 'MinLeaf',obj.minLeaf,...
                 'FBoot',obj.inputFraction);
               % fprintf('Forest with %d trained\n',newForestSize);
-              Trees = trainForest.Trees;
+              Trees = trForest.Trees;
             
               if (nBest > 0)
               % find trees with elitism
@@ -128,11 +128,11 @@ classdef RfModel < Model
           
       % simple forest without elitism
       else
-%           trainForest = TreeBagger(obj.nTrees,X,yTrain,'method','regression',...
-%                 'MinLeaf',obj.minLeaf,...
-%                 'FBoot',obj.inputFraction);
-%           obj.forest = trainForest.Trees;
-            obj.forest = trainForest(obj,X,yTrain);
+          trForest = TreeBagger(obj.nTrees,X,yTrain,'method','regression',...
+                'MinLeaf',obj.minLeaf,...
+                'FBoot',obj.inputFraction);
+          obj.forest = trForest.Trees;
+%           obj.forest = trainForest(obj,X,yTrain);
       end
         
       % count train MSE
@@ -164,20 +164,20 @@ classdef RfModel < Model
   
   methods (Access = protected)
       
-      function ensemble = trainForest(obj,X,y)
+    function ensemble = trainForest(obj,X,y)
+    % trains forest similar to forest made by TreeBagger, but it is three times slower      
+      ensemble = cell(1,obj.nTrees);
+      minLeaves = obj.minLeaf;
+      IF = obj.inputFraction;
+      nData = size(X,1);
           
-          ensemble = cell(1,obj.nTrees);
-          minLeaves = obj.minLeaf;
-          IF = obj.inputFraction;
-          nData = size(X,1);
-          
-          parfor n = 1:obj.nTrees
-              X4Tree = X;
-              Xperm = randperm(nData);
-              Xtrain = X4Tree(Xperm(1:round(nData*IF)));
-              ensemble{n} = fitrtree(Xtrain,y,'MinLeaf',minLeaves);
-          end
+      parfor n = 1:obj.nTrees
+        X4Tree = X;
+        Xperm = randi(nData,1,nData);
+        Xtrain = X4Tree(Xperm(1:round(nData*IF)),:);
+        ensemble{n} = fitrtree(Xtrain,y,'MinLeaf',minLeaves,'NumVariablesToSample',ceil(size(X,2)/3),'MinParentSize',2*minLeaves);
       end
+    end
   end
 
 end
