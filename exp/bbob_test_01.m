@@ -53,6 +53,7 @@ function bbob_test_01(id, exp_id, path, varargin)
 
       expFileID = [num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
       resultsFile = [exppath filesep exp_id '_results_' expFileID];
+      opt.algName = [exp_id '_' expFileID];
 
       [exp_results, tmpFile] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath);
 
@@ -69,6 +70,7 @@ function bbob_test_01(id, exp_id, path, varargin)
       % test if pure CMA-ES results exist; if no, generate them
       cmaesResultsFile = [exppath filesep 'cmaes_results' filesep exp_id '_purecmaes_' num2str(ifun) '_' num2str(dim) 'D_' num2str(cmaesId) '.mat'];
       if (~ exist(cmaesResultsFile, 'file'))
+        opt.algName = [exp_id '_' expFileID '_cmaes'];
         exp_cmaes_results = runTestsForAllInstances(@opt_cmaes, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath);
 
         % test if the results still doesn't exist, if no, save them :)
