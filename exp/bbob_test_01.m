@@ -18,9 +18,14 @@ function bbob_test_01(id, exp_id, path, varargin)
   minfunevals = 'dim + 2';  % PUT MINIMAL SENSIBLE NUMBER OF EVALUATIONS for a restart
   maxrestarts = 1e4;        % SET to zero for an entirely deterministic algorithm
   bbobpath = 'vendor/bbob';    % should point to fgeneric.m etc.
-  datapath = ['../log/bbob/' exp_id];  % different folder for each experiment
     pathstr = fileparts(mfilename('fullpath'));
-    datapath = [pathstr filesep datapath];
+    if (nargin >= 4)
+      datapath = [varargin{1} filesep 'bbob_output']
+    else
+      datapath = ['../log/bbob/' exp_id];  % different folder for each experiment
+      datapath = [pathstr filesep datapath];
+    end
+    [~, ~] = mkdir(datapath);
     addpath([pathstr filesep bbobpath]);
     gnuplotScript = [pathstr filesep gnuplotScript];
   % opt.algName = exp_description;
@@ -54,6 +59,8 @@ function bbob_test_01(id, exp_id, path, varargin)
       expFileID = [num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
       resultsFile = [exppath filesep exp_id '_results_' expFileID];
       opt.algName = [exp_id '_' expFileID];
+      datapath = [datapath filesep expFileID];
+      [~, ~] = mkdir(datapath);
 
       [exp_results, tmpFile] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath);
 

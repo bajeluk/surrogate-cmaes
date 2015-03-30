@@ -12,9 +12,10 @@ function metacentrum_task_matlab(exp_id, exppath_short, fun, dim, id, metaOpts)
   LOGFILENAME='log.txt';
   DEFAULTLOGFILE = '/storage/plzen1/home/bajeluk/public/log.txt';
   EXPPATH = [exppath_short filesep exp_id];
-  OUTPUTDIR = EXPPATH; % getenv('SCRATCHDIR');
+  OUTPUTDIR = getenv('SCRATCHDIR');
   RESULTSFILE = [EXPPATH '/' exp_id '_results_' num2str(fun) '_' num2str(dim) 'D_' num2str(id) '.mat'];
-  FILESTDOUT = [OUTPUTDIR '/' exp_id '__log__' num2str(id) '.txt'];
+  % this could be changed to [OUTPUTDIR '/' ...]:
+  FILESTDOUT = [EXPPATH '/' exp_id '__log__' num2str(id) '.txt'];
   % FILEMANAGER="${EXPPATH}/${EXPID}_manager.sh"
   % MATLABCALL="matlab"
   % MATLABPARAMS="-singleCompThread -nodisplay -nodesktop"
@@ -47,7 +48,7 @@ function metacentrum_task_matlab(exp_id, exppath_short, fun, dim, id, metaOpts)
   fclose(fout);
   fclose(flog);
 
-  bbob_test_01(id, exp_id, exppath_short);
+  bbob_test_01(id, exp_id, exppath_short, OUTPUTDIR);
 
   fout = fopen(FILESTDOUT, 'a');
   flog = fopen(LOGFILE, 'a');
@@ -69,6 +70,6 @@ function metacentrum_task_matlab(exp_id, exppath_short, fun, dim, id, metaOpts)
   system(ftpstr);
   if (~strcmpi(OUTPUTDIR, EXPPATH))
     % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
-    system(['cp ' OUTPUTDIR '/* ' EXPPATH '/']);
+    system(['cp -r ' OUTPUTDIR '/* ' EXPPATH '/']);
   end
 end
