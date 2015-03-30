@@ -1,4 +1,4 @@
-exp_id = 'exp_geneEC_08_2-10D';
+exp_id = 'exp_geneEC_08_10D';
 exp_description = 'Surrogate CMA-ES model, GP and RF + rebase, generation EC, 24 functions, 15 instances -- first production test to BBOB workshop paper';
 
 login = 'bajel3am';
