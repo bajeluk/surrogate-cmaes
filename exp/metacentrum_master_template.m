@@ -1,4 +1,11 @@
-function metacentrum_master_template(exp_id)
+function metacentrum_master_template(exp_id, varargin)
+% input parameters:
+% exp_id        -- experiment ID string
+% varargin{1}   -- vector of integer ID's of the parameter-combinations to try
+%                  default: ALL of the combinations
+% varargin{2}   -- string defining maximum (wall)time for Metacentrum machines
+%                  default: 4h
+
   load(['/storage/plzen1/home/' getenv('LOGNAME') '/prg/surrogate-cmaes/exp/experiments/' exp_id '/scmaes_params.mat']);
 
   fNameJobDef = [exppath_short filesep exp_id filesep exp_id '_metajob.mat'];
@@ -7,11 +14,21 @@ function metacentrum_master_template(exp_id)
   addpath('exp/util');  % for getParamsFromIndex()
   addpath('src/util');  % for structReduce()
   addpath([exppath_short filesep '..']);        % for metacentrum_task_matlab()
-  params = [bbParamDef, sgParamDef, cmParamDef];
-  nCombinations = structReduce(params, @(s,x) s*length(x.values), 1);
+  if (nargin >= 2 && ~isempty(varargin{1}))
+    combsToRun = varargin{1};
+  else
+    params = [bbParamDef, sgParamDef, cmParamDef];
+    nCombinations = structReduce(params, @(s,x) s*length(x.values), 1);
+    combsToRun = 1:nCombinations;
+  end
+  if (nargin >= 3 && ~isempty(varargin{2}))
+    walltime = varargin{2};
+  else
+    walltime = '4h';
+  end
 
-  pbs_max_workers = 30;
-  pbs_params = '-l walltime=4h,nodes=^N^:ppn=1,mem=2gb,scratch=1gb,matlab=1,matlab_Statistics_Toolbox=1,matlab_Optimization_Toolbox=1,matlab_MATLAB_Distrib_Comp_Engine=^N^';
+  pbs_max_workers = 50;
+  pbs_params = ['-l walltime=' walltime ',nodes=^N^:ppn=1,mem=1gb,scratch=1gb,matlab=1,matlab_Statistics_Toolbox=1,matlab_Optimization_Toolbox=1,matlab_MATLAB_Distrib_Comp_Engine=^N^'];
 
   % sched = findResource('scheduler','type','torque');
   % set(sched,'ClusterOsType', 'unix');
@@ -34,7 +51,8 @@ function metacentrum_master_template(exp_id)
 
   job = createJob(cl);
 
-  for id = 1:nCombinations
+  i = 1;
+  for id = combsToRun
     [bbParams, sgParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
     fileID = [num2str(bbParams.functions(end)) '_' num2str(bbParams.dimensions(end)) 'D_' num2str(id)];
     if (isfield(sgParams, 'modelType'))
@@ -46,13 +64,14 @@ function metacentrum_master_template(exp_id)
     metaOpts.logdir = logDir;
     metaOpts.model = model;
     metaOpts.nInstances = length(bbParams.instances);
-    fprintf('Setting up job ID %d (f%d/%dD)...\n', id, bbParams.functions(end), bbParams.dimensions(end));
-    tasks(id) = createTask(job, @metacentrum_task_matlab, 0, {exp_id, exppath_short, bbParams.functions(end), bbParams.dimensions(end), id, metaOpts});
+    fprintf('Setting up job ID %d / %d (f%d/%dD)...\n', id, nCombinations, bbParams.functions(end), bbParams.dimensions(end));
+    tasks(i) = createTask(job, @metacentrum_task_matlab, 0, {exp_id, exppath_short, bbParams.functions(end), bbParams.dimensions(end), id, metaOpts});
+    i = i + 1;
   end
 
   tasks
 
   submit(job)
 
-  save(fNameJobDef);
+  save(fNameJobDef, 'exp_id', 'metaOpts', 'combsToRun', 'pbs_params');
 end
