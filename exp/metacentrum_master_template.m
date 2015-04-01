@@ -64,7 +64,7 @@ function metacentrum_master_template(exp_id, varargin)
     metaOpts.logdir = logDir;
     metaOpts.model = model;
     metaOpts.nInstances = length(bbParams.instances);
-    fprintf('Setting up job ID %d / %d (f%d/%dD)...\n', id, nCombinations, bbParams.functions(end), bbParams.dimensions(end));
+    fprintf('Setting up job ID %d / %d (f%d/%dD)...\n', id, length(combsToRun), bbParams.functions(end), bbParams.dimensions(end));
     tasks(i) = createTask(job, @metacentrum_task_matlab, 0, {exp_id, exppath_short, bbParams.functions(end), bbParams.dimensions(end), id, metaOpts});
     i = i + 1;
   end

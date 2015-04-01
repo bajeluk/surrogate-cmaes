@@ -85,4 +85,4 @@ sgParamDef(end).values = { exppath };
 save([exppath filesep 'scmaes_params.mat'], 'bbParamDef', 'sgParamDef', 'cmParamDef', 'exp_id', 'exppath_short', 'logDir');
 
 % run the rest of the scripts generation
-generateShellScripts
+generateShellScriptsMetacentrum
