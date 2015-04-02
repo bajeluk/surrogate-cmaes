@@ -28,7 +28,7 @@ function metacentrum_master_template(exp_id, varargin)
   end
 
   pbs_max_workers = 50;
-  pbs_params = ['-l walltime=' walltime ',nodes=^N^:ppn=1,mem=1gb,scratch=1gb,matlab=1,matlab_Statistics_Toolbox=1,matlab_Optimization_Toolbox=1,matlab_MATLAB_Distrib_Comp_Engine=^N^'];
+  pbs_params = ['-l walltime=' walltime ',nodes=^N^:ppn=1,mem=1gb,scratch=1gb,matlab_MATLAB_Distrib_Comp_Engine=^N^'];
 
   % sched = findResource('scheduler','type','torque');
   % set(sched,'ClusterOsType', 'unix');
@@ -38,6 +38,13 @@ function metacentrum_master_template(exp_id, varargin)
   % % set(sched,'SubmitArguments','-q short');
   % set(sched,'ResourceTemplate', pbs_params);
   % get(sched)
+
+  while 1
+    [tf msg] = license('checkout','Distrib_Computing_Toolbox');
+    if tf==1, break, end
+    display(strcat(datestr(now),' waiting for licence '));
+    pause(4);
+  end
 
   cl = parallel.cluster.Torque;
   pause(2);
