@@ -3,9 +3,8 @@
 # split_bbob_results [SOURCE_DIR] [DEST_DIR]
 # 
 
-PREFIX=alg
-MYALGORITHMS="1 2 3 4"
-REFALG="cmaes"
+MYALGORITHMS=("S-CMA-ES(GP1)" "S-CMA-ES(GP5)" "S-CMA-ES(RF1)" "S-CMA-ES(RF5)")
+REFALG="CMA-ES"
 FUNCTIONS=`seq 1 24`
 DIMENSIONS="2 5 10 20"
 EXPID="exp_geneEC_08"
@@ -30,10 +29,12 @@ echo out:$OUTPUT_DIR:
 make_dir_for_each_alg()
 {
   NEWDIR=$1
-  for dir in $MYALGORITHMS; do
-    mkdir -p $OUTPUT_DIR/${PREFIX}$dir${NEWDIR}
+  for dir in ${MYALGORITHMS[*]}; do
+    mkdir -p $OUTPUT_DIR/$dir${NEWDIR}
+    echo mkdir -p $OUTPUT_DIR/$dir${NEWDIR}
   done
   mkdir -p $OUTPUT_DIR/$REFALG${NEWDIR}
+  echo mkdir -p $OUTPUT_DIR/$REFALG${NEWDIR}
 }
 
 make_dir_for_each_alg ""
@@ -52,15 +53,15 @@ for fun in $FUNCTIONS; do
     # for each directory of the format FUN_DIM_ID/
     for dir in $BBOB_RESULTS_DIR/${fun}_${dim}D_*; do
       ID=`echo ${dir} | sed 's/.*_\([0-9]\+\)$/\1/'`
-      ALGNUM=$(( ( (ID - 1) % 4) + 1 ))         # modulo 4
-      ALGDIR=${PREFIX}${ALGNUM}
+      ALGNUM=$(( (ID - 1) % 4 ))         # modulo 4
+      ALGDIR=${MYALGORITHMS[ALGNUM]}
 
       echo " fun=${fun}, dim=${dim} (id=${ID}) --> $OUTPUT_DIR/$ALGDIR/"
 
       # copy the detailed files
       cp ${dir}/data_f${fun}/bbobexp_f* $OUTPUT_DIR/$ALGDIR/data_f${fun}/
       # take the comprehensive info and add it to bbobexp_f#.info
-      sed -n "s/'$EXPID[^']*'/'${EXPID}_${ALGNUM}'/;1,3p" ${dir}/bbobexp_f${fun}.info >> $OUTPUT_DIR/$ALGDIR/bbobexp_f${fun}.info
+      sed -n "s/'$EXPID[^']*'/'${EXPID}_${ALGDIR}'/;1,3p" ${dir}/bbobexp_f${fun}.info >> $OUTPUT_DIR/$ALGDIR/bbobexp_f${fun}.info
       # newline :)
       echo "" >> $OUTPUT_DIR/$ALGDIR/bbobexp_f${fun}.info
 
