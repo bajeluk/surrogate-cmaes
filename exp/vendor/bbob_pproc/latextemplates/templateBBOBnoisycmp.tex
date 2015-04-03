@@ -1,0 +1,471 @@
+% This is based on "sig-alternate.tex" V2.0 May 2012
+% This file should be compiled with V2.5 of "sig-alternate.cls" May 2012
+%
+% ----------------------------------------------------------------------------------------------------------------
+%
+% This .tex source is an example which *does* use
+% the .bib file (from which the .bbl file % is produced).
+% REMEMBER HOWEVER: After having produced the .bbl file,
+% and prior to final submission, you *NEED* to 'insert'
+% your .bbl file into your source .tex file so as to provide
+% ONE 'self-contained' source file.
+%
+% Information on the sig-alternate class file and on the
+% GECCO workshop paper format and submission can be found at these
+% locations:
+% http://www.acm.org/sigs/publications/proceedings-templates#aL2
+% http://www.sheridanprinting.com/typedept/gecco3.htm
+%
+% ================= IF YOU HAVE QUESTIONS =======================
+% Questions regarding the SIGS styles, SIGS policies and
+% procedures, Conferences etc. should be sent to
+% Adrienne Griscti (griscti@acm.org)
+%
+% Technical questions to bbob@lri.fr
+% ===============================================================
+%
+
+\documentclass{sig-alternate}
+\pdfpagewidth=8.5in
+\pdfpageheight=11in
+\special{papersize=8.5in,11in}
+    \renewcommand{\topfraction}{1}  % max fraction of floats at top
+    \renewcommand{\bottomfraction}{1} % max fraction of floats at bottom
+    %   Parameters for TEXT pages (not float pages):
+    \setcounter{topnumber}{3}
+    \setcounter{bottomnumber}{3}
+    \setcounter{totalnumber}{3}     % 2 may work better
+    \setcounter{dbltopnumber}{4}    % for 2-column pages
+    \renewcommand{\dbltopfraction}{1}   % fit big float above 2-col. text
+    \renewcommand{\topfraction}{1}   % 
+    \renewcommand{\textfraction}{0.0}   % allow minimal text w. figs
+    %   Parameters for FLOAT pages (not text pages):
+    \renewcommand{\floatpagefraction}{0.8} % require fuller float pages
+    % N.B.: floatpagefraction MUST be less than topfraction !!
+    \renewcommand{\dblfloatpagefraction}{0.7}   % require fuller float pages
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+\usepackage{graphicx}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{float}
+\usepackage{rotating}
+\usepackage{xstring} % for string operations
+\usepackage{wasysym} % Table legend with symbols input from post-processing
+\usepackage{MnSymbol} % Table legend with symbols input from post-processing\newcommand{\DIM}{\ensuremath{\mathrm{DIM}}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Definitions
+
+% specify acronyms for algorithm_0 (1st arg. of post-processing) and algorithm_1 (2nd arg.) 
+% \renewcommand{\algorithmA}{algorithmA}  % first argument in the post-processing
+% \renewcommand{\algorithmB}{algorithmB}   % second argument in the post-processing
+% for the short acronyms only three letters are allowed, adjust the following to lines if required.
+%\renewcommand{\algorithmAshort}{algA}  % first argument in the post-processing
+%\renewcommand{\algorithmBshort}{algB}   % second argument in the post-processing
+
+% location of included tex and pictures files
+\newcommand{\bbobdatapath}{ppdata/}
+\input{\bbobdatapath bbob_pproc_commands.tex} % \algorithmA and \algorithmB are defined here
+\graphicspath{{\bbobdatapath}}
+
+% pre-defined commands
+\newcommand{\DIM}{\ensuremath{\mathrm{DIM}}}
+\newcommand{\ERT}{\ensuremath{\mathrm{ERT}}}
+\newcommand{\FEvals}{\ensuremath{\mathrm{FEvals}}}
+\newcommand{\nruns}{\ensuremath{\mathrm{Nruns}}}
+\newcommand{\Dfb}{\ensuremath{\Delta f_{\mathrm{best}}}}
+\newcommand{\Df}{\ensuremath{\Delta f}}
+\newcommand{\nbFEs}{\ensuremath{\mathrm{\#FEs}}}
+\newcommand{\fopt}{\ensuremath{f_\mathrm{opt}}}
+\newcommand{\ftarget}{\ensuremath{f_\mathrm{t}}}
+\newcommand{\CrE}{\ensuremath{\mathrm{CrE}}}
+\newcommand{\change}[1]{{\color{red} #1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%
+% --- Author Metadata here ---
+\conferenceinfo{GECCO'13,} {July 6-10, 2013, Amsterdam, The Netherlands.}
+\CopyrightYear{2013}
+\crdata{TBA}
+\clubpenalty=10000
+\widowpenalty = 10000
+% --- End of Author Metadata ---
+
+\title{Black-Box Optimization Benchmarking Template for the Comparison of Two Algorithms on the Noisy Testbed}
+\subtitle{Draft version
+\titlenote{Submission deadline: March 28th.}}
+%Camera-ready paper due April 13th.}}
+
+%
+% You need the command \numberofauthors to handle the 'placement
+% and alignment' of the authors beneath the title.
+%
+% For aesthetic reasons, we recommend 'three authors at a time'
+% i.e. three 'name/affiliation blocks' be placed beneath the title.
+%
+% NOTE: You are NOT restricted in how many 'rows' of
+% "name/affiliations" may appear. We just ask that you restrict
+% the number of 'columns' to three.
+%
+% Because of the available 'opening page real-estate'
+% we ask you to refrain from putting more than six authors
+% (two rows with three columns) beneath the article title.
+% More than six makes the first-page appear very cluttered indeed.
+%
+% Use the \alignauthor commands to handle the names
+% and affiliations for an 'aesthetic maximum' of six authors.
+% Add names, affiliations, addresses for
+% the seventh etc. author(s) as the argument for the
+% \additionalauthors command.
+% These 'additional authors' will be output/set for you
+% without further effort on your part as the last section in
+% the body of your article BEFORE References or any Appendices.
+
+\numberofauthors{1} %  in this sample file, there are a *total*
+% of EIGHT authors. SIX appear on the 'first-page' (for formatting
+% reasons) and the remaining two appear in the \additionalauthors section.
+%
+\author{
+% You can go ahead and credit any number of authors here,
+% e.g. one 'row of three' or two rows (consisting of one row of three
+% and a second row of one, two or three).
+%
+% The command \alignauthor (no curly braces needed) should
+% precede each author name, affiliation/snail-mail address and
+% e-mail address. Additionally, tag each line of
+% affiliation/address with \affaddr, and tag the
+% e-mail address with \email.
+%
+% 1st. author
+\alignauthor
+Forename Name\\ %\titlenote{Dr.~Trovato insisted his name be first.}\\
+%       \affaddr{Institute for Clarity in Documentation}\\
+%       \affaddr{1932 Wallamaloo Lane}\\
+%       \affaddr{Wallamaloo, New Zealand}\\
+%       \email{trovato@corporation.com}
+%% 2nd. author
+%\alignauthor
+%G.K.M. Tobin\titlenote{The secretary disavows
+%any knowledge of this author's actions.}\\
+%       \affaddr{Institute for Clarity in Documentation}\\
+%       \affaddr{P.O. Box 1212}\\
+%       \affaddr{Dublin, Ohio 43017-6221}\\
+%       \email{webmaster@marysville-ohio.com}
+%% 3rd. author
+%\alignauthor Lars Th{\o}rv{\"a}ld\titlenote{This author is the
+%one who did all the really hard work.}\\
+%       \affaddr{The Th{\o}rv{\"a}ld Group}\\
+%       \affaddr{1 Th{\o}rv{\"a}ld Circle}\\
+%       \affaddr{Hekla, Iceland}\\
+%       \email{larst@affiliation.org}
+%\and  % use '\and' if you need 'another row' of author names
+%% 4th. author
+%\alignauthor Lawrence P. Leipuner\\
+%       \affaddr{Brookhaven Laboratories}\\
+%       \affaddr{Brookhaven National Lab}\\
+%       \affaddr{P.O. Box 5000}\\
+%       \email{lleipuner@researchlabs.org}
+%% 5th. author
+%\alignauthor Sean Fogarty\\
+%       \affaddr{NASA Ames Research Center}\\
+%       \affaddr{Moffett Field}\\
+%       \affaddr{California 94035}\\
+%       \email{fogartys@amesres.org}
+%% 6th. author
+%\alignauthor Charles Palmer\\
+%       \affaddr{Palmer Research Laboratories}\\
+%       \affaddr{8600 Datapoint Drive}\\
+%       \affaddr{San Antonio, Texas 78229}\\
+%       \email{cpalmer@prl.com}
+} % author
+%% There's nothing stopping you putting the seventh, eighth, etc.
+%% author on the opening page (as the 'third row') but we ask,
+%% for aesthetic reasons that you place these 'additional authors'
+%% in the \additional authors block, viz.
+%\additionalauthors{Additional authors: John Smith (The Th{\o}rv{\"a}ld Group,
+%email: {\texttt{jsmith@affiliation.org}}) and Julius P.~Kumquat
+%(The Kumquat Consortium, email: {\texttt{jpkumquat@consortium.net}}).}
+%\date{30 July 1999}
+%% Just remember to make sure that the TOTAL number of authors
+%% is the number that will appear on the first page PLUS the
+%% number that will appear in the \additionalauthors section.
+
+\maketitle
+\begin{abstract}
+to be written
+\end{abstract}
+
+% Add any ACM category that you feel is needed
+\category{G.1.6}{Numerical Analysis}{Optimization}[global optimization,
+unconstrained optimization]
+\category{F.2.1}{Analysis of Algorithms and Problem Complexity}{Numerical Algorithms and Problems}
+
+% Complete with anything that is needed
+\terms{Algorithms}
+
+% Complete with anything that is needed
+\keywords{Benchmarking, Black-box optimization}
+
+% \section{Introduction}
+%
+% \section{Algorithm Presentation}
+%
+% \section{Experimental Procedure}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{CPU Timing}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% note that the following text is just a proposal and can/should be changed to your needs:
+In order to evaluate the CPU timing of the algorithm, we have run the \change{MY-ALGORITHM-NAME} on the function $f_{8}$ with restarts for at least 30 seconds and until a maximum budget equal to \change{$400 (D + 2)$} is reached. The code was run on a \change{Mac Intel(R) Core(TM) i5-2400S CPU @ 2.50GHz} with \change{1} processor and \change{4} cores. The time per function evaluation for dimensions 2, 3, 5, 10, 20\change{, 40} equals \change{$x.x$}, \change{$x.x$}, \change{$x.x$}, \change{$xx$}, \change{$xxx$}\change{, and $xxx$} milliseconds respectively. 
+
+\change{repeat the above for the second algorithm}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Results from experiments according to \cite{hansen2012exp} on the benchmark
+functions given in \cite{wp200902_2010,hansen2012noi} are presented in
+Figures~\ref{fig:scaling}, \ref{fig:scatterplots} and \ref{fig:RLDs} and
+in Tables~\ref{tab:ERTs1to15} and~\ref{tab:ERTs16to30}. The \textbf{expected running time (ERT)}, used in the figures and table, depends on a
+given target function value, $\ftarget=\fopt+\Delta\ftarget$, and is computed over all relevant trials
+as the number of function evaluations executed during each trial while the best
+function value did not reach \ftarget, summed over all trials
+and divided by the number of trials that actually reached \ftarget\
+\cite{hansen2012exp,price1997dev}. 
+\textbf{Statistical significance} is tested with the rank-sum test for a given
+target $\Delta\ftarget$ ($10^{-8}$ as in Figure~\ref{fig:scaling}) using,
+for each trial, either the number of needed function evaluations to reach
+$\Delta\ftarget$ (inverted and multiplied by $-1$), or, if the target was not
+reached, the best $\Df$-value achieved, measured only up to the smallest number
+of overall function evaluations for any unsuccessful trial under consideration. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Scaling of ERT with dimension
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure*}
+\centering
+\begin{tabular}{@{}c@{}c@{}c@{}c@{}c@{}}
+\includegraphics[width=0.204\textwidth, trim= 0.7cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f101}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f104}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f107}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f110}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f113}\\
+\includegraphics[width=0.204\textwidth, trim= 0.7cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f102}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f105}&
+\includegraphics[width=0.204\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f108}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f111}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f114}\\
+\includegraphics[width=0.204\textwidth, trim= 0.7cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f103}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f106}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f109}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f112}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f115}\\\hline
+\includegraphics[width=0.204\textwidth, trim= 0.7cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f116}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f119}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f122}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f125}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f128}\\
+\includegraphics[width=0.204\textwidth, trim= 0.7cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f117}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f120}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f123}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f126}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.8cm 0.5cm 0.5cm, clip]{ppfigs_f129}\\
+\includegraphics[width=0.204\textwidth, trim= 0.7cm 0.0cm 0.5cm 0.5cm, clip]{ppfigs_f118}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.0cm 0.5cm 0.5cm, clip]{ppfigs_f121}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.0cm 0.5cm 0.5cm, clip]{ppfigs_f124}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.0cm 0.5cm 0.5cm, clip]{ppfigs_f127}&
+\includegraphics[width=0.193\textwidth, trim= 1.8cm 0.0cm 0.5cm 0.5cm, clip]{ppfigs_f130}
+\end{tabular}
+\vspace*{-0.2cm}
+\caption[Expected running time (\ERT) divided by dimension
+versus dimension in log-log presentation]{\label{fig:scaling}
+\bbobppfigslegend{$f_{101}$ and $f_{130}$}. % \algorithmA and \algorithmB can be (re)-defined above
+}
+\end{figure*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ 
+% Scatter plots per function.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure*}
+\small
+\centering
+\begin{tabular}{@{}c@{}*{5}{@{}c@{}}}
+ & {\sf 101 Sphere (moderate)} & {\sf 104 Rosenbrock (moderate)} & {\sf 107 Sphere} & {\sf 110 Rosenbrock} & {\sf 113 Step-ellipsoid} \\
+\begin{turn}{90}\parbox{0.175\textwidth}{\centering\sf Gauss noise}\end{turn} &
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f101}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f104}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f107}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f110}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f113}\\
+ & {\sf 102 Sphere (moderate)} & {\sf 105 Rosenbrock (moderate)} & {\sf 108 Sphere} & {\sf 111 Rosenbrock} & {\sf 114 Step-ellipsoid}\\
+\begin{turn}{90}\parbox{0.175\textwidth}{\centering\sf uniform noise}\end{turn} &
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f102}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f105}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f108}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f111}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f114}\\
+ & {\sf 103 Sphere (moderate)} & {\sf 106 Rosenbrock (moderate)} & {\sf 109 Sphere} & {\sf 112 Rosenbrock} & {\sf 115 Step-ellipsoid}\\
+\begin{turn}{90}\parbox{0.175\textwidth}{\centering\sf Cauchy noise}\end{turn} &
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f103}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f106}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f109}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f112}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f115}\\\hline
+ & {\sf 116 Ellipsoid} & {\sf 119 Sum of diff.\ powers} & {\sf 122 Schaffer F7} & {\sf 125 Griewank-Rosenbrock} & {\sf 128 Gallagher}\\
+\begin{turn}{90}\parbox{0.175\textwidth}{\centering\sf Gauss noise}\end{turn} &
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f116}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f119}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f122}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f125}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f128}\\
+ & {\sf 117 Ellipsoid} & {\sf 120 Sum of diff.\ powers} & {\sf 123 Schaffer F7} & {\sf 126 Griewank-Rosenbrock} & {\sf 129 Gallagher}\\
+\begin{turn}{90}\parbox{0.175\textwidth}{\centering\sf uniform noise}\end{turn} &
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f117}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f120}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f123}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f126}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f129}\\
+& {\sf 118 Ellipsoid} & {\sf 121 Sum of diff.\ powers} & {\sf 124 Schaffer F7} & {\sf 127 Griewank-Rosenbrock} & {\sf 130 Gallagher}\\
+\begin{turn}{90}\parbox{0.175\textwidth}{~\centering\sf Cauchy noise}\end{turn} &
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f118}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f121}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f124}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f127}&
+    \includegraphics[height=0.175\textwidth, trim= 34mm 9mm 20mm 9mm, clip]{ppscatter_f130}
+\end{tabular}
+\caption{\label{fig:scatterplots}
+\bbobppscatterlegend{$f_{101}$--$f_{130}$} 
+}
+\end{figure*}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\rot}[2][2.5]{
+  \hspace*{-3.5\baselineskip}%
+  \begin{rotate}{90}\hspace{#1em}#2
+  \end{rotate}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ 
+% Empirical cumulative distribution functions (ECDFs) per function group.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure*}
+ \begin{tabular}{l@{\hspace*{-0.025\textwidth}}l|l@{\hspace*{-0.025\textwidth}}l}
+ \multicolumn{2}{c}{5-D} & \multicolumn{2}{c}{20-D} \\
+ \rot{moderate noise}
+ \includegraphics[width=0.268\textwidth,trim=     0mm 0mm 0mm 15mm, clip]{pprldistr_05D_nzmod} & 
+ \includegraphics[width=0.2375\textwidth,trim=2.3cm 0mm 0mm 15mm, clip]{pplogabs_05D_nzmod} &
+ \includegraphics[width=0.268\textwidth,trim=     0mm 0mm 0mm 15mm, clip]{pprldistr_20D_nzmod} &
+ \includegraphics[width=0.2375\textwidth,trim=2.3cm 0mm 0mm 15mm, clip]{pplogabs_20D_nzmod} \\
+ \rot{severe noise}
+ \includegraphics[width=0.268\textwidth,trim=     0mm 0mm 0mm 15mm, clip]{pprldistr_05D_nzsev} & 
+ \includegraphics[width=0.2375\textwidth,trim=2.3cm 0mm 0mm 15mm, clip]{pplogabs_05D_nzsev} &
+ \includegraphics[width=0.268\textwidth,trim=     0mm 0mm 0mm 15mm, clip]{pprldistr_20D_nzsev} & 
+ \includegraphics[width=0.2375\textwidth,trim=2.3cm 0mm 0mm 15mm, clip]{pplogabs_20D_nzsev}\\
+ \rot[0.5]{severe noise multimod.}
+ \includegraphics[width=0.268\textwidth,trim=     0mm 0mm 0mm 15mm, clip]{pprldistr_05D_nzsmm} & 
+ \includegraphics[width=0.2375\textwidth,trim=2.3cm 0mm 0mm 15mm, clip]{pplogabs_05D_nzsmm} &
+ \includegraphics[width=0.268\textwidth,trim=     0mm 0mm 0mm 15mm, clip]{pprldistr_20D_nzsmm} &
+ \includegraphics[width=0.2375\textwidth,trim=2.3cm 0mm 0mm 15mm, clip]{pplogabs_20D_nzsmm}\\
+ \rot{all functions}
+ \includegraphics[width=0.268\textwidth]{pprldistr_05D_nzall} & 
+ \includegraphics[width=0.2375\textwidth,trim=2.3cm 0mm 0mm 0mm, clip]{pplogabs_05D_nzall} &
+ \includegraphics[width=0.268\textwidth]{pprldistr_20D_nzall} &
+ \includegraphics[width=0.2375\textwidth,trim=2.3cm 0mm 0mm 0mm, clip]{pplogabs_20D_nzall} 
+ \end{tabular}
+ \caption{\label{fig:RLDs}
+ \bbobpprldistrlegendtwo{}
+ }
+\end{figure*}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ 
+% Table showing the expected running time (ERT in number of function
+% evaluations) divided by the best ERT measured during BBOB-2009 (given in the
+% first row of each cell) for functions $f_{101}$--$f_{115}$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{table*}
+\centering
+\hfill5-D\hfill20-D\hfill~\\[1ex]
+\tiny
+\hfill\mbox{%
+\hspace{-2em}%
+\input{\bbobdatapath pptable2_05D_nzall0}\hfill\hspace*{-1em}%
+\input{\bbobdatapath pptable2_20D_nzall0}}\hfill
+\vspace*{-2.5ex}
+\caption{\label{tab:ERTs1to15} 
+\bbobpptablestwolegend{60}
+}
+\end{table*}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ 
+% Table showing the expected running time (ERT in number of function
+% evaluations) divided by the best ERT measured during BBOB-2009 (given in the
+% first row of each cell) for functions $f_{116}$--$f_{130}$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{table*}
+\centering
+\hfill5-D\hfill20-D\hfill~\\[1ex]
+\tiny
+\hfill\mbox{%
+\hspace{-2em}%
+\input{\bbobdatapath pptable2_05D_nzall1}\hfill\hspace*{-1em}%
+\input{\bbobdatapath pptable2_20D_nzall1}}\hfill
+\vspace*{-2.5ex}
+\caption{\label{tab:ERTs16to30} Relative \ERT\ in number of $f$-evaluations, see Table~\ref{tab:ERTs1to15} for details. 
+}
+\end{table*}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%
+% The following two commands are all you need in the
+% initial runs of your .tex file to
+% produce the bibliography for the citations in your paper.
+\bibliographystyle{abbrv}
+\bibliography{bbob}  % bbob.bib is the name of the Bibliography in this case
+% You must have a proper ".bib" file
+%  and remember to run:
+% latex bibtex latex latex
+% to resolve all references
+% to create the ~.bbl file.  Insert that ~.bbl file into
+% the .tex source file and comment out
+% the command \texttt{{\char'134}thebibliography}.
+%
+% ACM needs 'a single self-contained file'!
+%
+
+% \clearpage % otherwise the last figure might be missing
+\end{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

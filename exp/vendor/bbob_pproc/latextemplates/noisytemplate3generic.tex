@@ -1,0 +1,586 @@
+% ================= IF YOU HAVE QUESTIONS =======================
+%
+% Technical questions to bbob@lri.fr
+% ===============================================================
+%
+\documentclass{article}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREAMBLE   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{amssymb,amsmath}
+%\usepackage{wasysym} % needed for some symbols hexagon pentagon
+%\usepackage{MnSymbol} % needed for some other symbols upY downY leftY rightY
+\usepackage{xstring}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{rotating}
+\usepackage{lscape}
+\usepackage{colortbl}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{xstring} % for string operations
+\usepackage{wasysym} % Table legend with symbols input from post-processing
+\usepackage{MnSymbol} % Table legend with symbols input from post-processing
+
+\definecolor{tableShade}{HTML}{ECF3FE}
+\newcommand{\DIM}{\ensuremath{\mathrm{DIM}}}
+\newcommand{\ERT}{\ensuremath{\mathrm{ERT}}}
+\newcommand{\FEvals}{\ensuremath{\mathrm{FEvals}}}
+\newcommand{\nruns}{\ensuremath{\mathrm{Nruns}}}
+\newcommand{\Dfb}{\ensuremath{\Delta f_{\mathrm{best}}}}
+\newcommand{\Df}{\ensuremath{\Delta f}}
+\newcommand{\nbFEs}{\ensuremath{\mathrm{\#FEs}}}
+\newcommand{\fopt}{\ensuremath{f_\mathrm{opt}}}
+\newcommand{\ftarget}{\ensuremath{f_\mathrm{t}}}
+\newcommand{\CrE}{\ensuremath{\mathrm{CrE}}}
+\newcommand{\tablecaption}[2]{\ERT\ on $f_{#1}$ in #2-D over \ERT$_\text{best}$
+obtained in BBOB 2009}
+%%%%%%%%%%%%%%%%%%%%   END OF PREAMBLE   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \newcommand{\bbobdatapath}{ppdatamany/} % was default output folder of rungenericmany.py 
+\newcommand{\bbobdatapath}{ppdata/} % default output folder of rungeneric.py
+\graphicspath{{\bbobdatapath}}
+\input{\bbobdatapath bbob_pproc_commands.tex} % provide default of algname and algfolder
+
+\title{Black-Box Optimization Benchmarking Template for the Comparison of Algorithms on the Noisy Testbed}
+\author{}
+
+\begin{document}
+
+\maketitle
+
+% \section{Introduction}
+%
+% \section{Algorithm Presentation}
+%
+% \section{Experimental Procedure}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Results from experiments according to \cite{hansen2010exp} on the benchmark
+functions given in \cite{wp200902_2010,hansen2010noi} are presented in 
+Figures~\ref{fig:ECDFs05D} and \ref{fig:ECDFs20D}, and Figure~\ref{fig:scaling}.
+The \textbf{expected running time (\ERT)}, used in the figures and table,
+depends on a given target function value, $\ftarget=\fopt+\Df$, and is computed
+over all relevant trials as the number of function evaluations executed during
+each trial while the best function value did not reach \ftarget, summed over
+all trials and divided by the number of trials that actually reached \ftarget\
+\cite{hansen2010exp,price1997dev}.
+\textbf{Statistical significance} is tested with the rank-sum test for a given
+target $\Delta\ftarget$ using, for each trial, either the number of needed
+function evaluations to reach $\Delta\ftarget$ (inverted and multiplied by
+$-1$), or, if the target was not reached, the best $\Df$-value achieved,
+measured only up to the smallest number of overall function evaluations for any
+unsuccessful trial under consideration if available.
+Tables~\ref{tab:f101_05D} to \ref{tab:f130_05D} and \ref{tab:f101_20D} to
+\ref{tab:f130_20D} give the Expected Running Time (\ERT) for targets
+$10^{1,\,-1,\,-3,\,-5,\,-7}$ divided by the best \ERT\ obtained during
+BBOB-2009 (given in the \ERT$_{\text{best}}$ row), respectively in 5-D
+and 20-D.
+Bold entries correspond to the best (or 3-best if there are more than 3
+algorithms) values.
+The median number of conducted function evaluations is additionally given in
+\textit{italics}, if $\ERT(10^{-7}) =\infty$.
+\#succ is the number of trials that reached the final target $\fopt + 10^{-8}$.
+Entries with the $\downarrow$ symbol are statistically significantly better 
+(according to the rank-sum test) compared to the best algorithm in BBOB-2009,
+with $p=0.05$ or $p=10^{-k}$ where $k>1$ is the number
+following the $\downarrow$ symbol, with Bonferroni correction of 30.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The following line shows the figure as they are:
+% \newcommand{\includeperfprof}[1]{\includegraphics[width=0.5\textwidth,trim=0mm 0mm 0mm 10mm, clip]{#1}}
+% The following uncommented line clips the right of the figures and uses the
+% information in file \bbobdatapath pprldmany_XXD_XXX.tex for displaying the
+% right hand legend information, thus allowing to modify the algorithm names
+% in the legend.
+\newcommand{\includeperfprof}[1]{ \includegraphics[width=0.4135\textwidth,trim=0mm 0mm 35mm 10mm, clip]{#1}\input{\bbobdatapath #1}}
+% Algorithm names on the right of the ECDF figures can be modified by
+% uncommenting the following lines and inputting some text in the last
+% brackets, make sure the algorithms are in the same order than for the post-processing:
+% \newcommand{\algaperfprof}{Algorithm a short name}
+% \newcommand{\algbperfprof}{Algorithm b short name}
+% ...
+% \newcommand{\algzperfprof}{Algorithm z short name}
+% \newcommand{\algAperfprof}{Algorithm A short name}
+% ...
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure}
+ \begin{tabular}{@{}c@{}c@{}}
+all functions & moderate noise \\
+ \includeperfprof{pprldmany_05D_nzall} & 
+ \includeperfprof{pprldmany_05D_nzmod} \\
+severe noise & severe noise multimod.\\
+ \includeperfprof{pprldmany_05D_nzsev} & 
+ \includeperfprof{pprldmany_05D_nzsmm}
+ \end{tabular}
+\caption{\label{fig:ECDFs05D}Empirical cumulative distribution of the
+bootstrapped distribution of \ERT\ over dimension for 50 targets in
+$10^{[-8..2]}$ for all functions and subgroups in 5-D. The best ever line
+corresponds to the algorithms from BBOB 2009 with the best \ERT\ for
+each of the targets considered}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure}
+ \begin{tabular}{@{}c@{}c@{}}
+all functions & moderate noise \\
+ \includeperfprof{pprldmany_20D_nzall} & 
+ \includeperfprof{pprldmany_20D_nzmod} \\
+severe noise & severe noise multimod.\\
+ \includeperfprof{pprldmany_20D_nzsev} & 
+ \includeperfprof{pprldmany_20D_nzsmm}
+ \end{tabular}
+\caption{\label{fig:ECDFs20D}Empirical cumulative distribution of the
+bootstrapped distribution of \ERT\ over dimension for 50 targets in
+$10^{[-8..2]}$ for all functions and subgroups in 20-D. The best ever line
+corresponds to the algorithms from BBOB 2009 with the best \ERT\ for
+each of the targets considered}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Algorithm names in the tables can be modified by uncommenting the following
+% lines and inputting some text in the last brackets, make sure the algorithms
+% are in the same order than for the post-processing:
+% \newcommand{\algatables}{Algorithm a short name}
+% \newcommand{\algbtables}{Algorithm b short name}
+% \newcommand{\algctables}{Algorithm c short name}
+% ...
+% \newcommand{\algztables}{Algorithm z short name}
+% \newcommand{\algAtables}{Algorithm A short name}
+% ...
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\begin{table}
+\caption{\label{tab:f101_05D}\tablecaption{101}{5}}
+\centering
+\footnotesize
+\input{\bbobdatapath pptables_f101_05D}
+\end{table}
+%\begin{table}
+%\caption{\label{tab:f102_05D}\tablecaption{102}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f102_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f103_05D}\tablecaption{103}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f103_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f104_05D}\tablecaption{104}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f104_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f105_05D}\tablecaption{105}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f105_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f106_05D}\tablecaption{106}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f106_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f107_05D}\tablecaption{107}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f107_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f108_05D}\tablecaption{108}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f108_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f109_05D}\tablecaption{109}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f109_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f110_05D}\tablecaption{110}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f110_05D}
+%\end{table}
+%\clearpage
+%\begin{table}
+%\caption{\label{tab:f111_05D}\tablecaption{111}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f111_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f112_05D}\tablecaption{112}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f112_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f113_05D}\tablecaption{113}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f113_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f114_05D}\tablecaption{114}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f114_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f115_05D}\tablecaption{115}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f115_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f116_05D}\tablecaption{116}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f116_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f117_05D}\tablecaption{117}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f117_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f118_05D}\tablecaption{118}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f118_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f119_05D}\tablecaption{119}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f119_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f120_05D}\tablecaption{120}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f120_05D}
+%\end{table}
+%\clearpage
+%\begin{table}
+%\caption{\label{tab:f121_05D}\tablecaption{121}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f121_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f122_05D}\tablecaption{122}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f122_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f123_05D}\tablecaption{123}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f123_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f124_05D}\tablecaption{124}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f124_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f125_05D}\tablecaption{125}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f125_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f126_05D}\tablecaption{126}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f126_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f127_05D}\tablecaption{127}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f127_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f128_05D}\tablecaption{128}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f128_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f129_05D}\tablecaption{129}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f129_05D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f130_05D}\tablecaption{130}{5}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f130_05D}
+%\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+%\begin{table}
+%\caption{\label{tab:f101_20D}\tablecaption{101}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f101_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f102_20D}\tablecaption{102}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f102_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f103_20D}\tablecaption{103}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f103_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f104_20D}\tablecaption{104}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f104_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f105_20D}\tablecaption{105}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f105_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f106_20D}\tablecaption{106}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f106_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f107_20D}\tablecaption{107}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f107_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f108_20D}\tablecaption{108}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f108_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f109_20D}\tablecaption{109}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f109_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f110_20D}\tablecaption{110}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f110_20D}
+%\end{table}
+%\clearpage
+%\begin{table}
+%\caption{\label{tab:f111_20D}\tablecaption{111}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f111_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f112_20D}\tablecaption{112}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f112_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f113_20D}\tablecaption{113}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f113_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f114_20D}\tablecaption{114}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f114_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f115_20D}\tablecaption{115}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f115_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f116_20D}\tablecaption{116}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f116_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f117_20D}\tablecaption{117}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f117_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f118_20D}\tablecaption{118}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f118_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f119_20D}\tablecaption{119}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f119_20D}
+%\end{table}
+%\clearpage
+%\begin{table}
+%\caption{\label{tab:f120_20D}\tablecaption{120}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f120_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f121_20D}\tablecaption{121}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f121_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f122_20D}\tablecaption{122}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f122_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f123_20D}\tablecaption{123}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f123_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f124_20D}\tablecaption{124}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f124_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f125_20D}\tablecaption{125}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f125_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f126_20D}\tablecaption{126}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f126_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f127_20D}\tablecaption{127}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f127_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f128_20D}\tablecaption{128}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f128_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f129_20D}\tablecaption{129}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f129_20D}
+%\end{table}
+%\begin{table}
+%\caption{\label{tab:f130_20D}\tablecaption{130}{20}}
+%\centering
+%\footnotesize
+%\input{\bbobdatapath pptables_f130_20D}
+%\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure}
+\centering
+\begin{tabular}{@{}c@{}c@{}c@{}c@{}c@{}}
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f101}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f104}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f107}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f110}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f113}\\
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f102}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f105}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f108}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f111}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f114}\\
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f103}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f106}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f109}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f112}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f115}\\
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f116}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f119}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f122}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f125}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f128}\\
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f117}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f120}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f123}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f126}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f129}\\
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f118}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f121}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f124}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f127}&
+\includegraphics[width=0.2\textwidth, trim=20mm 7mm 15mm 3mm, clip]{ppfigs_f130}
+\end{tabular}
+\caption[Expected running time (\ERT) divided by dimension
+versus dimension in log-log presentation]{\label{fig:scaling}
+\bbobppfigslegend{$f_{101}$ and $f_{130}$}
+%Expected running
+%time (\ERT) divided by dimension  for
+%target function value $10^{−8}$ as $\log_{10}$ values versus dimension. Differen%t symbols
+%correspond to different algorithms given in legend of $f_{101}$ and $f_{130}$.
+%Light symbols give the maximum number of function evaluations from all trials div%ided by the
+%dimension. Horizontal lines give linear scaling,
+%the slanted dotted lines give quadratic scaling.
+%\input{\bbobdatapath ppfigs}
+}
+% The legend is in file \bbobdatapath ppfigs.tex
+% While compiling this document, if the following error comes up:
+% ! Undefined control sequence.
+% try uncommenting line 9 and 10
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The following two commands are all you need in the
+% initial runs of your .tex file to
+% produce the bibliography for the citations in your paper.
+\bibliographystyle{abbrv}
+\bibliography{bbob}  % bbob.bib is the name of the Bibliography in this case
+% You must have a proper ".bib" file
+%  and remember to run:
+% latex bibtex latex latex
+% to resolve all references
+\end{document}
+

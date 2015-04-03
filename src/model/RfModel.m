@@ -147,10 +147,19 @@ classdef RfModel < Model
         XWithShift = X - repmat(obj.shiftMean, size(X,1), 1);
         trees = obj.forest;
         yPredictions = NaN(size(X,1),obj.nTrees);
+
         % each tree prediction
-        parfor treeNum = 1:obj.nTrees
+        if verLessThan('matlab', '8.3.0')
+          % for older versions of MATLAB using classregtrees
+          parfor treeNum = 1:obj.nTrees
+            yPredictions(:,treeNum) = eval(trees{treeNum},XWithShift);
+          end
+        else
+          parfor treeNum = 1:obj.nTrees
             yPredictions(:,treeNum) = predict(trees{treeNum},XWithShift);
+          end
         end
+
         % averaging results
         y = sum(yPredictions,2)./obj.nTrees + obj.shiftY;
         sd2 = sum((yPredictions - repmat(y,1,obj.nTrees)).^2,2)./obj.nTrees;

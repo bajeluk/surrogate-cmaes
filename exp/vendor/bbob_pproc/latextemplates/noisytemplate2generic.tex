@@ -1,0 +1,301 @@
+% ================= IF YOU HAVE QUESTIONS =======================
+%
+% Technical questions to bbob@lri.fr
+% ===============================================================
+%
+\documentclass{article}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREAMBLE   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{amssymb,amsmath}
+\usepackage{graphicx}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{float}
+\usepackage{rotating}
+\usepackage{xstring} % for string operations
+\usepackage{wasysym} % Table legend with symbols input from post-processing
+\usepackage{MnSymbol} % Table legend with symbols input from post-processing\newcommand{\DIM}{\ensuremath{\mathrm{DIM}}}
+
+\newcommand{\ERT}{\ensuremath{\mathrm{ERT}}}
+\newcommand{\FEvals}{\ensuremath{\mathrm{FEvals}}}
+\newcommand{\nruns}{\ensuremath{\mathrm{Nruns}}}
+\newcommand{\Dfb}{\ensuremath{\Delta f_{\mathrm{best}}}}
+\newcommand{\Df}{\ensuremath{\Delta f}}
+\newcommand{\nbFEs}{\ensuremath{\mathrm{\#FEs}}}
+\newcommand{\fopt}{\ensuremath{f_\mathrm{opt}}}
+\newcommand{\ftarget}{\ensuremath{f_\mathrm{t}}}
+\newcommand{\CrE}{\ensuremath{\mathrm{CrE}}}
+\newcommand{\rot}[2][2.5]{
+  \hspace*{-3.5\baselineskip}%
+  \begin{rotate}{90}\hspace{#1em}#2
+  \end{rotate}}
+%%%%%%%%%%%%%%%%%%%%   END OF PREAMBLE   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\bbobdatapath}{ppdata/} % default output folder of rungeneric.py
+\graphicspath{{\bbobdatapath}}
+% specify acronyms for algorithm_0 (1st arg. of post-processing) and algorithm_1 (2nd arg.) 
+% acronyms should be shorter than 10 characters
+%\newcommand{\algorithmA}{ALG0-acronym}  % first argument in the post-processing
+%\newcommand{\algorithmB}{ALG1-acronym}   % second argument in the post-processing
+\input{\bbobdatapath bbob_pproc_commands.tex} % provide default of algname and algfolder
+\graphicspath{{\bbobdatapath\algfolder}}
+
+\title{Black-Box Optimization Benchmarking Template for the Comparison of Two Algorithms on the Noisy Testbed}
+\author{}
+
+\begin{document}
+
+\maketitle
+
+% \section{Introduction}
+%
+% \section{Algorithm Presentation}
+%
+% \section{Experimental Procedure}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Results from experiments according to \cite{hansen2010exp} on the benchmark
+functions given in \cite{wp200901_2010,hansen2010fun} are presented in 
+Figures~\ref{fig:RLDs05D}, \ref{fig:RLDs20D},  
+\ref{fig:scatterplots}, and \ref{fig:ERTratiographs} and
+Tables~\ref{tab:ERTs05Da} to \ref{tab:ERTs20Db}.
+The \textbf{expected running time (\ERT)}, used in the figures and table,
+depends on a given target function value, $\ftarget=\fopt+\Df$, and is computed
+over all relevant trials as the number of function evaluations executed during
+each trial while the best function value did not reach \ftarget, summed over
+all trials and divided by the number of trials that actually reached \ftarget\
+\cite{hansen2010exp,price1997dev}.
+\textbf{Statistical significance} is tested with the rank-sum test for a given
+target $\Delta\ftarget$ using, for each trial, either the number of needed
+function evaluations to reach $\Delta\ftarget$ (inverted and multiplied by
+$-1$), or, if the target was not reached, the best $\Df$-value achieved,
+measured only up to the smallest number of overall function evaluations for any
+unsuccessful trial under consideration if available.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure}[htbp!]
+\centering
+\begin{tabular}{@{}c@{}c@{}}
+\rot[2.]{moderate noise}
+\includegraphics[width=0.41\textwidth,trim=0 7.5mm 16mm 11mm, clip]{pprldistr_05D_nzmod} &
+\includegraphics[width=0.3579\textwidth,trim=24mm 7.5mm 16mm 11mm, clip]{pplogabs_05D_nzmod}
+\\[-1ex]
+\rot[2.8]{severe noise}
+\includegraphics[width=0.41\textwidth,trim=0 7.5mm 16mm 11mm, clip]{pprldistr_05D_nzsev} &
+\includegraphics[width=0.3579\textwidth,trim=24mm 7.5mm 16mm 11mm, clip]{pplogabs_05D_nzsev}
+\\[-1ex]
+\rot[0.7]{severe noise multimod.}
+\includegraphics[width=0.41\textwidth,trim=0 0mm 16mm 11mm, clip]{pprldistr_05D_nzsmm} &
+\includegraphics[width=0.3579\textwidth,trim=24mm 0mm 16mm 11mm, clip]{pplogabs_05D_nzsmm}\\[-1ex]
+\rot[2.8]{all functions}
+\includegraphics[width=0.41\textwidth,trim=0 7.5mm 16mm 11mm, clip]{pprldistr_05D_nzall} &
+\includegraphics[width=0.3579\textwidth,trim=24mm 7.5mm 16mm 11mm, clip]{pplogabs_05D_nzall}
+\end{tabular}
+\caption{\label{fig:RLDs05D}Noisy functions 5-D. Left:
+Empirical Cumulative Distribution Function (ECDF) of the running time (number
+of function evaluations) for \algorithmB\ ($\triangledown$) and \algorithmA\ ($\circ$), divided by
+search space dimension $D$, to fall below $\fopt+\Df$ with $\Df = 10^k$ where
+$k$ is the value in the legend. The vertical black lines indicate the maximum
+number of function evaluations. Light brown lines in the background show ECDFs
+for target value $10^{-8}$ of all algorithms benchmarked during BBOB 2009.
+Right subplots: ECDF of \ERT\ of \algorithmB\ over \ERT\ of \algorithmA\ for
+different $\Df$}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure}[htbp!]
+\centering
+\begin{tabular}{@{}c@{}c@{}}
+\rot[2.]{moderate noise}
+\includegraphics[width=0.41\textwidth,trim=0 7.5mm 16mm 11mm, clip]{pprldistr_20D_nzmod} &
+\includegraphics[width=0.3579\textwidth,trim=24mm 7.5mm 16mm 11mm, clip]{pplogabs_20D_nzmod}
+\\[-1ex]
+\rot[2.8]{severe noise}
+\includegraphics[width=0.41\textwidth,trim=0 7.5mm 16mm 11mm, clip]{pprldistr_20D_nzsev} &
+\includegraphics[width=0.3579\textwidth,trim=24mm 7.5mm 16mm 11mm, clip]{pplogabs_20D_nzsev}
+\\[-1ex]
+\rot[0.7]{severe noise multimod.}
+\includegraphics[width=0.41\textwidth,trim=0 0mm 16mm 11mm, clip]{pprldistr_20D_nzsmm} &
+\includegraphics[width=0.3579\textwidth,trim=24mm 0mm 16mm 11mm, clip]{pplogabs_20D_nzsmm}\\[-1ex]
+\rot[2.8]{all functions}
+\includegraphics[width=0.41\textwidth,trim=0 7.5mm 16mm 11mm, clip]{pprldistr_20D_nzall} &
+\includegraphics[width=0.3579\textwidth,trim=24mm 7.5mm 16mm 11mm, clip]{pplogabs_20D_nzall}
+\end{tabular}
+\caption{\label{fig:RLDs20D}Noisy functions 20-D. See caption of Figure~\ref{fig:RLDs05D}}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure}
+\begin{tabular}{*{5}{@{}c@{}}}
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f101}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f104}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f107}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f110}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f113}\\
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f102}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f105}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f108}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f111}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f114}\\
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f103}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f106}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f109}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f112}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f115}\\
+\hline
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f116}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f119}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f122}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f125}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f128}\\
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f117}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f120}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f123}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f126}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f129}\\
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f118}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f121}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f124}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f127}&
+    \includegraphics[width=0.2\textwidth, trim= 29mm 8.5mm 35mm 13mm, clip]{ppscatter_f130}
+\end{tabular}
+\caption{\label{fig:scatterplots}
+\bbobppscatterlegend{$f_{101}$--$f_{130}$}
+%\ERT\ (in log10 of $f$-evaluations) of \algorithmB\ versus \algorithmA.
+% Markers on the edge indicate the target value was not reached by either algorith%ms. Markers 
+% represent dimension: 
+%  2:{\color{cyan}+},
+%  3:{\color{green!45!black}$\triangledown$},
+%  5:{\color{blue}$\star$}, 
+% 10:$\circ$, 
+% 20:{\color{red}$\Box$}, 
+% 40:{\color{magenta}$\Diamond$}
+}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure}
+%0.20833
+%0.19791
+\centering
+\begin{tabular}{@{}c@{}c@{}c@{}c@{}c@{}}
+\includegraphics[width=0.208\textwidth, trim= 0.7cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f101}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f104}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f107}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f110}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f113}\\
+\includegraphics[width=0.208\textwidth, trim= 0.7cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f102}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f105}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f108}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f111}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f114}\\
+\includegraphics[width=0.208\textwidth, trim= 0.7cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f103}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f106}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f109}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f112}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f115}\\
+\hline
+\includegraphics[width=0.208\textwidth, trim= 0.7cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f116}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f119}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f122}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f125}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f128}\\
+\includegraphics[width=0.208\textwidth, trim= 0.7cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f117}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f120}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f123}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f126}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f129}\\
+\includegraphics[width=0.208\textwidth, trim= 0.7cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f118}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f121}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f124}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f127}&
+\includegraphics[width=0.198\textwidth, trim= 1.8cm 0.8cm 0.2cm 0.2cm, clip]{ppfig2_f130}
+\end{tabular}
+\vspace*{-0.2cm}
+\caption{\label{fig:ERTratiographs}Ratio of \ERT\ for \algorithmB\ over \ERT\ for
+\algorithmA\ versus $\log_{10}(\Df)$ in
+  2:{\color{cyan}+},
+  3:{\color{green!45!black}$\triangledown$},
+  5:{\color{blue}$\star$}, 
+ 10:$\circ$, 
+ 20:{\color{red}$\Box$}, 
+ 40-D:{\color{magenta}$\Diamond$}.
+% cyan:2, green:3, blue:5, black:10, red:20, purple:40. 
+Ratios $<10^0$ indicate an advantage of \algorithmB, smaller
+values are always better. The line becomes dashed when for any algorithm the \ERT\ exceeds thrice the median
+of the trial-wise overall number of $f$-evaluations for the same algorithm on this function.
+Filled symbols indicate the best achieved $\Df$-value of one algorithm (\ERT\ is undefined to the right).
+The dashed line continues as the fraction of successful trials of the other
+algorithm, where 0 means 0\% and the y-axis limits mean 100\%, values below
+zero for \algorithmB. The line ends when no algorithm reaches $\Df$ anymore. 
+The number of successful trials is given, only if it was in $\{1\dots9\}$ for
+\algorithmB\ (1$^{\textrm{st}}$ number) and non-zero for \algorithmA\ (2$^{\textrm{nd}}$ number).
+Results are significant with $p=0.05$ for one star and $p=10^{-\#\star}$
+otherwise, with Bonferroni correction within each figure.}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% you can define the commands \algorithmAshort and \algorithmBshort here to override
+% the definition in the pptable2_xxD_xxxx.tex files for the following tables
+% \newcommand{\algorithmAshort}{XX1}
+% \newcommand{\algorithmBshort}{XX2}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{table}
+\centering
+\tiny
+\input{\bbobdatapath pptable2_05D_nzall0}
+\caption{\label{tab:ERTs05Da} \bbobpptablestwolegend{15}
+%\ERT\ and half-interquantile range (90\% -- 10\%)
+%divided by the best \ERT\ measured during BBOB 2009 for different $\Df$ values
+%for functions $f_{101}$--$f_{115}$ in 5-D where 0:\:\algorithmAshort\ is \algorit%hmA\ and
+%1:\:\algorithmBshort\ is \algorithmB
+}
+\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{table}
+\centering
+\tiny
+\input{\bbobdatapath pptable2_05D_nzall1}
+\caption{\label{tab:ERTs05Db}
+ \bbobpptablestwolegend{15}
+%\ERT\ and half-interquantile range (90\% -- 10\%)
+%divided by the best \ERT\ measured during BBOB 2009 for different $\Df$ values
+%for functions $f_{116}$--$f_{130}$ in 5-D where 0:\:\algorithmAshort\ is \algorit%hmA\ and
+%1:\:\algorithmBshort\ is \algorithmB
+}
+\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{table}
+\centering
+\tiny
+\input{\bbobdatapath pptable2_20D_nzall0}
+\caption{\label{tab:ERTs20Da}\ERT\ and half-interquantile range (90\% -- 10\%)
+divided by the best \ERT\ measured during BBOB 2009 for different $\Df$ values
+for functions $f_{101}$--$f_{115}$ in 20-D where 0:\:\algorithmAshort\ is \algorithmA\ and
+1:\:\algorithmBshort\ is \algorithmB}
+\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{table}
+\centering
+\tiny
+\input{\bbobdatapath pptable2_20D_nzall1}
+\caption{\label{tab:ERTs20Db}\ERT\ and half-interquantile range (90\% -- 10\%)
+divided by the best \ERT\ measured during BBOB 2009 for different $\Df$ values
+for functions $f_{116}$--$f_{130}$ in 20-D where 0:\:\algorithmAshort\ is \algorithmA\ and
+1:\:\algorithmBshort\ is \algorithmB}
+\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The following two commands are all you need in the
+% initial runs of your .tex file to
+% produce the bibliography for the citations in your paper.
+\bibliographystyle{abbrv}
+\bibliography{bbob}  % bbob.bib is the name of the Bibliography in this case
+% You must have a proper ".bib" file
+%  and remember to run:
+% latex bibtex latex latex
+% to resolve all references
+\end{document}
+
