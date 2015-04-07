@@ -12,5 +12,8 @@ exp/experiments/*/
 *.bbl
 *.blg
 doc/*/*.log
+doc/*/*.out
+doc/*/*.pdf
+doc/*/*.gz
 tags
 ownUtil/*
