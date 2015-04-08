@@ -22,16 +22,16 @@ fi
 if [ -d "$DATADIR" ]; then
   echo Directory with the BBOB data already exists:
   echo "$DATADIR"
-  echo "Ending..."
-  exit
+  echo ""
+  echo "!!! Omitting BBOB data transformation !!!"
+  echo ""
+else
+  mkdir -p $DATADIR
+  $CWD/split_bbob_results.sh $BBOB_RESULTS_DIR $DATADIR
 fi
-
-mkdir -p $DATADIR
-
-$CWD/split_bbob_results.sh $BBOB_RESULTS_DIR $DATADIR
 
 # computer dependent -> Lukas will probably rewrite it
 #python $CWD/vendor/bbob_pproc/rungeneric.py --expensive $DATADIR/* -o $OUTPUT_DIR
 mkdir -p $OUTPUT_DIR
 cd $DATADIR
-python $CWD/vendor/bbob_pproc/rungeneric.py --expensive -o $OUTPUT_DIR *
+python $CWD/vendor/bbob_pproc/rungeneric.py --expensive --in-a-hurry 0 -o $OUTPUT_DIR *
