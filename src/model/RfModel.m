@@ -149,7 +149,7 @@ classdef RfModel < Model
         yPredictions = NaN(size(X,1),obj.nTrees);
 
         % each tree prediction
-        if verLessThan('matlab', '8.3.0')
+        if verLessThan('matlab', '8.2.0')
           % for older versions of MATLAB using classregtrees
           parfor treeNum = 1:obj.nTrees
             yPredictions(:,treeNum) = eval(trees{treeNum},XWithShift);
