@@ -156,57 +156,57 @@ classdef (Abstract) Model
     function [fy, sd2] = predict(obj, X)
     % predicts the function values, the probability of improvement, or expected improvment in new points X
 
-        % transform input variables using Mahalanobis distance
-        if obj.transformCoordinates
-              % compute coordinates in the (sigma*BD)-basis
-              %BDinv = inv(sigma*BD);
-              XTransf =( (obj.trainSigma * obj.trainBD) \ X')';
-        else
-              XTransf = X;
-        end
-    
-        [y,sd2] = modelPredict(obj,XTransf);
-    
-        switch obj.predictionType
-            case 'fValues'
-                fy = y;
-            case 'PoI'
-                fmin = min(obj.dataset.y);
-                fmax = max(obj.dataset.y);
-                target = fmin-0.05*(fmax-fmin);
-                poi = getPOI(X, y, sd2, target);
-                poiMax = max(poi);
-                poiMin = min(poi);
-                % map the higest PoI to the smallest function value and vice versa
-                fy = (fmax-fmin)*(poiMax - poi)/(poiMax-poiMin)+fmin;
-            case 'EI'
-                fmin = min(obj.dataset.y);
-                fmax = max(obj.dataset.y);
-                ei = getEI(X, y, sd2, fmin);
-                eiMax = max(ei);
-                eiMin = min(ei);
-                % map the higest EI to the smallest function value and vice versa
-                fy = (fmax-fmin)*(eiMax-ei)/(eiMax-eiMin)+fmin;
-        end
+      % transform input variables using Mahalanobis distance
+      if obj.transformCoordinates
+        % compute coordinates in the (sigma*BD)-basis
+        %BDinv = inv(sigma*BD);
+        XTransf =( (obj.trainSigma * obj.trainBD) \ X')';
+      else
+        XTransf = X;
+      end
+
+      [y,sd2] = modelPredict(obj,XTransf);
+
+      switch lower(obj.predictionType)
+        case 'fvalues'
+          fy = y;
+        case 'poi'
+          fmin = min(obj.dataset.y);
+          fmax = max(obj.dataset.y);
+          target = fmin-0.05*(fmax-fmin);
+          poi = getPOI(X, y, sd2, target);
+          poiMax = max(poi);
+          poiMin = min(poi);
+          % map the higest PoI to the smallest function value and vice versa
+          fy = (fmax-fmin)*(poiMax - poi)/(poiMax-poiMin)+fmin;
+        case 'ei'
+          fmin = min(obj.dataset.y);
+          fmax = max(obj.dataset.y);
+          ei = getEI(X, y, sd2, fmin);
+          eiMax = max(ei);
+          eiMin = min(ei);
+          % map the higest EI to the smallest function value and vice versa
+          fy = (fmax-fmin)*(eiMax-ei)/(eiMax-eiMin)+fmin;
+      end
+
     end
     
     function obj = train(obj, X, y, xMean, generation,sigma,BD)
     % train the model based on the data (X,y)
-        
-        % transform input variables using Mahalanobis distance
-        if obj.transformCoordinates
-              % compute coordinates in the (sigma*BD)-basis
-              %BDinv = inv(sigma*BD);
-            obj.trainSigma = sigma;
-            obj.trainBD = BD;
-            XTransf =( (sigma * BD) \ X')';
-        else
-            XTransf = X;
-        end
-        
-        obj = trainModel(obj, XTransf, y, xMean, generation);
+
+      % transform input variables using Mahalanobis distance
+      if obj.transformCoordinates
+        % compute coordinates in the (sigma*BD)-basis
+        obj.trainSigma = sigma;
+        obj.trainBD = BD;
+        XTransf =( (sigma * BD) \ X')';
+      else
+        XTransf = X;
+      end
+
+      obj = trainModel(obj, XTransf, y, xMean, generation);
     end
-    
+
   end
 
   methods (Access = protected)
