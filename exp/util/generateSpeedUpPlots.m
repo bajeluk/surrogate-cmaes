@@ -8,6 +8,7 @@ function generateSpeedUpPlots()
   gppath = fullfile(exppath,'exp_geneEC_06');
   rfpath = {[gppath,'_rflite'],[gppath,'_rf5_2'],[gppath,'_rf5_3'],[gppath,'_rf5_4']};
   cmaespath = fullfile(gppath,'cmaes_results');
+  plotResultsFolder = fullfile('doc','gecco2015paper','images');
 
   funcSet.BBfunc = [1,2,3,5,6,8,10,11,12,13,14,20,21];
   funcSet.BBfuncInv = [1,2,3,0,4,5,0,6,0,7,8,9,10,11,0,0,0,0,0,12,13];
@@ -18,9 +19,17 @@ function generateSpeedUpPlots()
   gp_evals = dataready(gppath,funcSet);
   cmaes_evals = dataready(cmaespath,funcSet,'cmaes');
   
-  drawGraph(rf_evals,cmaes_evals,'cmaes',funcSet);
-  drawGraph(gp_evals,cmaes_evals,'cmaes',funcSet);
-  drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
+%   drawGraph(rf_evals,cmaes_evals,'cmaes',funcSet);
+%   drawGraph(gp_evals,cmaes_evals,'cmaes',funcSet);
+  
+  funcSet.BBfunc = [1,2,3,5,6,8];
+  h1 = drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
+  
+  funcSet.BBfunc = [10,11,12,13,14,20,21];
+  h2 = drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
+  
+  pdfname = fullfile(plotResultsFolder,'speedUp');
+  print2pdf([h1 h2],{[pdfname,'A.pdf'],[pdfname,'B.pdf']},1)
 
 end
 
@@ -124,7 +133,7 @@ h(1) = semilogy(evaldim,ones(1,length(evaldim)));
 ftitle{1} = refname;
 hold on
 for f = 1:length(funcIds)
-  h(f+1) = semilogy(evaldim,dataref_means{f}(evaldim)./data_means{f}(evaldim));
+  h(f+1) = semilogy(evaldim,(dataref_means{f}(evaldim))./(data_means{f}(evaldim)));
   ftitle{f+1} = ['f',num2str(BBfunc(f))];
 end
 
@@ -135,8 +144,9 @@ hold off
 
 end
 
-function drawComparison(data1,data2,dataref,refname,funcSet,dims,BBfunc)
+function handle = drawComparison(data1,data2,dataref,refname,funcSet,dims,BBfunc)
 % draw comparison of two models according to function evaluations / dimension
+% returns handle
 % dims - chosen dimensions
 % BBfunc - chosen functions
 
@@ -166,7 +176,7 @@ dataref_means = gainMeans(dataref,dimIds,funcIds);
 % plot results
 evaldim = 1:length(dataref_means{1});
 scrsz = get(groot,'ScreenSize');
-figure('Position',[1 scrsz(4)/2 scrsz(3)/1.5 scrsz(4)/2]);
+handle = figure('Units','centimeters','Position',[1 scrsz(4)/2 13 7.5]);
 subplot(1,2,1);
 % add reference line
 h(1) = semilogy(evaldim,ones(1,length(evaldim)));
@@ -177,7 +187,8 @@ for f = 1:length(funcIds)
   ftitle{f+1} = ['f',num2str(BBfunc(f))];
 end
 xlabel('Number of evaluations / D')
-ylabel('Reached \Delta f CMA-ES / Reached \Delta f S-CMA-ES')
+ylabel('\Deltaf CMA-ES / \Deltaf S-CMA-ES')
+legend(h(2:4),ftitle(2:4),'Location','northeast')
 title('GP')
 ax1 = gca;
 
@@ -192,11 +203,12 @@ for f = 1:length(funcIds)
 end
 ax2 = gca;
 xlabel('Number of evaluations / D')
-legend(h,ftitle,'Location','southwest')
+legend(h(5:end),ftitle(5:end),'Location','northeast')
 title('RF')
 
 % set same axis
-axYLim = [min([ax1.YLim(1),ax2.YLim(1)]),max([ax1.YLim(2),ax2.YLim(2)])];
+% axYLim = [min([ax1.YLim(1),ax2.YLim(1)]),max([ax1.YLim(2),ax2.YLim(2)])];
+axYLim = [1e-3,max([ax1.YLim(2),ax2.YLim(2)])];
 axXLim = [min(evaldim) max(evaldim)];
 ylim(ax1,axYLim);
 ylim(ax2,axYLim);
@@ -206,7 +218,6 @@ xlim(ax2,axXLim);
 hold off
 
 end
-
 
 function means = gainMeans(data,dimId,funcId)
 % returns cell array of means accross chosen dimensions
@@ -228,6 +239,5 @@ else
     means{f} = mean(data{funcId(f),dimId},2);
   end
 end
-
 
 end
