@@ -142,7 +142,7 @@ end
 
 ylim(gca,[1e-2 1e2])
 
-legend(h,ftitle)
+legend(h,ftitle,'Location','NorthEastOutside')
 xlabel('Number of evaluations / D')
 ylabel('\Delta f CMA-ES / \Delta f S-CMA-ES')
 hold off
