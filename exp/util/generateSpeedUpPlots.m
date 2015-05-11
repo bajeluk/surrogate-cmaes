@@ -19,17 +19,20 @@ function generateSpeedUpPlots()
   gp_evals = dataready(gppath,funcSet);
   cmaes_evals = dataready(cmaespath,funcSet,'cmaes');
   
-%   drawGraph(rf_evals,cmaes_evals,'cmaes',funcSet);
+  hRFall = drawGraph(rf_evals,cmaes_evals,'cmaes',funcSet);
+  pdfname = fullfile('speedUpRF');
+  print2pdf(hRFall,pdfname,1)
+
 %   drawGraph(gp_evals,cmaes_evals,'cmaes',funcSet);
+%   
+%   funcSet.BBfunc = [1,2,3,5,6,8];
+%   h1 = drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
+%   
+%   funcSet.BBfunc = [10,11,12,13,14,20,21];
+%   h2 = drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
   
-  funcSet.BBfunc = [1,2,3,5,6,8];
-  h1 = drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
-  
-  funcSet.BBfunc = [10,11,12,13,14,20,21];
-  h2 = drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
-  
-  pdfname = fullfile(plotResultsFolder,'speedUp');
-  print2pdf([h1 h2],{[pdfname,'A.pdf'],[pdfname,'B.pdf']},1)
+%   pdfname = fullfile(plotResultsFolder,'speedUp');
+%   print2pdf([h1 h2],{[pdfname,'A.pdf'],[pdfname,'B.pdf']},1)
 
 end
 
@@ -98,7 +101,7 @@ function data = divSmooth(data,funcSet)
   end
 end
 
-function drawGraph(data,dataref,refname,funcSet,dims,BBfunc)
+function handle = drawGraph(data,dataref,refname,funcSet,dims,BBfunc)
 % draw graphs of dependence of how better is model than reference data
 % according to function evaluations / dimension
 % dims - chosen dimensions
@@ -127,7 +130,7 @@ dataref_means = gainMeans(dataref,dimIds,funcIds);
 
 % plot results
 evaldim = 1:length(data_means{1});
-figure()
+handle = figure();
 % add reference line
 h(1) = semilogy(evaldim,ones(1,length(evaldim)));
 ftitle{1} = refname;
@@ -137,9 +140,11 @@ for f = 1:length(funcIds)
   ftitle{f+1} = ['f',num2str(BBfunc(f))];
 end
 
-legend(h,ftitle)
+ylim(gca,[1e-2 1e2])
+
+legend(h,ftitle,'Location','NorthEastOutside')
 xlabel('Number of evaluations / D')
-ylabel('Reached \Delta f CMA-ES / Reached \Delta f S-CMA-ES')
+ylabel('\Delta f CMA-ES / \Delta f S-CMA-ES')
 hold off
 
 end
