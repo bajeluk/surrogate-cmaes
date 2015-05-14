@@ -100,7 +100,12 @@ function bbob_test_01(id, exp_id, path, varargin)
       generateGnuplotDataExtended([gnuplotFile '.dat'], exp_results, exp_cmaes_results, eval(maxfunevals));
 
       % save gnuplot script
-      gnuplotScriptCommand = ['sed "s#\<DATAFILE\>#' gnuplotFile '.dat#; s#\<OUTPUTFILE\>#' resultsFile '#; s#\<TITLE\>#f' num2str(ifun) ', ' num2str(dim) 'D#; s#\<DATALINETITLE\>#' upper(surrogateParams.modelType) ' surrogate, ' surrogateParams.evoControl ' EC#; s#\<PARAMS1\>#' sprintfStruct(surrogateParams, 'escape') '#; s#\<PARAMS2\>#' sprintfStruct(exp_settings, 'escape') '#" ' gnuplotScript ' > ' gnuplotFile '.gpi'];
+      if (isfield(surrogateParams, 'modelType')) modelType = surrogateParams.modelType;
+      else modelType = ''; end
+      if (isfield(surrogateParams, 'evoControl')) evoControl = surrogateParams.evoControl;
+      else evoControl = ''; end
+
+      gnuplotScriptCommand = ['sed "s#\<DATAFILE\>#' gnuplotFile '.dat#; s#\<OUTPUTFILE\>#' resultsFile '#; s#\<TITLE\>#f' num2str(ifun) ', ' num2str(dim) 'D#; s#\<DATALINETITLE\>#' modelType ' surrogate, ' evoControl ' EC#; s#\<PARAMS1\>#' sprintfStruct(surrogateParams, 'escape') '#; s#\<PARAMS2\>#' sprintfStruct(exp_settings, 'escape') '#" ' gnuplotScript ' > ' gnuplotFile '.gpi'];
       disp(gnuplotScriptCommand);
       system(gnuplotScriptCommand);
       % call gnuplot

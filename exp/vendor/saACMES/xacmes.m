@@ -1,4 +1,4 @@
-function [xbest] = xacmes(strfitnessfct, N, MAX_EVAL);
+function [xbest, y_eval] = xacmes(strfitnessfct, N, MAX_EVAL)
 
 global settings;
 settings.strfitnessfct = strfitnessfct;
@@ -87,6 +87,10 @@ if (settings.newRestartRules == 1)
     resultsSmallPOP = zeros(1,1);
 end;
 %%%**** for new restart BIPOP/IPOP ****%%%%
+
+
+y_eval = [];  % BAJELUK BEST/COUNTEVAL RECORDING
+
 
 while cur_state.irun <= nrestarts || bipop_criterion % loop with restarts 
     %%% set default parameters     .begin
@@ -516,6 +520,8 @@ while cur_state.irun <= nrestarts || bipop_criterion % loop with restarts
         if (algo.withDisp == 1) && (rand() < 0.1)
             disp( [ num2str(algo.nevals) ' ' num2str( algo.Fmin ) ] );
         end;
+
+        y_eval = [y_eval; algo.Fmin algo.nevals];  % BAJELUK BEST/COUNTEVAL/SURROGATE_STATS RECORDING
     end;
 
     [cur_state, break_result] = cmaes_finalize(cur_state);

@@ -14,7 +14,7 @@ estTimes = zeros(1,nCombinations);
 for id = 1:nCombinations
   [bbParams, sgParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
   dimensions(id) = bbParams.dimensions;
-  models(id) = strcmpi(sgParams.modelType, 'rf');
+  models(id) = isfield(sgParams, 'modelType') && strcmpi(sgParams.modelType, 'rf');
 end
 estTimes = dimensions; % + 3*models.*dimensions;
 cellCombsForMachines = divideTasksForMachines(nMachines, estTimes, @(x) x.^(1.3));
