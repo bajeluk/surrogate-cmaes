@@ -1,0 +1,1 @@
+nohup octave -q /users/tao/ilya/MatLab/ACMpaper2/saACMESlambdaRevMinIter3v2/exp1.m /users/tao/ilya/MatLab/ACMpaper2/saACMESlambdaRevMinIter3v2/res1.txt &
