@@ -3,11 +3,12 @@
 # split_bbob_results [SOURCE_DIR] [DEST_DIR]
 # 
 
-MYALGORITHMS=("GP1-CMAES" "GP5-CMAES" "RF1-CMAES" "RF5-CMAES")
+# MYALGORITHMS=("GP1-CMAES" "GP5-CMAES" "RF1-CMAES" "RF5-CMAES")
+MYALGORITHMS=("saACMES")
 REFALG="CMA-ES"
 FUNCTIONS=`seq 1 24`
 DIMENSIONS="2 5 10 20"
-EXPID="exp_geneEC_08"
+EXPID="exp_saACMES_01"
 
 if [ -n "$1" ]; then 
   BBOB_RESULTS_DIR=$1
@@ -53,7 +54,7 @@ for fun in $FUNCTIONS; do
     # for each directory of the format FUN_DIM_ID/
     for dir in $BBOB_RESULTS_DIR/${fun}_${dim}D_*; do
       ID=`echo ${dir} | sed 's/.*_\([0-9]\+\)$/\1/'`
-      ALGNUM=$(( (ID - 1) % 4 ))         # modulo 4
+      ALGNUM=$(( (ID - 1) % ${#MYALGORITHMS[*]} ))         # modulo 4
       ALGDIR=${MYALGORITHMS[ALGNUM]}
 
       echo " fun=${fun}, dim=${dim} (id=${ID}) --> $OUTPUT_DIR/$ALGDIR/"

@@ -16,4 +16,5 @@ doc/*/*.log
 doc/*/*.out
 doc/*/*.pdf
 tags
-ownUtil/*
+ownUtil/
+doc/gecco2015workshop/ppdata/

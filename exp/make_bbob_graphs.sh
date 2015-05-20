@@ -3,7 +3,7 @@
 # make_bbob_graphs [SOURCE_DIR] [DEST_DIR]
 # 
 
-EXPID="exp_geneEC_08"
+EXPID="exp_saACMES_01"
 CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 DATADIR="$CWD/../log/bbob_data/$EXPID"
 
