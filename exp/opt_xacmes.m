@@ -33,12 +33,12 @@ end
 
 global settings;
 % Default saACM-ES settings:
-settings.BIPOP = 0; 
+settings.BIPOP = 0;             % whether use BIPOP (or IPOP)
 settings.newRestartRules = 0; 
 settings.noisy = 0;
-settings.CMAactive = 1;
+settings.CMAactive = 1;         % active covariance matrix updates (aCMA-ES)
 settings.withFileDisp = 0;
-settings.withSurr = 1;
+settings.withSurr = 1;          % with Ilya's SVM regression
 settings.modelType = 1;
 settings.withModelEnsembles = 0;
 settings.withModelOptimization = 1;
