@@ -206,7 +206,11 @@ while cur_state.irun <= nrestarts || bipop_criterion % loop with restarts
         end;
         
         if (algo.withSurr == 0) % original CMA
-            cur_state = cmaes_iteration(cur_state);
+            if isfield(settings,'useSCMAES') && settings.useSCMAES
+              cur_state = cmaes_s_iteration(cur_state);
+            else
+              cur_state = cmaes_iteration(cur_state);
+            end
             stop = cur_state.stop;
         end;
         if (algo.withSurr == 1) % evaluate lambda points on some iSTEP'th step with adaptation of iSTEP

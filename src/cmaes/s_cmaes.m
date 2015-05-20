@@ -890,7 +890,7 @@ while isempty(stopflag)
   % Generate and evaluate lambda offspring
   
   % Convert fitness function string to function handle
-  if (isstr(fitfun))
+  if (ischar(fitfun))
     fitfun_handle = str2func(fitfun);
   else
     fitfun_handle = fitfun;
@@ -947,7 +947,7 @@ while isempty(stopflag)
       bnd.dfithist = [bnd.dfithist(2:end) val];
     end
 
-    [tx ti]  = xintobounds(xmean, lbounds, ubounds);
+    [tx,ti]  = xintobounds(xmean, lbounds, ubounds);
 
     % Set initial weights
     if bnd.iniphase 
