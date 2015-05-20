@@ -7,7 +7,7 @@ variablescmaes.mat
 *~
 *.tgz
 *.zip
-*.tar.gz
+*.gz
 exp/experiments/*/
 *.aux
 *.bbl
