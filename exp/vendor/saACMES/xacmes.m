@@ -1,9 +1,16 @@
-function [xbest, y_eval] = xacmes(strfitnessfct, N, MAX_EVAL)
+function [xbest, y_eval] = xacmes(strfitnessfct, N, MAX_EVAL, varargin)
 
 global settings;
 settings.strfitnessfct = strfitnessfct;
 settings.ftarget = fgeneric('ftarget');
 wrapperfct = 'xacmes_evaluate';
+
+% ----------- Surrogate modelling extensions ------------
+% author: Bajer&Pitra, 2015
+if (~isempty(varargin) && isstr(varargin{1}) && strcmpi(varargin{1}, 'surrogateoptions'))
+  surrogateOpts = varargin{2};
+  varargin = varargin(3:end);
+end
 
 opts = cmaes_initialize('defaults');
 opts.MaxFunEvals = MAX_EVAL;
@@ -206,8 +213,8 @@ while cur_state.irun <= nrestarts || bipop_criterion % loop with restarts
         end;
         
         if (algo.withSurr == 0) % original CMA
-            if isfield(settings,'useSCMAES') && settings.useSCMAES
-              cur_state = cmaes_s_iteration(cur_state);
+            if (isfield(settings,'useSCMAES') && settings.useSCMAES && exist('surrogateOpts', 'var'))
+              cur_state = cmaes_s_iteration(cur_state, surrogateOpts);
             else
               cur_state = cmaes_iteration(cur_state);
             end

@@ -29,21 +29,56 @@ bbParamDef(5).name   = 'maxfunevals';   % MAXFUNEVALS - 10*dim is a short test-e
 bbParamDef(5).values = {'250 * dim'};   % increment maxfunevals successively
                                 
 % Surrogate model parameter lists
-sgParamDef(1).name   = 'lambdaMult';
+sgParamDef(1).name   = 'evoControl';            % 'none', 'individual', 'generation'
+sgParamDef(1).values = {'generation'};
+sgParamDef(2).name   = 'modelType';             % 'gp', 'rf', 'bbob'
+sgParamDef(2).values = {'gp', 'rf'};
+sgParamDef(3).name   = 'evoControlPreSampleSize';       % will be multip. by lambda
+sgParamDef(3).values = { [] }; % {0.25, 0.5, 0.75};
+sgParamDef(4).name   = 'evoControlIndividualExtension'; % will be multip. by lambda
+sgParamDef(4).values = { [] };
+sgParamDef(5).name   = 'evoControlBestFromExtension';   % ratio of expanded popul.
+sgParamDef(5).values = { [] };
+sgParamDef(6).name   = 'evoControlTrainRange';          % will be multip. by sigma
+sgParamDef(6).values = {8}; % {8, 16}; % {2, 3, 4, 6, 8};
+sgParamDef(7).name   = 'evoControlTrainNArchivePoints'; % will be myeval()'ed, 'nRequired', 'nEvaluated', 'lambda', 'dim' can be used
+sgParamDef(7).values = {'15*dim'};
+sgParamDef(8).name   = 'evoControlSampleRange';         % will be multip. by sigma
+sgParamDef(8).values = {1};
+
+sgParamDef(9).name   = 'evoControlOrigGenerations';
+sgParamDef(9).values = {1};
+sgParamDef(10).name   = 'evoControlModelGenerations';
+sgParamDef(10).values = {1, 5};
+sgParamDef(11).name   = 'evoControlValidatePoints';
+sgParamDef(11).values = {0};
+sgParamDef(12).name   = 'modelOpts';
+sgParamDef(12).values = { struct( ...
+  'transformCoordinates', true, ...
+  'useShift', false, ...
+  'trainAlgorithm', 'fmincon', ...
+  'covFcn', '{@covMaterniso, 5}', ...
+  'hyp', struct('lik', log(0.01), ...
+  'cov', log([0.5; 2])), ...
+  'nBestPoints', 0, ...
+  'minLeaf', 2, ...
+  'inputFraction', 1) };
+% Ilya's saACM-ES settings
+sgParamDef(13).name   = 'lambdaMult';
 lambdaMult = ones(1,40);
 lambdaMult([2,3,5]) = 1;
 lambdaMult([10]) = 10;
 lambdaMult([20]) = 100;
 lambdaMult([40]) = 1000;
-sgParamDef(1).values = { lambdaMult };
+sgParamDef(13).values = { lambdaMult };
 % BIPOP = true && useSCMAES = true  stands for BIPOP-S-CMA-ES
 % which means Ilya's BIPOP-aCMA-ES + Bajer&Pitra's GP/RF surrogate models
-sgParamDef(2).name   = 'BIPOP';
-sgParamDef(2).values = { 1 };
-sgParamDef(3).name   = 'useSCMAES';
-sgParamDef(3).values = { true };
-sgParamDef(4).name   = 'withSurr';
-sgParamDef(4).values = { false };
+sgParamDef(14).name   = 'BIPOP';
+sgParamDef(14).values = { 1 };
+sgParamDef(15).name   = 'useSCMAES';
+sgParamDef(15).values = { true };
+sgParamDef(16).name   = 'withSurr';
+sgParamDef(16).values = { false };
 
 % CMA-ES parameters
 cmParamDef(1).name   = 'PopSize';

@@ -1,4 +1,4 @@
-function newstate = cmaes_s_iteration(state)
+function newstate = cmaes_s_iteration(state, surrogateOpts)
 
 % MODIFICATIONS:
 % 1. Exclude stopflag={'fitness','stagnation',...}, because F(x) of surrogate model changes over time.
@@ -160,7 +160,7 @@ function newstate = cmaes_s_iteration(state)
   sampleOpts.noiseHandling = noiseHandling;
   sampleOpts.xintobounds = @xintobounds;
 
-  if (~exist('surrogateOpts'))
+  if (~exist('surrogateOpts') || isempty(surrogateOpts))
     % use standard CMA-ES (no surrogate at all)
     [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, sampleOpts, varargin{:});
     surrogateStats = [];

@@ -26,7 +26,7 @@ y_evals = [];
 stopflag = 0;
 
 load('scmaes_params.mat', 'bbParamDef', 'sgParamDef', 'cmParamDef');
-[~, sgParams, cmParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
+[bbParams, sgParams, cmParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
 for fname = fieldnames(cmParams)'
   cmOptions.(fname{1}) = cmParams.(fname{1});
 end
@@ -73,8 +73,14 @@ for ilaunch = 1:1e4; % up to 1e4 times
   % standard fminsearch()
   settings.iglobalrun  = settings.iglobalrun + 1;
   maxeval_available = maxfunevals - fgeneric('evaluations');
-  [x y_eval] = xacmes(FUN, DIM, maxeval_available);
-
+  if (isfield(settings, 'useSCMAES') && settings.useSCMAES)
+    bbob_handlesF = benchmarks('handles');
+    sgParams.modelOpts.bbob_func = bbob_handlesF{bbParams.functions(1)};
+    sgParams.expFileID = [num2str(bbParams.functions(1)) '_' num2str(DIM) 'D_' num2str(id)];
+    [x y_eval] = xacmes(FUN, DIM, maxeval_available, 'SurrogateOptions', sgParams);
+  else
+    [x y_eval] = xacmes(FUN, DIM, maxeval_available);
+  end
   n_y_evals = size(y_eval,1);
   y_eval(:,1) = y_eval(:,1) - (ftarget - fDelta) * ones(n_y_evals,1);
   y_evals = [y_evals; y_eval zeros(n_y_evals, 2)];
