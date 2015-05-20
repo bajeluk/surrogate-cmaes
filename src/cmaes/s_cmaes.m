@@ -907,7 +907,7 @@ while isempty(stopflag)
   sampleOpts.noiseHandling = noiseHandling;
   sampleOpts.xintobounds = @xintobounds;
 
-  if (~exist('surrogateOpts'))
+  if (~exist('surrogateOpts','var'))
     % use standard CMA-ES (no surrogate at all)
     [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, sampleOpts, varargin{:});
     surrogateStats = [];
