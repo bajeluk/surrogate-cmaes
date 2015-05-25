@@ -33,6 +33,10 @@ function HELP {
   exit 1
 }
 
+if [ "$#" -eq 0 ]; then
+  HELP
+fi
+
 while getopts "i:o:r:e:h" FLAG; do
   case $FLAG in
     i)  #set option "i"
