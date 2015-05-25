@@ -71,4 +71,9 @@ fi
 #python $CWD/vendor/bbob_pproc/rungeneric.py --expensive $DATADIR/* -o $OUTPUT_DIR
 mkdir -p $OUTPUT_DIR
 cd $DATADIR
+PPROCFILE=bbob_pproc_commands.tex
+if [ -e $PPROCFILE ]; then
+  echo "deleting $DATADIR/bbob_pproc_commands.tex"
+  rm -f $PPROCFILE
+fi
 python $CWD/vendor/bbob_pproc/rungeneric.py --expensive --in-a-hurry 0 -o $OUTPUT_DIR *
