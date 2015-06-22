@@ -67,8 +67,7 @@ else
   $CWD/split_bbob_results.sh -i $BBOB_RAW_DIR -o $DATADIR -e $EXPID $*
 fi
 
-# computer dependent -> Lukas will probably rewrite it
-#python $CWD/vendor/bbob_pproc/rungeneric.py --expensive $DATADIR/* -o $OUTPUT_DIR
+# generate bbob results
 mkdir -p $OUTPUT_DIR
 cd $DATADIR
 PPROCFILE=bbob_pproc_commands.tex
@@ -77,3 +76,11 @@ if [ -e $PPROCFILE ]; then
   rm -f $PPROCFILE
 fi
 python $CWD/vendor/bbob_pproc/rungeneric.py --expensive --in-a-hurry 0 -o $OUTPUT_DIR *
+
+# change position of number of showed letters in the name of the algorithm to one place to be easily editable
+for f in $OUTPUT_DIR/pprldmany_*.tex; do 
+  sed "s/\\\\provide.*prof}{7}//" $f > /tmp/$$_tmp
+  cp /tmp/$$_tmp $f
+done
+rm /tmp/$$_tmp
+echo '\providecommand{\nperfprof}{7}' >> $OUTPUT_DIR/$PPROCFILE
