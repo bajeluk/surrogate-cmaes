@@ -1,12 +1,15 @@
-function generateSpeedUpPlots()
-  % function for making speed up graphs on gecco 2015 abstract
-  % The speed up is considered between the CMA-ES and GP, or RF
+function generateFValuesPlots()
+  % function for making graphs showing the dependence of minimal function
+  % values on the number of function values
+  % Created for GECCO 2015 poster
   
   close all
 
   exppath = fullfile('exp','experiments');
   gppath = fullfile(exppath,'exp_geneEC_06');
   rfpath = {[gppath,'_rflite'],[gppath,'_rf5_2'],[gppath,'_rf5_3'],[gppath,'_rf5_4']};
+  transPath10D = fullfile(exppath,'exp_geneEC_08_10D');
+  transPath20D = fullfile(exppath,'exp_geneEC_08_20D');
   cmaespath = fullfile(gppath,'cmaes_results');
   plotResultsFolder = fullfile('doc','gecco2015paper','images');
 
@@ -15,18 +18,19 @@ function generateSpeedUpPlots()
   funcSet.dims = [2,5,10];
   funcSet.dimsInv = inverseIndex(funcSet.dims);
   
-  rf_evals = dataready(rfpath,funcSet,'rflite');
-  gp_evals = dataready(gppath,funcSet);
-  cmaes_evals = dataready(cmaespath,funcSet,'cmaes');
+  trans_evals = dataready(transPath10D,funcSet,4);
+  rf_evals = dataready(rfpath,funcSet,6,'rflite');
+  gp_evals = dataready(gppath,funcSet,6);
+  cmaes_evals = dataready(cmaespath,funcSet,1,'cmaes');
   
-  hRFall = drawSpeedUpGraph(rf_evals,cmaes_evals,'cmaes',funcSet);
-  pdfname = fullfile('speedUpRF');
-  print2pdf(hRFall,pdfname,1)
+  hRFall = drawGraph(trans_evals(:,:,4),cmaes_evals,'cmaes',funcSet);
+%   pdfname = fullfile('speedUpRF');
+%   print2pdf(hRFall,pdfname,1)
 
-%   drawSpeedUpGraph(gp_evals,cmaes_evals,'cmaes',funcSet);
+%   drawGraph(gp_evals,cmaes_evals,'cmaes',funcSet);
 %   
 %   funcSet.BBfunc = [1,2,3,5,6,8];
-%   h1 = drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
+%   h1 = drawComparison(trans_evals(:,:,1),trans_evals(:,:,2),cmaes_evals,'cmaes',funcSet);
 %   
 %   funcSet.BBfunc = [10,11,12,13,14,20,21];
 %   h2 = drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
@@ -36,11 +40,12 @@ function generateSpeedUpPlots()
 
 end
 
-function data =  dataready(datapath,funcSet,varargin)
+function data = dataready(datapath,funcSet,numOfSettings,varargin)
 % prepare data for further processing
+% numOfSettings - number of different settings included in folder
 % varargin - directory with multiple s-cmaes settings or pure cmaes (write
 % 'cmaes')
-  data = cell(length(funcSet.BBfunc),length(funcSet.dims));
+  data = cell(length(funcSet.BBfunc),length(funcSet.dims),numOfSettings);
   
   % load and complete results
   if iscell(datapath) % data divided in multiple files
@@ -55,30 +60,40 @@ function data =  dataready(datapath,funcSet,varargin)
     end
     for i = 1:length(datalist)
       idx = strfind(datalist{i},'_');
-      id = str2double(datalist{i}(1,idx(end)+1:end-4));
-      if ~any(strfind(datalist{i},varargin{1})) || (mod(id,6) == 1 && any(strfind(datalist{i},varargin{1})))  % use only data with the same s-cmaes settings
-        func = str2double(datalist{i}(1,idx(end-2)+1:idx(end-1)-1));
-        dim = str2double(datalist{i}(1,idx(end-1)+1:idx(end)-2));
+      id = str2double(datalist{i}(1,idx(end)+1:end-4)); % experiment setting id
+      if ~any(strfind(datalist{i},varargin{1})) % if folder does not contain all settings
+        id = 1; % TODO: automatically find appropriate setting id
+      end
+      func = str2double(datalist{i}(1,idx(end-2)+1:idx(end-1)-1)); % function number
+      dim = str2double(datalist{i}(1,idx(end-1)+1:idx(end)-2));    % dimension number
+      if any(func == funcSet.BBfunc) && any(dim == funcSet.dims)
         S = load(datalist{i},'-mat','y_evals');
-        data{funcSet.BBfuncInv(func),funcSet.dimsInv(dim)}(end+1:end+length(S.y_evals),1) = S.y_evals;
+        data{funcSet.BBfuncInv(func),funcSet.dimsInv(dim),mod(id,numOfSettings)+1}(end+1:end+length(S.y_evals),1) = S.y_evals;
       end
     end
   else % data in one file
     list = dir(fullfile(datapath,'*.mat'));
-    if ~isempty(varargin) && strcmp(varargin{1},'cmaes')
-      datalist = {list(1:end).name};
-    else
-      datalist = {list(1:end-1).name};        % get rid of scmaes_params.mat
+    matId = true(1,length(list));
+    if strfind([list.name],'scmaes_params')
+      matId(end) = false;
     end
+    if strfind([list.name],'metajob')
+      matId(1) = false;
+    end    
+    datalist = {list(matId).name};        % get rid of scmaes_params.mat or metajob.mat
+    
     for i = 1:length(datalist)
       S = load(datalist{i},'-mat','y_evals');
       if ~isempty(varargin) && strcmp(varargin{1},'cmaes')
         S.y_evals = S.y_evals(1:20); % cmaes ran too many times
       end
       idx = strfind(datalist{i},'_');
-      func = str2double(datalist{i}(1,idx(end-2)+1:idx(end-1)-1));
-      dim = str2double(datalist{i}(1,idx(end-1)+1:idx(end)-2));
-      data{funcSet.BBfuncInv(func),funcSet.dimsInv(dim)} = S.y_evals;
+      func = str2double(datalist{i}(1,idx(end-2)+1:idx(end-1)-1)); % function number
+      dim = str2double(datalist{i}(1,idx(end-1)+1:idx(end)-2));    % dimension number
+      if any(func == funcSet.BBfunc) && any(dim == funcSet.dims)
+        id = str2double(datalist{i}(1,idx(end)+1:end-4));            % experiment setting id
+        data{funcSet.BBfuncInv(func),funcSet.dimsInv(dim),mod(id,numOfSettings)+1} = S.y_evals;
+      end
     end
   end
   
@@ -88,20 +103,22 @@ end
 
 function data = divSmooth(data,funcSet)
 % divide by dimension and make data smoother
-  [func,dims] = size(data);
-  for d = 1:dims
-    for f = 1:func
-      fInstant = [];
-      for i = 1:length(data{f,d})
-        data{f,d}{i}(:,2) = ceil(data{f,d}{i}(:,2)/funcSet.dims(d));
-        fInstant(:,end+1) = smoothYEvals(data{f,d}{i}(:,1:2),250); % use only first two columns - fitness, evaluations
+  [func,dims,nSettings] = size(data);
+  for s = 1:nSettings
+    for d = 1:dims
+      for f = 1:func
+        fInstant = [];
+        for i = 1:length(data{f,d,s})
+          data{f,d,s}{i}(:,2) = ceil(data{f,d,s}{i}(:,2)/funcSet.dims(d));
+          fInstant(:,end+1) = smoothYEvals(data{f,d,s}{i}(:,1:2),250); % use only first two columns - fitness, evaluations
+        end
+        data{f,d,s} = fInstant;
       end
-      data{f,d} = fInstant;
     end
   end
 end
 
-function handle = drawSpeedUpGraph(data,dataref,refname,funcSet,dims,BBfunc)
+function handle = drawGraph(data,dataref,refname,funcSet,dims,BBfunc)
 % draw graphs of dependence of how better is model than reference data
 % according to function evaluations / dimension
 % dims - chosen dimensions
