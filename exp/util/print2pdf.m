@@ -9,12 +9,29 @@ if ischar(pdfname)
   pdfname = {pdfname};
 end
 
+Nnames = length(pdfname);
 % check if names end with .pdf
-for f = 1:Nfig
+for f = 1:Nnames
   if ~strcmp(pdfname{f}(end-3:end),'.pdf')
     pdfname{f} = [pdfname{f},'.pdf'];
   end
 end
+
+% check if there is enough names
+if Nnames ~= Nfig
+  if Nnames == 1
+    fprintf('Creating names:\n\n')
+    pdfname(1:Nfig) = pdfname;
+    for f = 1:Nfig
+      pdfname{f} = [pdfname{f}(1:end-4),num2str(f),pdfname{f}(end-3:end)];
+      fprintf('%s\n',pdfname{f})
+    end
+  else
+  error('Numbers of figures and names does not agree!')
+  end
+end
+
+
 
 % count existing files
 existingPDFs = [];

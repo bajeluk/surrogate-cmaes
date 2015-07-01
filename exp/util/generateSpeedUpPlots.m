@@ -225,7 +225,7 @@ hold off
 end
 
 function means = gainMeans(data,dimId,funcId)
-% returns cell array of means accross chosen dimensions
+% Returns cell array of means accross chosen dimensions and functions
 
 % cat dimensions if necessary
 Dims = length(dimId);
