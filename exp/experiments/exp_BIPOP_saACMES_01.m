@@ -30,13 +30,6 @@ bbParamDef(5).values = {'250 * dim'};   % increment maxfunevals successively
                                 
 % Surrogate model parameter lists
 
-% sgParamDef(1).name   = 'lambdaMult';
-% lambdaMult = ones(1,40);
-% lambdaMult([2,3,5]) = 1;
-% lambdaMult([10]) = 10;
-% lambdaMult([20]) = 100;
-% lambdaMult([40]) = 1000;
-% sgParamDef(1).values = { lambdaMult };
 % BIPOP = true && useSCMAES = true  stands for BIPOP-S-CMA-ES
 % which means Ilya's BIPOP-aCMA-ES + Bajer&Pitra's GP/RF surrogate models
 sgParamDef(1).name   = 'BIPOP';
@@ -45,6 +38,15 @@ sgParamDef(2).name   = 'useSCMAES';
 sgParamDef(2).values = { 0 };
 sgParamDef(3).name   = 'withSurr';
 sgParamDef(3).values = { 1 };
+% % lambdaMult -- this is reported in the article as follows, but
+% % Ilya sent us lambdaMult = 1 const.
+% sgParamDef(4).name   = 'lambdaMult';
+% lambdaMult = ones(1,40);
+% lambdaMult([2,3,5]) = 1;
+% lambdaMult([10]) = 10;
+% lambdaMult([20]) = 100;
+% lambdaMult([40]) = 1000;
+% sgParamDef(4).values = { lambdaMult };
 
 % CMA-ES parameters
 cmParamDef(1).name   = 'PopSize';

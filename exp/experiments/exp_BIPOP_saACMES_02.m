@@ -14,7 +14,7 @@ logDir = '/storage/plzen1/home/bajeluk/public';
 
 % BBOB parameters
 bbParamDef(1).name   = 'dimensions';
-bbParamDef(1).values = {2, 5, 10, 20};      % {2, 5 10};
+bbParamDef(1).values = {2, 3, 5, 10, 20};      % {2, 5 10};
 bbParamDef(2).name   = 'functions';
 bbParamDef(2).values = num2cell(1:24);  % {1, 2, 3, 5, 6, 8, 10, 11, 12, 13, 14, 20, 21};
 % dimensions  = [10];     % which dimensions to optimize, subset of [2 3 5 10 20 40];
@@ -29,6 +29,8 @@ bbParamDef(5).name   = 'maxfunevals';   % MAXFUNEVALS - 10*dim is a short test-e
 bbParamDef(5).values = {'250 * dim'};   % increment maxfunevals successively
                                 
 % Surrogate model parameter lists
+% % lambdaMult -- this is reported in the article as follows, but
+% % Ilya sent us lambdaMult = 1 const.
 % sgParamDef(1).name   = 'lambdaMult';
 % lambdaMult = ones(1,40);
 % lambdaMult([2,3,5]) = 1;
@@ -36,16 +38,17 @@ bbParamDef(5).values = {'250 * dim'};   % increment maxfunevals successively
 % lambdaMult([20]) = 100;
 % lambdaMult([40]) = 1000;
 % sgParamDef(1).values = { lambdaMult };
+%
 % BIPOP = true && useSCMAES = true  stands for BIPOP-S-CMA-ES
 % which means Ilya's BIPOP-aCMA-ES + Bajer&Pitra's GP/RF surrogate models
-sgParamDef(1).name   = 'BIPOP';
-sgParamDef(1).values = { 1 };
-sgParamDef(2).name   = 'useSCMAES';
-sgParamDef(2).values = { 0 };
-sgParamDef(3).name   = 'withSurr';
-sgParamDef(3).values = { 1 };
-sgParamDef(4).name   = 'newRestartRules';
+sgParamDef(2).name   = 'BIPOP';
+sgParamDef(2).values = { 1 };
+sgParamDef(3).name   = 'useSCMAES';
+sgParamDef(3).values = { 0 };
+sgParamDef(4).name   = 'withSurr';
 sgParamDef(4).values = { 1 };
+sgParamDef(5).name   = 'newRestartRules';
+sgParamDef(5).values = { 1 };
 
 % CMA-ES parameters
 cmParamDef(1).name   = 'PopSize';
