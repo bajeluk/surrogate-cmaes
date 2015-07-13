@@ -44,11 +44,11 @@ settings.withModelEnsembles = 0;
 settings.withModelOptimization = 1;
 settings.hyper_lambda = 20;
 settings.iSTEPminForHyperOptimization = 1;
-settings.MaxEvals = '1e6*dim';
+settings.MaxEvals = '250*dim';
 settings.MaxEvalsWithSurrogate = '1e4*20';
 settings.lambdaMult = 1;
 settings.muMult = 1;
-settings.largeLambdaMinIter = 4;
+settings.largeLambdaMinIter = 3;
 
 settings.withDisp = 0;
 settings.maxStepts = 20;

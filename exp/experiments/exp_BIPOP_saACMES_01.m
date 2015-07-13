@@ -29,21 +29,22 @@ bbParamDef(5).name   = 'maxfunevals';   % MAXFUNEVALS - 10*dim is a short test-e
 bbParamDef(5).values = {'250 * dim'};   % increment maxfunevals successively
                                 
 % Surrogate model parameter lists
-sgParamDef(1).name   = 'lambdaMult';
-lambdaMult = ones(1,40);
-lambdaMult([2,3,5]) = 1;
-lambdaMult([10]) = 10;
-lambdaMult([20]) = 100;
-lambdaMult([40]) = 1000;
-sgParamDef(1).values = { lambdaMult };
+
+% sgParamDef(1).name   = 'lambdaMult';
+% lambdaMult = ones(1,40);
+% lambdaMult([2,3,5]) = 1;
+% lambdaMult([10]) = 10;
+% lambdaMult([20]) = 100;
+% lambdaMult([40]) = 1000;
+% sgParamDef(1).values = { lambdaMult };
 % BIPOP = true && useSCMAES = true  stands for BIPOP-S-CMA-ES
 % which means Ilya's BIPOP-aCMA-ES + Bajer&Pitra's GP/RF surrogate models
-sgParamDef(2).name   = 'BIPOP';
-sgParamDef(2).values = { 1 };
-sgParamDef(3).name   = 'useSCMAES';
-sgParamDef(3).values = { false };
-sgParamDef(4).name   = 'withSurr';
-sgParamDef(4).values = { true };
+sgParamDef(1).name   = 'BIPOP';
+sgParamDef(1).values = { 1 };
+sgParamDef(2).name   = 'useSCMAES';
+sgParamDef(2).values = { 0 };
+sgParamDef(3).name   = 'withSurr';
+sgParamDef(3).values = { 1 };
 
 % CMA-ES parameters
 cmParamDef(1).name   = 'PopSize';

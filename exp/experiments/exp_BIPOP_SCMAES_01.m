@@ -63,22 +63,27 @@ sgParamDef(12).values = { struct( ...
   'nBestPoints', 0, ...
   'minLeaf', 2, ...
   'inputFraction', 1) };
-% Ilya's saACM-ES settings
-sgParamDef(13).name   = 'lambdaMult';
-lambdaMult = ones(1,40);
-lambdaMult([2,3,5]) = 1;
-lambdaMult([10]) = 10;
-lambdaMult([20]) = 100;
-lambdaMult([40]) = 1000;
-sgParamDef(13).values = { lambdaMult };
+
 % BIPOP = true && useSCMAES = true  stands for BIPOP-S-CMA-ES
 % which means Ilya's BIPOP-aCMA-ES + Bajer&Pitra's GP/RF surrogate models
-sgParamDef(14).name   = 'BIPOP';
-sgParamDef(14).values = { 1 };
-sgParamDef(15).name   = 'useSCMAES';
-sgParamDef(15).values = { true };
-sgParamDef(16).name   = 'withSurr';
-sgParamDef(16).values = { false };
+sgParamDef(13).name   = 'BIPOP';
+sgParamDef(13).values = { 1 };
+sgParamDef(14).name   = 'useSCMAES';
+sgParamDef(14).values = { true };
+sgParamDef(15).name   = 'withSurr';
+sgParamDef(15).values = { false };
+
+% Ilya's saACM-ES settings
+
+% % lambdaMult -- this is reported in the article as follows, but
+% % Ilya sent us lambdaMult = 1 const.
+% sgParamDef(16).name   = 'lambdaMult';
+% lambdaMult = ones(1,40);
+% lambdaMult([2,3,5]) = 1;
+% lambdaMult([10]) = 10;
+% lambdaMult([20]) = 100;
+% lambdaMult([40]) = 1000;
+% sgParamDef(16).values = { lambdaMult };
 
 % CMA-ES parameters
 cmParamDef(1).name   = 'PopSize';

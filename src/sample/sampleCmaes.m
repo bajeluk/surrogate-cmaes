@@ -1,5 +1,8 @@
 function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun, opts, varargin)
 
+  % TODO: rewrite the meaning of counteval as the number of _NEW_ original
+  %       evaluations made during this specific call
+
   % CMA-ES sampling options
   noiseReevals = opts.noiseReevals;
   bnd.isactive = opts.isBoundActive;

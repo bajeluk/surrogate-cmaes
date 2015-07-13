@@ -11,7 +11,7 @@ REFALG="CMA-ES"         # -r
 MYALGORITHMS=("ALG1")   # --
 
 FUNCTIONS=`seq 1 24`
-DIMENSIONS="2 5 10 20"
+DIMENSIONS="2 3 5 10 20"
 CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 #Set fonts for Help.
@@ -132,9 +132,19 @@ for fun in $FUNCTIONS; do
         echo " cmaes fun=${fun}, dim=${dim} (id = ${ID}) --> $OUTPUT_DIR/$REFALG/data_f${fun}"
 
         # copy the detailed results: data_f#/bbobexp-01_* files
-        cp ${dir}/data_f${fun}/bbobexp-01_f* $OUTPUT_DIR/$REFALG/data_f${fun}/
+        # cp ${dir}/data_f${fun}/bbobexp-01_f* $OUTPUT_DIR/$REFALG/data_f${fun}/
+
+        # filter the detailed results of the additional CMA-ES runs
+        # (only the first 15 records are stored): data_f#/bbobexp-01_* files
+        $( cd "${dir}/data_f${fun}";
+          for f in bbobexp-01_f*; do
+            gawk -e 'BEGIN { n = 0 }; /^%/ { n = n + 1 }; { if (n <= 15) { print $0 } }' $f > $OUTPUT_DIR/$REFALG/data_f${fun}/$f
+          done
+        )
+
         # take the comprehensive info and add it to bbobexp_f#.info
-        sed -n "s/'$EXPID[^']*'/'${REFALG}'/;4,6p" ${dir}/bbobexp_f${fun}.info >> $OUTPUT_DIR/$REFALG/bbobexp_f${fun}.info
+        # strip the additional CMA-ES entries (above the first 15 entries)
+        sed -n "s/'$EXPID[^']*'/'${REFALG}'/;s/\([^,]\+\)\(\(,[^,]\+\)\{15\}\),.*/\1\2/;4,6p" ${dir}/bbobexp_f${fun}.info >> $OUTPUT_DIR/$REFALG/bbobexp_f${fun}.info
         # newline :)
         echo "" >> $OUTPUT_DIR/$REFALG/bbobexp_f${fun}.info
       fi

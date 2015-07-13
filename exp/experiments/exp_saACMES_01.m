@@ -29,13 +29,16 @@ bbParamDef(5).name   = 'maxfunevals';   % MAXFUNEVALS - 10*dim is a short test-e
 bbParamDef(5).values = {'250 * dim'};   % increment maxfunevals successively
                                 
 % Surrogate model parameter lists
-sgParamDef(1).name   = 'lambdaMult';
-lambdaMult = ones(1,40);
-lambdaMult([2,3,5]) = 1;
-lambdaMult([10]) = 10;
-lambdaMult([20]) = 100;
-lambdaMult([40]) = 1000;
-sgParamDef(1).values = { lambdaMult };
+
+% % lambdaMult -- this is reported in the article as follows, but
+% % Ilya sent us lambdaMult = 1 const.
+% sgParamDef(1).name   = 'lambdaMult';
+% lambdaMult = ones(1,40);
+% lambdaMult([2,3,5]) = 1;
+% lambdaMult([10]) = 10;
+% lambdaMult([20]) = 100;
+% lambdaMult([40]) = 1000;
+% sgParamDef(1).values = { lambdaMult };
 
 % CMA-ES parameters
 cmParamDef(1).name   = 'PopSize';
@@ -58,4 +61,4 @@ sgParamDef(end).values = { exppath };
 save([exppath filesep 'scmaes_params.mat'], 'bbParamDef', 'sgParamDef', 'cmParamDef', 'exp_id', 'exppath_short', 'logDir');
 
 % run the rest of the scripts generation
-generateShellScripts % Metacentrum
+generateShellScriptsMetacentrum
