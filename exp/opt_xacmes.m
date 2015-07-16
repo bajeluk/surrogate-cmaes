@@ -66,6 +66,10 @@ if (length(settings.lambdaMult) > 1)
   settings.lambdaMult = settings.lambdaMult(DIM);
 end
 
+% saACM-ES log (added bajeluk 2015-07-15):
+gfile_state_name = [ './' datapath '/' num2str(ifun) '_D' num2str(dim) '_inst' num2str(iinstance) '.txt'];
+settings.gfile_state = fopen(gfile_state_name,'w');
+
 % refining multistarts
 for ilaunch = 1:1e4; % up to 1e4 times
   % % try fminsearch from Matlab, modified to take usual_delta as arg
@@ -98,6 +102,9 @@ for ilaunch = 1:1e4; % up to 1e4 times
   % usual_delta = 0.1 * 0.1^rand(1,1); % with small "radius"
   % if useful, modify more options here for next launch
 end
+
+% saACM-ES log (added bajeluk 2015-07-15):
+fclose(settings.gfile_state);
 
   function stop = callback(x, optimValues, state)
     stop = false;
