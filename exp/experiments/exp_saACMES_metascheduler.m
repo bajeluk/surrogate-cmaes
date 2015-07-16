@@ -3,12 +3,14 @@ function exp_saACMES_metascheduler(varargin)
 % on Metacentrum
 % splitting the tasks is done per function basis
 % it is first run for dimension 20, and afterwords for dimensions [2,3,5,10]
+% OPTIONAL PARAMETER: Metacentrum queue (2h, 4h, 1d, 2d, 4d...)
 
-  functions = 1:24;
+  functions = [2:24];
   dimensions = [20];
 
-  pwd = fileparts(mfilename('fullpath'));
-  cd(pwd);
+  disp('Current path of the script:');
+  cwd = fileparts(mfilename('fullpath'))
+  cd(cwd);
   % BE CAREFUL!! this is manual PATH addition
   addpath('saACMESlambdaRevMinIter3v2');  % for getParamsFromIndex()
   if (nargin >= 1 && ~isempty(varargin{1}))
@@ -29,7 +31,7 @@ function exp_saACMES_metascheduler(varargin)
 
   cl = parallel.cluster.Torque;
   pause(2);
-  matlabjobsdir = [pwd '/matlab_jobs'];
+  matlabjobsdir = [cwd '/../matlab_jobs'];
   [~, ~] = mkdir(matlabjobsdir)
   cl.JobStorageLocation = matlabjobsdir;
   cl.ClusterMatlabRoot = matlabroot;
@@ -43,7 +45,7 @@ function exp_saACMES_metascheduler(varargin)
   i = 1;
   for func = functions
     fprintf('Setting up job ID %d / %d...\n', i, length(functions));
-    tasks(i) = createTask(job, @exp_saACMES_task, 0, {func, dimensions});
+    tasks(i) = createTask(job, @exp_saACMES_task, 0, {cwd, func, dimensions});
     i = i + 1;
   end
 

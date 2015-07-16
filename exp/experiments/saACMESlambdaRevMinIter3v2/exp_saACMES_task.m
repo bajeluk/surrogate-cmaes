@@ -1,4 +1,11 @@
-function exp_saACMES_task(funs_, varargin)
+function exp_saACMES_task(taskpath, funs_, varargin)
+
+  cd([taskpath filesep '..' filesep '..']);
+  startup;
+  cd([taskpath filesep 'saACMESlambdaRevMinIter3v2']);
+  disp('Current path:');
+  pwd
+
   global settings;
 
   if (~isempty(varargin))
@@ -7,7 +14,9 @@ function exp_saACMES_task(funs_, varargin)
     dims_ = [2, 3, 5, 10, 20];
   end
 
-  settings.instances = [1:5,31:40];
+  fprintf(1, 'Functions : %d\n', funs_);
+  fprintf(1, 'Dimensions: %d\n', dims_);
+settings.instances = [1:5,31:40];
   settings.dims = dims_;
   settings.funs = funs_;
   settings.pathname = 'd1';
@@ -15,7 +24,7 @@ function exp_saACMES_task(funs_, varargin)
   settings.ntarray = [1];
   settings.savfile = 'r1';
 
-  settings.BIPOP = 1; 
+  settings.BIPOP = 0; 
   settings.newRestartRules = 0; 
   settings.noisy = 0;
   settings.CMAactive = 1;
