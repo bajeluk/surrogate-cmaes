@@ -67,7 +67,7 @@ if (length(settings.lambdaMult) > 1)
 end
 
 % saACM-ES log (added bajeluk 2015-07-15):
-gfile_state_name = [ './' datapath '/' num2str(ifun) '_D' num2str(dim) '_inst' num2str(iinstance) '.txt'];
+gfile_state_name = [ sgParams.experimentPath filesep 'saacmes_' num2str(bbParams.functions(1)) '_D' num2str(DIM) '_inst' num2str(bbParams.instances(1)) '.txt'];
 settings.gfile_state = fopen(gfile_state_name,'w');
 
 % refining multistarts
