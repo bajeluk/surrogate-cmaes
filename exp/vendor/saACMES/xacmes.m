@@ -14,7 +14,7 @@ end
 
 opts = cmaes_initialize('defaults');
 opts.MaxFunEvals = MAX_EVAL;
-opts.StopFitness = 0;
+opts.StopFitness = -Inf;
 opts.DispModulo = -1;
 opts.DispFinal = 'off';
 opts.EvalParallel       = 'yes  % original: no   % objective function FUN accepts NxM matrix, with M>1?';

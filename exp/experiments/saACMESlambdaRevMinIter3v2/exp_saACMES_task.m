@@ -16,7 +16,7 @@ function exp_saACMES_task(taskpath, funs_, varargin)
 
   fprintf(1, 'Functions : %d\n', funs_);
   fprintf(1, 'Dimensions: %d\n', dims_);
-settings.instances = [1:5,31:40];
+  settings.instances = [1:5,31:40];
   settings.dims = dims_;
   settings.funs = funs_;
   settings.pathname = 'd1';
