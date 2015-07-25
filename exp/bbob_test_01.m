@@ -100,9 +100,9 @@ function bbob_test_01(id, exp_id, path, varargin)
       generateGnuplotDataExtended([gnuplotFile '.dat'], exp_results, exp_cmaes_results, eval(maxfunevals));
 
       % save gnuplot script
-      if (isfield(surrogateParams, 'modelType')) modelType = surrogateParams.modelType;
+      if (isfield(surrogateParams, 'modelType')); modelType = surrogateParams.modelType;
       else modelType = ''; end
-      if (isfield(surrogateParams, 'evoControl')) evoControl = surrogateParams.evoControl;
+      if (isfield(surrogateParams, 'evoControl')); evoControl = surrogateParams.evoControl;
       else evoControl = ''; end
 
       gnuplotScriptCommand = ['sed "s#\<DATAFILE\>#' gnuplotFile '.dat#; s#\<OUTPUTFILE\>#' resultsFile '#; s#\<TITLE\>#f' num2str(ifun) ', ' num2str(dim) 'D#; s#\<DATALINETITLE\>#' modelType ' surrogate, ' evoControl ' EC#; s#\<PARAMS1\>#' sprintfStruct(surrogateParams, 'escape') '#; s#\<PARAMS2\>#' sprintfStruct(exp_settings, 'escape') '#" ' gnuplotScript ' > ' gnuplotFile '.gpi'];
@@ -118,7 +118,7 @@ function bbob_test_01(id, exp_id, path, varargin)
 
       delete(tmpFile);
     end
-    disp(sprintf('---- dimension %d-D done ----', dim));
+    fprintf('---- dimension %d-D done ----\n', dim);
   end
 
   catch err
@@ -187,13 +187,13 @@ function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_
 
     y_evals = cat(1,y_evals,yeRestarts);
 
-    disp(sprintf(['  f%d in %d-D, instance %d: FEs=%d with %d restarts,' ...
-                  ' fbest-ftarget=%.4e, elapsed time [h]: %.2f'], ...
+    fprintf(['  f%d in %d-D, instance %d: FEs=%d with %d restarts,' ...
+                  ' fbest-ftarget=%.4e, elapsed time [h]: %.2f\n'], ...
                 exp_settings.bbob_function, exp_settings.dim, iinstance, ...
                 fgeneric('evaluations'), ...
                 restarts, ...
                 fgeneric('fbest') - fgeneric('ftarget'), ...
-                etime(clock, t0)/60/60));
+                etime(clock, t0)/60/60);
 
     inst_results_evals = [inst_results_evals fgeneric('evaluations')];
     inst_results_restarts = [inst_results_restarts restarts];
