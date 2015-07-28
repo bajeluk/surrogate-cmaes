@@ -1,4 +1,4 @@
-exp_id = 'exp_BIPOP_SCMAES_02';
+exp_id = 'exp_BIPOP_SCMAES_02_10D';
 exp_description = 'Loshchilov''s BIPOP-aCMA-ES with Bajer&Pitra''s GP/RF surrogate models, 24 functions, 15 instances';
 
 machines = {'machine1'};
