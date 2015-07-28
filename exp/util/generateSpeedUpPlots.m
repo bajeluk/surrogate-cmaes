@@ -8,7 +8,7 @@ function generateSpeedUpPlots()
   gppath = fullfile(exppath,'exp_geneEC_06');
   rfpath = {[gppath,'_rflite'],[gppath,'_rf5_2'],[gppath,'_rf5_3'],[gppath,'_rf5_4']};
   cmaespath = fullfile(gppath,'cmaes_results');
-  plotResultsFolder = fullfile('doc','gecco2015paper','images');
+  plotResultsFolder = '/tmp';
 
   funcSet.BBfunc = [1,2,3,5,6,8,10,11,12,13,14,20,21];
   funcSet.BBfuncInv = inverseIndex(funcSet.BBfunc);
@@ -25,14 +25,14 @@ function generateSpeedUpPlots()
 
 %   drawSpeedUpGraph(gp_evals,cmaes_evals,'cmaes',funcSet);
 %   
-%   funcSet.BBfunc = [1,2,3,5,6,8];
-%   h1 = drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
-%   
-%   funcSet.BBfunc = [10,11,12,13,14,20,21];
-%   h2 = drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
+  funcSet.BBfunc = [1,2,3,5,6,8];
+  h1 = drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
   
-%   pdfname = fullfile(plotResultsFolder,'speedUp');
-%   print2pdf([h1 h2],{[pdfname,'A.pdf'],[pdfname,'B.pdf']},1)
+  funcSet.BBfunc = [10,11,12,14,20,21];
+  h2 = drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
+  
+  pdfname = fullfile(plotResultsFolder,'speedUp');
+  print2pdf([h1 h2],{[pdfname,'A.pdf'],[pdfname,'B.pdf']},1)
 
 end
 
@@ -179,16 +179,17 @@ dataref_means = gainMeans(dataref,dimIds,funcIds);
 
 
 % plot results
+lineWidth = 2;
 evaldim = 1:length(dataref_means{1});
 scrsz = get(groot,'ScreenSize');
-handle = figure('Units','centimeters','Position',[1 scrsz(4)/2 13 7.5]);
+handle = figure('Units','centimeters','Position',[1 scrsz(4)/2 14 8]);
 subplot(1,2,1);
 % add reference line
-h(1) = semilogy(evaldim,ones(1,length(evaldim)));
+h(1) = semilogy(evaldim,ones(1,length(evaldim)),'LineWidth',lineWidth);
 ftitle{1} = refname;
 hold on
 for f = 1:length(funcIds)
-  h(f+1) = semilogy(evaldim,dataref_means{f}(evaldim)./data1_means{f}(evaldim));
+  h(f+1) = semilogy(evaldim,dataref_means{f}(evaldim)./data1_means{f}(evaldim),'LineWidth',lineWidth);
   ftitle{f+1} = ['f',num2str(BBfunc(f))];
 end
 xlabel('Number of evaluations / D')
@@ -199,11 +200,11 @@ ax1 = gca;
 
 subplot(1,2,2);
 % add reference line
-h(1) = semilogy(evaldim,ones(1,length(evaldim)));
+h(1) = semilogy(evaldim,ones(1,length(evaldim)),'LineWidth',lineWidth);
 ftitle{1} = refname;
 hold on
 for f = 1:length(funcIds)
-  h(f+1) = semilogy(evaldim,dataref_means{f}(evaldim)./data2_means{f}(evaldim));
+  h(f+1) = semilogy(evaldim,dataref_means{f}(evaldim)./data2_means{f}(evaldim),'LineWidth',lineWidth);
   ftitle{f+1} = ['f',num2str(BBfunc(f))];
 end
 ax2 = gca;

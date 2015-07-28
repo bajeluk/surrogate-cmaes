@@ -13,7 +13,8 @@ function generateFValuesPlots()
   transPath10D = fullfile(exppath,'exp_geneEC_08_10D');
   transPath20D = fullfile(exppath,'exp_geneEC_08_20D');
   cmaespath = fullfile(gppath,'cmaes_results');
-  plotResultsFolder = fullfile('..','..','..','Downloads','tmp');
+  plotResultsFolder = ['/tmp'];
+  plotResultsFolder2 = fullfile('..','latex_scmaes','gecco2015poster','images');
 
   % needed function and dimension settings
   funcSet.BBfunc = [1,2,3,5,6,8,10,11,12,13,14,20,21];
@@ -43,20 +44,35 @@ function generateFValuesPlots()
   set.evoControlModelGenerations = 1;
   gp1TransId = getSettingsIndex(trans_settings,set);
   gp1Id = getSettingsIndex(gp_settings,set);
+  set.evoControlModelGenerations = 3;
+  gp3Id = getSettingsIndex(gp_settings,set);
   
+  % color settings
+  CMAESCol = [22 22 138];
+  GP1TransCol = [255 0 0];
+  GP5TransCol = [255 215 0];
+  RF1TransCol = [208 32 144];
+  RF5TransCol = [0 0 0];
+  GP3Col = [100 149 237];
+  RF1Col = [116 172 66];
   
 %   data = {trans_evals(:,:,rf1TransId),trans_evals(:,:,gp1TransId),trans_evals(:,:,rf5TransId),trans_evals(:,:,gp5TransId),cmaes_evals};
 %   datanames = {'RF1T','GP1T','RF5T','GP5T','CMA-ES'};
+
+  data = {cmaes_evals,gp_evals(:,:,gp3Id),trans_evals(:,:,gp5TransId),rf_evals(:,:,rf1Id),trans_evals(:,:,rf1TransId),trans_evals(:,:,gp5TransId)};
+  datanames = {'CMA-ES','GP3','GP5-trans','RF1','RF1-trans'};
   
-  data = {cmaes_evals,gp_evals(:,:,gp1Id),trans_evals(:,:,gp1TransId),rf_evals(:,:,rf1Id),trans_evals(:,:,rf1TransId)};
-  datanames = {'CMA-ES','GP','GP-trans','RF','RF-trans'};
-  colors = [0 0 0; 1 0 0; 1 0 1; 0 1 0; 0 1 1];
+%   data = {cmaes_evals,gp_evals(:,:,gp3Id),trans_evals(:,:,gp5TransId),rf_evals(:,:,rf1Id),trans_evals(:,:,rf1TransId)};
+%   datanames = {'CMA-ES','GP3','GP5-trans','RF1','RF1-trans'};
+
+  
+  colors = [CMAESCol; GP3Col; GP5TransCol; RF1Col; RF1TransCol]/255;
   for i = 1:length(funcSet.BBfunc)
-    pdfNames{i} = fullfile(plotResultsFolder,['f',num2str(funcSet.BBfunc(i))]);
+    pdfNames{i} = fullfile(plotResultsFolder2,['f',num2str(funcSet.BBfunc(i))]);
   end
   
   han = drawFValuesGraph(data,datanames,funcSet,funcSet.dims,funcSet.BBfunc,colors);
-  print2pdf(han,pdfNames,1)
+%   print2pdf(han,pdfNames,1)
 
 %   drawGraph(gp_evals,cmaes_evals,'cmaes',funcSet);
 %   
@@ -67,7 +83,7 @@ function generateFValuesPlots()
 %   h2 = drawComparison(gp_evals,rf_evals,cmaes_evals,'cmaes',funcSet);
   
 %   pdfname = fullfile(plotResultsFolder,'speedUp');
-%   print2pdf([h1 h2],{[pdfname,'A.pdf'],[pdfname,'B.pdf']},1)
+  print2pdf(han,pdfNames,1)
 
 end
 
@@ -215,13 +231,14 @@ data_means = cellfun(@(D) gainMeans(D,dimIds,funcIds,useMaxInstances),data,'Unif
 
 % plot results
 evaldim = 1:length(data_means{1}{1});
-linewidth = 2.5;
+linewidth = 2;
 
 for f = 1:length(funcIds)
-  handle(f) = figure();
+  handle(f) = figure('Units','centimeters','Position',[1 1 12.5 6]);
   h(1) = semilogy(evaldim,data_means{1}{f}(evaldim),'LineWidth',linewidth,'Color',colors(1,:));
   ftitle{1} = datanames{1};
   hold on
+  grid on
   for D = 2:length(datanames)
     h(D) = semilogy(evaldim,data_means{D}{f}(evaldim),'LineWidth',linewidth,'Color',colors(D,:));
     ftitle{D} = datanames{D};

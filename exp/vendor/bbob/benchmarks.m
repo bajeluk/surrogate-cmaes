@@ -66,7 +66,7 @@
 %%%-------------------------------------------------------------%%%
 function [res, res2] = benchmarks(x, strfun, DIM) 
 %
-  Nfcts = 24;
+  Nfcts = 25;
 
   % return valid function IDs (ie numbers)
   if nargin < 1 || ( ...
@@ -109,7 +109,7 @@ function [res, res2] = benchmarks(x, strfun, DIM)
         eval(['f' num2str(i) '([1; 2]);']);
         res{i} = str2func(['f' num2str(i)]); % eval(['@f' num2str(i)]);
       catch
-        if i < Nfcts 
+        if i <= Nfcts 
           disp(sprintf('execution of function %d produces an error', i));
         end
       end
@@ -2404,11 +2404,11 @@ function B = computeRotation(seed, DIM)
 % computes an orthogonal basis
   B = reshape(gauss(DIM*DIM,seed), DIM, DIM);
   for i = 1:DIM
-      for j = 1:i-1
-	B(:,i) = B(:,i) - B(:,i)'*B(:,j) * B(:,j);
-      end
-      B(:,i) = B(:,i) / sqrt(sum(B(:,i).^2));
+    for j = 1:i-1
+      B(:,i) = B(:,i) - B(:,i)'*B(:,j) * B(:,j);
     end
+    B(:,i) = B(:,i) / sqrt(sum(B(:,i).^2));
+  end
 end
 
 function g = monotoneTFosc(f)
@@ -2512,13 +2512,13 @@ end
 % qqq
 %%%%%%%%%%%%%%%%%%%%%%% TEMPLATE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%-------------------------------------------------------------%%%
-function [Fval, Ftrue] = template(x, DIM, ntrial)
+function [Fval, Ftrue] = f25(x, DIM, ntrial)
 % last change: 09/01/29
   persistent Fopt Xopt scales linearTF rotation rseed
   persistent lastSize arrXopt arrScales arrExpo 
 
-  funcID = INPUTTHIS; 
-  condition = INPUTTHIS;  % for linear transformation
+  funcID = 25; 
+  condition = 100;  % for linear transformation
 %  alpha = 1;      % 
 %  beta = 0.25;       % 
   rrseed = funcID; 
@@ -2593,9 +2593,9 @@ function [Fval, Ftrue] = template(x, DIM, ntrial)
   Fval = Ftrue;  % without noise
 
   %----- NOISE -----
-  Fval = FGauss(Ftrue, 1); 
-  Fval = FUniform(Ftrue, 0.49 + 1/DIM, 1); 
-  Fval = FCauchy(Ftrue, 1); 
+%   Fval = FGauss(Ftrue, 1); 
+%   Fval = FUniform(Ftrue, 0.49 + 1/DIM, 1); 
+%   Fval = FCauchy(Ftrue, 1); 
 
   %----- FINALIZE -----
   Ftrue = Ftrue + Fadd;
