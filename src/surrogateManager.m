@@ -25,6 +25,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   sDefaults.sampleFcn   = @sampleCmaes;         % sampleCmaes | ??? TODO ???
   sDefaults.evoControlPreSampleSize     = 0.2;  % 0..1
   sDefaults.evoControlIndividualExtension = 20; % 1..inf (reasonable 10-100)
+  sDefaults.evoControlSamplePreprocessing = false;
   sDefaults.evoControlBestFromExtension = 0.2;  % 0..1
   sDefaults.evoControlTrainRange        = 8;    % 1..inf (reasonable 1--20)
   sDefaults.evoControlSampleRange       = 1;    % 1..inf (reasonable 1--20)
@@ -118,20 +119,39 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     % TODO: if (newModel.trainGeneration <= 0) ==> DON'T USE THIS MODEL!!!
 
     if (newModel.isTrained())
-      % sample the enlarged population of size 'gamma * (lambda - nToSample)'
-      extendSize = ceil(surrogateOpts.evoControlIndividualExtension ...
-          * (lambda - nToSample));
-      [xExtend, xExtendValid, zExtend] = ...
-          sampleCmaesNoFitness(xmean, expandedSigma, extendSize, BD, diagD, surrogateOpts.sampleOpts);
-      % calculate the model prediction for the extended population
-      yExtend = newModel.predict(xExtend');
+      if any(strcmpi(newModel.predictionType,{'poi','ei'}))
+        bestImprovement = 0;
+        % sample 'gamma' populations of size '(lambda - nToSample)' 
+        for sampleNumber = 1:surrogateOpts.evoControlIndividualExtension
+          [xExtend, xExtendValid, zExtend] = ...
+              sampleCmaesNoFitness(xmean, expandedSigma, lambda - nToSample, BD, diagD, surrogateOpts.sampleOpts);
+          % TODO: criterion for choosing the best sample
+          actualImprovement = mean(newModel.getImprovement(xExtend')); 
+          % choose sample with higher improvement factor (POI, EI)
+          if actualImprovement > bestImprovement || sampleNumber == 1
+            xToReeval = xExtend;
+            xToReevalValid = xExtendValid;
+            zToReeval = zExtend;
+            bestImprovement = actualImprovement;
+          end
+        end    
+        
+      else
+        % sample the enlarged population of size 'gamma * (lambda - nToSample)'
+        extendSize = ceil(surrogateOpts.evoControlIndividualExtension ...
+            * (lambda - nToSample));
+        [xExtend, xExtendValid, zExtend] = ...
+            sampleCmaesNoFitness(xmean, expandedSigma, extendSize, BD, diagD, surrogateOpts.sampleOpts);
+        % calculate the model prediction for the extended population
+        yExtend = newModel.getImprovementToFValues(xExtend');
 
-      nBest = min(ceil(lambda*surrogateOpts.evoControlBestFromExtension), lambda - nToSample - 1);
-      nCluster = lambda - nToSample - nBest;
-      [xToReeval, xToReevalValid, zToReeval] = ...
-          SurrogateSelector.choosePointsToReevaluate(...
-          xExtend, xExtendValid, zExtend, yExtend, nBest, nCluster);
-
+        nBest = min(ceil(lambda*surrogateOpts.evoControlBestFromExtension), lambda - nToSample - 1);
+        nCluster = lambda - nToSample - nBest;
+        [xToReeval, xToReevalValid, zToReeval] = ...
+            SurrogateSelector.choosePointsToReevaluate(...
+            xExtend, xExtendValid, zExtend, yExtend, nBest, nCluster);
+      end
+      
       % original-evaluate the chosen points
       [yNew, xNew, xNewValid, zNew, counteval] = ...
           sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, expandedSigma, nCluster + nBest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});

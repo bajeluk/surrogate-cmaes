@@ -153,8 +153,8 @@ classdef (Abstract) Model
       end
     end
     
-    function [fy, sd2] = predict(obj, X)
-    % predicts the function values, the probability of improvement, or expected improvment in new points X
+    function [y, sd2] = predict(obj, X)
+    % Predicts the function values in new points X.
 
       % transform input variables using Mahalanobis distance
       if obj.transformCoordinates
@@ -167,10 +167,37 @@ classdef (Abstract) Model
 
       [y,sd2] = modelPredict(obj,XTransf);
 
+    end
+    
+    function [improvement, y] = getImprovement(obj,X)
+    % Counts the probability of improvement, or expected improvement in 
+    % new points X.
+      
+      [y, sd2] = obj.predict(X);
+      fmin = min(obj.dataset.y);
+      
+      switch lower(obj.predictionType)
+        case 'poi'
+          fmax = max(obj.dataset.y);
+          target = fmin-0.05*(fmax-fmin);
+          improvement = getPOI(X, y, sd2, target);
+        case 'ei'
+          improvement = getEI(X, y, sd2, fmin);
+      end
+
+    end
+    
+    function fy = getImprovementToFValues(obj, X)
+    % Predicts the function values, the probability of improvement, or 
+    % expected improvement in new points X. Values of POI and EI are
+    % transformed to last known fvalue range.
+    
+      [y, sd2] = obj.predict(X);
+      
       switch lower(obj.predictionType)
         case 'fvalues'
           fy = y;
-        case 'poi'
+        case 'fpoi'
           fmin = min(obj.dataset.y);
           fmax = max(obj.dataset.y);
           target = fmin-0.05*(fmax-fmin);
@@ -179,7 +206,7 @@ classdef (Abstract) Model
           poiMin = min(poi);
           % map the higest PoI to the smallest function value and vice versa
           fy = (fmax-fmin)*(poiMax - poi)/(poiMax-poiMin)+fmin;
-        case 'ei'
+        case 'fei'
           fmin = min(obj.dataset.y);
           fmax = max(obj.dataset.y);
           ei = getEI(X, y, sd2, fmin);
@@ -188,7 +215,7 @@ classdef (Abstract) Model
           % map the higest EI to the smallest function value and vice versa
           fy = (fmax-fmin)*(eiMax-ei)/(eiMax-eiMin)+fmin;
       end
-
+      
     end
     
     function obj = train(obj, X, y, xMean, generation,sigma,BD)
