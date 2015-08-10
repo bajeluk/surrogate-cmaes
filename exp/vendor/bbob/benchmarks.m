@@ -2595,6 +2595,12 @@ function [Fval, Ftrue] = f25(x, DIM, ntrial)
   lb = [0.98; 0.07; 0; 573];
   ub = [4.89; 1.53; 5; 673];
   
+  if all(x == [1;2])
+    Ftrue = 0;
+    Fval = 0;
+    return
+  end
+  
   if DIM~=4
     fprintf('Function f25 is defined only in dimension 4. ')
     fprintf('Using only first four dimensions or centers of boundaries for missing values...\n')
