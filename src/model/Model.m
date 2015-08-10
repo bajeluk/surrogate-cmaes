@@ -189,7 +189,7 @@ classdef (Abstract) Model
     
     function fy = getImprovementToFValues(obj, X)
     % Predicts the function values, the probability of improvement, or 
-    % expected improvement in new points X. Values of POI and EI are
+    % expected improvement in new points X. Values of PoI and EI are
     % transformed to last known fvalue range.
     
       [y, sd2] = obj.predict(X);
