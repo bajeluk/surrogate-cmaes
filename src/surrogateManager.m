@@ -89,7 +89,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
     [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
         xmean', surrogateOpts.evoControlTrainRange, expandedSigma, BD);
-    nToSample = nRequired - size(xTrain, 1);
+    nToSample = max(nRequired - size(xTrain, 1), 0);
 
     if (nToSample > nEvaluated)
       % TODO: shouldn't we use an old model?
