@@ -7,8 +7,6 @@ function [x, ilaunch, y_evals, stopflag] = opt_cmaes(FUN, DIM, ftarget, maxfunev
 % set options, make sure we always terminate
 % with restarts up to 2*maxfunevals are allowed
 
-% Be aware: 'id' is an additional parameter!
-
 xstart = 8 * rand(DIM, 1) - 4; % random start solution
 
 fDelta = 1e-8;

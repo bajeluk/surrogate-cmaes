@@ -2595,7 +2595,7 @@ function [Fval, Ftrue] = f25(x, DIM, ntrial)
   lb = [0.98; 0.07; 0; 573];
   ub = [4.89; 1.53; 5; 673];
   
-  if all(x == [1;2])
+  if DIM == 2 && all(x == [1;2])
     Ftrue = 0;
     Fval = 0;
     return
@@ -2612,11 +2612,11 @@ function [Fval, Ftrue] = f25(x, DIM, ntrial)
   end
   
   Ftrue = zeros(1,POPSI);
+  Ftarget = 89.138016;
   for i = 1:POPSI
-    Ftrue(i) = fitnessfcn_PRODMECH(x(:,i),{tsim,Tf});
-    fprintf('Xw: %f  WFEO: %f  af: %f  b: %f     fval: %f\n',x(1,i),x(2,i),x(3,i),x(4,i),Ftrue(i))
+    Ftrue(i) = fitnessfcn_PRODMECH(x(:,i),{tsim,Tf}) + Ftarget;
+    fprintf('Xw: %f  WFEO: %f  af: %f  b: %f     fval: %f\n',x(1,i),x(2,i),x(3,i),x(4,i),Ftrue(i)-Ftarget)
   end
-  Ftrue = Ftrue + 172.72;
   Fval = Ftrue;  % without noise
 
   %----- NOISE -----
