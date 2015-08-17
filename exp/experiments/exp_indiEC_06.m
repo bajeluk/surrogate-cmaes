@@ -14,9 +14,9 @@ logDir = '/storage/plzen1/home/bajeluk/public';
 
 % BBOB parameters
 bbParamDef(1).name   = 'dimensions';
-bbParamDef(1).values = {2, 5, 10};      % {2, 5 10};
+bbParamDef(1).values = {2};      % {2, 5 10};
 bbParamDef(2).name   = 'functions';
-bbParamDef(2).values = num2cell(1:24);
+bbParamDef(2).values = num2cell(1);
 % dimensions  = [10];     % which dimensions to optimize, subset of [2 3 5 10 20 40];
 % functions   = [8];      % function ID's to optimize (2 Sphere, 3 Rastrigin, 8 Rosenbrock)
 bbParamDef(3).name   = 'opt_function';
@@ -24,19 +24,19 @@ bbParamDef(3).values = {@opt_s_cmaes};
 % opt_function = @opt_s_cmaes;    % function being optimized -- BBOB wrap-around with header
 %                                 % xbest = function( fun, dim, ftarget, maxfunevals )
 bbParamDef(4).name   = 'instances';
-bbParamDef(4).values = {[1:5 31:40]}; % 31:40]};   % default is [1:5, 31:40]
+bbParamDef(4).values = {[1:40]}; % 31:40]};   % default is [1:5, 31:40]
 bbParamDef(5).name   = 'maxfunevals';   % MAXFUNEVALS - 10*dim is a short test-experiment
 bbParamDef(5).values = {'250 * dim'};   % increment maxfunevals successively
                                 
 % Surrogate model parameter lists
 sgParamDef(1).name   = 'evoControl';            % 'none', 'individual', 'generation'
-sgParamDef(1).values = {'individual'};
+sgParamDef(1).values = {'none'};
 sgParamDef(2).name   = 'modelType';             % 'gp', 'rf', 'bbob'
 sgParamDef(2).values = {'gp','rf'};
 sgParamDef(3).name   = 'evoControlPreSampleSize';       % will be multip. by lambda
-sgParamDef(3).values = { 0.25 };     % {0.25, 0.5, 0.75};
+sgParamDef(3).values = { 0 };     % {0.25, 0.5, 0.75};
 sgParamDef(4).name   = 'evoControlIndividualExtension'; % will be multip. by lambda
-sgParamDef(4).values = { 10, 100 };
+sgParamDef(4).values = { 1 };
 sgParamDef(5).name   = 'evoControlBestFromExtension';   % ratio of expanded popul.
 sgParamDef(5).values = { 0.2 };
 sgParamDef(6).name   = 'evoControlTrainRange';          % will be multip. by sigma

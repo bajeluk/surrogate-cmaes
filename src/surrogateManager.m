@@ -125,9 +125,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         % sample 'gamma' populations of size 'nLambdaRest' 
         for sampleNumber = 1:surrogateOpts.evoControlIndividualExtension
           [xExtend, xExtendValid, zExtend] = ...
-              sampleCmaesNoFitness(xmean, expandedSigma, nLambdaRest, BD, diagD, surrogateOpts.sampleOpts);
+              sampleCmaesNoFitness(xmean, sigma, nLambdaRest, BD, diagD, surrogateOpts.sampleOpts);
           % TODO: criterion for choosing the best sample
-          actualImprovement = mean(newModel.getImprovement(xExtend')); 
+          actualImprovement = mean(newModel.getModelOutput(xExtend')); 
           % choose sample with higher improvement factor (PoI, EI)
           if actualImprovement > bestImprovement || sampleNumber == 1
             xToReeval = xExtend;
@@ -142,9 +142,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         extendSize = ceil(surrogateOpts.evoControlIndividualExtension ...
             * nLambdaRest);
         [xExtend, xExtendValid, zExtend] = ...
-            sampleCmaesNoFitness(xmean, expandedSigma, extendSize, BD, diagD, surrogateOpts.sampleOpts);
+            sampleCmaesNoFitness(xmean, sigma, extendSize, BD, diagD, surrogateOpts.sampleOpts);
         % calculate the model prediction for the extended population
-        yExtend = newModel.getImprovementToFValues(xExtend');
+        yExtend = newModel.getModelOutput(xExtend');
 
         nBest = min(ceil(lambda*surrogateOpts.evoControlBestFromExtension), nLambdaRest - 1);
         nCluster = nLambdaRest - nBest;
@@ -155,7 +155,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       
       % original-evaluate the chosen points
       [yNew, xNew, xNewValid, zNew, counteval] = ...
-          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, expandedSigma, nLambdaRest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, sigma, nLambdaRest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
       archive = archive.save(xNewValid', yNew', countiter);
       yPredict = newModel.predict(xNewValid');
@@ -168,7 +168,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     else
       % the model was in fact not trained
       disp('surrogateManager(): the model was not successfully trained.');
-      [yNew, xNew, xNewValid, zNew, counteval] = sampleCmaes(xmean, expandedSigma, nLambdaRest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+      [yNew, xNew, xNewValid, zNew, counteval] = sampleCmaes(xmean, sigma, nLambdaRest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
       archive = archive.save(xNewValid', yNew', countiter);
     end

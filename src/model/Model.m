@@ -169,53 +169,42 @@ classdef (Abstract) Model
 
     end
     
-    function [improvement, y] = getImprovement(obj,X)
-    % Counts the probability of improvement, or expected improvement in 
-    % new points X.
+    function [output, y] = getModelOutput(obj,X)
+    % Predicts the function values, the probability of improvement, or 
+    % expected improvement in new points X. Values of PoI and EI can be
+    % transformed to last known fvalue range.
       
       [y, sd2] = obj.predict(X);
       fmin = min(obj.dataset.y);
-      
-      switch lower(obj.predictionType)
-        case 'poi'
-          fmax = max(obj.dataset.y);
-          target = fmin-0.05*(fmax-fmin);
-          improvement = getPOI(X, y, sd2, target);
-        case 'ei'
-          improvement = getEI(X, y, sd2, fmin);
-      end
-
-    end
-    
-    function fy = getImprovementToFValues(obj, X)
-    % Predicts the function values, the probability of improvement, or 
-    % expected improvement in new points X. Values of PoI and EI are
-    % transformed to last known fvalue range.
-    
-      [y, sd2] = obj.predict(X);
+      fmax = max(obj.dataset.y);
       
       switch lower(obj.predictionType)
         case 'fvalues'
-          fy = y;
-        case 'fpoi'
-          fmin = min(obj.dataset.y);
-          fmax = max(obj.dataset.y);
-          target = fmin-0.05*(fmax-fmin);
+          output = y;
+          
+        case 'poi'
+          target = fmin - 0.05 * (fmax - fmin);
+          output = getPOI(X, y, sd2, target);
+        
+        case 'ei'
+          output = getEI(X, y, sd2, fmin);
+        
+        case 'fpoi'       
+          target = fmin - 0.05 * (fmax - fmin);
           poi = getPOI(X, y, sd2, target);
           poiMax = max(poi);
           poiMin = min(poi);
           % map the higest PoI to the smallest function value and vice versa
-          fy = (fmax-fmin)*(poiMax - poi)/(poiMax-poiMin)+fmin;
+          output = (fmax-fmin)*(poiMax - poi)/(poiMax-poiMin)+fmin;
+        
         case 'fei'
-          fmin = min(obj.dataset.y);
-          fmax = max(obj.dataset.y);
           ei = getEI(X, y, sd2, fmin);
           eiMax = max(ei);
           eiMin = min(ei);
           % map the higest EI to the smallest function value and vice versa
-          fy = (fmax-fmin)*(eiMax-ei)/(eiMax-eiMin)+fmin;
+          output = (fmax-fmin)*(eiMax-ei)/(eiMax-eiMin)+fmin;
       end
-      
+
     end
     
     function obj = train(obj, X, y, xMean, generation,sigma,BD)
