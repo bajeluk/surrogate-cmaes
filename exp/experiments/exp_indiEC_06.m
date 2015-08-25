@@ -16,7 +16,7 @@ logDir = '/storage/plzen1/home/bajeluk/public';
 bbParamDef(1).name   = 'dimensions';
 bbParamDef(1).values = {5};      % {2, 5 10};
 bbParamDef(2).name   = 'functions';
-bbParamDef(2).values = [1, 2, 3, 8, 13, 21]; % num2cell(1:24);
+bbParamDef(2).values = {1, 2, 3, 8, 13, 21}; % num2cell(1:24);
 % dimensions  = [10];     % which dimensions to optimize, subset of [2 3 5 10 20 40];
 % functions   = [8];      % function ID's to optimize (2 Sphere, 3 Rastrigin, 8 Rosenbrock)
 bbParamDef(3).name   = 'opt_function';
@@ -64,12 +64,12 @@ modelOptsValues = struct( ...
   'nBestPoints', 0, ...
   'minLeaf', 2, ...
   'inputFraction', 1);
-s{1} = modelOptsValues; s{1}.predictionType = 'poi';
-s{1} = modelOptsValues; s{1}.predictionType = 'ei';
-s{1} = modelOptsValues; s{1}.predictionType = 'fpoi';
-s{1} = modelOptsValues; s{1}.predictionType = 'fei';
-s{1} = modelOptsValues; s{1}.predictionType = 'fvalues';
-sgParamDef(12).values = s;
+smOV{1} = modelOptsValues; smOV{1}.predictionType = 'poi';
+smOV{2} = modelOptsValues; smOV{2}.predictionType = 'ei';
+smOV{3} = modelOptsValues; smOV{3}.predictionType = 'fpoi';
+smOV{4} = modelOptsValues; smOV{4}.predictionType = 'fei';
+smOV{5} = modelOptsValues; smOV{5}.predictionType = 'fvalues';
+sgParamDef(12).values = smOV;
 
 % CMA-ES parameters
 cmParamDef(1).name   = 'PopSize';
