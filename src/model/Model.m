@@ -164,8 +164,17 @@ classdef (Abstract) Model
       else
         XTransf = X;
       end
+            %dimensionality reduction
+      if(isprop(obj,'dimReduction') && (obj.dimReduction ~=1))
+          cntDimension=ceil(obj.dim*obj.dimReduction);
+          obj.shiftMean=obj.shiftMean(1:cntDimension);
+          XtransfReduce=XTransf*obj.reductionMatrix;
+          XtransfReduce=XtransfReduce(:,1:cntDimension);
+      else
+      XtransfReduce=XTransf;
+      end
 
-      [y,sd2] = modelPredict(obj,XTransf);
+      [y,sd2] = modelPredict(obj,XtransfReduce);
 
     end
     
@@ -219,11 +228,22 @@ classdef (Abstract) Model
       else
         XTransf = X;
       end
-
-      obj = trainModel(obj, XTransf, y, xMean, generation);
+      %dimensionality reduction
+      if(isprop(obj,'dimReduction') && (obj.dimReduction ~=1))
+          cntDimension=ceil(obj.dim*obj.dimReduction);
+          obj.shiftMean=obj.shiftMean(1:cntDimension);
+          changeMatrix=(eye(obj.dim)/BD);
+          obj.reductionMatrix=changeMatrix;
+          XtransfReduce=XTransf*changeMatrix;
+          XtransfReduce=XtransfReduce(:,1:cntDimension);
+      else
+      XtransfReduce=XTransf;
+      end
+      obj = trainModel(obj, XtransfReduce, y, xMean, generation);
     end
-
   end
+
+  
 
   methods (Access = protected)
     function [x, datasetIdx] = getNearMean(obj, xMean, deniedIdxs)

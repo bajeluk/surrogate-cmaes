@@ -12,6 +12,7 @@ classdef PreciseModel < Model
     options
     predictionType = 'fValues';     % type of prediction (f-values, PoI, EI)
     transformCoordinates = false;   % whether use transformation in the X-space
+    dimReduction % Reduce dimensionality for model by eigenvectors of covatiance matrix in percentage
     
     bbob_func
   end
@@ -26,6 +27,8 @@ classdef PreciseModel < Model
       obj.dim       = size(xMean, 2);
       obj.shiftMean = zeros(1, obj.dim);
       obj.shiftY    = 0;
+      obj.trainBD = eye(obj.dim);
+      obj.dimReduction=1; %precise model do not use dim reduction
 
       % BBOB function ID
       % this has to called in opt_s_cmaes due to the speed optimization

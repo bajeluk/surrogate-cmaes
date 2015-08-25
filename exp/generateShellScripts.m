@@ -90,8 +90,8 @@ for i = 1:min([nMachines nCombinations])
   fprintf(fid, 'echo `date "+%%Y-%%m-%%d %%H:%%M:%%S"` " " **%s** at [%s] ==== FINISHED ==== >> ~/WWW/phd/cmaes.txt\n', exp_id, machine);
 
   fclose(fid);
-  fileattrib(fName, '+x');
+%   fileattrib(fName, '+x');
 end
 
 fclose(fMng);
-fileattrib([exppath filesep fNameMng], '+x');
+% fileattrib([exppath filesep fNameMng], '+x');

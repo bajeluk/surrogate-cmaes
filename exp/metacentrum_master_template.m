@@ -6,7 +6,7 @@ function metacentrum_master_template(exp_id, varargin)
 % varargin{2}   -- string defining maximum (wall)time for Metacentrum machines
 %                  default: 4h
 
-  load(['/storage/plzen1/home/' getenv('LOGNAME') '/prg/surrogate-cmaes/exp/experiments/' exp_id '/scmaes_params.mat']);
+  load(['/storage/plzen1/home/' getenv('LOGNAME') '/repositories/surrogate-cmaes/exp/experiments/' exp_id '/scmaes_params.mat']);
 
   fNameJobDef = [exppath_short filesep exp_id filesep exp_id '_metajob.mat'];
   cd([exppath_short filesep '..' filesep '..']);
