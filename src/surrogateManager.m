@@ -84,17 +84,15 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     nEvaluated = ceil(surrogateOpts.evoControlPreSampleSize * lambda);
     fitness_raw = []; arx = []; arxvalid = []; arz = [];
 
-    expandedSigma = surrogateOpts.evoControlTrainRange * sigma;
-
     nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
     [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
-        xmean', surrogateOpts.evoControlTrainRange, expandedSigma, BD);
+        xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
     nToSample = max(nRequired - size(xTrain, 1), 0);
 
     if (nToSample > nEvaluated)
       % TODO: shouldn't we use an old model?
       disp('surrogateManager(): not enough data for training model.');
-      [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, expandedSigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+      [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
       archive = archive.save(arxvalid', fitness_raw', countiter);
       return;
@@ -103,6 +101,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     if (nToSample > 0)
       % pre-sample new points, preferably in areas where we don't have
       % the points yet
+      expandedSigma = surrogateOpts.evoControlSampleRange * sigma;
       [arx, ~, arz] = ...
           sampleCmaesNoFitness(xmean, expandedSigma, dim*lambda, BD, diagD, surrogateOpts.sampleOpts);
       [xPreSample, zPreSample] = SurrogateSelector.chooseDistantPoints(nToSample, arx', arz', xTrain, xmean, expandedSigma, BD);
@@ -127,7 +126,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
           [xExtend, xExtendValid, zExtend] = ...
               sampleCmaesNoFitness(xmean, sigma, nLambdaRest, BD, diagD, surrogateOpts.sampleOpts);
           % TODO: criterion for choosing the best sample
-          actualImprovement = mean(newModel.getModelOutput(xExtend')); 
+          actualImprovement = mean(newModel.getModelOutput(xExtend'));
           % choose sample with higher improvement factor (PoI, EI)
           if actualImprovement > bestImprovement || sampleNumber == 1
             xToReeval = xExtend;
@@ -157,6 +156,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       [yNew, xNew, xNewValid, zNew, counteval] = ...
           sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, sigma, nLambdaRest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
+      fprintf('counteval: %d\n',counteval)
       archive = archive.save(xNewValid', yNew', countiter);
       yPredict = newModel.predict(xNewValid');
       kendall = corr(yPredict, yNew', 'type', 'Kendall');
