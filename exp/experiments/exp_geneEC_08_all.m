@@ -16,7 +16,7 @@ logDir = '/storage/plzen1/home/tosovvoj/public';
 bbParamDef(1).name   = 'dimensions';
 bbParamDef(1).values = {20};%bylo{2, 5, 10, 20};      % {2, 5 10};
 bbParamDef(2).name   = 'functions';
-bbParamDef(2).values = num2cell(1:24);  % {1, 2, 3, 5, 6, 8, 10, 11, 12, 13, 14, 20, 21};
+bbParamDef(2).values = num2cell(1:15);  %bylo (1:24)% {1, 2, 3, 5, 6, 8, 10, 11, 12, 13, 14, 20, 21};
 % dimensions  = [10];     % which dimensions to optimize, subset of [2 3 5 10 20 40];
 % functions   = [8];      % function ID's to optimize (2 Sphere, 3 Rastrigin, 8 Rosenbrock)
 bbParamDef(3).name   = 'opt_function';
@@ -137,5 +137,5 @@ sgParamDef(end).values = { exppath };
 save([exppath filesep 'scmaes_params.mat'], 'bbParamDef', 'sgParamDef', 'cmParamDef', 'exp_id', 'exppath_short', 'logDir');
 
 % run the rest of the scripts generation
-generateShellScripts
-% generateShellScriptsMetacentrum
+% generateShellScripts
+generateShellScriptsMetacentrum
