@@ -10,7 +10,7 @@ function metacentrum_task_matlab(exp_id, exppath_short, fun, dim, id, metaOpts)
   FTP_USERNAME='optim.wz.cz';
   FTP_PASS='metacentrum';
   LOGFILENAME='log.txt';
-  DEFAULTLOGFILE = '/storage/plzen1/home/bajeluk/public/log.txt';
+  DEFAULTLOGFILE = '/storage/plzen1/home/tosovvoj/public/log.txt';
   EXPPATH = [exppath_short filesep exp_id];
   OUTPUTDIR = getenv('SCRATCHDIR');
   RESULTSFILE = [EXPPATH '/' exp_id '_results_' num2str(fun) '_' num2str(dim) 'D_' num2str(id) '.mat'];
@@ -23,7 +23,7 @@ function metacentrum_task_matlab(exp_id, exppath_short, fun, dim, id, metaOpts)
 
   if (~ isfield(metaOpts, 'logdir') || isempty(metaOpts.logdir))
     LOGFILE = DEFAULTLOGFILE;
-    metaOpts.logdir = '/storage/plzen1/home/bajeluk/public/';
+    metaOpts.logdir = '/storage/plzen1/home/tosovvoj/public/';
   else
     LOGFILE = [metaOpts.logdir filesep LOGFILENAME];
   end
