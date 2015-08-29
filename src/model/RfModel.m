@@ -19,6 +19,7 @@ classdef RfModel < Model
     ordinalRegression   % indicates usage of ordinal regression
     predictionType      % type of prediction (f-values, PoI, EI)
     transformCoordinates  % transform X-space
+    dimReduction % valid only for GP model
   end
 
   methods
