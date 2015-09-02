@@ -232,6 +232,8 @@ function printSettings(fid, exp_settings, exp_results, surrogateParams, cmaesPar
   fprintf(fid, sprintfStruct(surrogateParams));
   fprintf(fid, '\n== CMA-ES parameters: ==\n');
   fprintf(fid, sprintfStruct(cmaesParams));
+    fprintf(fid, '\n== CMA-ES surrogate model options: ==\n');
+  fprintf(fid, sprintfStruct(surrogateParams.modelOpts));
   fprintf(fid, '\n== Numerical results: ==\n\n');
   fprintf(fid, 'fbests:\n%s\n\n', num2str(exp_results.fbests));
   fprintf(fid, 'f075:\n%s\n\n', num2str(exp_results.f075));
