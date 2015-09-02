@@ -160,18 +160,19 @@ classdef (Abstract) Model
       if obj.transformCoordinates
         % compute coordinates in the (sigma*BD)-basis
         %BDinv = inv(sigma*BD);
-        XTransf =( (obj.trainSigma * obj.trainBD) \ X')';
+        XTransf = ( (obj.trainSigma * obj.trainBD) \ X')';
       else
         XTransf = X;
       end
-            %dimensionality reduction
-      if(isprop(obj,'dimReduction') && (obj.dimReduction ~=1))
-          cntDimension=ceil(obj.dim*obj.dimReduction);
-          obj.shiftMean=obj.shiftMean(1:cntDimension);
-          XtransfReduce=obj.reductionMatrix*XTransf';
-          XtransfReduce=XtransfReduce';
+      
+      % dimensionality reduction
+      if (isprop(obj, 'dimReduction') && (obj.dimReduction ~= 1))
+        cntDimension = ceil(obj.dim * obj.dimReduction);
+        obj.shiftMean = obj.shiftMean(1:cntDimension);
+        XtransfReduce = obj.reductionMatrix * XTransf';
+        XtransfReduce = XtransfReduce';
       else
-      XtransfReduce=XTransf;
+        XtransfReduce = XTransf;
       end
 
       [y,sd2] = modelPredict(obj,XtransfReduce);
@@ -228,18 +229,20 @@ classdef (Abstract) Model
       else
         XTransf = X;
       end
-      %dimensionality reduction
-      if(isprop(obj,'dimReduction') && (obj.dimReduction ~=1))
-          cntDimension=ceil(obj.dim*obj.dimReduction);
-          obj.shiftMean=obj.shiftMean(1:cntDimension);
-          changeMatrix=(eye(obj.dim)/BD);
-          changeMatrix=changeMatrix(1:cntDimension,:);
-          obj.reductionMatrix=changeMatrix;
-          XtransfReduce=changeMatrix*XTransf';
-          XtransfReduce=XtransfReduce';          
+
+      % dimensionality reduction
+      if (isprop(obj,'dimReduction') && (obj.dimReduction ~=1))
+        cntDimension = ceil(obj.dim * obj.dimReduction);
+        obj.shiftMean = obj.shiftMean(1:cntDimension);
+        changeMatrix = (eye(obj.dim) / BD);
+        changeMatrix = changeMatrix(1:cntDimension,:);
+        obj.reductionMatrix = changeMatrix;
+        XtransfReduce = changeMatrix * XTransf';
+        XtransfReduce = XtransfReduce';
       else
-      XtransfReduce=XTransf;
+        XtransfReduce=XTransf;
       end
+
       obj = trainModel(obj, XtransfReduce, y, xMean, generation);
     end
 

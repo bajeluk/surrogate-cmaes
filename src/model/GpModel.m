@@ -5,7 +5,7 @@ classdef GpModel < Model
     trainMean             % mean of the generation when the model was built
     trainSigma           % sigma of the generation when the model was built
     trainBD              % BD of the generation when the model was built
-    reductionMatrix     %Matrix used for dimensionality reduction
+    reductionMatrix      % Matrix used for dimensionality reduction
     dataset               % .X and .y
     useShift = false;
     shiftMean             % vector of the shift in the X-space
@@ -13,7 +13,8 @@ classdef GpModel < Model
     options
     transformCoordinates  % transform X-space
     predictionType        % type of prediction (f-values, PoI, EI)
-    dimReduction % Reduce dimensionality for model by eigenvectors of covatiance matrix in percentage
+    dimReduction          % Reduce dimensionality for model by eigenvectors 
+                          % of covatiance matrix in percentage
 
     hyp
     meanFcn
@@ -79,7 +80,7 @@ classdef GpModel < Model
       % general model prediction options
       obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
       obj.transformCoordinates = defopts(modelOptions, 'transformCoordinates', false);
-      obj.dimReduction=defopts(modelOptions,'dimReduction',1);
+      obj.dimReduction = defopts(modelOptions, 'dimReduction', 1);
     end
 
     function nData = getNTrainData(obj)
