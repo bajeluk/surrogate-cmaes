@@ -7,6 +7,7 @@
 BBOB_RAW_DIR="."        # -i
 OUTPUT_DIR='ppdata' # -o
 EXPID="exp_SCMAES_01"   # -e
+REFALG="CMA-ES"
 
 CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 SCRIPT=`basename ${BASH_SOURCE[0]}`
@@ -21,6 +22,7 @@ function HELP {
   echo "Command line switches are optional. The following switches are recognized."
   echo "  ${REV}-i${NORM}  --Directory with raw BBOB input data. Default is '${BOLD}${BBOB_RAW_DIR}${NORM}'."
   echo "  ${REV}-o${NORM}  --Directory where to put BBOB parsed data. Default is '${BOLD}${OUTPUT_DIR}${NORM}'."
+  echo "  ${REV}-r${NORM}  --Referential algorithm name. Default is '${BOLD}${REFALG}${NORM}'."
   echo "  ${REV}-e${NORM}  --EXPID of the current experiment. Default is '${BOLD}${EXPID}${NORM}'."
   echo -e "  ${REV}-h${NORM}  --Displays this help message. No further functions are performed."\\n
   echo -e "Example: ${BOLD}$SCRIPT -i bbob_raw/ -o ppdata/ -e exp_CMA-ES_01 GP1_CMAES GP5_CMAES${NORM}"\\n
@@ -41,6 +43,9 @@ while getopts "i:o:e:h" FLAG; do
       ;;
     e)  #set option "e"
       EXPID=$OPTARG
+      ;;
+    r)  #referential algorithm name
+      REFALG=$OPTARG
       ;;
     h)  #show help
       HELP
@@ -75,7 +80,7 @@ if [ -e $PPROCFILE ]; then
   echo "deleting $DATADIR/bbob_pproc_commands.tex"
   rm -f $PPROCFILE
 fi
-python $CWD/vendor/bbob_pproc/rungeneric.py --expensive --in-a-hurry 0 -o $OUTPUT_DIR *
+python $CWD/vendor/bbob_pproc/rungeneric.py --expensive --in-a-hurry 0 -o $OUTPUT_DIR $REFALG $*
 
 # change position of number of showed letters in the name of the algorithm to one place to be easily editable
 for f in $OUTPUT_DIR/pprldmany_*.tex; do 
