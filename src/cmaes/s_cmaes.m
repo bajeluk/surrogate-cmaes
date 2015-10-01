@@ -4,7 +4,8 @@ function [xmin, ...      % minimum search point of last iteration
 	  stopflag, ...  % stop criterion reached
 	  out, ...     % struct with various histories and solutions
 	  bestever, ... % struct containing overall best solution (for convenience)
-	  y_eval...     % BAJELUK BEST/COUNTEVAL RECORDING
+	  y_eval,...     % BAJELUK BEST/COUNTEVAL RECORDING
+    output_arxvalid... % BAJELUK INDIVIDUALS RECORDING
 	 ] = s_cmaes( ...
     fitfun, ...    % name of objective/fitness function
     xstart, ...    % objective variables initial point, determines N
@@ -364,7 +365,7 @@ opts.SaveFilename = deblank(opts.SaveFilename); % remove trailing white spaces
 
 
 y_eval = [];  % BAJELUK BEST/COUNTEVAL RECORDING
-
+output_arxvalid = {};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
 counteval = 0; countevalNaN = 0; 
@@ -1629,6 +1630,7 @@ while isempty(stopflag)
   end % if output
 
   y_eval = [y_eval; out.solutions.bestever.f counteval surrogateStats];  % BAJELUK BEST/COUNTEVAL/SURROGATE_STATS RECORDING
+  output_arxvalid{countiter} = arxvalid;
 
   % save everything
   time.t3 = clock;
