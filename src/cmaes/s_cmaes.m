@@ -4,8 +4,7 @@ function [xmin, ...      % minimum search point of last iteration
 	  stopflag, ...  % stop criterion reached
 	  out, ...     % struct with various histories and solutions
 	  bestever, ... % struct containing overall best solution (for convenience)
-	  y_eval,...     % BAJELUK BEST/COUNTEVAL RECORDING
-    output_arxvalid... % BAJELUK INDIVIDUALS RECORDING
+	  y_eval...     % BAJELUK BEST/COUNTEVAL RECORDING
 	 ] = s_cmaes( ...
     fitfun, ...    % name of objective/fitness function
     xstart, ...    % objective variables initial point, determines N
@@ -365,7 +364,11 @@ opts.SaveFilename = deblank(opts.SaveFilename); % remove trailing white spaces
 
 
 y_eval = [];  % BAJELUK BEST/COUNTEVAL RECORDING
-output_arxvalid = {};
+out.arxvalids = {};
+out.BDs = {};
+out.sigmas = {};
+out.fvalues = {};
+out.means = {};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
 counteval = 0; countevalNaN = 0; 
@@ -919,6 +922,14 @@ while isempty(stopflag)
   end
   
   % Surrogate CMA-ES end
+
+  % BAJELUK -- population, covariance matrix, sigma and fvalues logging
+  out.arxvalids{countiter} = arxvalid;
+  out.BDs{countiter} = BD;
+  out.sigmas{countiter} = sigma;
+  out.fvalues{countiter} = fitness.raw;
+  out.means{countiter} = xmean;
+
 
   fitness.sel = fitness.raw; 
 
@@ -1630,7 +1641,6 @@ while isempty(stopflag)
   end % if output
 
   y_eval = [y_eval; out.solutions.bestever.f counteval surrogateStats];  % BAJELUK BEST/COUNTEVAL/SURROGATE_STATS RECORDING
-  output_arxvalid{countiter} = arxvalid;
 
   % save everything
   time.t3 = clock;
