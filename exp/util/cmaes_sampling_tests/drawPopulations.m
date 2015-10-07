@@ -15,14 +15,15 @@ function drawPopulations(FUNC, cmaOutput, cmOptions)
   ax = axes();
   set(ax, 'XLim', [cmOptions.LBounds cmOptions.UBounds]);
   set(ax, 'YLim', [cmOptions.LBounds cmOptions.UBounds]);
+
   hold on;
-  
+
   % draw contours of the fitness
   x = linspace(cmOptions.LBounds, cmOptions.UBounds, 50);
   y = linspace(cmOptions.LBounds, cmOptions.UBounds, 50);
   [X, Y] = meshgrid(x, y);
-  X_lin = reshape(X, prod(size(X)), 1);
-  Y_lin = reshape(Y, prod(size(Y)), 1);
+  X_lin = reshape(X, numel(X), 1);
+  Y_lin = reshape(Y, numel(Y), 1);
   Z_lin = func([X_lin'; Y_lin']);
   Z = reshape(Z_lin, sqrt(length(Z_lin)), sqrt(length(Z_lin)));
   contour(X, Y, Z, 100);

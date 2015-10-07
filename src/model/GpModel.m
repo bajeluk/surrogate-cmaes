@@ -261,12 +261,12 @@ classdef GpModel < Model
       opt = []; fval = Inf; trainErr = false;
       cmaesopt.LBounds = lb';
       cmaesopt.UBounds = ub';
+      cmaesopt.SaveVariables = false;
       if (length(obj.hyp.cov) > 2)
         % there is ARD covariance
         % try run cmaes for 500 funevals to get bounds for covariances
         MAX_DIFF = 2.5;
         cmaesopt.MaxFunEvals = 500;
-        cmaesopt.SaveVariables = false;
         modelTrainNErrors = 0;
         try
           [opt, fval] = s_cmaes(f, linear_hyp', [0.3*(ub(1:(end-1)) - lb(1:(end-1))) 100]', cmaesopt);
