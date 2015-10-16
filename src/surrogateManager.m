@@ -79,17 +79,18 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   if (strcmpi(surrogateOpts.evoControl, 'individual'))
     % Individual-based evolution control
   
-    nRequired = newModel.getNTrainData();
+    minTrainSize = newModel.getNTrainData();
     % The number of points to be 'pre-sampled'
-    nEvaluated = ceil(surrogateOpts.evoControlPreSampleSize * lambda);
+    assert(surrogateOpts.evoControlPreSampleSize >= 0 && surrogateOpts.evoControlPreSampleSize <= 1, 'preSampleSize out of bounds [0,1]');
+    maxPresampleSize = ceil(surrogateOpts.evoControlPreSampleSize * lambda);
     fitness_raw = []; arx = []; arxvalid = []; arz = [];
 
     nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
     [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
         xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
-    nToSample = max(nRequired - size(xTrain, 1), 0);
+    missingTrainSize = max(minTrainSize - size(xTrain, 1), 0);
 
-    if (nToSample > nEvaluated)
+    if (missingTrainSize > maxPresampleSize)
       % TODO: shouldn't we use an old model?
       disp('surrogateManager(): not enough data for training model.');
       [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
@@ -98,16 +99,16 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       return;
     end
 
-    if (nToSample > 0)
+    if (missingTrainSize > 0)
       % pre-sample new points, preferably in areas where we don't have
       % the points yet
       expandedSigma = surrogateOpts.evoControlSampleRange * sigma;
       [arx, ~, arz] = ...
           sampleCmaesNoFitness(xmean, expandedSigma, dim*lambda, BD, diagD, surrogateOpts.sampleOpts);
-      [xPreSample, zPreSample] = SurrogateSelector.chooseDistantPoints(nToSample, arx', arz', xTrain, xmean, expandedSigma, BD);
+      [xPreSample, zPreSample] = SurrogateSelector.chooseDistantPoints(missingTrainSize, arx', arz', xTrain, xmean, expandedSigma, BD);
       % evaluate the 'preSample' with the original fitness
       [fitness_raw, arx, arxvalid, arz, counteval] = ...
-          sampleCmaesOnlyFitness(xPreSample, xPreSample, zPreSample, xmean, expandedSigma, nToSample, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+          sampleCmaesOnlyFitness(xPreSample, xPreSample, zPreSample, xmean, expandedSigma, missingTrainSize, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
       archive = archive.save(arxvalid', fitness_raw', countiter);
       xTrain = [xTrain; arxvalid'];
@@ -117,7 +118,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     newModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD);
     % TODO: if (newModel.trainGeneration <= 0) ==> DON'T USE THIS MODEL!!!
     
-    nLambdaRest = lambda - nToSample;
+    nLambdaRest = lambda - missingTrainSize;
     if (newModel.isTrained())
       if any(strcmpi(newModel.predictionType,{'poi','ei'}))
         bestImprovement = 0;
@@ -135,6 +136,19 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
             bestImprovement = actualImprovement;
           end
         end    
+        
+      elseif strcmpi(newModel.predictionType,{'restricted'})
+        % restricted strategy
+        % sample new points
+        [xExtend, xExtendValid, zExtend] = ...
+            sampleCmaesNoFitness(xmean, sigma, nLambdaRest, BD, diagD, surrogateOpts.sampleOpts);
+        [~, sd2] = newModel.predict(xExtend);
+        % choose points with low confidence to reevaluate
+        lowConfidenceID = sd2 > newModel.varianceLevel;
+        nLambdaRest = sum(lowConfidenceID);
+        xToReeval = xExtend(lowConfidenceID);
+        xToReevalValid = xExtendValid(lowConfidenceID);
+        zToReeval = zExtend(lowConfidenceID);
         
       else
         % sample the enlarged population of size 'gamma * nLambdaRest'
@@ -161,9 +175,27 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       yPredict = newModel.predict(xNewValid');
       kendall = corr(yPredict, yNew', 'type', 'Kendall');
       rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
-      fprintf('  model: %d preSamples, reevaluated %d pts, RMSE = %f, Kendl. corr = %f.\n', nToSample, nLambdaRest, rmse, kendall);
+      fprintf('  model: %d preSamples, reevaluated %d pts, RMSE = %f, Kendl. corr = %f.\n', missingTrainSize, nLambdaRest, rmse, kendall);
       surrogateStats = [rmse kendall];
       % TODO: control the evolution process according to the model precision
+      
+      if strcmpi(newModel.predictionType,{'restricted'}) && ~all(lowConfidenceID)
+        xTrain = [xTrain; xNewValid'];
+        yTrain = [yTrain; yNew'];
+        % train the model again
+        newModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD);
+        yRest = newModel.predict(xExtend(~lowConfidenceID));
+        % rescale function values of the rest of points
+        fmin = min(obj.dataset.y);
+        yNewRestricted = yRest(~lowConfidenceID);
+        if min(yNewRestricted) < fmin
+          yNewRestricted = yNewRestricted + fmin - min(yNewRestricted);
+        end
+        yNew = [yNew, yNewRestricted];
+        xNew = [xNew, xExtend(~lowConfidenceID)];
+        xNewValid = [xNewValid, xExtendValid(~lowConfidenceID)];
+        zNew = [zNew, zExtend(~lowConfidenceID)];
+      end
 
     else
       % the model was in fact not trained
