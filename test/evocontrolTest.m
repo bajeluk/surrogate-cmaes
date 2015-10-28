@@ -133,7 +133,7 @@ function testModelTransformationType(testCase)
 %   surrogateOpts.modelOpts.bbob_func = bbob_handlesF{1};
   surrogateOpts.modelOpts.path = '../gpeda/src/vendor/gpml-matlab-v3.2/';
   surrogateOpts.modelOpts.initScript = '../gpeda/src/vendor/gpml-matlab-v3.2/startup.m';
-  surrogateOpts.modelOpts.predictionType = 'fValues';
+  surrogateOpts.modelOpts.predictionType = 'restricted';
   surrogateOpts.modelOpts.nTrees = 50;
   surrogateOpts.modelOpts.nBestPoints = 0;
   surrogateOpts.modelOpts.transformCoordinates = false;

@@ -21,20 +21,21 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   % TODO: make an array with all the status variables from each generation
 
   % Defaults for surrogateOpts
-  sDefaults.evoControl  = 'none';               % none | individual | generation
-  sDefaults.sampleFcn   = @sampleCmaes;         % sampleCmaes | ??? TODO ???
-  sDefaults.evoControlPreSampleSize     = 0.2;  % 0..1
-  sDefaults.evoControlIndividualExtension = 20; % 1..inf (reasonable 10-100)
+  sDefaults.evoControl  = 'none';                 % none | individual | generation
+  sDefaults.sampleFcn   = @sampleCmaes;           % sampleCmaes | ??? TODO ???
+  sDefaults.evoControlPreSampleSize       = 0.2;  % 0..1
+  sDefaults.evoControlIndividualExtension = 20;   % 1..inf (reasonable 10-100)
   sDefaults.evoControlSamplePreprocessing = false;
-  sDefaults.evoControlBestFromExtension = 0.2;  % 0..1
-  sDefaults.evoControlTrainRange        = 8;    % 1..inf (reasonable 1--20)
-  sDefaults.evoControlSampleRange       = 1;    % 1..inf (reasonable 1--20)
-  sDefaults.evoControlOrigGenerations   = 1;    % 1..inf
-  sDefaults.evoControlModelGenerations  = 1;    % 0..inf
+  sDefaults.evoControlBestFromExtension   = 0.2;  % 0..1
+  sDefaults.evoControlTrainRange          = 8;    % 1..inf (reasonable 1--20)
+  sDefaults.evoControlSampleRange         = 1;    % 1..inf (reasonable 1--20)
+  sDefaults.evoControlOrigGenerations     = 1;    % 1..inf
+  sDefaults.evoControlModelGenerations    = 1;    % 0..inf
   sDefaults.evoControlTrainNArchivePoints = 0;
-  sDefaults.evoControlValidatePoints    = 0;
-  sDefaults.modelType = '';                     % gp | rf
-  sDefaults.modelOpts = [];                     % model specific options
+  sDefaults.evoControlValidatePoints      = 0;
+  sDefaults.evoControlRestrictedParam     = 0.2;  % 0..1
+  sDefaults.modelType = '';                       % gp | rf
+  sDefaults.modelOpts = [];                       % model specific options
   
   surrogateStats = NaN(1, 2);
 
@@ -142,13 +143,15 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         % sample new points
         [xExtend, xExtendValid, zExtend] = ...
             sampleCmaesNoFitness(xmean, sigma, nLambdaRest, BD, diagD, surrogateOpts.sampleOpts);
-        [~, sd2] = newModel.predict(xExtend);
-        % choose points with low confidence to reevaluate
-        lowConfidenceID = sd2 > newModel.varianceLevel;
-        nLambdaRest = sum(lowConfidenceID);
-        xToReeval = xExtend(lowConfidenceID);
-        xToReevalValid = xExtendValid(lowConfidenceID);
-        zToReeval = zExtend(lowConfidenceID);
+        [~, sd2] = newModel.predict(xExtend');
+        % choose rho points with low confidence to reevaluate
+        [~, pointID] = sort(sd2, 'descend');
+        lowConfidenceID = false(1,nLambdaRest);
+        nLambdaRest = ceil(nLambdaRest*surrogateOpts.evoControlRestrictedParam); %TODO: floor? - discuss
+        lowConfidenceID(pointID(1:nLambdaRest)) = true;
+        xToReeval = xExtend(:, lowConfidenceID);
+        xToReevalValid = xExtendValid(:, lowConfidenceID);
+        zToReeval = zExtend(:, lowConfidenceID);
         
       else
         % sample the enlarged population of size 'gamma * nLambdaRest'
@@ -184,17 +187,16 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         yTrain = [yTrain; yNew'];
         % train the model again
         newModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD);
-        yRest = newModel.predict(xExtend(~lowConfidenceID));
+        yNewRestricted = newModel.predict((xExtend(:, ~lowConfidenceID))');
         % rescale function values of the rest of points
-        fmin = min(obj.dataset.y);
-        yNewRestricted = yRest(~lowConfidenceID);
+        fmin = min(newModel.dataset.y);
         if min(yNewRestricted) < fmin
           yNewRestricted = yNewRestricted + fmin - min(yNewRestricted);
         end
-        yNew = [yNew, yNewRestricted];
-        xNew = [xNew, xExtend(~lowConfidenceID)];
-        xNewValid = [xNewValid, xExtendValid(~lowConfidenceID)];
-        zNew = [zNew, zExtend(~lowConfidenceID)];
+        yNew = [yNew, yNewRestricted'];
+        xNew = [xNew, xExtend(:, ~lowConfidenceID)];
+        xNewValid = [xNewValid, xExtendValid(:, ~lowConfidenceID)];
+        zNew = [zNew, zExtend(:, ~lowConfidenceID)];
       end
 
     else

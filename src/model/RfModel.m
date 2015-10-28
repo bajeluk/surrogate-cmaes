@@ -19,7 +19,7 @@ classdef RfModel < Model
     ordinalRegression   % indicates usage of ordinal regression
     predictionType      % type of prediction (f-values, PoI, EI)
     transformCoordinates  % transform X-space
-    dimReduction        % valid only for GP model
+%     dimReduction        % valid only for GP model
   end
 
   methods
@@ -150,8 +150,8 @@ classdef RfModel < Model
         yPredictions = NaN(size(X,1),obj.nTrees);
 
         % each tree prediction
-        if verLessThan('matlab', '8.2.0')
-          % for older versions of MATLAB using classregtrees
+        if isa(trees{1},'classregtree')
+          % for trees trained by classregtree
           parfor treeNum = 1:obj.nTrees
             yPredictions(:,treeNum) = eval(trees{treeNum},XWithShift);
           end
