@@ -146,7 +146,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         [~, sd2] = newModel.predict(xExtend');
         % choose rho points with low confidence to reevaluate
         [~, pointID] = sort(sd2, 'descend');
-        lowConfidenceID = false(1,nLambdaRest);
+        lowConfidenceID = false(1, nLambdaRest);
+        assert(surrogateOpts.evoControlRestrictedParam >= 0 && surrogateOpts.evoControlRestrictedParam <= 1, 'evoControlRestrictedParam out of bounds [0,1]');
         nLambdaRest = ceil(nLambdaRest*surrogateOpts.evoControlRestrictedParam); %TODO: floor? - discuss
         lowConfidenceID(pointID(1:nLambdaRest)) = true;
         xToReeval = xExtend(:, lowConfidenceID);
