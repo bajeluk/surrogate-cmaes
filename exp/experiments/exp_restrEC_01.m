@@ -64,7 +64,7 @@ modelOptsValues = struct( ...
   'nBestPoints', 0, ...
   'minLeaf', 2, ...
   'inputFraction', 1);
-sgParamDef(12).values = modelOptsValues;
+sgParamDef(12).values = {modelOptsValues};
 sgParamDef(13).name  = 'evoControlRestrictedParam';
 sgParamDef(13).values = {0.2, 0.5, 0.8};
 
@@ -78,7 +78,7 @@ cmParamDef(2).values = {4};
 pathstr = fileparts(mfilename('fullpath'));
 exppath  = [pathstr filesep exp_id];
 exppath_short  = pathstr;
-[s,mess,messid] = mkdir(exppath);
+mkdir(exppath);
 [s,mess,messid] = mkdir([exppath filesep 'cmaes_results']);
 addpath(exppath);
 
