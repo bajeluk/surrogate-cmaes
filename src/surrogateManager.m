@@ -143,7 +143,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         % sample new points
         [xExtend, xExtendValid, zExtend] = ...
             sampleCmaesNoFitness(xmean, sigma, nLambdaRest, BD, diagD, surrogateOpts.sampleOpts);
-        [~, sd2] = newModel.predict(xExtend');
+        [fvalExtend, sd2] = newModel.predict(xExtend');
         % choose rho points with low confidence to reevaluate
         [~, pointID] = sort(sd2, 'descend');
         lowConfidenceID = false(1, nLambdaRest);
@@ -188,7 +188,12 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         yTrain = [yTrain; yNew'];
         % train the model again
         newModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD);
-        yNewRestricted = newModel.predict((xExtend(:, ~lowConfidenceID))');
+        if (newModel.isTrained())
+          yNewRestricted = newModel.predict((xExtend(:, ~lowConfidenceID))');
+        else
+          % use values estimated by the old model
+          yNewRestricted = fvalExtend(~lowConfidenceID);
+        end
         % rescale function values of the rest of points
         fmin = min(newModel.dataset.y);
         if min(yNewRestricted) < fmin
