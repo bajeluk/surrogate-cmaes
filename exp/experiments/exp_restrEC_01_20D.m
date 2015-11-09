@@ -1,5 +1,5 @@
-exp_id = 'exp_restrEC_01';
-exp_description = 'Surrogate CMA-ES model using restricted individual EC';
+exp_id = 'exp_restrEC_01_20D';
+exp_description = 'Surrogate CMA-ES model using restricted EC in 20D';
 
 machines = {'machine1'};
 
@@ -14,7 +14,7 @@ logDir = '/storage/plzen1/home/bajeluk/public';
 
 % BBOB parameters
 bbParamDef(1).name   = 'dimensions';
-bbParamDef(1).values = {2, 5, 10};
+bbParamDef(1).values = {20};
 bbParamDef(2).name   = 'functions';
 bbParamDef(2).values = num2cell(1:24);
 % dimensions  = [10];     % which dimensions to optimize, subset of [2 3 5 10 20 40];

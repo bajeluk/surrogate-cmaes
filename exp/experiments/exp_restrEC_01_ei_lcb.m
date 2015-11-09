@@ -1,5 +1,5 @@
-exp_id = 'exp_restrEC_01';
-exp_description = 'Surrogate CMA-ES model using restricted individual EC';
+exp_id = 'exp_restrEC_01_ei_lcb';
+exp_description = 'Surrogate CMA-ES model using restricted individual EC with EI and low confidence bound';
 
 machines = {'machine1'};
 
@@ -16,7 +16,7 @@ logDir = '/storage/plzen1/home/bajeluk/public';
 bbParamDef(1).name   = 'dimensions';
 bbParamDef(1).values = {2, 5, 10};
 bbParamDef(2).name   = 'functions';
-bbParamDef(2).values = num2cell(1:24);
+bbParamDef(2).values = {1, 2, 3, 8, 13, 21}; %num2cell(1:24);
 % dimensions  = [10];     % which dimensions to optimize, subset of [2 3 5 10 20 40];
 % functions   = [8];      % function ID's to optimize (2 Sphere, 3 Rastrigin, 8 Rosenbrock)
 bbParamDef(3).name   = 'opt_function';
@@ -55,7 +55,7 @@ sgParamDef(11).values = { [] };
 sgParamDef(12).name   = 'modelOpts';
 modelOptsValues = struct( ...
   'useShift', false, ...
-  'predictionType', 'sd2', ...
+  'predictionType', 'ei', ...
   'trainAlgorithm', 'fmincon', ...
   'covFcn', '{@covMaterniso, 5}', ...
   'hyp', struct('lik', log(0.01), ...
@@ -63,7 +63,11 @@ modelOptsValues = struct( ...
   'nBestPoints', 0, ...
   'minLeaf', 2, ...
   'inputFraction', 1);
-sgParamDef(12).values = {modelOptsValues};
+s1 = modelOptsValues;
+s2 = modelOptsValues;
+s1.predictionType = 'ei';
+s2.predictionType = 'lcb';
+sgParamDef(12).values = {s1, s2};
 sgParamDef(13).name  = 'evoControlRestrictedParam';
 sgParamDef(13).values = {0.2, 0.5, 0.8};
 

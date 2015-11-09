@@ -180,29 +180,33 @@ classdef (Abstract) Model
     end
     
     function [output, y] = getModelOutput(obj,X)
-    % Predicts the function values, the probability of improvement, or 
-    % expected improvement in new points X. Values of PoI and EI can be
-    % transformed to last known fvalue range.
+    % Predicts the function values, the variance, the probability of 
+    % improvement, the expected improvement or the least confidence bound
+    % in new points X. Values of PoI  and EI can be transformed to last 
+    % known fvalue range.
       
       [y, sd2] = obj.predict(X);
       fmin = min(obj.dataset.y);
       fmax = max(obj.dataset.y);
       
       switch lower(obj.predictionType)
-        case 'fvalues'
+        case 'fvalues' % mean function values
           output = y;
           
-        case 'sd2'
+        case 'sd2' % variance
           output = sd2;
           
-        case 'poi'
+        case 'poi' % probability of improvement
           target = fmin - 0.05 * (fmax - fmin);
           output = getPOI(X, y, sd2, target);
         
-        case 'ei'
+        case 'ei' % expected improvement
           output = getEI(X, y, sd2, fmin);
+          
+        case 'lcb' % least confidence bound
+          output = y - 2 * sd2;
         
-        case 'fpoi'       
+        case 'fpoi' % PoI scaled using function values
           target = fmin - 0.05 * (fmax - fmin);
           poi = getPOI(X, y, sd2, target);
           poiMax = max(poi);
@@ -210,7 +214,7 @@ classdef (Abstract) Model
           % map the higest PoI to the smallest function value and vice versa
           output = (fmax-fmin)*(poiMax - poi)/(poiMax-poiMin)+fmin;
         
-        case 'fei'
+        case 'fei' % EI scaled using function values
           ei = getEI(X, y, sd2, fmin);
           eiMax = max(ei);
           eiMin = min(ei);
@@ -220,7 +224,7 @@ classdef (Abstract) Model
 
     end
     
-    function obj = train(obj, X, y, xMean, generation,sigma,BD)
+    function obj = train(obj, X, y, xMean, generation, sigma, BD)
     % train the model based on the data (X,y)
 
       % transform input variables using Mahalanobis distance
@@ -234,7 +238,7 @@ classdef (Abstract) Model
       end
 
       % dimensionality reduction
-      if (isprop(obj,'dimReduction') && (obj.dimReduction ~=1))
+      if (isprop(obj, 'dimReduction') && (obj.dimReduction ~= 1))
         cntDimension = ceil(obj.dim * obj.dimReduction);
         obj.shiftMean = obj.shiftMean(1:cntDimension);
         changeMatrix = (eye(obj.dim) / BD);

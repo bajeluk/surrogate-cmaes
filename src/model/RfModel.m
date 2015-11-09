@@ -125,11 +125,10 @@ classdef RfModel < Model
           
       % simple forest without elitism
       else
-          trForest = TreeBagger(obj.nTrees,X,yTrain,'method','regression',...
-                'MinLeaf',obj.minLeaf,...
-                'FBoot',obj.inputFraction);
+          trForest = TreeBagger(obj.nTrees, X, yTrain, 'method', 'regression',...
+                'MinLeaf', obj.minLeaf,...
+                'FBoot', obj.inputFraction);
           obj.forest = trForest.Trees;
-%           obj.forest = trainForest(obj,X,yTrain);
       end
         
       % count train MSE
@@ -146,7 +145,7 @@ classdef RfModel < Model
         yPredictions = NaN(size(X,1),obj.nTrees);
 
         % each tree prediction
-        if isa(trees{1},'classregtree')
+        if isa(trees{1}, 'classregtree')
           % for trees trained by classregtree
           parfor treeNum = 1:obj.nTrees
             yPredictions(:,treeNum) = eval(trees{treeNum},XWithShift);
@@ -162,7 +161,7 @@ classdef RfModel < Model
         sd2 = sum((yPredictions - repmat(y,1,obj.nTrees)).^2,2)./obj.nTrees;
       else
         y = []; sd2 = [];
-        warning('RfModel.predict(): the model is not yet trained!');
+        fprintf(2, 'RfModel.predict(): the model is not yet trained!\n');
       end
     end
 

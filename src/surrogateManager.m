@@ -132,7 +132,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
           % the greater the lower confidence (sd2, poi, ei)
           [~, pointID] = sort(modelOutput, 'descend');
         else
-          % the lower the greater confidence (fvalues, fpoi, fei)
+          % the lower the greater confidence (fvalues, lcb, fpoi, fei)
           [~, pointID] = sort(modelOutput, 'ascend');
         end
         reevalID = false(1, nLambdaRest);
