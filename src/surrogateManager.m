@@ -127,7 +127,6 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         [xExtend, xExtendValid, zExtend] = ...
             sampleCmaesNoFitness(xmean, sigma, nLambdaRest, BD, diagD, surrogateOpts.sampleOpts);
         [modelOutput, fvalExtend] = newModel.getModelOutput(xExtend');
-        fprintf('Output -> Min: %f  Mean: %f  Max: %f\n', min(modelOutput), mean(modelOutput), max(modelOutput))
         % choose rho points with low confidence to reevaluate
         if any(strcmpi(newModel.predictionType, {'sd2', 'poi', 'ei'}))
           % the greater the lower confidence (sd2, poi, ei)
