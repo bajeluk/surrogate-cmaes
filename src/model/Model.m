@@ -192,6 +192,9 @@ classdef (Abstract) Model
         case 'fvalues'
           output = y;
           
+        case 'sd2'
+          output = sd2;
+          
         case 'poi'
           target = fmin - 0.05 * (fmax - fmin);
           output = getPOI(X, y, sd2, target);

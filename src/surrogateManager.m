@@ -21,7 +21,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   % TODO: make an array with all the status variables from each generation
 
   % Defaults for surrogateOpts
-  sDefaults.evoControl  = 'none';                 % none | individual | generation
+  sDefaults.evoControl  = 'none';                 % none | individual | generation | restricted
   sDefaults.sampleFcn   = @sampleCmaes;           % sampleCmaes | ??? TODO ???
   sDefaults.evoControlPreSampleSize       = 0.2;  % 0..1
   sDefaults.evoControlIndividualExtension = 20;   % 1..inf (reasonable 10-100)
@@ -77,8 +77,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     return;
   end
 
-  if (strcmpi(surrogateOpts.evoControl, 'individual'))
-    % Individual-based evolution control
+  if any(strcmpi(surrogateOpts.evoControl, {'individual', 'restricted'}))
+    % Individual-based and restricted-based evolution control
   
     minTrainSize = newModel.getNTrainData();
     % The number of points to be 'pre-sampled'
@@ -121,7 +121,30 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     
     nLambdaRest = lambda - missingTrainSize;
     if (newModel.isTrained())
-      if any(strcmpi(newModel.predictionType,{'poi','ei'}))
+      if strcmpi(surrogateOpts.evoControl, {'restricted'})
+        % restricted strategy
+        % sample new points
+        [xExtend, xExtendValid, zExtend] = ...
+            sampleCmaesNoFitness(xmean, sigma, nLambdaRest, BD, diagD, surrogateOpts.sampleOpts);
+        [modelOutput, fvalExtend] = newModel.getModelOutput(xExtend');
+        fprintf('Output -> Min: %f  Mean: %f  Max: %f\n', min(modelOutput), mean(modelOutput), max(modelOutput))
+        % choose rho points with low confidence to reevaluate
+        if any(strcmpi(newModel.predictionType, {'sd2', 'poi', 'ei'}))
+          % the greater the lower confidence (sd2, poi, ei)
+          [~, pointID] = sort(modelOutput, 'descend');
+        else
+          % the lower the greater confidence (fvalues, fpoi, fei)
+          [~, pointID] = sort(modelOutput, 'ascend');
+        end
+        reevalID = false(1, nLambdaRest);
+        assert(surrogateOpts.evoControlRestrictedParam >= 0 && surrogateOpts.evoControlRestrictedParam <= 1, 'evoControlRestrictedParam out of bounds [0,1]');
+        nLambdaRest = ceil(nLambdaRest * surrogateOpts.evoControlRestrictedParam);
+        reevalID(pointID(1:nLambdaRest)) = true;
+        xToReeval = xExtend(:, reevalID);
+        xToReevalValid = xExtendValid(:, reevalID);
+        zToReeval = zExtend(:, reevalID);    
+        
+      elseif any(strcmpi(newModel.predictionType, {'poi', 'ei'}))
         bestImprovement = 0;
         % sample 'gamma' populations of size 'nLambdaRest' 
         for sampleNumber = 1:surrogateOpts.evoControlIndividualExtension
@@ -136,23 +159,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
             zToReeval = zExtend;
             bestImprovement = actualImprovement;
           end
-        end    
-        
-      elseif strcmpi(newModel.predictionType,{'restricted'})
-        % restricted strategy
-        % sample new points
-        [xExtend, xExtendValid, zExtend] = ...
-            sampleCmaesNoFitness(xmean, sigma, nLambdaRest, BD, diagD, surrogateOpts.sampleOpts);
-        [fvalExtend, sd2] = newModel.predict(xExtend');
-        % choose rho points with low confidence to reevaluate
-        [~, pointID] = sort(sd2, 'descend');
-        lowConfidenceID = false(1, nLambdaRest);
-        assert(surrogateOpts.evoControlRestrictedParam >= 0 && surrogateOpts.evoControlRestrictedParam <= 1, 'evoControlRestrictedParam out of bounds [0,1]');
-        nLambdaRest = ceil(nLambdaRest*surrogateOpts.evoControlRestrictedParam); %TODO: floor? - discuss
-        lowConfidenceID(pointID(1:nLambdaRest)) = true;
-        xToReeval = xExtend(:, lowConfidenceID);
-        xToReevalValid = xExtendValid(:, lowConfidenceID);
-        zToReeval = zExtend(:, lowConfidenceID);
+        end
         
       else
         % sample the enlarged population of size 'gamma * nLambdaRest'
@@ -174,7 +181,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       [yNew, xNew, xNewValid, zNew, counteval] = ...
           sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, sigma, nLambdaRest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
-      fprintf('counteval: %d\n',counteval)
+      fprintf('counteval: %d\n', counteval)
       archive = archive.save(xNewValid', yNew', countiter);
       yPredict = newModel.predict(xNewValid');
       kendall = corr(yPredict, yNew', 'type', 'Kendall');
@@ -183,16 +190,16 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       surrogateStats = [rmse kendall];
       % TODO: control the evolution process according to the model precision
       
-      if strcmpi(newModel.predictionType,{'restricted'}) && ~all(lowConfidenceID)
+      if strcmpi(surrogateOpts.evoControl, {'restricted'}) && ~all(reevalID)
         xTrain = [xTrain; xNewValid'];
         yTrain = [yTrain; yNew'];
         % train the model again
         newModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD);
         if (newModel.isTrained())
-          yNewRestricted = newModel.predict((xExtend(:, ~lowConfidenceID))');
+          yNewRestricted = newModel.predict((xExtend(:, ~reevalID))');
         else
           % use values estimated by the old model
-          yNewRestricted = fvalExtend(~lowConfidenceID);
+          yNewRestricted = fvalExtend(~reevalID);
         end
         % rescale function values of the rest of points
         fmin = min(newModel.dataset.y);
@@ -200,9 +207,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
           yNewRestricted = yNewRestricted + fmin - min(yNewRestricted);
         end
         yNew = [yNew, yNewRestricted'];
-        xNew = [xNew, xExtend(:, ~lowConfidenceID)];
-        xNewValid = [xNewValid, xExtendValid(:, ~lowConfidenceID)];
-        zNew = [zNew, zExtend(:, ~lowConfidenceID)];
+        xNew = [xNew, xExtend(:, ~reevalID)];
+        xNewValid = [xNewValid, xExtendValid(:, ~reevalID)];
+        zNew = [zNew, zExtend(:, ~reevalID)];
       end
 
     else
