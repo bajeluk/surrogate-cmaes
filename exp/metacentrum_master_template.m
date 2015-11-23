@@ -6,7 +6,7 @@ function metacentrum_master_template(exp_id, varargin)
 % varargin{2}   -- string defining maximum (wall)time for Metacentrum machines
 %                  default: 4h
 
-  pathstr = fileparts(mfilename('fullpath'));
+  pathstr = [fileparts(mfilename('fullpath')) filesep 'experiments'];
   exppath = [pathstr filesep exp_id];
   load([exppath filesep 'scmaes_params.mat']);
   % this is old version with a fixed path :(
