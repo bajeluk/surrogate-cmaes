@@ -20,7 +20,7 @@ function bbob_test_01(id, exp_id, path, varargin)
   bbobpath = 'vendor/bbob';    % should point to fgeneric.m etc.
     pathstr = fileparts(mfilename('fullpath'));
     if (nargin >= 4)
-      datapath = [varargin{1} filesep 'bbob_output']
+      datapath = [varargin{1} filesep 'bbob_output'];
     else
       datapath = ['../log/bbob/' exp_id];  % different folder for each experiment
       datapath = [pathstr filesep datapath];

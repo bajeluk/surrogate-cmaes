@@ -1,25 +1,24 @@
 classdef RfModel < Model
   properties    % derived from abstract class "Model"
-    dim                 % dimension of the input space X (determined from x_mean)
+    dim                   % dimension of the input space X (determined from x_mean)
     trainGeneration = -1; % # of the generation when the model was built
-    trainMean           % mean of the generation when the model was built
-    trainSigma           % sigma of the generation when the model was built
-    trainBD              % BD of the generation when the model was built
-    dataset             % .X and .y
+    trainMean             % mean of the generation when the model was built
+    trainSigma            % sigma of the generation when the model was built
+    trainBD               % BD of the generation when the model was built
+    dataset               % .X and .y
     useShift = false;
-    shiftMean           % vector of the shift in the X-space
-    shiftY = 0;         % shift in the f-space
+    shiftMean             % vector of the shift in the X-space
+    shiftY = 0;           % shift in the f-space
     options
 
-    nTrees              % number of regression trees
-    nBestPoints         % number of n best training points ordered correctly by prediction of each tree
-    minLeaf             % minimum of points in each leaf
-    inputFraction       % fraction of points used in training
-    forest              % ensemble of regression trees
-    ordinalRegression   % indicates usage of ordinal regression
-    predictionType      % type of prediction (f-values, PoI, EI)
+    nTrees                % number of regression trees
+    nBestPoints           % number of n best training points ordered correctly by prediction of each tree
+    minLeaf               % minimum of points in each leaf
+    inputFraction         % fraction of points used in training
+    forest                % ensemble of regression trees
+    ordinalRegression     % indicates usage of ordinal regression
+    predictionType        % type of prediction (f-values, PoI, EI)
     transformCoordinates  % transform X-space
-    dimReduction        % valid only for GP model
   end
 
   methods
@@ -49,8 +48,7 @@ classdef RfModel < Model
 
     function nData = getNTrainData(obj)
       % returns the required number of data for training the model
-      % TODO: *write this* properly according to dimension and
-      %       covariance function set in options
+      % TODO: check correctness of the following expression
       nData = obj.minLeaf * obj.dim;
     end
 
@@ -88,7 +86,6 @@ classdef RfModel < Model
               trForest = TreeBagger(newForestSize,X,yTrain,'method','regression',...
                 'MinLeaf',obj.minLeaf,...
                 'FBoot',obj.inputFraction);
-              % fprintf('Forest with %d trained\n',newForestSize);
               Trees = trForest.Trees;
             
               if (nBest > 0)
@@ -110,7 +107,6 @@ classdef RfModel < Model
               obj.forest(end+1:end+newGoodTrees) = Trees(goodTrees);
               sumGoodTrees = sumGoodTrees + newGoodTrees;
               actualGoodTrees = actualGoodTrees + newGoodTrees;
-              %fprintf('%d: %d good trees from %d, remaining %d\n',iter,newGoodTrees, newForestSize,obj.nTrees-sumGoodTrees);
               
               if (maxTrees-allTrees == 0 && nBest > 0)
                  fprintf('Cannot create forest with %d best poits. Trying to find %d remaining trees with %d best points.\n', ...
@@ -129,11 +125,10 @@ classdef RfModel < Model
           
       % simple forest without elitism
       else
-          trForest = TreeBagger(obj.nTrees,X,yTrain,'method','regression',...
-                'MinLeaf',obj.minLeaf,...
-                'FBoot',obj.inputFraction);
+          trForest = TreeBagger(obj.nTrees, X, yTrain, 'method', 'regression',...
+                'MinLeaf', obj.minLeaf,...
+                'FBoot', obj.inputFraction);
           obj.forest = trForest.Trees;
-%           obj.forest = trainForest(obj,X,yTrain);
       end
         
       % count train MSE
@@ -150,8 +145,8 @@ classdef RfModel < Model
         yPredictions = NaN(size(X,1),obj.nTrees);
 
         % each tree prediction
-        if verLessThan('matlab', '8.2.0')
-          % for older versions of MATLAB using classregtrees
+        if isa(trees{1}, 'classregtree')
+          % for trees trained by classregtree
           parfor treeNum = 1:obj.nTrees
             yPredictions(:,treeNum) = eval(trees{treeNum},XWithShift);
           end
@@ -166,7 +161,7 @@ classdef RfModel < Model
         sd2 = sum((yPredictions - repmat(y,1,obj.nTrees)).^2,2)./obj.nTrees;
       else
         y = []; sd2 = [];
-        warning('RfModel.predict(): the model is not yet trained!');
+        fprintf(2, 'RfModel.predict(): the model is not yet trained!\n');
       end
     end
 

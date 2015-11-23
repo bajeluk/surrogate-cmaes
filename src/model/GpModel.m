@@ -79,7 +79,7 @@ classdef GpModel < Model
 
       % general model prediction options
       obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
-      obj.transformCoordinates = defopts(modelOptions, 'transformCoordinates', false);
+      obj.transformCoordinates = defopts(modelOptions, 'transformCoordinates', true);
       obj.dimReduction = defopts(modelOptions, 'dimReduction', 1);
     end
 
