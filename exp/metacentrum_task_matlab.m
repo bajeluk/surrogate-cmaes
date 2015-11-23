@@ -11,6 +11,9 @@ function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
   FTP_USERNAME='optim.wz.cz';
   FTP_PASS='metacentrum';
 
+  % all params are strings if compiled and called from shell
+  if (ischar(id)) id = str2num(id); end
+
   % rename queued_file to computing_file
   queuedFile = [exppath_short filesep exp_id filesep 'queued_' num2str(id)];
   calculatingFile = [exppath_short filesep exp_id filesep 'calculating_' num2str(id)];
@@ -19,7 +22,6 @@ function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
   end
 
   % parameters of the current job
-  if (ischar(id)) id = str2num(id); end
   load([exppath_short filesep exp_id filesep 'scmaes_params.mat'], 'bbParamDef', 'sgParamDef', 'cmParamDef');
   [bbParams, sgParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
   fun = bbParams.functions(end);
