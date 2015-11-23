@@ -13,6 +13,9 @@
 # MATLAB Runtime environment
 export LD_LIBRARY_PATH=/storage/plzen1/home/bajeluk/bin/mcr/v90/runtime/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr/v90/bin/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr/v90/sys/os/glnxa64:$LD_LIBRARY_PATH
 
+# allow read-access of newly created files and directories for the group
+umask 0027
+
 export SCRATCHDIR
 export LOGNAME
 EXPPATH="$EXPPATH_SHORT/$EXPID"

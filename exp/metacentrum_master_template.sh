@@ -36,6 +36,9 @@ export EXPID
 export EXPPATH_SHORT
 export ID
 
+# allow read-access of newly created files and directories for the group
+umask 0027
+
 for ID in $IDS; do
   qsub -N "${EXPID}__${ID}" -l "walltime=$QUEUE" -v EXPID,ID,EXPPATH_SHORT $EXPPATH_SHORT/$EXPID/binary_task.sh
   if [ ! $? -eq 0 ] ; then
