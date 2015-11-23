@@ -6,7 +6,11 @@ function metacentrum_master_template(exp_id, varargin)
 % varargin{2}   -- string defining maximum (wall)time for Metacentrum machines
 %                  default: 4h
 
-  load(['/storage/plzen1/home/' getenv('LOGNAME') '/prg/surrogate-cmaes/exp/experiments/' exp_id '/scmaes_params.mat']);
+  pathstr = fileparts(mfilename('fullpath'));
+  exppath = [pathstr filesep exp_id];
+  load([exppath filesep 'scmaes_params.mat']);
+  % this is old version with a fixed path :(
+  % load(['/storage/plzen1/home/' getenv('LOGNAME') '/prg/surrogate-cmaes/exp/experiments/' exp_id '/scmaes_params.mat']);
 
   fNameJobDef = [exppath_short filesep exp_id filesep exp_id '_metajob.mat'];
   cd([exppath_short filesep '..' filesep '..']);
@@ -72,7 +76,7 @@ function metacentrum_master_template(exp_id, varargin)
     metaOpts.model = model;
     metaOpts.nInstances = length(bbParams.instances);
     fprintf('Setting up job ID %d / %d (f%d/%dD)...\n', id, length(combsToRun), bbParams.functions(end), bbParams.dimensions(end));
-    tasks(i) = createTask(job, @metacentrum_task_matlab, 0, {exp_id, exppath_short, bbParams.functions(end), bbParams.dimensions(end), id, metaOpts});
+    tasks(i) = createTask(job, @metacentrum_task_matlab, 0, {exp_id, exppath_short, id, metaOpts});
     i = i + 1;
   end
 
