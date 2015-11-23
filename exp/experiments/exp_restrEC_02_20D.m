@@ -1,4 +1,4 @@
-exp_id = 'exp_restrEC_02';
+exp_id = 'exp_restrEC_02_20D';
 exp_description = 'Surrogate CMA-ES model using restricted individual EC with EI and low confidence bound in 20D';
 
 machines = {'machine1'};
