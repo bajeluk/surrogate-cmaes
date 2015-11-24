@@ -147,7 +147,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
     end
     fprintf('#########################################################\n'); 
     fprintf('#########################################################\n'); 
-    % exit(1);
+    exit(1);
   end
 end
 
