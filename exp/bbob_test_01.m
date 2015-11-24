@@ -1,33 +1,42 @@
-function bbob_test_01(id, exp_id, path, varargin)
+function bbob_test_01(id, exp_id, exppath_short, varargin)
 %BBOB_TEST_01 Run BBOB experiment with parameters defined by number 'id'
 % parameters:
 %   id          the number which correspond to one set of parameters
 %               (BBOB parameters, surrogateOpts and CMA-ES parameters)
 %   exp_id      unique string identifier of the experiment
-%   path        directory where experiment output data will be placed
+%   exppath_short        directory where experiment output data will be placed
+%   OPTARG1     directory where local files should be placed ("scratchdir" at metacentrum)
 
   % GNUPlot script where special strings will be replaced
   gnuplotScript = 'twoAlgsPlotExtended.gpi';
 
-  exppath = [path filesep exp_id];
+  % GnuPlot script should be in $ALGROOT/exp/
+  gnuplotScript = [exppath_short filesep '..' filesep gnuplotScript];
+  % Directory for internal results of _this_ function
+  exppath = [exppath_short filesep exp_id];
   load([exppath filesep 'scmaes_params.mat']);
   [bbParams, surrogateParams, cmaesParams, nNonBbobValues] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
-  addpath(exppath);
   
   % BBOB constant parameters
   minfunevals = 'dim + 2';  % PUT MINIMAL SENSIBLE NUMBER OF EVALUATIONS for a restart
   maxrestarts = 1e4;        % SET to zero for an entirely deterministic algorithm
   bbobpath = 'vendor/bbob';    % should point to fgeneric.m etc.
-    pathstr = fileparts(mfilename('fullpath'));
-    if (nargin >= 4)
-      datapath = [varargin{1} filesep 'bbob_output'];
-    else
-      datapath = ['../log/bbob/' exp_id];  % different folder for each experiment
-      datapath = [pathstr filesep datapath];
+  % addpath cannot be in deployed code!
+  % addpath([exppath_short filesep '..' filesep bbobpath]);
+  localDatapath = [];       % directory in the shared folder where results of each instance will be copied through the progress
+  if (nargin >= 4 && ~isempty(varargin{1}))
+    datapath = [varargin{1} filesep 'bbob_output'];
+    if (isempty(strfind(datapath, exppath_short)))
+      localDatapath = [exppath filesep 'bbob_output_tmp'];
+      [~, ~] = mkdir(localDatapath);
     end
-    [~, ~] = mkdir(datapath);
-    addpath([pathstr filesep bbobpath]);
-    gnuplotScript = [pathstr filesep gnuplotScript];
+  else
+    datapath = [exppath filesep 'bbob_output'];
+    % old version:
+    % datapath = ['../log/bbob/' exp_id];  % different folder for each experiment
+  end
+  [~, ~] = mkdir(datapath);
+
   % opt.algName = exp_description;
   opt.comments = '';
 
@@ -62,7 +71,7 @@ function bbob_test_01(id, exp_id, path, varargin)
       datapath = [datapath filesep expFileID];
       [~, ~] = mkdir(datapath);
 
-      [exp_results, tmpFile] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath);
+      [exp_results, tmpFile] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath, localDatapath);
 
       y_evals = exp_results.y_evals;
 
@@ -78,7 +87,7 @@ function bbob_test_01(id, exp_id, path, varargin)
       cmaesResultsFile = [exppath filesep 'cmaes_results' filesep exp_id '_purecmaes_' num2str(ifun) '_' num2str(dim) 'D_' num2str(cmaesId) '.mat'];
       if (~ exist(cmaesResultsFile, 'file'))
         opt.algName = [exp_id '_' expFileID '_cmaes'];
-        exp_cmaes_results = runTestsForAllInstances(@opt_cmaes, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath);
+        exp_cmaes_results = runTestsForAllInstances(@opt_cmaes, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath, '');
 
         % test if the results still doesn't exist, if no, save them :)
         if (~ exist(cmaesResultsFile, 'file'))
@@ -142,7 +151,7 @@ function bbob_test_01(id, exp_id, path, varargin)
   end
 end
 
-function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_settings, datapath, opt, maxrestarts, maxfunevals, minfunevals, t0, exppath)
+function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_settings, datapath, opt, maxrestarts, maxfunevals, minfunevals, t0, exppath, localDatapath)
   y_evals = cell(0);
 
   t = tic;
@@ -167,7 +176,7 @@ function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_
         fgeneric('restart', 'independent restart')
       end
       [xopt, ilaunch, ye, stopflag] = opt_function('fgeneric', exp_settings.dim, fgeneric('ftarget'), ...
-                  maxfunevals, id);
+                  maxfunevals, id, exppath);
       % we don't have this information from CMA-ES :(
       % ye = [res.deltasY res.evaluations];
 
@@ -207,6 +216,11 @@ function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_
     tmpFile = [exppath filesep exp_settings.exp_id '_tmp_' num2str(id) '.mat'];
     exp_id = exp_settings.exp_id;
     save(tmpFile, 'exp_settings', 'exp_id', 'y_evals');
+
+    % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
+    if (~isempty(localDatapath))
+      system(['cp -pR ' datapath ' ' localDatapath '/']);
+    end
   end
   disp(['      date and time: ' num2str(clock, ' %.0f')]);
 

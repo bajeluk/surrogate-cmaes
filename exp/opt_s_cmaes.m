@@ -1,4 +1,4 @@
-function [x, ilaunch, y_evals, stopflag] = opt_s_cmaes(FUN, dim, ftarget, maxfunevals, id)
+function [x, ilaunch, y_evals, stopflag] = opt_s_cmaes(FUN, dim, ftarget, maxfunevals, id, varargin)
 % minimizes FUN in DIM dimensions by multistarts of fminsearch.
 % ftarget and maxfunevals are additional external termination conditions,
 % where at most 2 * maxfunevals function evaluations are conducted.
@@ -6,6 +6,8 @@ function [x, ilaunch, y_evals, stopflag] = opt_s_cmaes(FUN, dim, ftarget, maxfun
 % generate the first simplex.
 % set options, make sure we always terminate
 % with restarts up to 2*maxfunevals are allowed
+%
+% last varargin argument can be 'exppath' -- path to the experiment's data
 
 % Be aware: 'id' is an additional parameter!
 
@@ -24,7 +26,13 @@ cmOptions = struct( ...
 
 y_evals = [];
 
-load('scmaes_params.mat', 'bbParamDef', 'sgParamDef', 'cmParamDef');
+if (nargin >= 6)
+  exppath = [varargin{1} filesep];
+else
+  exppath = '';
+end
+
+load([exppath 'scmaes_params.mat'], 'bbParamDef', 'sgParamDef', 'cmParamDef');
 [bbParams, sgParams, cmParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
 
 for fname = fieldnames(cmParams)'
