@@ -369,6 +369,7 @@ out.BDs = {};
 out.sigmas = {};
 out.fvalues = {};
 out.means = {};
+out.countevals = {};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
 counteval = 0; countevalNaN = 0; 
@@ -929,6 +930,7 @@ while isempty(stopflag)
   out.sigmas{countiter} = sigma;
   out.fvalues{countiter} = fitness.raw;
   out.means{countiter} = xmean;
+  out.countevals{countiter} = counteval;
 
 
   fitness.sel = fitness.raw; 

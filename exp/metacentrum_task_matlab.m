@@ -11,6 +11,9 @@ function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
   FTP_USERNAME='optim.wz.cz';
   FTP_PASS='metacentrum';
 
+  % *__log__* file -- set empty to suppress these outputs
+  FILESTDOUT = [EXPPATH '/' exp_id '__log__' num2str(id) '.txt'];
+
   % all params are strings if compiled and called from shell
   if (ischar(id)) id = str2num(id); end
 
@@ -36,8 +39,6 @@ function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
   EXPPATH = [exppath_short filesep exp_id];
   RESULTSFILE = [EXPPATH '/' exp_id '_results_' num2str(fun) '_' num2str(dim) 'D_' num2str(id) '.mat'];
   OUTPUTDIR = getenv('SCRATCHDIR');     % empty/'' if $SCRATCHDIR var does not exist
-  % this could be changed to [OUTPUTDIR '/' ...]:
-  FILESTDOUT = [EXPPATH '/' exp_id '__log__' num2str(id) '.txt'];
 
   % metaOpts -- structure with info about current Task and Metacentrum environ. variables
   metaOpts.logdir = '';
