@@ -62,7 +62,6 @@ classdef GpModel < Model
       if (~isfield(obj.options, 'hyp'))
         obj.options.hyp = struct();
       end
-      obj.hyp.inf = defopts(obj.options.hyp, 'inf', log(1e-2)); % should be roughly somewhere between log(1e-3) and log(1e-2)
       obj.hyp.lik = defopts(obj.options.hyp, 'lik', log(0.01));  % should be somewhere between log(0.01) and log(1)
       obj.hyp.cov = defopts(obj.options.hyp, 'cov', log([0.5; 2]));   % should be somewhere between log([0.1 2]) and log([2 1e6])
       covFcn = defopts(obj.options, 'covFcn',  '{@covMaterniso, 5}');
@@ -99,9 +98,17 @@ classdef GpModel < Model
 
       assert(size(xMean,1) == 1, '  GpModel.train(): xMean is not a row-vector.');
       obj.trainMean = xMean;
-      obj.hyp.mean = mean(y);
       obj.dataset.X = X;
       obj.dataset.y = y;
+
+      % mean function and mean hyperparameter:
+      if (isequal(obj.meanFcn, @meanZero))
+        obj.shiftY    = mean(y);
+        obj.dataset.y = obj.dataset.y - obj.shiftY;
+      else
+        % starting value for meanConst:
+        obj.hyp.mean = median(y);
+      end
 
       if (~isfield(obj.options, 'trainAlgorithm'))
         obj.options.trainAlgorithm = 'minimize';
@@ -109,7 +116,7 @@ classdef GpModel < Model
       alg = obj.options.trainAlgorithm;
 
       if (strcmpi(alg, 'minimize'))
-        [obj, fval] = obj.trainMinimize(X, y);
+        [obj, fval] = obj.trainMinimize(obj.dataset.X, obj.dataset.y);
         if (fval < Inf)
           obj.trainGeneration = generation;
         else
@@ -119,7 +126,7 @@ classdef GpModel < Model
       elseif (strcmpi(alg, 'fmincon') ...
               || strcmp(alg, 'cmaes'))
         % gp() with linearized version of the hyper-parameters
-        f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, X, y);
+        f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, obj.dataset.y);
 
         linear_hyp = unwrap(obj.hyp)';
         l_cov = length(obj.hyp.cov);
@@ -131,7 +138,7 @@ classdef GpModel < Model
         opt = [];
 
         if (strcmpi(alg, 'fmincon'))
-          [obj, opt, trainErr] = obj.trainFmincon(linear_hyp, X, y, lb, ub, f);
+          [obj, opt, trainErr] = obj.trainFmincon(linear_hyp, obj.dataset.X, obj.dataset.y, lb, ub, f);
 
           if (trainErr)
             disp('Trying CMA-ES...');
@@ -139,7 +146,7 @@ classdef GpModel < Model
           end
         end
         if (strcmpi(alg, 'cmaes'))
-          [obj, opt, trainErr] = obj.trainCmaes(linear_hyp, X, y, lb, ub, f);
+          [obj, opt, trainErr] = obj.trainCmaes(linear_hyp, obj.dataset.X, obj.dataset.y, lb, ub, f);
           if (trainErr)
             return;
           end
@@ -262,6 +269,7 @@ classdef GpModel < Model
       cmaesopt.LBounds = lb';
       cmaesopt.UBounds = ub';
       cmaesopt.SaveVariables = false;
+      cmaesopt.LogModulo = 0;
       if (length(obj.hyp.cov) > 2)
         % there is ARD covariance
         % try run cmaes for 500 funevals to get bounds for covariances
@@ -327,13 +335,16 @@ classdef GpModel < Model
       % return default lower/upper bounds for GP model hyperparameter training
       %
       lb_hyp.cov = -2 * ones(size(obj.hyp.cov));
-      lb_hyp.inf = log(1e-6);
-      lb_hyp.lik = log(1e-6);
-      lb_hyp.mean = -Inf;
       ub_hyp.cov = 25 * ones(size(obj.hyp.cov));
-      ub_hyp.inf = log(10);
+      lb_hyp.lik = log(1e-6);
       ub_hyp.lik = log(10);
-      ub_hyp.mean = Inf;
+      % set bounds for mean hyperparameter
+      if (~isequal(obj.meanFcn, @meanZero))
+        minY = min(obj.dataset.y);
+        maxY = max(obj.dataset.y);
+        lb_hyp.mean = minY - 2*(maxY - minY);
+        ub_hyp.mean = minY + 2*(maxY - minY);
+      end
     end
   end
 end

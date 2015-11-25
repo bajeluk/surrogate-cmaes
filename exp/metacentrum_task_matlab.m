@@ -40,12 +40,13 @@ function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
   FILESTDOUT = [EXPPATH '/' exp_id '__log__' num2str(id) '.txt'];
 
   % metaOpts -- structure with info about current Task and Metacentrum environ. variables
-  if (nargin >= 6)
-    metaOpts = varargin{1};
-  else
-    metaOpts.model = model;
-    metaOpts.logdir = '';
-    metaOpts.machine = '';
+  metaOpts.logdir = '';
+  metaOpts.machine = '';
+  metaOpts.model = model;
+  if (nargin >= 4)
+    for fname = fieldnames(varargin{1})'
+      metaOpts.(fname{1}) = varargin{1}.(fname{1});
+    end
   end
   nodeFile = fopen(getenv('PBS_NODEFILE'), 'r');
   if (nodeFile > 0)
