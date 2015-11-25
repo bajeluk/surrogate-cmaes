@@ -12,7 +12,7 @@ function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
   FTP_PASS='metacentrum';
 
   % *__log__* file -- set empty to suppress these outputs
-  FILESTDOUT = [EXPPATH '/' exp_id '__log__' num2str(id) '.txt'];
+  FILESTDOUT = [exppath_short filesep exp_id filesep exp_id '__log__' num2str(id) '.txt'];
 
   % all params are strings if compiled and called from shell
   if (ischar(id)) id = str2num(id); end

@@ -1,33 +1,9 @@
-diff --git a/exp/opt_cmaes.m b/exp/opt_cmaes.m
-index 8bce5e5..be88bec 100644
---- a/exp/opt_cmaes.m
-+++ b/exp/opt_cmaes.m
-@@ -1,4 +1,4 @@
--function [x, ilaunch, y_evals, stopflag] = opt_cmaes(FUN, DIM, ftarget, maxfunevals, id, varargin)
-+function [x, ilaunch, y_evals, stopflag, varargout] = opt_cmaes(FUN, DIM, ftarget, maxfunevals, id, varargin)
- % minimizes FUN in DIM dimensions by multistarts of fminsearch.
- % ftarget and maxfunevals are additional external termination conditions,
- % where at most 2 * maxfunevals function evaluations are conducted.
-@@ -47,6 +47,13 @@ for ilaunch = 1:1e4; % up to 1e4 times
-   n_y_evals = size(y_eval,1);
-   y_eval(:,1) = y_eval(:,1) - (ftarget - fDelta) * ones(n_y_evals,1);
-   y_evals = [y_evals; y_eval];
-+
-+  if (nargout > 0)
-+    varargout{1} = out;
-+  else
-+    varargout = cell();
-+  end
-+
-   % terminate if ftarget or maxfunevals reached
-   if (feval(FUN, 'fbest') < ftarget || ...
-       feval(FUN, 'evaluations') >= maxfunevals)
 diff --git a/exp/bbob_gptrain_01.m b/exp/bbob_gptrain_01.m
 new file mode 100644
-index 0000000..7efce8c
+index 0000000..76b4179
 --- /dev/null
 +++ b/exp/bbob_gptrain_01.m
-@@ -0,0 +1,224 @@
+@@ -0,0 +1,227 @@
 +function [cmaes_out] = bbob_gptrain_01(id, exp_id, exppath_short, varargin)
 +%BBOB_TEST_01 Run BBOB experiment with parameters defined by number 'id'
 +% parameters:
@@ -111,6 +87,10 @@ index 0000000..7efce8c
 +      % if (~ exist(cmaesResultsFile, 'file'))
 +        opt.algName = [exp_id '_' expFileID '_cmaes'];
 +        [exp_cmaes_results, tmpFile, cmaes_out] = runTestsForAllInstances(@opt_cmaes, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath, '');
++        for k = 1:length(cmaes_out)
++          cmaes_out{k}.ifun = ifun;
++          cmaes_out{k}.dim = dim;
++        end
 +        delete(tmpFile);
 +
 +        % test if the results still doesn't exist, if no, save them :)
@@ -119,10 +99,6 @@ index 0000000..7efce8c
 +          save(cmaesResultsFile, 'exp_id', 'exp_settings', 'exp_cmaes_results', 'y_evals', 'surrogateParams', 'cmaesParams', 'cmaes_out');
 +        end
 +      % end
-+      cmaes_out.id = id;
-+      cmaes_out.ifun = ifun;
-+      cmaes_out.dim = dim;
-+      cmaes_out.maxfunevals = maxfunevals;
 +    end
 +    fprintf('---- dimension %d-D done ----\n', dim);
 +  end
@@ -150,7 +126,7 @@ index 0000000..7efce8c
 +
 +function [exp_results, tmpFile, out] = runTestsForAllInstances(opt_function, id, exp_settings, datapath, opt, maxrestarts, maxfunevals, minfunevals, t0, exppath, localDatapath)
 +  y_evals = cell(0);
-+  out = [];
++  out = {};
 +
 +  t = tic;
 +  inst_results_evals = [];
@@ -174,8 +150,11 @@ index 0000000..7efce8c
 +        fgeneric('restart', 'independent restart')
 +      end
 +      if (isequal(opt_function, @opt_cmaes))
-+        [xopt, ilaunch, ye, stopflag, out] = opt_function('fgeneric', exp_settings.dim, fgeneric('ftarget'), ...
++        [xopt, ilaunch, ye, stopflag, out{iinstance}] = opt_function('fgeneric', exp_settings.dim, fgeneric('ftarget'), ...
 +                    maxfunevals, id, exppath);
++        out{iinstance}.id = id;
++        out{iinstance}.maxfunevals = maxfunevals;
++        out{iinstance}.instance = iinstance;
 +      else
 +        [xopt, ilaunch, ye, stopflag] = opt_function('fgeneric', exp_settings.dim, fgeneric('ftarget'), ...
 +                    maxfunevals, id, exppath);
@@ -253,23 +232,47 @@ index 0000000..7efce8c
 +  fprintf(fid, 'f025:\n%s\n\n', num2str(exp_results.f025));
 +end
 diff --git a/exp/metacentrum_task_matlab.m b/exp/metacentrum_task_matlab.m
-index c08b928..b013e4e 100644
+index c08b928..ca78280 100644
 --- a/exp/metacentrum_task_matlab.m
 +++ b/exp/metacentrum_task_matlab.m
 @@ -1,4 +1,4 @@
 -function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
 +function cmaes_out = metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
-
+ 
    % NFS file for logging results
    USE_FILELOG = 1;
 @@ -96,7 +96,9 @@ function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
    % CORE COMPUTATION (begin)
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+ 
 -  bbob_test_01(id, exp_id, exppath_short, OUTPUTDIR);
 +  % bbob_test_01(id, exp_id, exppath_short, OUTPUTDIR);
 +
 +  cmaes_out = bbob_gptrain_01(id, exp_id, exppath_short, OUTPUTDIR);
-
+ 
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    % CORE COMPUTATION (end)
+diff --git a/exp/opt_cmaes.m b/exp/opt_cmaes.m
+index 8bce5e5..ee15261 100644
+--- a/exp/opt_cmaes.m
++++ b/exp/opt_cmaes.m
+@@ -1,4 +1,4 @@
+-function [x, ilaunch, y_evals, stopflag] = opt_cmaes(FUN, DIM, ftarget, maxfunevals, id, varargin)
++function [x, ilaunch, y_evals, stopflag, varargout] = opt_cmaes(FUN, DIM, ftarget, maxfunevals, id, varargin)
+ % minimizes FUN in DIM dimensions by multistarts of fminsearch.
+ % ftarget and maxfunevals are additional external termination conditions,
+ % where at most 2 * maxfunevals function evaluations are conducted.
+@@ -48,6 +48,13 @@ for ilaunch = 1:1e4; % up to 1e4 times
+   n_y_evals = size(y_eval,1);
+   y_eval(:,1) = y_eval(:,1) - (ftarget - fDelta) * ones(n_y_evals,1);
+   y_evals = [y_evals; y_eval];
++
++  if (nargout > 0)
++    varargout{1} = out;
++  else
++    varargout = cell();
++  end
++
+   % terminate if ftarget or maxfunevals reached
+   if (feval(FUN, 'fbest') < ftarget || ...
+       feval(FUN, 'evaluations') >= maxfunevals)
