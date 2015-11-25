@@ -22,7 +22,7 @@ bbParamDef(3).values = {@opt_cmaes};
 % opt_function = @opt_s_cmaes;    % function being optimized -- BBOB wrap-around with header
 %                                 % xbest = function( fun, dim, ftarget, maxfunevals )
 bbParamDef(4).name   = 'instances';
-bbParamDef(4).values = {[1]}; % 31:40]};   % default is [1:5, 31:40]
+bbParamDef(4).values = {[1:30]}; % 31:40]};   % default is [1:5, 31:40]
 bbParamDef(5).name   = 'maxfunevals';   % MAXFUNEVALS - 10*dim is a short test-experiment
 bbParamDef(5).values = {'250 * dim'};   % increment maxfunevals successively
                                 
