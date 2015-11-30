@@ -65,9 +65,11 @@ modelOptsValues = struct( ...
   'inputFraction', 1);
 s1 = modelOptsValues;
 s2 = modelOptsValues;
+s3 = modelOptsValues;
 s1.predictionType = 'ei';
 s2.predictionType = 'lcb';
-sgParamDef(12).values = {s1, s2};
+s3.predictionType = 'sd2';
+sgParamDef(12).values = {s1, s2, s3};
 sgParamDef(13).name  = 'evoControlRestrictedParam';
 sgParamDef(13).values = {0.05, 0.1};
 
