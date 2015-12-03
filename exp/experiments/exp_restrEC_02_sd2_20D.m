@@ -14,7 +14,7 @@ logDir = '/storage/plzen1/home/bajeluk/public';
 
 % BBOB parameters
 bbParamDef(1).name   = 'dimensions';
-bbParamDef(1).values = {2, 3, 5, 10};
+bbParamDef(1).values = { 20 };
 bbParamDef(2).name   = 'functions';
 bbParamDef(2).values = num2cell(1:24);
 % dimensions  = [10];     % which dimensions to optimize, subset of [2 3 5 10 20 40];
