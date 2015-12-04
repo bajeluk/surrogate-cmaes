@@ -34,6 +34,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   sDefaults.evoControlTrainNArchivePoints = 0;
   sDefaults.evoControlValidatePoints      = 0;
   sDefaults.evoControlRestrictedParam     = 0.2;  % 0..1
+  sDefaults.evoControlSwitchMode          = 'none'; % none | individual | generation | restricted
+  sDefaults.evoControlSwitchBound         = 10;   % 1 .. inf (reasonable 10--30)
   sDefaults.modelType = '';                       % gp | rf
   sDefaults.modelOpts = [];                       % model specific options
   
@@ -48,6 +50,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
 
   assert(size(xmean,2) == 1, 'surrogateManager(): xmean is not a column vector!');
   dim = size(xmean,1);
+  
+  % switching evolution control
+  if surrogateOpts.sampleOpts.counteval > surrogateOpts.evoControlSwitchBound*dim
+    surrogateOpts.evoControl = surrogateOpts.evoControlSwitchMode;
+  end
 
   % evolution control -- use model? individual? generation?
   if (strcmpi(surrogateOpts.evoControl, 'none'))
