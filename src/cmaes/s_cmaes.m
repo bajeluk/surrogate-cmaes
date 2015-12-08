@@ -763,6 +763,61 @@ end % else flgresume
 % -------------------- Generation Loop --------------------------------
 stopflag = {};
 while isempty(stopflag)
+  
+  % Set CMA-ES internal paramaters before Surrogate CMA-ES
+  if countiter == 0 || lambda ~= lambda_last
+    if flgDiagonalOnly < 1
+      flgDiagonalOnly = 0; 
+    end
+    if noiseHandling
+      noiseReevals = min(myeval(opts.Noise.reevals), lambda); 
+    else
+      noiseReevals = 0; % more convenient in later coding
+    end
+  end
+  
+  % Surrogate CMA-ES begin
+
+  % Generate and evaluate lambda offspring
+  
+  % Convert fitness function string to function handle
+  if (ischar(fitfun))
+    fitfun_handle = str2func(fitfun);
+  else
+    fitfun_handle = fitfun;
+  end
+
+  % Set CMA-ES internal variables/parameters for sampling
+  sampleOpts.noiseReevals = noiseReevals;
+  sampleOpts.isBoundActive = bnd.isactive;
+  sampleOpts.lbounds = lbounds;
+  sampleOpts.ubounds = ubounds;
+  sampleOpts.counteval = counteval;
+  sampleOpts.flgEvalParallel = flgEvalParallel;
+  sampleOpts.flgDiagonalOnly = flgDiagonalOnly;
+  sampleOpts.noiseHandling = noiseHandling;
+  sampleOpts.xintobounds = @xintobounds;
+
+  if (~exist('surrogateOpts','var'))
+    % use standard CMA-ES (no surrogate at all)
+    [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, sampleOpts, varargin{:});
+    surrogateStats = [];
+  else
+    % hand over the control to surrogateManager()
+    surrogateOpts.sampleOpts = sampleOpts;
+    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter + 1, fitfun_handle, surrogateOpts, varargin{:});
+  end
+  
+  % Surrogate CMA-ES end
+
+  % BAJELUK -- population, covariance matrix, sigma and fvalues logging
+  out.arxvalids{countiter} = arxvalid;
+  out.BDs{countiter} = BD;
+  out.sigmas{countiter} = sigma;
+  out.fvalues{countiter} = fitness.raw;
+  out.means{countiter} = xmean;
+  out.countevals{countiter} = counteval;
+  
   % set internal parameters
   if countiter == 0 || lambda ~= lambda_last
     if countiter > 0 && floor(log10(lambda)) ~= floor(log10(lambda_last)) ...
@@ -889,49 +944,6 @@ while isempty(stopflag)
   flush;
 
   countiter = countiter + 1; 
-
-  % Surrogate CMA-ES begin
-
-  % Generate and evaluate lambda offspring
-  
-  % Convert fitness function string to function handle
-  if (ischar(fitfun))
-    fitfun_handle = str2func(fitfun);
-  else
-    fitfun_handle = fitfun;
-  end
-
-  % Set CMA-ES internal variables/parameters for sampling
-  sampleOpts.noiseReevals = noiseReevals;
-  sampleOpts.isBoundActive = bnd.isactive;
-  sampleOpts.lbounds = lbounds;
-  sampleOpts.ubounds = ubounds;
-  sampleOpts.counteval = counteval;
-  sampleOpts.flgEvalParallel = flgEvalParallel;
-  sampleOpts.flgDiagonalOnly = flgDiagonalOnly;
-  sampleOpts.noiseHandling = noiseHandling;
-  sampleOpts.xintobounds = @xintobounds;
-
-  if (~exist('surrogateOpts','var'))
-    % use standard CMA-ES (no surrogate at all)
-    [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, sampleOpts, varargin{:});
-    surrogateStats = [];
-  else
-    % hand over the control to surrogateManager()
-    surrogateOpts.sampleOpts = sampleOpts;
-    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter, fitfun_handle, surrogateOpts, varargin{:});
-  end
-  
-  % Surrogate CMA-ES end
-
-  % BAJELUK -- population, covariance matrix, sigma and fvalues logging
-  out.arxvalids{countiter} = arxvalid;
-  out.BDs{countiter} = BD;
-  out.sigmas{countiter} = sigma;
-  out.fvalues{countiter} = fitness.raw;
-  out.means{countiter} = xmean;
-  out.countevals{countiter} = counteval;
-
 
   fitness.sel = fitness.raw; 
 
