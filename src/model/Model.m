@@ -88,7 +88,7 @@ classdef (Abstract) Model
       counteval = 0;
       countevalNaN = 0;
 
-      if (nOrigEvals <= 0)
+      if (isempty(nOrigEvals) || (nOrigEvals <= 0))
         % we are not allowed to use any original evaluations
         return;
       end
