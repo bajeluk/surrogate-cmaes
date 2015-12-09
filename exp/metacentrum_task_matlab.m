@@ -1,4 +1,4 @@
-function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
+function cmaes_out = metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
 
   % NFS file for logging results
   USE_FILELOG = 1;
@@ -96,7 +96,9 @@ function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
   % CORE COMPUTATION (begin)
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-  bbob_test_01(id, exp_id, exppath_short, OUTPUTDIR);
+  % bbob_test_01(id, exp_id, exppath_short, OUTPUTDIR);
+
+  cmaes_out = bbob_gptrain_01(id, exp_id, exppath_short, OUTPUTDIR);
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   % CORE COMPUTATION (end)
