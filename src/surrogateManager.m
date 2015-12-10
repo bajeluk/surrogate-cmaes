@@ -72,19 +72,6 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   newModel = ModelFactory.createModel(surrogateOpts.modelType, ...
       surrogateOpts.modelOpts, xmean');
 
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  % TODO: MOVE THIS TO GpModel.m !!!
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  if (strcmpi(surrogateOpts.modelType, 'gp') && ~strcmpi(func2str(newModel.meanFcn), 'meanZero'))
-    % Try to fit two different models and choose the better one after training
-    zeroOpts = surrogateOpts.modelOpts;
-    zeroOpts.meanFcn = 'meanZero';
-    newModelZero = ModelFactory.createModel(surrogateOpts.modelType, ...
-        zeroOpts, xmean');
-  else
-    newModelZero = [];
-  end
-
   if (countiter == 1)
     lastModel = [];
     archive = Archive(dim);
@@ -143,19 +130,6 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     newModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD);
     % TODO: if (newModel.trainGeneration <= 0) ==> DON'T USE THIS MODEL!!!
 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % TODO: MOVE THIS TO GpModel.m !!!
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    if (~isempty(newModelZero))
-      % We have created the zero-mean-function GP model, so try to train it
-      newModelZero = newModelZero.train(xTrain, yTrain, xmean', countiter, sigma, BD);
-      if (~ newModel.isTrained() ... % if newModelZero is not trained niether, it will be recognized)
-          || (newModelZero.isTrained() && newModelZero.trainLikelihood <= newModel.trainLikelihood))
-        fprintf('  using zero-mean model instead of the standard one.\n');
-        newModel = newModelZero;
-      end
-    end
-    
     nLambdaRest = lambda - missingTrainSize;
     if (newModel.isTrained())
       if strcmpi(surrogateOpts.evoControl, {'restricted'})
