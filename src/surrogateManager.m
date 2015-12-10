@@ -4,7 +4,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
 % @xmean, @sigma, @lambda, @BD, @diagD -- CMA-ES internal variables
 % @countiter            the number of the current generation
 % @fitfun_handle        handle to fitness function (CMA-ES uses string name of the function)
-% @surrogateOpts        options/settings for surrogate modelling
+% @inOpts               options/settings for surrogate modelling
 % @varargin             arguments for the fitness function (varargin from CMA-ES)
 %
 % returns:
@@ -35,7 +35,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   sDefaults.evoControlValidatePoints      = 0;
   sDefaults.evoControlRestrictedParam     = 0.2;  % 0..1
   sDefaults.evoControlSwitchMode          = 'none'; % none | individual | generation | restricted
-  sDefaults.evoControlSwitchBound         = 10;   % 1 .. inf (reasonable 10--30)
+  sDefaults.evoControlSwitchBound         = inf;   % 1 .. inf (reasonable 10--30)
   sDefaults.modelType = '';                       % gp | rf
   sDefaults.modelOpts = [];                       % model specific options
   
@@ -192,7 +192,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       yPredict = newModel.predict(xNewValid');
       kendall = corr(yPredict, yNew', 'type', 'Kendall');
       rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
-      fprintf('  model: %d preSamples, reevaluated %d pts, RMSE = %f, Kendl. corr = %f.\n', missingTrainSize, nLambdaRest, rmse, kendall);
+      fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', missingTrainSize, nLambdaRest, rmse, kendall);
       surrogateStats = [rmse kendall];
       % TODO: control the evolution process according to the model precision
       
@@ -203,6 +203,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         newModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD);
         if (newModel.isTrained())
           yNewRestricted = newModel.predict((xExtend(:, ~reevalID))');
+          surrogateStats = getModelStatistics(newModel, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
         else
           % use values estimated by the old model
           yNewRestricted = fvalExtend(~reevalID);
@@ -389,7 +390,7 @@ function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, di
     yPredict = model.predict(xValidTest');
     kendall = corr(yPredict, yTest, 'type', 'Kendall');
     rmse = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
-    fprintf(' RMSE = %f, Kendl. corr = %f.\n', rmse, kendall);
+    fprintf(' test RMSE = %f, Kendl. corr = %f.\n', rmse, kendall);
     surrogateStats = [rmse kendall];
   else
     fprintf('\n');
@@ -401,7 +402,7 @@ function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, di
   if (model.trainGeneration == (countiter - 1) ...
       && isfield(surrogateOpts, 'saveModelTrainingData') ...
       && isfield(surrogateOpts, 'experimentPath') ...
-      && ~isempty(surrogateOpts.saveModelTrainingData))
+      && surrogateOpts.saveModelTrainingData)
     currentEvals = surrogateOpts.sampleOpts.counteval;
     % the numbers of evaluations which will trigger data saving:
     testingEvals = surrogateOpts.saveModelTrainingData;

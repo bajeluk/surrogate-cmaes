@@ -218,7 +218,7 @@ function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_
     save(tmpFile, 'exp_settings', 'exp_id', 'y_evals');
 
     % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
-    if (~isempty(localDatapath))
+    if (~isempty(localDatapath) && isunix)
       system(['cp -pR ' datapath ' ' localDatapath '/']);
     end
   end
