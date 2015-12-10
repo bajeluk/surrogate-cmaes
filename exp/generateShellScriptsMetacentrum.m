@@ -48,9 +48,11 @@ estTimes = dimensions; % + 3*models.*dimensions;
 
 % copy task shell script into the directory with the experiment
 copyfile([pathstr filesep '..' filesep '..' filesep fNameMetacentrumTaskTemplate], fNameTask);
-fileattrib(fNameTask, '+x');
 copyfile([pathstr filesep '..' filesep '..' filesep fNameMetacentrumTaskTemplateBinary], fNameTaskBinary);
-fileattrib(fNameTaskBinary, '+x');
+if (isunix)
+  fileattrib(fNameTask, '+x');
+  fileattrib(fNameTaskBinary, '+x');
+end
 
 % Generate managing .sh script
 fMng = fopen(fNameMng, 'w'); 
@@ -161,9 +163,9 @@ for id = 1:nCombinations
   fprintf(fid, '\necho `date "+%%Y-%%m-%%d %%H:%%M:%%S"` "  **$EXPID** at [$MACHINE] ==== FINISHED ====" >> $LOGFILE\n');
 
   fclose(fid);
-  fileattrib(fNameTask, '+x');
+  if (isunix) fileattrib(fNameTask, '+x'); end
   %}
 end
 
 fclose(fMng);
-fileattrib(fNameMng, '+x');
+if (isunix) fileattrib(fNameMng, '+x'); end
