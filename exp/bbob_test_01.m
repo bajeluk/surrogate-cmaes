@@ -132,8 +132,8 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
 
   catch err
     save([resultsFile '_ERROR.mat']);
-    fprintf('#########################################################\n'); 
-    fprintf('#########################################################\n'); 
+    fprintf('#########################################################\n');
+    fprintf('#########################################################\n');
     fprintf('              Matlab ended with error!\n');
     fprintf('---------------------------------------------------------\n');
     fprintf('%s\n', err.identifier);
@@ -145,9 +145,12 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
       fprintf('---------------------------------------------------------\n');
       printSettings(1,  exp_settings, exp_results, surrogateParams, cmaesParams);
     end
-    fprintf('#########################################################\n'); 
-    fprintf('#########################################################\n'); 
+    fprintf('#########################################################\n');
+    fprintf('#########################################################\n');
+    % comment the following "exit(1)" when debugging -- it shutdowns the
+    % whole Matlab if an error occures
     exit(1);
+    throw(err);
   end
 end
 
