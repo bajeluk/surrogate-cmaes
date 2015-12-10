@@ -93,6 +93,10 @@ classdef (Abstract) Model
         return;
       end
 
+      % !!!! TODO !!!!
+      % !!!! add the newly evaluated points to the ARCHIVE !!!!
+      % !!!! TODO !!!!
+
       deniedIdxs = [];
       while (isnan(y) && ~isempty(x))
         [x, datasetIdx] = getNearMean(obj, xMean, deniedIdxs);

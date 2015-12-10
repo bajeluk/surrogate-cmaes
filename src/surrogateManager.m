@@ -71,6 +71,20 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   % some evolution control should be used (individual- or generation-based)
   newModel = ModelFactory.createModel(surrogateOpts.modelType, ...
       surrogateOpts.modelOpts, xmean');
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % TODO: MOVE THIS TO GpModel.m !!!
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  if (strcmpi(surrogateOpts.modelType, 'gp') && ~strcmpi(func2str(newModel.meanFcn), 'meanZero'))
+    % Try to fit two different models and choose the better one after training
+    zeroOpts = surrogateOpts.modelOpts;
+    zeroOpts.meanFcn = 'meanZero';
+    newModelZero = ModelFactory.createModel(surrogateOpts.modelType, ...
+        zeroOpts, xmean');
+  else
+    newModelZero = [];
+  end
+
   if (countiter == 1)
     lastModel = [];
     archive = Archive(dim);
@@ -121,10 +135,26 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       archive = archive.save(arxvalid', fitness_raw', countiter);
       xTrain = [xTrain; arxvalid'];
       yTrain = [yTrain; fitness_raw'];
+      % update the models' dataset
+      newModel.dataset.X = [newModel.dataset.X; arxvalid'];
+      newModel.dataset.y = [newModel.dataset.y; fitness_raw'];
     end
     % train the model
     newModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD);
     % TODO: if (newModel.trainGeneration <= 0) ==> DON'T USE THIS MODEL!!!
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % TODO: MOVE THIS TO GpModel.m !!!
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    if (~isempty(newModelZero))
+      % We have created the zero-mean-function GP model, so try to train it
+      newModelZero = newModelZero.train(xTrain, yTrain, xmean', countiter, sigma, BD);
+      if (~ newModel.isTrained() ... % if newModelZero is not trained niether, it will be recognized)
+          || (newModelZero.isTrained() && newModelZero.trainLikelihood <= newModel.trainLikelihood))
+        fprintf('  using zero-mean model instead of the standard one.\n');
+        newModel = newModelZero;
+      end
+    end
     
     nLambdaRest = lambda - missingTrainSize;
     if (newModel.isTrained())
@@ -188,12 +218,17 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
           sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, sigma, nLambdaRest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
       fprintf('counteval: %d\n', counteval)
+      % update the Archive
       archive = archive.save(xNewValid', yNew', countiter);
+      % calculate the models' precision
       yPredict = newModel.predict(xNewValid');
       kendall = corr(yPredict, yNew', 'type', 'Kendall');
       rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
       fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', missingTrainSize, nLambdaRest, rmse, kendall);
       surrogateStats = [rmse kendall];
+      % update the models' dataset
+      newModel.dataset.X = [newModel.dataset.X; xNewValid'];
+      newModel.dataset.y = [newModel.dataset.y; yNew'];
       % TODO: control the evolution process according to the model precision
       
       if strcmpi(surrogateOpts.evoControl, {'restricted'}) && ~all(reevalID)
@@ -209,9 +244,12 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
           yNewRestricted = fvalExtend(~reevalID);
         end
         % rescale function values of the rest of points
-        fmin = min(newModel.dataset.y);
-        if min(yNewRestricted) < fmin
-          yNewRestricted = yNewRestricted + fmin - min(yNewRestricted);
+        fminDataset = min(newModel.dataset.y);
+        fminModel = min(yNewRestricted);
+        if (fminModel < fminDataset)
+          % be carefull: the brackets in the following line are NECESSARY!
+          % it has to be calculated separately due to numerical issues!
+          yNewRestricted = yNewRestricted + (fminDataset - fminModel);
         end
         yNew = [yNew, yNewRestricted'];
         xNew = [xNew, xExtend(:, ~reevalID)];
@@ -232,6 +270,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     arx = [arx xNew];
     arxvalid = [arxvalid xNewValid];
     arz = [arz zNew];
+
+    assert(min(fitness_raw) >= min(archive.y), 'This should not happen: minimal predicted fitness < min in archive!');
+
+    %
+    % end of individual-based evolution control
 
   elseif (strcmpi(surrogateOpts.evoControl, 'generation'))
     % Generation-based evolution control
@@ -390,7 +433,21 @@ function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, di
     yPredict = model.predict(xValidTest');
     kendall = corr(yPredict, yTest, 'type', 'Kendall');
     rmse = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
-    fprintf(' test RMSE = %f, Kendl. corr = %f.\n', rmse, kendall);
+    fprintf(' test RMSE = %f, Kendl. corr = %f. ', rmse, kendall);
+
+    % decorate the kendall rho coefficient :)
+    kendallInStars = floor(abs((kendall) * 5));
+    if (kendallInStars == 0)
+      stars = '[   o   ]';
+    elseif (isnan(kendallInStars))
+      stars = '[! NaN !]';
+    else
+      if (kendall > 0) mark = '*'; else mark = '-'; end
+      space = ' ';
+      stars = sprintf('[ %s%s ]', mark(ones(1,kendallInStars)), space(ones(1,5-kendallInStars)));
+    end
+    fprintf('%s\n', stars);
+
     surrogateStats = [rmse kendall];
   else
     fprintf('\n');

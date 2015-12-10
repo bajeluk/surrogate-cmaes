@@ -104,7 +104,6 @@ classdef GpModel < Model
       % mean function and mean hyperparameter:
       if (isequal(obj.meanFcn, @meanZero))
         obj.shiftY    = mean(y);
-        obj.dataset.y = obj.dataset.y - obj.shiftY;
       else
         % starting value for meanConst:
         obj.hyp.mean = median(y);
@@ -116,7 +115,7 @@ classdef GpModel < Model
       alg = obj.options.trainAlgorithm;
 
       if (strcmpi(alg, 'minimize'))
-        [obj, fval] = obj.trainMinimize(obj.dataset.X, obj.dataset.y);
+        [obj, fval] = obj.trainMinimize(obj.dataset.X, obj.dataset.y - obj.shiftY);
         if (fval < Inf)
           obj.trainGeneration = generation;
         else
@@ -126,7 +125,7 @@ classdef GpModel < Model
       elseif (strcmpi(alg, 'fmincon') ...
               || strcmp(alg, 'cmaes'))
         % gp() with linearized version of the hyper-parameters
-        f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, obj.dataset.y);
+        f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, obj.dataset.y - obj.shiftY);
 
         linear_hyp = unwrap(obj.hyp)';
         l_cov = length(obj.hyp.cov);
@@ -138,7 +137,7 @@ classdef GpModel < Model
         opt = [];
 
         if (strcmpi(alg, 'fmincon'))
-          [obj, opt, trainErr] = obj.trainFmincon(linear_hyp, obj.dataset.X, obj.dataset.y, lb, ub, f);
+          [obj, opt, trainErr] = obj.trainFmincon(linear_hyp, obj.dataset.X, obj.dataset.y - obj.shiftY, lb, ub, f);
 
           if (trainErr)
             disp('Trying CMA-ES...');
@@ -146,7 +145,7 @@ classdef GpModel < Model
           end
         end
         if (strcmpi(alg, 'cmaes'))
-          [obj, opt, trainErr] = obj.trainCmaes(linear_hyp, obj.dataset.X, obj.dataset.y, lb, ub, f);
+          [obj, opt, trainErr] = obj.trainCmaes(linear_hyp, obj.dataset.X, obj.dataset.y - obj.shiftY, lb, ub, f);
           if (trainErr)
             return;
           end
@@ -169,7 +168,7 @@ classdef GpModel < Model
         % apply the shift if the model is already shifted
         XWithShift = X - repmat(obj.shiftMean, size(X,1), 1);
         % calculate GP models' prediction in X
-        [y, dev] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, obj.dataset.y, XWithShift);
+        [y, dev] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, obj.dataset.y - obj.shiftY, XWithShift);
         % apply the shift in the f-space (if there is any)
         y = y + obj.shiftY;
 
@@ -340,8 +339,8 @@ classdef GpModel < Model
       ub_hyp.lik = log(10);
       % set bounds for mean hyperparameter
       if (~isequal(obj.meanFcn, @meanZero))
-        minY = min(obj.dataset.y);
-        maxY = max(obj.dataset.y);
+        minY = min(obj.dataset.y - obj.shiftY);
+        maxY = max(obj.dataset.y - obj.shiftY);
         lb_hyp.mean = minY - 2*(maxY - minY);
         ub_hyp.mean = minY + 2*(maxY - minY);
       end
