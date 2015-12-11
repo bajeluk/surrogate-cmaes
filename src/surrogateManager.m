@@ -126,8 +126,10 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       newModel.dataset.X = [newModel.dataset.X; arxvalid'];
       newModel.dataset.y = [newModel.dataset.y; fitness_raw'];
     end
+
     % train the model
     newModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD);
+
     % TODO: if (newModel.trainGeneration <= 0) ==> DON'T USE THIS MODEL!!!
 
     nLambdaRest = lambda - missingTrainSize;
@@ -140,10 +142,10 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         [modelOutput, fvalExtend] = newModel.getModelOutput(xExtend');
         % choose rho points with low confidence to reevaluate
         if any(strcmpi(newModel.predictionType, {'sd2', 'poi', 'ei'}))
-          % the greater the lower confidence (sd2, poi, ei)
+          % higher criterion is better (sd2, poi, ei)
           [~, pointID] = sort(modelOutput, 'descend');
         else
-          % the lower the greater confidence (fvalues, lcb, fpoi, fei)
+          % lower criterion is better (fvalues, lcb, fpoi, fei)
           [~, pointID] = sort(modelOutput, 'ascend');
         end
         reevalID = false(1, nLambdaRest);
@@ -215,20 +217,26 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
           surrogateStats = getModelStatistics(newModel, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
         else
           % use values estimated by the old model
+          fprintf('Restricted: The new model could not be trained, using the not-retrained model.\n');
           yNewRestricted = fvalExtend(~reevalID);
-        end
-        % rescale function values of the rest of points
-        fminDataset = min(newModel.dataset.y);
-        fminModel = min(yNewRestricted);
-        if (fminModel < fminDataset)
-          % be carefull: the brackets in the following line are NECESSARY!
-          % it has to be calculated separately due to numerical issues!
-          yNewRestricted = yNewRestricted + (fminDataset - fminModel);
         end
         yNew = [yNew, yNewRestricted'];
         xNew = [xNew, xExtend(:, ~reevalID)];
         xNewValid = [xNewValid, xExtendValid(:, ~reevalID)];
         zNew = [zNew, zExtend(:, ~reevalID)];
+
+        % shift the f-values:
+        %   if the model predictions are better than the best original value 
+        %   in the model's dataset, shift ALL (!) function values
+        %   Note: - all values have to be shifted in order to preserve predicted
+        %           ordering of values
+        %         - small constant is added because of the rounding errors
+        %           when numbers of different orders of magnitude are summed
+        fminDataset = min(newModel.dataset.y);
+        fminModel = min(yNewRestricted);
+        diff = max(fminDataset - fminModel, 0);
+        fitness_raw = fitness_raw + diff + 1e-10;
+        yNew = yNew + diff + 1e-10;
       end
 
     else
@@ -245,7 +253,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     arxvalid = [arxvalid xNewValid];
     arz = [arz zNew];
 
-    assert(min(fitness_raw) >= min(archive.y), 'This should not happen: minimal predicted fitness < min in archive!');
+    assert(min(fitness_raw) >= min(archive.y), 'Assertion failed: minimal predicted fitness < min in archive by %e', min(archive.y) - min(fitness_raw));
 
     %
     % end of individual-based evolution control
