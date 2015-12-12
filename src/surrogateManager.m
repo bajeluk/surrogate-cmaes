@@ -122,9 +122,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       archive = archive.save(arxvalid', fitness_raw', countiter);
       xTrain = [xTrain; arxvalid'];
       yTrain = [yTrain; fitness_raw'];
-      % update the models' dataset
-      newModel.dataset.X = [newModel.dataset.X; arxvalid'];
-      newModel.dataset.y = [newModel.dataset.y; fitness_raw'];
+      % the newModels' dataset will be supplemented with this
+      % new points during the next training using all the xTrain
     end
 
     % train the model
@@ -196,15 +195,15 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
       fprintf('counteval: %d\n', counteval)
       % update the Archive
       archive = archive.save(xNewValid', yNew', countiter);
+      % the newModels' dataset will be supplemented with this
+      % new points during the next training using all the xTrain
       % calculate the models' precision
       yPredict = newModel.predict(xNewValid');
       kendall = corr(yPredict, yNew', 'type', 'Kendall');
       rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
       fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', missingTrainSize, nLambdaRest, rmse, kendall);
       surrogateStats = [rmse kendall];
-      % update the models' dataset
-      newModel.dataset.X = [newModel.dataset.X; xNewValid'];
-      newModel.dataset.y = [newModel.dataset.y; yNew'];
+
       % TODO: control the evolution process according to the model precision
 
       if strcmpi(surrogateOpts.evoControl, {'restricted'}) && ~all(reevalID)
