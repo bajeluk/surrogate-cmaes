@@ -1,4 +1,4 @@
-function [x, ilaunch, y_evals, stopflag] = opt_cmaes(FUN, DIM, ftarget, maxfunevals, id, varargin)
+function [x, ilaunch, y_evals, stopflag, varargout] = opt_cmaes(FUN, DIM, ftarget, maxfunevals, id, varargin)
 % minimizes FUN in DIM dimensions by multistarts of fminsearch.
 % ftarget and maxfunevals are additional external termination conditions,
 % where at most 2 * maxfunevals function evaluations are conducted.
@@ -48,6 +48,13 @@ for ilaunch = 1:1e4; % up to 1e4 times
   n_y_evals = size(y_eval,1);
   y_eval(:,1) = y_eval(:,1) - (ftarget - fDelta) * ones(n_y_evals,1);
   y_evals = [y_evals; y_eval];
+
+  if (nargout > 0)
+    varargout{1} = out;
+  else
+    varargout = cell();
+  end
+
   % terminate if ftarget or maxfunevals reached
   if (feval(FUN, 'fbest') < ftarget || ...
       feval(FUN, 'evaluations') >= maxfunevals)

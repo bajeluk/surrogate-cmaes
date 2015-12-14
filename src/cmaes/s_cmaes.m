@@ -364,12 +364,15 @@ opts.SaveFilename = deblank(opts.SaveFilename); % remove trailing white spaces
 
 
 y_eval = [];  % BAJELUK BEST/COUNTEVAL RECORDING
-out.arxvalids = {};
+out.generationStarts = [];
+out.arxvalids = [];
+out.fvalues = [];
+out.generations = [];
 out.BDs = {};
-out.sigmas = {};
-out.fvalues = {};
-out.means = {};
-out.countevals = {};
+out.sigmas = [];
+out.means = [];
+out.countevals = [];
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
 counteval = 0; countevalNaN = 0; 
@@ -811,12 +814,14 @@ while isempty(stopflag)
   % Surrogate CMA-ES end
 
   % BAJELUK -- population, covariance matrix, sigma and fvalues logging
-  out.arxvalids{countiter} = arxvalid;
+  out.generationStarts(end+1) = length(out.generations) + 1;
+  out.arxvalids(:,end+(1:popsize)) = arxvalid;
+  out.fvalues(1,end+(1:popsize)) = fitness.raw;
+  out.generations(1,end+(1:popsize)) = countiter;
   out.BDs{countiter} = BD;
-  out.sigmas{countiter} = sigma;
-  out.fvalues{countiter} = fitness.raw;
-  out.means{countiter} = xmean;
-  out.countevals{countiter} = counteval;
+  out.sigmas(end+1) = sigma;
+  out.means(:,end+1) = xmean;
+  out.countevals(end+1) = counteval;
   
   % set internal parameters
   if countiter == 0 || lambda ~= lambda_last
