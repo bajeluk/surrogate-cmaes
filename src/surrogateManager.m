@@ -1,4 +1,4 @@
-function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter, fitfun_handle, inOpts, varargin)
+function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter, fitfun_handle, inOpts, varargin)
 % surrogateManager  controls sampling of new solutions and using a surrogate model
 %
 % @xmean, @sigma, @lambda, @BD, @diagD -- CMA-ES internal variables
@@ -33,11 +33,13 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   sDefaults.evoControlModelGenerations    = 1;    % 0..inf
   sDefaults.evoControlTrainNArchivePoints = 0;
   sDefaults.evoControlValidatePoints      = 0;
-  sDefaults.evoControlRestrictedParam     = 0.2;  % 0..1
+  sDefaults.evoControlRestrictedParam     = 0.2;    % 0..1
   sDefaults.evoControlSwitchMode          = 'none'; % none | individual | generation | restricted
-  sDefaults.evoControlSwitchBound         = inf;   % 1 .. inf (reasonable 10--30)
-  sDefaults.modelType = '';                       % gp | rf
-  sDefaults.modelOpts = [];                       % model specific options
+  sDefaults.evoControlSwitchBound         = inf;    % 1 .. inf (reasonable 10--100)
+  sDefaults.evoControlSwitchPopulation    = 1;      % 1 .. inf (reasonable 1--20)
+  sDefaults.evoControlSwitchPopBound      = inf;    % 1 .. inf (reasonable 10--100)
+  sDefaults.modelType = '';                         % gp | rf
+  sDefaults.modelOpts = [];                         % model specific options
 
   surrogateStats = NaN(1, 2);
 
@@ -54,6 +56,10 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
   % switching evolution control
   if surrogateOpts.sampleOpts.counteval > surrogateOpts.evoControlSwitchBound*dim
     surrogateOpts.evoControl = surrogateOpts.evoControlSwitchMode;
+  end
+  
+  if surrogateOpts.sampleOpts.origPopSize == lambda && surrogateOpts.sampleOpts.counteval > surrogateOpts.evoControlSwitchPopBound*dim
+    lambda = ceil(surrogateOpts.evoControlSwitchPopulation * lambda);
   end
 
   % evolution control -- use model? individual? generation?

@@ -800,6 +800,7 @@ while isempty(stopflag)
   sampleOpts.flgDiagonalOnly = flgDiagonalOnly;
   sampleOpts.noiseHandling = noiseHandling;
   sampleOpts.xintobounds = @xintobounds;
+  sampleOpts.origPopSize = myeval(opts.PopSize);
 
   if (~exist('surrogateOpts','var'))
     % use standard CMA-ES (no surrogate at all)
@@ -808,7 +809,8 @@ while isempty(stopflag)
   else
     % hand over the control to surrogateManager()
     surrogateOpts.sampleOpts = sampleOpts;
-    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter + 1, fitfun_handle, surrogateOpts, varargin{:});
+    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter + 1, fitfun_handle, surrogateOpts, varargin{:});
+    popsize = lambda;
   end
   
   % Surrogate CMA-ES end
@@ -817,8 +819,8 @@ while isempty(stopflag)
   out.generationStarts(end+1) = length(out.generations) + 1;
   out.arxvalids(:,end+(1:popsize)) = arxvalid;
   out.fvalues(1,end+(1:popsize)) = fitness.raw;
-  out.generations(1,end+(1:popsize)) = countiter;
-  out.BDs{countiter} = BD;
+  out.generations(1,end+(1:popsize)) = countiter + 1;
+  out.BDs{countiter + 1} = BD;
   out.sigmas(end+1) = sigma;
   out.means(:,end+1) = xmean;
   out.countevals(end+1) = counteval;
