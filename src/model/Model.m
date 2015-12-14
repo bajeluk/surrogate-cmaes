@@ -2,15 +2,16 @@ classdef (Abstract) Model
   properties (Abstract)
     dim                  % dimension of the input space X (determined from x_mean)
     trainGeneration      % # of the generation when the model was built
-    trainMean            % mean of the generation when the model was built
-    trainSigma           % sigma of the generation when the model was built
-    trainBD              % BD of the generation when the model was built
+    trainMean            % mean of the generation when the model was trained
+    trainSigma           % sigma of the generation when the model was trained
+    trainBD              % BD of the generation when the model was trained
     dataset              % .X and .y
     useShift             % whether use shift during generationUpdate()
     shiftMean            % vector of the shift in the X-space
     shiftY               % shift in the f-space
     predictionType       % type of prediction (f-values, PoI, EI)
     transformCoordinates % whether use transformation in the X-space
+    sampleVariables      % variables needed for sampling new points as CMA-ES do
   end
 
   methods (Abstract)
@@ -228,8 +229,14 @@ classdef (Abstract) Model
 
     end
     
-    function obj = train(obj, X, y, xMean, generation, sigma, BD)
+    function obj = train(obj, X, y, xMean, generation, sigma, BD, sampleVariables)
     % train the model based on the data (X,y)
+
+      % minimal difference between minimal and maximal returned
+      % value to regard the model as trained; otherwise, the
+      % constant response is mark of a badly trained model
+      % and therefor it is marked as untrained
+      MIN_RESPONSE_DIFFERENCE = 1e-8;
 
       % transform input variables using Mahalanobis distance
       if obj.transformCoordinates
@@ -240,6 +247,8 @@ classdef (Abstract) Model
       else
         XTransf = X;
       end
+      obj.trainMean = xMean;
+      obj.sampleVariables = sampleVariables;
 
       % dimensionality reduction
       if (isprop(obj, 'dimReduction') && (obj.dimReduction ~= 1))
@@ -255,8 +264,20 @@ classdef (Abstract) Model
       end
 
       obj = trainModel(obj, XtransfReduce, y, xMean, generation);
-    end
 
+      if (obj.isTrained())
+        % Test that we don't have a constant model
+        [~, xTestValid] = ...
+          sampleCmaesNoFitness(obj.sampleVariables.xmean, obj.sampleVariables.sigma, ...
+          2*obj.sampleVariables.lambda, obj.sampleVariables.BD, obj.sampleVariables.diagD, ...
+          obj.sampleVariables.sampleOpts);
+        yPredict = obj.predict(xTestValid');
+        if (max(yPredict) - min(yPredict) < MIN_RESPONSE_DIFFERENCE)
+          fprintf('Model.train(): model output is constant (diff=%e), considering the model as un-trained.\n', max(yPredict) - min(yPredict));
+          obj.trainGeneration = -1;
+        end
+      end
+    end
   end
 
   methods (Access = protected)

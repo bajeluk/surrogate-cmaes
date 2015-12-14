@@ -1,7 +1,7 @@
 function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
 
   % NFS file for logging results
-  USE_FILELOG = 1;
+  USE_FILELOG = 0;
   LOGFILENAME='log.txt';
   DEFAULTLOGFILE = '/storage/plzen1/home/bajeluk/public/log.txt';
 
