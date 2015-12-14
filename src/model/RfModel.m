@@ -9,6 +9,7 @@ classdef RfModel < Model
     useShift = false;
     shiftMean             % vector of the shift in the X-space
     shiftY = 0;           % shift in the f-space
+    sampleVariables       % variables needed for sampling new points as CMA-ES do
     options
 
     nTrees                % number of regression trees

@@ -127,7 +127,16 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
     end
 
     % train the model
-    newModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD);
+    sampleVariables = struct( ...
+      'xmean', xmean, ...
+      'sigma', sigma, ...
+      'lambda', lambda, ...
+      'BD', BD, ...
+      'diagD', diagD, ...
+      'sampleOpts', surrogateOpts.sampleOpts);
+    % TODO: omit the unnecessary variables xmean, sigma and BD
+    % as they are already in sampleVariables
+    newModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD, sampleVariables);
 
     % TODO: if (newModel.trainGeneration <= 0) ==> DON'T USE THIS MODEL!!!
 
@@ -210,7 +219,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats] = surrogat
         xTrain = [xTrain; xNewValid'];
         yTrain = [yTrain; yNew'];
         % train the model again
-        retrainedModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD);
+        retrainedModel = newModel.train(xTrain, yTrain, xmean', countiter, sigma, BD, sampleVariables);
         if (retrainedModel.isTrained())
           yNewRestricted = retrainedModel.predict((xExtend(:, ~reevalID))');
           surrogateStats = getModelStatistics(retrainedModel, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
@@ -478,7 +487,16 @@ function [newModel, surrogateStats, isTrained] = trainGenerationECModel(model, a
       xmean', surrogateOpts.evoControlTrainRange, trainSigma, BD);
   if (length(y) >= nRequired)
     % we have got enough data for new model! hurraayh!
-    newModel = model.train(X, y, xmean', countiter, sigma, BD);
+    sampleVariables = struct( ...
+      'xmean', xmean, ...
+      'sigma', sigma, ...
+      'lambda', lambda, ...
+      'BD', BD, ...
+      'diagD', diagD, ...
+      'sampleOpts', surrogateOpts.sampleOpts);
+    % TODO: omit the unnecessary variables xmean, sigma and BD
+    % as they are already in sampleVariables
+    newModel = model.train(X, y, xmean', countiter, sigma, BD, sampleVariables);
     isTrained = (newModel.trainGeneration > 0);
 
     % DEBUG: print and save the statistics about the currently

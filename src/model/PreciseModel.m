@@ -12,6 +12,7 @@ classdef PreciseModel < Model
     options
     predictionType = 'fValues';     % type of prediction (f-values, PoI, EI)
     transformCoordinates = false;   % whether use transformation in the X-space
+    sampleVariables       % variables needed for sampling new points as CMA-ES do
     dimReduction          % Reduce dimensionality for model by eigenvectors of covatiance matrix in percentage
     
     bbob_func

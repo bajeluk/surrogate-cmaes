@@ -2,20 +2,20 @@ classdef GpModel < Model
   properties    % derived from abstract class "Model"
     dim                   % dimension of the input space X (determined from x_mean)
     trainGeneration = -1; % # of the generation when the model was built
-    trainMean             % mean of the generation when the model was built
-    trainSigma           % sigma of the generation when the model was built
-    trainBD              % BD of the generation when the model was built
-    reductionMatrix      % Matrix used for dimensionality reduction
+    trainMean             % mean of the generation when the model was trained
+    trainSigma            % sigma of the generation when the model was trained
+    trainBD               % BD of the generation when the model was trained
     dataset               % .X and .y
     useShift = false;
     shiftMean             % vector of the shift in the X-space
     shiftY = 0;           % shift in the f-space
-    options
-    transformCoordinates  % transform X-space
     predictionType        % type of prediction (f-values, PoI, EI)
-    dimReduction          % Reduce dimensionality for model by eigenvectors 
-                          % of covatiance matrix in percentage
+    transformCoordinates  % transform X-space
+    sampleVariables       % variables needed for sampling new points as CMA-ES do
 
+    % GpModel specific fields
+    stdY                  % standard deviation of Y in training set, for normalizing output
+    options
     hyp
     meanFcn
     covFcn
@@ -23,6 +23,11 @@ classdef GpModel < Model
     infFcn
     nErrors
     trainLikelihood
+
+    % Dimensionality-reduction specific fields
+    dimReduction          % Reduce dimensionality for model by eigenvectors
+                          % of covatiance matrix in percentage
+    reductionMatrix       % Matrix used for dimensionality reduction
   end
 
   properties (Access = protected)
@@ -75,6 +80,7 @@ classdef GpModel < Model
       obj.meanFcn = str2func(defopts(obj.options, 'meanFcn', 'meanConst'));
       obj.likFcn  = str2func(defopts(obj.options, 'likFcn',  'likGauss'));
       obj.infFcn  = str2func(defopts(obj.options, 'infFcn',  'infExactCountErrors'));
+      obj.options.normalizeY = defopts(obj.options, 'normalizeY', false);
 
       % general model prediction options
       obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
@@ -101,21 +107,32 @@ classdef GpModel < Model
       obj.dataset.X = X;
       obj.dataset.y = y;
 
-      % mean function and mean hyperparameter:
-      if (isequal(obj.meanFcn, @meanZero))
-        obj.shiftY    = mean(y);
+      % normalize y if specified, @meanZero, or if large y-scale
+      % (at least for CMA-ES hyperparameter optimization)
+      if (~obj.options.normalizeY ...
+          && (isequal(obj.meanFcn, @meanZero) || (max(y) - min(y)) > 1e4))
+        fprintf(2, 'Y-Normalization is switched ON for @meanZero covariance function of large Y-scale.\n');
+        obj.options.normalizeY = true;
+      end
+      if (obj.options.normalizeY)
+        obj.shiftY = mean(y);
+        obj.stdY  = std(y);
+        yTrain = (y - obj.shiftY) / obj.stdY;
       else
-        % starting value for meanConst:
-        obj.hyp.mean = median(y);
+        obj.shiftY = 0;
+        obj.stdY  = 1;
+        yTrain = y;
       end
 
-      if (~isfield(obj.options, 'trainAlgorithm'))
-        obj.options.trainAlgorithm = 'minimize';
+      % set the mean hyperparameter if is needed
+      if (~isequal(obj.meanFcn, @meanZero))
+        obj.hyp.mean = median(yTrain);
       end
+
       alg = obj.options.trainAlgorithm;
 
       if (strcmpi(alg, 'minimize'))
-        [obj, fval] = obj.trainMinimize(obj.dataset.X, obj.dataset.y - obj.shiftY);
+        [obj, fval] = obj.trainMinimize(obj.dataset.X, yTrain);
         if (fval < Inf)
           obj.trainGeneration = generation;
         else
@@ -125,19 +142,19 @@ classdef GpModel < Model
       elseif (strcmpi(alg, 'fmincon') ...
               || strcmp(alg, 'cmaes'))
         % gp() with linearized version of the hyper-parameters
-        f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, obj.dataset.y - obj.shiftY);
+        f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, yTrain);
 
         linear_hyp = unwrap(obj.hyp)';
         l_cov = length(obj.hyp.cov);
 
         % lower and upper bounds
-        [lb_hyp, ub_hyp] = obj.defaultLUBounds();
+        [lb_hyp, ub_hyp] = obj.defaultLUBounds(yTrain);
         lb = unwrap(lb_hyp)';
         ub = unwrap(ub_hyp)';
         opt = [];
 
         if (strcmpi(alg, 'fmincon'))
-          [obj, opt, trainErr] = obj.trainFmincon(linear_hyp, obj.dataset.X, obj.dataset.y - obj.shiftY, lb, ub, f);
+          [obj, opt, trainErr] = obj.trainFmincon(linear_hyp, obj.dataset.X, yTrain, lb, ub, f);
 
           if (trainErr)
             disp('Trying CMA-ES...');
@@ -145,8 +162,10 @@ classdef GpModel < Model
           end
         end
         if (strcmpi(alg, 'cmaes'))
-          [obj, opt, trainErr] = obj.trainCmaes(linear_hyp, obj.dataset.X, obj.dataset.y - obj.shiftY, lb, ub, f);
+          [obj, opt, trainErr] = obj.trainCmaes(linear_hyp, obj.dataset.X, yTrain, lb, ub, f);
           if (trainErr)
+            % DEBUG OUTPUT:
+            fprintf('.. model is not successfully trained, likelihood = %f\n', obj.trainLikelihood);
             return;
           end
         end
@@ -167,10 +186,12 @@ classdef GpModel < Model
       if (obj.isTrained())
         % apply the shift if the model is already shifted
         XWithShift = X - repmat(obj.shiftMean, size(X,1), 1);
+        % prepare the training set (if was normalized for training)
+        yTrain = (obj.dataset.y - obj.shiftY) / obj.stdY;
         % calculate GP models' prediction in X
-        [y, dev] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, obj.dataset.y - obj.shiftY, XWithShift);
-        % apply the shift in the f-space (if there is any)
-        y = y + obj.shiftY;
+        [y, dev] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, yTrain, XWithShift);
+        % un-normalize in the f-space (if there is any)
+        y = y * obj.stdY + obj.shiftY;
 
         % % Calculate POI if it should be used
         % if (obj.options.usePOI)
@@ -248,7 +269,10 @@ classdef GpModel < Model
           [opt, fval] = fmincon(f, linear_hyp', [], [], [], [], lb, ub, nonlnc, fminconOpts);
           obj.nErrors = modelTrainNErrors;
           obj.trainLikelihood = fval;
-          if (isnan(fval))
+          if (isnan(fval)  ||  initial - fval < 0.1)
+            % final likelihood is not a valid value or
+            % the shift in likelihood is almost none, the model is probably
+            % not trained, do not use it
             trainErr = true;
           end
         catch err
@@ -269,6 +293,10 @@ classdef GpModel < Model
       cmaesopt.UBounds = ub';
       cmaesopt.SaveVariables = false;
       cmaesopt.LogModulo = 0;
+      cmaesopt.DispModulo = 0;
+      cmaesopt.DispFinal = 0;
+      sigma = [0.3*(ub - lb)]';
+      % sigma(end) = min(10*mean(sigma(1:end-1)), sigma(end));
       if (length(obj.hyp.cov) > 2)
         % there is ARD covariance
         % try run cmaes for 500 funevals to get bounds for covariances
@@ -276,7 +304,7 @@ classdef GpModel < Model
         cmaesopt.MaxFunEvals = 500;
         modelTrainNErrors = 0;
         try
-          [opt, fval] = s_cmaes(f, linear_hyp', [0.3*(ub(1:(end-1)) - lb(1:(end-1))) 100]', cmaesopt);
+          [opt, fval] = s_cmaes(f, linear_hyp', sigma, cmaesopt);
         catch err
           fprintf(2, 'GpModel.train() ERROR: CMA-ES ended with an exception: %s\n', err.message);
           trainErr = true;
@@ -284,22 +312,28 @@ classdef GpModel < Model
           obj.trainGeneration = -1;
           return;
         end
-        cov_median = median(opt(1:(end-4)));
-        ub(1:(end-4)) = cov_median + MAX_DIFF;
-        lb(1:(end-4)) = cov_median - MAX_DIFF;
+        cov_median = median(opt(1:obj.dim));
+        ub(1:obj.dim) = cov_median + MAX_DIFF;
+        lb(1:obj.dim) = cov_median - MAX_DIFF;
         cmaesopt.LBounds = lb';
         cmaesopt.UBounds = ub';
+        sigma(1:obj.dim) = [0.3*(ub(1:obj.dim) - lb(1:obj.dim))]';
       end
       cmaesopt.MaxFunEvals = 2000;
       try
         modelTrainNErrors = 0;
-        [opt, fval] = s_cmaes(f, linear_hyp', [0.3*(ub(1:(end-1)) - lb(1:(end-1))) 100]', cmaesopt);
+        [opt, fval] = s_cmaes(f, linear_hyp', sigma, cmaesopt);
       catch err
         fprintf(2, 'GpModel.train() ERROR: CMA-ES ended with an exception: %s\n', err.message);
         trainErr = true;
         obj.nErrors = modelTrainNErrors;
         obj.trainGeneration = -1;
         return;
+      end
+      if (isnan(fval))
+        % final likelihood is not a valid value, the model is probably
+        % not trained, do not use it
+        trainErr = true;
       end
       obj.nErrors = modelTrainNErrors;
       obj.trainLikelihood = fval;
@@ -330,7 +364,7 @@ classdef GpModel < Model
       end
     end
 
-    function [lb_hyp, ub_hyp] = defaultLUBounds(obj)
+    function [lb_hyp, ub_hyp] = defaultLUBounds(obj, yTrain)
       % return default lower/upper bounds for GP model hyperparameter training
       %
       lb_hyp.cov = -2 * ones(size(obj.hyp.cov));
@@ -339,8 +373,8 @@ classdef GpModel < Model
       ub_hyp.lik = log(10);
       % set bounds for mean hyperparameter
       if (~isequal(obj.meanFcn, @meanZero))
-        minY = min(obj.dataset.y - obj.shiftY);
-        maxY = max(obj.dataset.y - obj.shiftY);
+        minY = min(yTrain);
+        maxY = max(yTrain);
         lb_hyp.mean = minY - 2*(maxY - minY);
         ub_hyp.mean = minY + 2*(maxY - minY);
       end
