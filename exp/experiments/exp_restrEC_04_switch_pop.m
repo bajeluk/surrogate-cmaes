@@ -1,5 +1,5 @@
-exp_id = 'exp_geneEC_09_switch_pop';
-exp_description = 'Surrogate CMA-ES model using generation EC for couple of generations and switching to different populations in 2, 3, 5, 10, 20D';
+exp_id = 'exp_restrEC_04_switch_pop';
+exp_description = 'Surrogate CMA-ES model using restricted EC for couple of generations and switching to different populations in 2, 3, 5, 10, 20D';
 
 machines = {'machine1'};
 
@@ -30,7 +30,7 @@ bbParamDef(5).values = {'250 * dim'};   % increment maxfunevals successively
                                 
 % Surrogate model parameter lists
 sgParamDef(1).name   = 'evoControl';            % 'none', 'individual', 'generation', 'restricted'
-sgParamDef(1).values = {'generation'};
+sgParamDef(1).values = {'restricted'};
 sgParamDef(2).name   = 'modelType';             % 'gp', 'rf', 'bbob'
 sgParamDef(2).values = {'gp', 'rf'};
 sgParamDef(3).name   = 'evoControlPreSampleSize';       % will be multip. by lambda
@@ -47,9 +47,9 @@ sgParamDef(8).name   = 'evoControlSampleRange';         % will be multip. by sig
 sgParamDef(8).values = { 1 };
 
 sgParamDef(9).name   = 'evoControlOrigGenerations';
-sgParamDef(9).values = { 1 };
+sgParamDef(9).values = { [] };
 sgParamDef(10).name   = 'evoControlModelGenerations';
-sgParamDef(10).values = { 5 };
+sgParamDef(10).values = { [] };
 sgParamDef(11).name   = 'evoControlValidatePoints';
 sgParamDef(11).values = { [] };
 sgParamDef(12).name   = 'modelOpts';
@@ -57,6 +57,7 @@ modelOptsValues = struct( ...
   'useShift', false, ...
   'predictionType', 'ei', ...
   'trainAlgorithm', 'fmincon', ...
+  'normalizeY', true, ...
   'covFcn', '{@covMaterniso, 5}', ...
   'hyp', struct('lik', log(0.01), ...
   'cov', log([0.5; 2])), ...
@@ -66,10 +67,12 @@ modelOptsValues = struct( ...
 s3 = modelOptsValues;
 s3.predictionType = 'sd2';
 sgParamDef(12).values = {s3};
-sgParamDef(13).name = 'evoControlSwitchPopulation';
-sgParamDef(13).values = {2, 4, 8};
-sgParamDef(14).name = 'evoControlSwitchPopBound';
-sgParamDef(14).values = {10, 30, 80};
+sgParamDef(13).name  = 'evoControlRestrictedParam';
+sgParamDef(13).values = {0.1};
+sgParamDef(14).name = 'evoControlSwitchPopulation';
+sgParamDef(14).values = {2, 4, 8};
+sgParamDef(15).name = 'evoControlSwitchPopBound';
+sgParamDef(15).values = {10, 30, 80};
 
 % CMA-ES parameters
 cmParamDef(1).name   = 'PopSize';
