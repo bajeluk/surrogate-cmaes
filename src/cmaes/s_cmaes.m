@@ -372,6 +372,7 @@ out.BDs = {};
 out.sigmas = [];
 out.means = [];
 out.countevals = [];
+out.surrogateStats = [];
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
@@ -918,7 +919,7 @@ while isempty(stopflag)
   if (~exist('surrogateOpts','var'))
     % use standard CMA-ES (no surrogate at all)
     [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, sampleOpts, varargin{:});
-    surrogateStats = [];
+    surrogateStats = NaN(1, 2);
   else
     % hand over the control to surrogateManager()
     surrogateOpts.sampleOpts = sampleOpts;
@@ -936,6 +937,7 @@ while isempty(stopflag)
   out.sigmas(end+1) = sigma;
   out.means(:,end+1) = xmean;
   out.countevals(end+1) = counteval;
+  out.surrogateStats(:,end+1) = surrogateStats';
 
 
   fitness.sel = fitness.raw; 

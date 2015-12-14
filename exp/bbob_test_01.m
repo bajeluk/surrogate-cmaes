@@ -10,6 +10,9 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   % GNUPlot script where special strings will be replaced
   gnuplotScript = 'twoAlgsPlotExtended.gpi';
 
+  % surrogateModel progress log
+  PROGRESS_LOG = 0;
+
   % GnuPlot script should be in $ALGROOT/exp/
   gnuplotScript = [exppath_short filesep '..' filesep gnuplotScript];
   % Directory for internal results of _this_ function
@@ -70,12 +73,17 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
       opt.algName = [exp_id '_' expFileID];
       datapath = [datapath filesep expFileID];
       [~, ~] = mkdir(datapath);
+      cmaes_out = [];
 
-      [exp_results, tmpFile] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath, localDatapath);
+      if (PROGRESS_LOG)
+        [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath, localDatapath);
+      else
+        [exp_results, tmpFile] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath, localDatapath);
+      end
 
       y_evals = exp_results.y_evals;
 
-      save([resultsFile '.mat'], 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams', 'bbParams');
+      save([resultsFile '.mat'], 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams', 'bbParams', 'cmaes_out');
 
       % ===== PURE CMAES RESULTS =====
 
@@ -154,8 +162,9 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   end
 end
 
-function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_settings, datapath, opt, maxrestarts, maxfunevals, minfunevals, t0, exppath, localDatapath)
+function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_function, id, exp_settings, datapath, opt, maxrestarts, maxfunevals, minfunevals, t0, exppath, localDatapath)
   y_evals = cell(0);
+  cmaes_out = cell(0);
 
   t = tic;
   inst_results_evals = [];
@@ -178,10 +187,11 @@ function [exp_results, tmpFile] = runTestsForAllInstances(opt_function, id, exp_
       if restarts > 0  % write additional restarted info
         fgeneric('restart', 'independent restart')
       end
-      [xopt, ilaunch, ye, stopflag] = opt_function('fgeneric', exp_settings.dim, fgeneric('ftarget'), ...
+      [xopt, ilaunch, ye, stopflag, cmaes_out_1] = opt_function('fgeneric', exp_settings.dim, fgeneric('ftarget'), ...
                   maxfunevals, id, exppath);
       % we don't have this information from CMA-ES :(
       % ye = [res.deltasY res.evaluations];
+      cmaes_out{end+1} = cmaes_out_1;
 
       if (fmin < Inf)
         ye(:,1) = min([ye(:,1) repmat(fmin,size(ye,1),1)], [], 2);
