@@ -1,4 +1,4 @@
-function [x, ilaunch, y_evals, stopflag] = opt_xacmes(FUN, DIM, ftarget, maxfunevals, id)
+function [x, ilaunch, y_evals, stopflag, varargout] = opt_xacmes(FUN, DIM, ftarget, maxfunevals, id, varargin)
 % minimizes FUN in DIM dimensions by multistarts of fminsearch.
 % ftarget and maxfunevals are additional external termination conditions,
 % where at most 2 * maxfunevals function evaluations are conducted.
@@ -25,7 +25,20 @@ cmOptions = struct( ...
 y_evals = [];
 stopflag = 0;
 
-load('scmaes_params.mat', 'bbParamDef', 'sgParamDef', 'cmParamDef');
+if (nargin >= 6)
+  exppath = [varargin{1} filesep];
+else
+  exppath = '';
+end
+if (nargout == 5)
+  varargout{1} = [];
+else
+  varargout = cell(0);
+end
+
+load([exppath 'scmaes_params.mat'], 'bbParamDef', 'sgParamDef', 'cmParamDef');
+[~, ~, cmParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
+
 [bbParams, sgParams, cmParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
 for fname = fieldnames(cmParams)'
   cmOptions.(fname{1}) = cmParams.(fname{1});
