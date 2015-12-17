@@ -1,6 +1,7 @@
 doc/.~*
 tmp/*
 log/*
+deploy/*
 outcmaes*
 variablescmaes.mat
 *.asv

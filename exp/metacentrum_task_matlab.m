@@ -12,7 +12,8 @@ function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
   FTP_PASS='metacentrum';
 
   % *__log__* file -- set empty to suppress these outputs
-  FILESTDOUT = [exppath_short filesep exp_id filesep exp_id '__log__' num2str(id) '.txt'];
+  FILESTDOUT = [];
+  % FILESTDOUT = [exppath_short filesep exp_id filesep exp_id '__log__' num2str(id) '.txt'];
 
   % all params are strings if compiled and called from shell
   if (ischar(id)) id = str2num(id); end
@@ -38,7 +39,11 @@ function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
   % setting up paths
   EXPPATH = [exppath_short filesep exp_id];
   RESULTSFILE = [EXPPATH '/' exp_id '_results_' num2str(fun) '_' num2str(dim) 'D_' num2str(id) '.mat'];
-  OUTPUTDIR = getenv('SCRATCHDIR');     % empty/'' if $SCRATCHDIR var does not exist
+  if (isempty(getenv('SCRATCHDIR')))
+    OUTPUTDIR = [];     % set OUTPUTDIR empty if $SCRATCHDIR var does not exist
+  else
+    OUTPUTDIR = [getenv('SCRATCHDIR') filesep 'job_output'];
+  end
 
   % metaOpts -- structure with info about current Task and Metacentrum environ. variables
   metaOpts.logdir = '';
@@ -69,7 +74,8 @@ function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
   % # clean up the lock-file
   % trap "rm -f $EXPPATH/queued_$ID" TERM EXIT
 
-  cd([exppath_short filesep '..' filesep '..']);
+  % This CD is now wrong, Matlab should be called from a SCRACHDIR
+  % cd([exppath_short filesep '..' filesep '..']);
   startup;
 
   % STDOUT logging
@@ -137,7 +143,7 @@ function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
 
   % copy the BBOB results onto persistant storage if outside EXPPATH
   % ( should be done already in bbob_test_01() )
-  if (~isempty(OUTPUTDIR) && ~strcmpi(OUTPUTDIR, EXPPATH))
+  if (~isempty(OUTPUTDIR) && ~strcmpi(OUTPUTDIR, EXPPATH) && isunix)
     % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
     system(['cp -pR ' OUTPUTDIR '/* ' EXPPATH '/']);
   end
