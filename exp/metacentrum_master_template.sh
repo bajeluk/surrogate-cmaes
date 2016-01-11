@@ -15,14 +15,19 @@
 # settings within this file:
 #   EXPPATH_SHORT  -- $CWD/experiments
 
-# ExperimentID (string)
+# EXPID = ExperimentID (string)
 EXPID=$1
 
-# Metacentrum queue/walltime (2h/4h/1d/2d/1w)
+# QUEUE = Metacentrum walltime (2h/4h/1d/2d/1w) -- queue will be decided accordingly
 QUEUE=$2
 
-# IDs of the tasks to be submitted (CWD == path where the current file is)
+# CWD = Directory of this particular file
 CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+# Load global settings and variables
+. $CWD/bash_settings.sh
+
+# IDs of the tasks to be submitted (CWD == path where the current file is)
 EXPPATH_SHORT="$CWD/experiments"
 # SCRIPT=`basename ${BASH_SOURCE[0]}`
 if [ $# -gt 2 ]; then
@@ -32,12 +37,44 @@ else
   IDS=`cat $EXPPATH_SHORT/$EXPID/allids.txt`
 fi
 
+
+#
+# Packing of current sources
+#
+# check that all the deployed files and directories exist; $FILES_TO_DEPLOY is
+#   set in exp/bash_settings.sh
+for file in $FILES_TO_DEPLOY; do
+  if [ ! -f $file -a ! -d $file ]; then
+    echo "Error: the specified file to deploy '$file' does not exist. Exiting."
+    exit 1;
+  fi
+done
+#
+lastdir=`pwd`
+cd "$CWD/.."
+mkdir -p "$DEPLOY_DIR"
+if [ -f "$DEPLOY_DIR/$DEPLOY_ARCHIVE" ]; then
+  echo "Warning: tar archive with the current EXPID already exists, skipping packaging"
+  echo "=======  and this old archive will be used."
+  echo " :: Delete the tar archive if you want to update the source package."
+  echo " :: You can interrupt the Task scheduling within the next 5 seconds."
+  echo ""
+  ls -l "$DEPLOY_DIR/$DEPLOY_ARCHIVE"
+  sleep 5
+else
+  # Packaging itself
+  tar -cvf "$DEPLOY_DIR/$DEPLOY_ARCHIVE" $FILES_TO_DEPLOY
+  echo ""
+fi
+cd "$lastdir"
+#
+# End of packing of sources
+#
+
+
 export EXPID
 export EXPPATH_SHORT
 export ID
-
-# allow read-access of newly created files and directories for the group
-umask 0027
 
 for ID in $IDS; do
   qsub -N "${EXPID}__${ID}" -l "walltime=$QUEUE" -v EXPID,ID,EXPPATH_SHORT $EXPPATH_SHORT/$EXPID/binary_task.sh

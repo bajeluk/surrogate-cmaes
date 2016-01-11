@@ -13,8 +13,12 @@
 # MATLAB Runtime environment
 export LD_LIBRARY_PATH=/storage/plzen1/home/bajeluk/bin/mcr/v90/runtime/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr/v90/bin/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr/v90/sys/os/glnxa64:$LD_LIBRARY_PATH
 
-# allow read-access of newly created files and directories for the group
-umask 0027
+# Load global settings and variables
+. $EXPPATH_SHORT/../bash_settings.sh
+
+# this should be set in 'exp/bash_settings.sh'
+# DEPLOY_DIR=deploy
+# DEPLOY_ARCHIVE=${EXPID}_src.tar
 
 export SCRATCHDIR
 export LOGNAME
@@ -33,13 +37,49 @@ fi
 # clean up the lock-file(s) on exit
 trap "rm -f $EXPPATH/calculating_$ID $EXPPATH/queued_$ID" TERM EXIT
 
-cd "$EXPPATH_SHORT/.."
+#
+# Un-pack the archive with current sources and change dir. to therein
+#
+DEPLOY_FILE="$EXPPATH_SHORT/../../$DEPLOY_DIR/$DEPLOY_ARCHIVE"
+if [ ! -f "$DEPLOY_FILE" ]; then
+  echo "Error: archive with current sources does not exist. It should be here:"
+  echo "  $DEPLOY_FILE"
+  exit 1
+else
+  # defined in exp/bash_settings.sh: RUNDIR="$SCRATCHDIR/surrogate-cmaes"
+  mkdir -p "$RUNDIR"
+  cd "$RUNDIR"
+  tar -xf "$DEPLOY_FILE"
+fi
+
+# cd "$EXPPATH_SHORT/.."
 # ulimit -t unlimited
+
+module add matlab
+
+echo "====================="
+echo "Compiling..."
+lasthome="$HOME"
+HOME="$RUNDIR"
+make
+
+echo "====================="
+echo -n "Current dir:    "; pwd
+echo    '$HOME =        ' $HOME
+echo    "Will be called:" $MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" $ID
+echo "====================="
 
 ######### CALL #########
 #
-./metacentrum_task_matlab "$EXPID" "$EXPPATH_SHORT" $ID
+$MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" $ID
 #
 ########################
 
-echo `date "+%Y-%m-%d %H:%M:%S"` "  **$EXPID**  ==== FINISHED ===="
+if [ $? -eq 0 ]; then
+  echo `date "+%Y-%m-%d %H:%M:%S"` "  **$EXPID**  ==== FINISHED ===="
+  rm -rf $SCRATCHDIR/*
+  exit 0
+else
+  echo `date "+%Y-%m-%d %H:%M:%S"` "  **$EXPID**  ==== ENDED WITH ERROR! ===="
+  exit 1
+fi

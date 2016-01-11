@@ -52,7 +52,7 @@ for ilaunch = 1:1e4; % up to 1e4 times
   if (nargout > 0)
     varargout{1} = out;
   else
-    varargout = cell();
+    varargout = cell(0);
   end
 
   % terminate if ftarget or maxfunevals reached
