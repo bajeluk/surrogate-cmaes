@@ -11,7 +11,7 @@ classdef (Abstract) Model
     shiftY               % shift in the f-space
     predictionType       % type of prediction (f-values, PoI, EI)
     transformCoordinates % whether use transformation in the X-space
-    sampleVariables      % variables needed for sampling new points as CMA-ES do
+    % stateVariables       % variables needed for sampling new points as CMA-ES do
   end
 
   methods (Abstract)
@@ -229,8 +229,13 @@ classdef (Abstract) Model
 
     end
     
-    function obj = train(obj, X, y, xMean, generation, sigma, BD, sampleVariables)
+    function obj = train(obj, X, y, stateVariables)
     % train the model based on the data (X,y)
+    
+      xMean = stateVariables.xmean';
+      generation = stateVariables.countiter;
+      sigma = stateVariables.sigma;
+      BD = stateVariables.BD;
 
       % minimal difference between minimal and maximal returned
       % value to regard the model as trained; otherwise, the
@@ -248,7 +253,7 @@ classdef (Abstract) Model
         XTransf = X;
       end
       obj.trainMean = xMean;
-      obj.sampleVariables = sampleVariables;
+      obj.stateVariables = stateVariables;
 
       % dimensionality reduction
       if (isprop(obj, 'dimReduction') && (obj.dimReduction ~= 1))
@@ -268,9 +273,9 @@ classdef (Abstract) Model
       if (obj.isTrained())
         % Test that we don't have a constant model
         [~, xTestValid] = ...
-          sampleCmaesNoFitness(obj.sampleVariables.xmean, obj.sampleVariables.sigma, ...
-          2*obj.sampleVariables.lambda, obj.sampleVariables.BD, obj.sampleVariables.diagD, ...
-          obj.sampleVariables.sampleOpts);
+          sampleCmaesNoFitness(obj.stateVariables.xmean, obj.stateVariables.sigma, ...
+          2*obj.stateVariables.lambda, obj.stateVariables.BD, obj.stateVariables.diagD, ...
+          obj.stateVariables.sampleOpts);
         yPredict = obj.predict(xTestValid');
         if (max(yPredict) - min(yPredict) < MIN_RESPONSE_DIFFERENCE)
           fprintf('Model.train(): model output is constant (diff=%e), considering the model as un-trained.\n', max(yPredict) - min(yPredict));

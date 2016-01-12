@@ -157,7 +157,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
     fprintf('#########################################################\n');
     % comment the following "exit(1)" when debugging -- it shutdowns the
     % whole Matlab if an error occures
-    exit(1);
+%    exit(1);
     throw(err);
   end
 end

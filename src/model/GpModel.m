@@ -11,7 +11,7 @@ classdef GpModel < Model
     shiftY = 0;           % shift in the f-space
     predictionType        % type of prediction (f-values, PoI, EI)
     transformCoordinates  % transform X-space
-    sampleVariables       % variables needed for sampling new points as CMA-ES do
+    stateVariables        % variables needed for sampling new points as CMA-ES do
 
     % GpModel specific fields
     stdY                  % standard deviation of Y in training set, for normalizing output

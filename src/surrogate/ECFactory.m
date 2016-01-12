@@ -1,7 +1,7 @@
 classdef ECFactory
   methods (Static)
-    function obj = createEC(str, surrogateOpts)
-      switch lower(str)
+    function obj = createEC(surrogateOpts)
+      switch lower(surrogateOpts.evoControl)
         case 'individual'
           obj = IndividualEC();
         case 'generation'
@@ -9,7 +9,7 @@ classdef ECFactory
         case {'doubletrained', 'restricted'}
           obj = DoubleTrainedEC();
         otherwise
-          warning(['ECFactory.createEC: ' str ' -- no such evolution control available']);
+          warning(['ECFactory.createEC: ', surrogateOpts.evoControl, ' -- no such evolution control available']);
           obj = [];
       end
     end

@@ -1,4 +1,4 @@
-classdef GenerationEC
+classdef GenerationEC < EvolutionControl
   properties
     lastModel
     model
@@ -32,23 +32,23 @@ classdef GenerationEC
     end
     
     function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, archive, varargin)
-      % Run one generation of individual evolution control
-
-      fitness_raw = [];
-      arx = [];
-      arxvalid = [];
-      arz = [];
+      % Run one generation of generation evolution control
       
+      surrogateStats = NaN(1, 2);
+      
+      % extract cmaes state variables
       xmean = cmaesState.xmean;
       sigma = cmaesState.sigma;
       lambda = cmaesState.lambda;
       BD = cmaesState.BD;
+      dim = cmaesState.dim;
       diagD = cmaesState.diagD;
       fitfun_handle = cmaesState.fitfun_handle;
       countiter = cmaesState.countiter;
-      counteval = surrogateOpts.sampleOpts.counteval;
       
       sampleSigma = surrogateOpts.evoControlSampleRange * sigma;
+      
+      obj.model = ModelFactory.createModel(surrogateOpts.modelType, surrogateOpts.modelOpts, xmean');
 
       if (obj.evaluateOriginal)
         %
@@ -62,7 +62,7 @@ classdef GenerationEC
           % we will switch to 'obj.model'-mode in the next generation
           % prepare data for a new model
 
-          [obj.model, surrogateStats, isTrained] = trainGenerationECModel(obj.model, archive, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
+          [obj, surrogateStats, isTrained] = trainGenerationECModel(obj, archive, cmaesState, surrogateOpts);
 
           if (isTrained)
             % TODO: archive the obj.lastModel...?
@@ -126,7 +126,7 @@ classdef GenerationEC
           % we've got a valid model, so we'll use it!
           [predict_fitness_raw, ~] = shiftedModel.predict(arx(:,remainingIdx)');
           fitness_raw(remainingIdx) = predict_fitness_raw';
-          disp(['Model.generationUpdate(): We are using the model for ' num2str(length(remainingIdx)) ' individuals.']);
+          disp(['Model.generationUpdate(): We are using the model for ', num2str(length(remainingIdx)), ' individuals.']);
           % shift the predicted fitness: the best predicted fitness
           % could not be better than the so-far best fitness -- it would fool CMA-ES!
           % TODO: test if shifting ALL THE INDIVIDUALS (not only predicted) would help?
@@ -137,7 +137,7 @@ classdef GenerationEC
 
           % DEBUG:
           fprintf('  test ');
-          surrogateStats = getModelStatistics(shiftedModel, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
+          surrogateStats = getModelStatistics(shiftedModel, cmaesState, surrogateOpts);
 
         else
           % we don't have a good model, so original fitness will be used
@@ -151,7 +151,7 @@ classdef GenerationEC
           archive = archive.save(arxvalid_', fitness_raw_', countiter);
 
           % train a new model for the next generation
-          [obj.model, surrogateStats, isTrained] = trainGenerationECModel(obj.model, archive, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
+          [obj, surrogateStats, isTrained] = obj.trainGenerationECModel(archive, cmaesState, surrogateOpts);
 
           if (isTrained)
             % TODO: archive the obj.lastModel...?
@@ -170,40 +170,32 @@ classdef GenerationEC
 
     end
     
-    function [newModel, surrogateStats, isTrained] = trainGenerationECModel(model, archive, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter)
+    function [obj, surrogateStats, isTrained] = trainGenerationECModel(obj, archive, cmaesState, surrogateOpts)
+      
+      dim = cmaesState.dim;
       
       surrogateStats = NaN(1, 2);
       % train the 'model' on the relevant data in 'archive'
       isTrained = false;
 
-      trainSigma = surrogateOpts.evoControlTrainRange * sigma;
+      trainSigma = surrogateOpts.evoControlTrainRange * cmaesState.sigma;
       nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
 
-      nRequired = model.getNTrainData();
-      [X, y] = archive.getDataNearPoint(nArchivePoints, ...
-          xmean', surrogateOpts.evoControlTrainRange, trainSigma, BD);
+      nRequired = obj.model.getNTrainData();
+      [X, y] = archive.getDataNearPoint(nArchivePoints, cmaesState.xmean', ...
+        surrogateOpts.evoControlTrainRange, trainSigma, cmaesState.BD);
       if (length(y) >= nRequired)
         % we have got enough data for new model! hurraayh!
-        sampleVariables = struct( ...
-          'xmean', xmean, ...
-          'sigma', sigma, ...
-          'lambda', lambda, ...
-          'BD', BD, ...
-          'diagD', diagD, ...
-          'sampleOpts', surrogateOpts.sampleOpts);
-        % TODO: omit the unnecessary variables xmean, sigma and BD
-        % as they are already in sampleVariables
-        newModel = model.train(X, y, xmean', countiter, sigma, BD, sampleVariables);
-        isTrained = (newModel.trainGeneration > 0);
+        obj.model = obj.model.train(X, y, cmaesState);
+        isTrained = (obj.model.trainGeneration > 0);
 
         % DEBUG: print and save the statistics about the currently
-        % trained model on testing data (RMSE and Kendall's correlation)
+        % trained obj.model on testing data (RMSE and Kendall's correlation)
         if (isTrained)
           fprintf('  model trained on %d points, train ', length(y));
-          surrogateStats = getModelStatistics(newModel, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
+          surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts);
         end
       else
-        newModel = model;
         isTrained = false;
       end
     end
@@ -234,13 +226,13 @@ classdef GenerationEC
             obj.currentMode = 'original';
             obj.remaining = obj.origGenerations;
           end
-          obj.lastOriginalGenerations = [obj.lastOriginalGenerations obj.currentGeneration];
+          obj.lastOriginalGenerations = [obj.lastOriginalGenerations, obj.currentGeneration];
         case 'original'
           if (obj.remaining == 0)
             obj.currentMode = 'model';
             obj.remaining = obj.modelGenerations;
           end
-          obj.lastOriginalGenerations = [obj.lastOriginalGenerations obj.currentGeneration];
+          obj.lastOriginalGenerations = [obj.lastOriginalGenerations, obj.currentGeneration];
         case 'model'
           if (obj.remaining == 0)
             obj.currentMode = 'original';
@@ -256,7 +248,7 @@ classdef GenerationEC
       % call this instead of next() if you want to
       % leave the current mode
       if (any(strcmp(obj.currentMode, {'original', 'initial'})))
-        obj.lastOriginalGenerations = [obj.lastOriginalGenerations obj.currentGeneration];
+        obj.lastOriginalGenerations = [obj.lastOriginalGenerations, obj.currentGeneration];
       end
       obj.currentGeneration = obj.currentGeneration + 1;
     end
@@ -278,5 +270,13 @@ classdef GenerationEC
       end
       gens = obj.lastOriginalGenerations(startID:end);
     end
+  end
+end
+
+function res=myeval(s)
+  if ischar(s)
+    res = evalin('caller', s);
+  else
+    res = s;
   end
 end

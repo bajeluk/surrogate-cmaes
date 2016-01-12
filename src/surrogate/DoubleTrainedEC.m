@@ -1,4 +1,4 @@
-classdef DoubleTrainedEC
+classdef DoubleTrainedEC < EvolutionControl
   properties 
     model
   end
@@ -16,12 +16,15 @@ classdef DoubleTrainedEC
       arx = [];
       arxvalid = [];
       arz = [];
+      surrogateStats = NaN(1, 2);
       
+      % extract cmaes state variables
       xmean = cmaesState.xmean;
       sigma = cmaesState.sigma;
       lambda = cmaesState.lambda;
       BD = cmaesState.BD;
       diagD = cmaesState.diagD;
+      dim = cmaesState.dim;
       fitfun_handle = cmaesState.fitfun_handle;
       countiter = cmaesState.countiter;
       counteval = surrogateOpts.sampleOpts.counteval;
@@ -42,13 +45,17 @@ classdef DoubleTrainedEC
       [fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] = ...
         presample(minTrainSize, surrogateOpts, cmaesState, archive, xTrain, yTrain, varargin{:});
 
+      nPresampledPoints = size(arxvalid, 2);
+      if (nPresampledPoints == lambda)
+        return
+      end
+
       % train the model
       % TODO: omit the unnecessary variables xmean, sigma and BD
       % as they are already in cmaesState  
-      obj.model = obj.model.train(xTrain, yTrain, xmean', countiter, sigma, BD, cmaesState);
+      obj.model = obj.model.train(xTrain, yTrain, cmaesState);
 
-      missingTrainSize = max(minTrainSize - size(xTrain, 1), 0);
-      nLambdaRest = lambda - missingTrainSize;
+      nLambdaRest = lambda - nPresampledPoints;
       
       if (~obj.model.isTrained())
         return
@@ -87,8 +94,8 @@ classdef DoubleTrainedEC
       yPredict = obj.model.predict(xNewValid');
       kendall = corr(yPredict, yNew', 'type', 'Kendall');
       rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
-      fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', missingTrainSize, nLambdaRest, rmse, kendall);
-      surrogateStats = [rmse kendall];
+      fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', nPresampledPoints, nLambdaRest, rmse, kendall);
+      surrogateStats = [rmse, kendall];
 
       % TODO: control the evolution process according to the model
       % precision -> next TODO
@@ -97,15 +104,15 @@ classdef DoubleTrainedEC
         xTrain = [xTrain; xNewValid'];
         yTrain = [yTrain; yNew'];
         % train the model again
-        retrainedModel = obj.model.train(xTrain, yTrain, xmean', countiter, sigma, BD, cmaesState);
+        retrainedModel = obj.model.train(xTrain, yTrain, cmaesState);
         if (retrainedModel.isTrained())
           yNewRestricted = retrainedModel.predict((xExtend(:, ~reevalID))');
-          surrogateStats = getModelStatistics(retrainedModel, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
+          surrogateStats = getModelStatistics(retrainedModel, cmaesState, surrogateOpts);
         else
           % use values estimated by the old model
           fprintf('Restricted: The new model could not be trained, using the not-retrained model.\n');
           yNewRestricted = fvalExtend(~reevalID);
-          surrogateStats = getModelStatistics(obj.model, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter);
+          surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts);
         end
         yNew = [yNew, yNewRestricted'];
         xNew = [xNew, xExtend(:, ~reevalID)];
@@ -135,6 +142,15 @@ classdef DoubleTrainedEC
       arz = [arz zNew];
       
     end
+    
   end
   
+end
+
+function res=myeval(s)
+  if ischar(s)
+    res = evalin('caller', s);
+  else
+    res = s;
+  end
 end

@@ -1,4 +1,4 @@
-classdef IndividualEC
+classdef IndividualEC < EvolutionControl
   properties
     model
   end
@@ -16,11 +16,14 @@ classdef IndividualEC
       arx = [];
       arxvalid = [];
       arz = [];
+      surrogateStats = NaN(1, 2);
       
+      % extract cmaes state variables
       xmean = cmaesState.xmean;
       sigma = cmaesState.sigma;
       lambda = cmaesState.lambda;
       BD = cmaesState.BD;
+      dim = cmaesState.dim;
       diagD = cmaesState.diagD;
       fitfun_handle = cmaesState.fitfun_handle;
       countiter = cmaesState.countiter;
@@ -42,13 +45,17 @@ classdef IndividualEC
       [fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] = ...
         presample(minTrainSize, surrogateOpts, cmaesState, archive, xTrain, yTrain, varargin{:});
 
+      nPresampledPoints = size(arxvalid, 2);
+      if (nPresampledPoints == lambda)
+        return
+      end
+      
       % train the model
       % TODO: omit the unnecessary variables xmean, sigma and BD
       % as they are already in cmaesState  
-      obj.model = obj.model.train(xTrain, yTrain, xmean', countiter, sigma, BD, cmaesState);
+      obj.model = obj.model.train(xTrain, yTrain, cmaesState);
 
-      missingTrainSize = max(minTrainSize - size(xTrain, 1), 0);
-      nLambdaRest = lambda - missingTrainSize;
+      nLambdaRest = lambda - nPresampledPoints;
       
       if (~obj.model.isTrained())
         return
@@ -100,7 +107,7 @@ classdef IndividualEC
       yPredict = obj.model.predict(xNewValid');
       kendall = corr(yPredict, yNew', 'type', 'Kendall');
       rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
-      fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', missingTrainSize, nLambdaRest, rmse, kendall);
+      fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', nPresampledPoints, nLambdaRest, rmse, kendall);
       surrogateStats = [rmse kendall];
       
       % save the resulting re-evaluated population as the returning parameters
@@ -113,4 +120,12 @@ classdef IndividualEC
     
   end
   
+end
+
+function res = myeval(s)
+  if ischar(s)
+    res = evalin('caller', s);
+  else
+    res = s;
+  end
 end

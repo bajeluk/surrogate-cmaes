@@ -1,6 +1,14 @@
-function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, diagD, surrogateOpts, countiter)
+function surrogateStats = getModelStatistics(model, cmaesState, surrogateOpts)
 % print and save the statistics about the currently
 % trained model on testing data
+
+  xmean = cmaesState.xmean;
+  sigma = cmaesState.sigma;
+  lambda = cmaesState.lambda;
+  BD = cmaesState.BD;
+  diagD = cmaesState.diagD;
+  countiter = cmaesState.countiter;
+
   [~, xValidTest, ~] = ...
       sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
   surrogateStats = [NaN NaN];
@@ -10,7 +18,7 @@ function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, di
     yPredict = model.predict(xValidTest');
     kendall = corr(yPredict, yTest, 'type', 'Kendall');
     rmse = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
-    fprintf(' test RMSE = %f, Kendl. corr = %f. ', rmse, kendall);
+    fprintf('  test RMSE = %f, Kendl. corr = %f. ', rmse, kendall);
 
     % decorate the kendall rho coefficient :)
     kendallInStars = floor(abs((kendall) * 5));
@@ -30,6 +38,10 @@ function surrogateStats = getModelStatistics(model, xmean, sigma, lambda, BD, di
     fprintf('%s\n', stars);
 
     surrogateStats = [rmse kendall];
+    
+    % experimental
+    % coef = sqrt(sum(((yPredict - yTest)/norm(yTest)).^2))/length(yPredict);
+    % fprintf('\ncoef: %f\n\n', coef);
   else
     fprintf('\n');
   end
