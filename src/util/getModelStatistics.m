@@ -1,7 +1,8 @@
-function surrogateStats = getModelStatistics(model, cmaesState, surrogateOpts)
+function surrogateStats = getModelStatistics(model, cmaesState, surrogateOpts, sampleOpts, counteval)
 % print and save the statistics about the currently
 % trained model on testing data
 
+  % CMA-ES state variables
   xmean = cmaesState.xmean;
   sigma = cmaesState.sigma;
   lambda = cmaesState.lambda;
@@ -10,7 +11,7 @@ function surrogateStats = getModelStatistics(model, cmaesState, surrogateOpts)
   countiter = cmaesState.countiter;
 
   [~, xValidTest, ~] = ...
-      sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
+      sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
   surrogateStats = [NaN NaN];
   if (isfield(surrogateOpts.modelOpts, 'bbob_func'))
     preciseModel = ModelFactory.createModel('bbob', surrogateOpts.modelOpts, xmean');
@@ -53,10 +54,9 @@ function surrogateStats = getModelStatistics(model, cmaesState, surrogateOpts)
       && isfield(surrogateOpts, 'saveModelTrainingData') ...
       && isfield(surrogateOpts, 'experimentPath') ...
       && surrogateOpts.saveModelTrainingData)
-    currentEvals = surrogateOpts.sampleOpts.counteval;
     % the numbers of evaluations which will trigger data saving:
     testingEvals = surrogateOpts.saveModelTrainingData;
-    idxLastReached = find(currentEvals > testingEvals);
+    idxLastReached = find(counteval > testingEvals);
     if (~isempty(idxLastReached))
       idxLastReached = idxLastReached(end);
       evalsReached = surrogateOpts.saveModelTrainingData(idxLastReached);
@@ -67,7 +67,7 @@ function surrogateStats = getModelStatistics(model, cmaesState, surrogateOpts)
         testsetX = xValidTest';
         testsetY = yTest;
         surrogateOpts.modelOpts.bbob_func = [];
-        surrogateOpts.sampleOpts.xintobounds = [];
+        sampleOpts.xintobounds = [];
         save(filename, 'trainsetX', 'trainsetY', 'testsetX', 'testsetY', 'evalsReached', 'surrogateOpts', 'lambda', 'sigma', 'xmean', 'BD', 'diagD', 'kendall', 'rmse');
       end
     end

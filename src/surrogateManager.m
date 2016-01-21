@@ -1,4 +1,4 @@
-function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter, fitfun_handle, inOpts, varargin)
+function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = surrogateManager(cmaesState, inOpts, sampleOpts, counteval, varargin)
 % surrogateManager  controls sampling of new solutions and using a surrogate model
 %
 % @xmean, @sigma, @lambda, @BD, @diagD -- CMA-ES internal variables
@@ -17,6 +17,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
   persistent archive;           % archive of original-evaluated individuals
 
   % TODO: make an array with all the status variables from each generation
+  
+  % CMA-ES state variables
+  xmean = cmaesState.xmean;
+  lambda = cmaesState.lambda;
+  countiter = cmaesState.countiter;
 
   % Defaults for surrogateOpts
   sDefaults.evoControl  = 'none';                 % none | individual | generation | doubletrained(restricted)
@@ -52,14 +57,14 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
   dim = size(xmean,1);
 
   % switching evolution control
-  if surrogateOpts.sampleOpts.counteval > surrogateOpts.evoControlSwitchBound*dim
+  if counteval > surrogateOpts.evoControlSwitchBound*dim
     surrogateOpts.evoControl = surrogateOpts.evoControlSwitchMode;
     % EC type has changed -> create new instance of EvolutionControl
     ec = ECFactory.createEC(surrogateOpts);
   end
   
   % switching population size
-  if surrogateOpts.sampleOpts.origPopSize == lambda && surrogateOpts.sampleOpts.counteval > surrogateOpts.evoControlSwitchPopBound*dim
+  if sampleOpts.origPopSize == lambda && counteval > surrogateOpts.evoControlSwitchPopBound*dim
     lambda = ceil(surrogateOpts.evoControlSwitchPopulation * lambda);
   end
 
@@ -67,8 +72,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
   if (strcmpi(surrogateOpts.evoControl, 'none'))
     % No model at all
     if (strcmpi(func2str(surrogateOpts.sampleFcn), 'samplecmaes'))
-      [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
-      surrogateOpts.sampleOpts.counteval = counteval;
+      [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
     else
       error('surrogateManager: the only sampling method without model is "sampleCmaes()"');
     end
@@ -80,25 +84,15 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
     ec = ECFactory.createEC(surrogateOpts);
   end
   
-  cmaesState = struct( ...
-    'xmean', xmean, ...
-    'sigma', sigma, ...
-    'lambda', lambda, ...
-    'BD', BD, ...
-    'diagD', diagD, ...
-    'dim', dim, ...
-    'fitfun_handle', fitfun_handle, ...
-    'countiter', countiter, ...
-    'sampleOpts', surrogateOpts.sampleOpts);
+  % TODO: is dim necessary in cmaesState?
+  cmaesState.dim = dim;
   
-  [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = ec.runGeneration(cmaesState, surrogateOpts, archive, varargin);
-  surrogateOpts.sampleOpts.counteval = counteval;
+  [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = ec.runGeneration(cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin{:});
   
   if (size(fitness_raw, 2) < lambda)
     % the model was in fact not trained
     disp('surrogateManager(): the model was not successfully trained.');
-    [yNew, xNew, xNewValid, zNew, counteval] = sampleCmaes(xmean, sigma, lambda - size(fitness_raw, 2), BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
-    surrogateOpts.sampleOpts.counteval = counteval;
+    [yNew, xNew, xNewValid, zNew, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda - size(fitness_raw, 2), counteval, varargin{:});
     archive = archive.save(xNewValid', yNew', countiter);
 
     % save the resulting re-evaluated population as the returning parameters

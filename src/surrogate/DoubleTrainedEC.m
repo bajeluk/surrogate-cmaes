@@ -9,7 +9,7 @@ classdef DoubleTrainedEC < EvolutionControl
       obj.model = [];
     end
     
-    function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, archive, varargin)
+    function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
     % Run one generation of double trained evolution control
       
       fitness_raw = [];
@@ -23,11 +23,8 @@ classdef DoubleTrainedEC < EvolutionControl
       sigma = cmaesState.sigma;
       lambda = cmaesState.lambda;
       BD = cmaesState.BD;
-      diagD = cmaesState.diagD;
       dim = cmaesState.dim;
-      fitfun_handle = cmaesState.fitfun_handle;
       countiter = cmaesState.countiter;
-      counteval = surrogateOpts.sampleOpts.counteval;
       
       obj.model = ModelFactory.createModel(surrogateOpts.modelType, surrogateOpts.modelOpts, xmean');
 
@@ -43,17 +40,15 @@ classdef DoubleTrainedEC < EvolutionControl
           xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
       
       [fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] = ...
-        presample(minTrainSize, surrogateOpts, cmaesState, archive, xTrain, yTrain, varargin{:});
+        presample(minTrainSize, cmaesState, surrogateOpts, sampleOpts, archive, counteval, xTrain, yTrain, varargin{:});
 
       nPresampledPoints = size(arxvalid, 2);
       if (nPresampledPoints == lambda)
         return
       end
 
-      % train the model
-      % TODO: omit the unnecessary variables xmean, sigma and BD
-      % as they are already in cmaesState  
-      obj.model = obj.model.train(xTrain, yTrain, cmaesState);
+      % train the model 
+      obj.model = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
 
       nLambdaRest = lambda - nPresampledPoints;
       
@@ -63,7 +58,7 @@ classdef DoubleTrainedEC < EvolutionControl
       
       % sample new points
       [xExtend, xExtendValid, zExtend] = ...
-          sampleCmaesNoFitness(xmean, sigma, nLambdaRest, BD, diagD, surrogateOpts.sampleOpts);
+          sampleCmaesNoFitness(sigma, nLambdaRest, cmaesState, sampleOpts);
       [modelOutput, fvalExtend] = obj.model.getModelOutput(xExtend');
       % choose rho points with low confidence to reevaluate
       if any(strcmpi(obj.model.predictionType, {'sd2', 'poi', 'ei'}))
@@ -83,8 +78,7 @@ classdef DoubleTrainedEC < EvolutionControl
 
       % original-evaluate the chosen points
       [yNew, xNew, xNewValid, zNew, counteval] = ...
-          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, sigma, nLambdaRest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
-      surrogateOpts.sampleOpts.counteval = counteval;
+          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, nLambdaRest, counteval, cmaesState, sampleOpts, varargin{:});
       fprintf('counteval: %d\n', counteval)
       % update the Archive
       archive = archive.save(xNewValid', yNew', countiter);
@@ -98,21 +92,22 @@ classdef DoubleTrainedEC < EvolutionControl
       surrogateStats = [rmse, kendall];
 
       % TODO: control the evolution process according to the model
+      % Use Spearman? Pearson?
       % precision -> next TODO
 
       if ~all(reevalID)
         xTrain = [xTrain; xNewValid'];
         yTrain = [yTrain; yNew'];
         % train the model again
-        retrainedModel = obj.model.train(xTrain, yTrain, cmaesState);
+        retrainedModel = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
         if (retrainedModel.isTrained())
           yNewRestricted = retrainedModel.predict((xExtend(:, ~reevalID))');
-          surrogateStats = getModelStatistics(retrainedModel, cmaesState, surrogateOpts);
+          surrogateStats = getModelStatistics(retrainedModel, cmaesState, surrogateOpts, sampleOpts, counteval);
         else
           % use values estimated by the old model
           fprintf('Restricted: The new model could not be trained, using the not-retrained model.\n');
           yNewRestricted = fvalExtend(~reevalID);
-          surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts);
+          surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval);
         end
         yNew = [yNew, yNewRestricted'];
         xNew = [xNew, xExtend(:, ~reevalID)];

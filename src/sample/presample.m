@@ -1,14 +1,11 @@
-function [fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] = presample(minTrainSize, surrogateOpts, cmaesState, archive, xTrain, yTrain, varargin)
+function [fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] = presample(minTrainSize, cmaesState, surrogateOpts, sampleOpts, archive, counteval, xTrain, yTrain, varargin)
 
   xmean = cmaesState.xmean;
   sigma = cmaesState.sigma;
   lambda = cmaesState.lambda;
   BD = cmaesState.BD;
-  diagD = cmaesState.diagD;
   dim = cmaesState.dim;
-  fitfun_handle = cmaesState.fitfun_handle;
   countiter = cmaesState.countiter;
-  counteval = surrogateOpts.sampleOpts.counteval;
 
   % The number of points to be 'pre-sampled'
   assert(surrogateOpts.evoControlPreSampleSize >= 0 && surrogateOpts.evoControlPreSampleSize <= 1, 'preSampleSize out of bounds [0,1]');
@@ -20,7 +17,7 @@ function [fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] =
   if (missingTrainSize > maxPresampleSize)
     % TODO: shouldn't we use an old model?
     disp('surrogateManager(): not enough data for training model.');
-    [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+    [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
     archive = archive.save(arxvalid', fitness_raw', countiter);
     return;
   end
@@ -30,11 +27,11 @@ function [fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] =
     % the points yet
     expandedSigma = surrogateOpts.evoControlSampleRange * sigma;
     [arx, ~, arz] = ...
-        sampleCmaesNoFitness(xmean, expandedSigma, dim*lambda, BD, diagD, surrogateOpts.sampleOpts);
+        sampleCmaesNoFitness(expandedSigma, dim*lambda, cmaesState, sampleOpts);
     [xPreSample, zPreSample] = SurrogateSelector.chooseDistantPoints(missingTrainSize, arx', arz', xTrain, xmean, expandedSigma, BD);
     % evaluate the 'preSample' with the original fitness
     [fitness_raw, arx, arxvalid, arz, counteval] = ...
-        sampleCmaesOnlyFitness(xPreSample, xPreSample, zPreSample, xmean, expandedSigma, missingTrainSize, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+        sampleCmaesOnlyFitness(xPreSample, xPreSample, zPreSample, expandedSigma, missingTrainSize, counteval, cmaesState, sampleOpts, varargin{:});
     archive = archive.save(arxvalid', fitness_raw', countiter);
     xTrain = [xTrain; arxvalid'];
     yTrain = [yTrain; fitness_raw'];

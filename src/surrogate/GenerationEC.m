@@ -31,7 +31,7 @@ classdef GenerationEC < EvolutionControl
       obj.model = [];
     end
     
-    function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, archive, varargin)
+    function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
       % Run one generation of generation evolution control
       
       surrogateStats = NaN(1, 2);
@@ -41,8 +41,6 @@ classdef GenerationEC < EvolutionControl
       sigma = cmaesState.sigma;
       lambda = cmaesState.lambda;
       BD = cmaesState.BD;
-      dim = cmaesState.dim;
-      diagD = cmaesState.diagD;
       fitfun_handle = cmaesState.fitfun_handle;
       countiter = cmaesState.countiter;
       
@@ -54,15 +52,14 @@ classdef GenerationEC < EvolutionControl
         %
         % original-evaluated generation
         %
-        [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sampleSigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+        [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
 
-        surrogateOpts.sampleOpts.counteval = counteval;
         archive = archive.save(arxvalid', fitness_raw', countiter);
         if (~ obj.isNextOriginal())
           % we will switch to 'obj.model'-mode in the next generation
           % prepare data for a new model
 
-          [obj, surrogateStats, isTrained] = trainGenerationECModel(obj, archive, cmaesState, surrogateOpts);
+          [obj, surrogateStats, isTrained] = obj.trainGenerationECModel(cmaesState, surrogateOpts, sampleOpts, archive, counteval);
 
           if (isTrained)
             % TODO: archive the obj.lastModel...?
@@ -83,26 +80,24 @@ classdef GenerationEC < EvolutionControl
 
         if (isempty(obj.lastModel))
           warning('surrogateManager(): we are asked to use an EMPTY MODEL! Using CMA-ES.');
-          [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sampleSigma, lambda, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
-          surrogateOpts.sampleOpts.counteval = counteval;
+          [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
           archive = archive.save(arxvalid', fitness_raw', countiter);
           return;
         end
 
         % generate the new population (to be evaluated by the model)
         [arx, arxvalid, arz] = ...
-            sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
+            sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
 
         % generate validating population (for measuring error of the prediction)
         % this is with the *original* sigma
         [~, xValidValid, zValid] = ...
-            sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, surrogateOpts.sampleOpts);
+            sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
         % shift the model (and possibly evaluate some new points newX, newY = f(newX) )
         % newX = []; newY = []; newZ = []; evals = 0;
         [shiftedModel, evals, newX, newY, newZ] = obj.lastModel.generationUpdate(xmean', xValidValid', zValid', surrogateOpts.evoControlValidatePoints, fitfun_handle, varargin{:});
         % count the original evaluations
-        surrogateOpts.sampleOpts.counteval = surrogateOpts.sampleOpts.counteval + evals;
-        counteval = surrogateOpts.sampleOpts.counteval;
+        counteval = counteval + evals;
         fitness_raw = zeros(1,lambda);
         % use the original-evaluated xValid points to the new generation:
         if (evals > 0)
@@ -137,13 +132,12 @@ classdef GenerationEC < EvolutionControl
 
           % DEBUG:
           fprintf('  test ');
-          surrogateStats = getModelStatistics(shiftedModel, cmaesState, surrogateOpts);
+          surrogateStats = getModelStatistics(shiftedModel, cmaesState, surrogateOpts, sampleOpts, counteval);
 
         else
           % we don't have a good model, so original fitness will be used
           [fitness_raw_, arx_, arxvalid_, arz_, counteval] = ...
-              sampleCmaesOnlyFitness(arx(:,remainingIdx), arxvalid(:,remainingIdx), arz(:,remainingIdx), xmean, sigma, length(remainingIdx), BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
-          surrogateOpts.sampleOpts.counteval = counteval;
+              sampleCmaesOnlyFitness(arx(:,remainingIdx), arxvalid(:,remainingIdx), arz(:,remainingIdx), sigma, length(remainingIdx), counteval, cmaesState, sampleOpts, varargin{:});
           arx(:,remainingIdx) = arx_;
           arxvalid(:,remainingIdx) = arxvalid_;
           arz(:,remainingIdx) = arz_;
@@ -151,7 +145,7 @@ classdef GenerationEC < EvolutionControl
           archive = archive.save(arxvalid_', fitness_raw_', countiter);
 
           % train a new model for the next generation
-          [obj, surrogateStats, isTrained] = obj.trainGenerationECModel(archive, cmaesState, surrogateOpts);
+          [obj, surrogateStats, isTrained] = obj.trainGenerationECModel(cmaesState, surrogateOpts, sampleOpts, archive, counteval);
 
           if (isTrained)
             % TODO: archive the obj.lastModel...?
@@ -170,7 +164,7 @@ classdef GenerationEC < EvolutionControl
 
     end
     
-    function [obj, surrogateStats, isTrained] = trainGenerationECModel(obj, archive, cmaesState, surrogateOpts)
+    function [obj, surrogateStats, isTrained] = trainGenerationECModel(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval)
       
       dim = cmaesState.dim;
       
@@ -186,14 +180,14 @@ classdef GenerationEC < EvolutionControl
         surrogateOpts.evoControlTrainRange, trainSigma, cmaesState.BD);
       if (length(y) >= nRequired)
         % we have got enough data for new model! hurraayh!
-        obj.model = obj.model.train(X, y, cmaesState);
+        obj.model = obj.model.train(X, y, cmaesState, sampleOpts);
         isTrained = (obj.model.trainGeneration > 0);
 
         % DEBUG: print and save the statistics about the currently
         % trained obj.model on testing data (RMSE and Kendall's correlation)
         if (isTrained)
           fprintf('  model trained on %d points, train ', length(y));
-          surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts);
+          surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval);
         end
       else
         isTrained = false;

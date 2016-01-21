@@ -1,14 +1,20 @@
-function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun, opts, varargin)
+function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, opts, lambda, counteval, varargin)
 
   % TODO: rewrite the meaning of counteval as the number of _NEW_ original
   %       evaluations made during this specific call
+  
+  % CMA-ES state variables
+  xmean = cmaesState.xmean;
+  sigma = cmaesState.sigma;
+  BD = cmaesState.BD;
+  diagD = cmaesState.diagD;
+  fitfun = cmaesState.fitfun_handle;
 
   % CMA-ES sampling options
   noiseReevals = opts.noiseReevals;
   bnd.isactive = opts.isBoundActive;
   lbounds = opts.lbounds;
   ubounds = opts.ubounds;
-  counteval = opts.counteval;
   flgEvalParallel = opts.flgEvalParallel;
   flgDiagonalOnly = opts.flgDiagonalOnly;
   noiseHandling = opts.noiseHandling;

@@ -9,7 +9,7 @@ classdef IndividualEC < EvolutionControl
       obj.model = [];
     end
     
-    function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, archive, varargin)
+    function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
       % Run one generation of individual evolution control
       
       fitness_raw = [];
@@ -24,10 +24,7 @@ classdef IndividualEC < EvolutionControl
       lambda = cmaesState.lambda;
       BD = cmaesState.BD;
       dim = cmaesState.dim;
-      diagD = cmaesState.diagD;
-      fitfun_handle = cmaesState.fitfun_handle;
       countiter = cmaesState.countiter;
-      counteval = surrogateOpts.sampleOpts.counteval;
       
       obj.model = ModelFactory.createModel(surrogateOpts.modelType, surrogateOpts.modelOpts, xmean');
 
@@ -43,7 +40,7 @@ classdef IndividualEC < EvolutionControl
           xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
       
       [fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] = ...
-        presample(minTrainSize, surrogateOpts, cmaesState, archive, xTrain, yTrain, varargin{:});
+        presample(minTrainSize, cmaesState, surrogateOpts, sampleOpts, archive, counteval, xTrain, yTrain, varargin{:});
 
       nPresampledPoints = size(arxvalid, 2);
       if (nPresampledPoints == lambda)
@@ -53,7 +50,7 @@ classdef IndividualEC < EvolutionControl
       % train the model
       % TODO: omit the unnecessary variables xmean, sigma and BD
       % as they are already in cmaesState  
-      obj.model = obj.model.train(xTrain, yTrain, cmaesState);
+      obj.model = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
 
       nLambdaRest = lambda - nPresampledPoints;
       
@@ -66,7 +63,7 @@ classdef IndividualEC < EvolutionControl
         % sample 'gamma' populations of size 'nLambdaRest'
         for sampleNumber = 1:surrogateOpts.evoControlIndividualExtension
           [xExtend, xExtendValid, zExtend] = ...
-              sampleCmaesNoFitness(xmean, sigma, nLambdaRest, BD, diagD, surrogateOpts.sampleOpts);
+              sampleCmaesNoFitness(sigma, nLambdaRest, cmaesState, sampleOpts);
           % TODO: criterion for choosing the best sample
           actualImprovement = mean(obj.model.getModelOutput(xExtend'));
           % choose sample with higher improvement factor (PoI, EI)
@@ -83,7 +80,7 @@ classdef IndividualEC < EvolutionControl
         extendSize = ceil(surrogateOpts.evoControlIndividualExtension ...
             * nLambdaRest);
         [xExtend, xExtendValid, zExtend] = ...
-            sampleCmaesNoFitness(xmean, sigma, extendSize, BD, diagD, surrogateOpts.sampleOpts);
+            sampleCmaesNoFitness(sigma, extendSize, cmaesState, sampleOpts);
         % calculate the model prediction for the extended population
         yExtend = obj.model.getModelOutput(xExtend');
 
@@ -96,7 +93,7 @@ classdef IndividualEC < EvolutionControl
       
       % original-evaluate the chosen points
       [yNew, xNew, xNewValid, zNew, counteval] = ...
-          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, xmean, sigma, nLambdaRest, BD, diagD, fitfun_handle, surrogateOpts.sampleOpts, varargin{:});
+          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, nLambdaRest, counteval, cmaesState, sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
       fprintf('counteval: %d\n', counteval)
       % update the Archive

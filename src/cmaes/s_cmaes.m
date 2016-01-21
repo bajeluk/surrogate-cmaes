@@ -803,14 +803,26 @@ while isempty(stopflag)
   sampleOpts.xintobounds = @xintobounds;
   sampleOpts.origPopSize = myeval(opts.PopSize);
 
+  % Set CMA-ES state variables 
+  cmaesState = struct( ...
+    'xmean', xmean, ...
+    'sigma', sigma, ...
+    'lambda', lambda, ...
+    'BD', BD, ...
+    'diagD', diagD, ...
+    'dim', size(xmean,1), ...
+    'fitfun_handle', fitfun_handle, ...
+    'countiter', countiter + 1);
+
+  
   if (~exist('surrogateOpts','var'))
     % use standard CMA-ES (no surrogate at all)
-    [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(xmean, sigma, lambda, BD, diagD, fitfun_handle, sampleOpts, varargin{:});
+    [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, counteval, varargin{:});
     surrogateStats = NaN(1, 2);
   else
     % hand over the control to surrogateManager()
     surrogateOpts.sampleOpts = sampleOpts;
-    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = surrogateManager(xmean, sigma, lambda, BD, diagD, countiter + 1, fitfun_handle, surrogateOpts, varargin{:});
+    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = surrogateManager(cmaesState, surrogateOpts, sampleOpts, counteval, varargin{:});
     popsize = lambda;
   end
   
@@ -827,7 +839,7 @@ while isempty(stopflag)
   out.countevals(end+1) = counteval;
   out.surrogateStats(:,end+1) = surrogateStats';
   
-  % set internal parameters
+  % Set internal parameters
   if countiter == 0 || lambda ~= lambda_last
     if countiter > 0 && floor(log10(lambda)) ~= floor(log10(lambda_last)) ...
           && flgdisplay

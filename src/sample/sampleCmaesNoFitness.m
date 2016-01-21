@@ -1,9 +1,14 @@
-function [arx, arxvalid, arz] = sampleCmaesNoFitness(xmean, sigma, lambda, BD, diagD, opts)
+function [arx, arxvalid, arz] = sampleCmaesNoFitness(sigma, lambda, cmaesState, opts)
 % sampleCmaesNoFitness  generates lambda points according to CMA-ES scheme
 %
 % No point is evaluated by the fitness
 % TODO: test this!
 
+  % CMA-ES state variables
+  xmean = cmaesState.xmean;
+  BD = cmaesState.BD;
+  diagD = cmaesState.diagD;
+  
   % CMA-ES sampling options
   noiseReevals = opts.noiseReevals;
   bnd.isactive = opts.isBoundActive;
@@ -18,7 +23,7 @@ function [arx, arxvalid, arz] = sampleCmaesNoFitness(xmean, sigma, lambda, BD, d
 
   % Generate and evaluate lambda offspring
  
-  arz = randn(N,lambda);
+  arz = randn(N, lambda);
 
   if ~flgDiagonalOnly
     arx = repmat(xmean, 1, lambda) + sigma * (BD * arz); % Eq. (1)

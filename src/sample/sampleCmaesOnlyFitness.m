@@ -1,15 +1,20 @@
-function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(arx, arxvalid, arz, xmean, sigma, lambda, BD, diagD, fitfun, opts, varargin)
+function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(arx, arxvalid, arz, sigma, lambda, counteval, cmaesState, opts, varargin)
 % sampleCmaesOnlyFitness  evaluation of the individuals in @arx/@arxvalid with fitness
 %
 % It generates new samples for the individuals for which NaN function value is
 % returned according to @xmean, @sigma, @BD and @diagD
+
+  % CMA-ES state variables
+  xmean = cmaesState.xmean;
+  BD = cmaesState.BD;
+  diagD = cmaesState.diagD;
+  fitfun= cmaesState.fitfun_handle;
 
   % CMA-ES sampling options
   noiseReevals = opts.noiseReevals;
   bnd.isactive = opts.isBoundActive;
   lbounds = opts.lbounds;
   ubounds = opts.ubounds;
-  counteval = opts.counteval;
   flgEvalParallel = opts.flgEvalParallel;
   flgDiagonalOnly = opts.flgDiagonalOnly;
   xintobounds = opts.xintobounds;

@@ -229,12 +229,13 @@ classdef (Abstract) Model
 
     end
     
-    function obj = train(obj, X, y, stateVariables)
+    function obj = train(obj, X, y, stateVariables, sampleOpts)
     % train the model based on the data (X,y)
     
       xMean = stateVariables.xmean';
       generation = stateVariables.countiter;
       sigma = stateVariables.sigma;
+      lambda = stateVariables.lambda;
       BD = stateVariables.BD;
 
       % minimal difference between minimal and maximal returned
@@ -272,10 +273,7 @@ classdef (Abstract) Model
 
       if (obj.isTrained())
         % Test that we don't have a constant model
-        [~, xTestValid] = ...
-          sampleCmaesNoFitness(obj.stateVariables.xmean, obj.stateVariables.sigma, ...
-          2*obj.stateVariables.lambda, obj.stateVariables.BD, obj.stateVariables.diagD, ...
-          obj.stateVariables.sampleOpts);
+        [~, xTestValid] = sampleCmaesNoFitness(sigma, lambda, stateVariables, sampleOpts);
         yPredict = obj.predict(xTestValid');
         if (max(yPredict) - min(yPredict) < MIN_RESPONSE_DIFFERENCE)
           fprintf('Model.train(): model output is constant (diff=%e), considering the model as un-trained.\n', max(yPredict) - min(yPredict));
