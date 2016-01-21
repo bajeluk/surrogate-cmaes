@@ -8,6 +8,8 @@ classdef ECFactory
           obj = GenerationEC(surrogateOpts);
         case {'doubletrained', 'restricted'}
           obj = DoubleTrainedEC();
+        case 'none'
+          obj = NoneEC();
         otherwise
           warning(['ECFactory.createEC: ', surrogateOpts.evoControl, ' -- no such evolution control available']);
           obj = [];

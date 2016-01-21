@@ -55,6 +55,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
 
   assert(size(xmean,2) == 1, 'surrogateManager(): xmean is not a column vector!');
   dim = size(xmean,1);
+  cmaesState.dim = dim;
 
   % switching evolution control
   if counteval > surrogateOpts.evoControlSwitchBound*dim
@@ -64,19 +65,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
   end
   
   % switching population size
-  if sampleOpts.origPopSize == lambda && counteval > surrogateOpts.evoControlSwitchPopBound*dim
+  if sampleOpts.origPopSize == lambda && counteval >= surrogateOpts.evoControlSwitchPopBound*dim
     lambda = ceil(surrogateOpts.evoControlSwitchPopulation * lambda);
-  end
-
-  % evolution control -- use model? individual? generation? double-trained?
-  if (strcmpi(surrogateOpts.evoControl, 'none'))
-    % No model at all
-    if (strcmpi(func2str(surrogateOpts.sampleFcn), 'samplecmaes'))
-      [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
-    else
-      error('surrogateManager: the only sampling method without model is "sampleCmaes()"');
-    end
-    return;
+    cmaesState.lambda = lambda;
   end
 
   if (countiter == 1)
@@ -84,10 +75,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
     ec = ECFactory.createEC(surrogateOpts);
   end
   
-  % TODO: is dim necessary in cmaesState?
-  cmaesState.dim = dim;
-  
-  [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = ec.runGeneration(cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin{:});
+  % run one generation according to evolution control
+  [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = ...
+    ec.runGeneration(cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin{:});
   
   if (size(fitness_raw, 2) < lambda)
     % the model was in fact not trained
