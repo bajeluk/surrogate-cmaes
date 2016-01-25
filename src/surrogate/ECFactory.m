@@ -7,7 +7,7 @@ classdef ECFactory
         case 'generation'
           obj = GenerationEC(surrogateOpts);
         case {'doubletrained', 'restricted'}
-          obj = DoubleTrainedEC();
+          obj = DoubleTrainedEC(surrogateOpts);
         case 'none'
           obj = NoneEC();
         otherwise

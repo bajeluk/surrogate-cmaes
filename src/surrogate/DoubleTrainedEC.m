@@ -1,12 +1,15 @@
 classdef DoubleTrainedEC < EvolutionControl
   properties 
     model
+    
+    restrictedParam
   end
   
   methods 
-    function obj = DoubleTrainedEC()
+    function obj = DoubleTrainedEC(surrogateOpts)
     % constructor
       obj.model = [];
+      obj.restrictedParam = surrogateOpts.evoControlRestrictedParam;
     end
     
     function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
@@ -69,16 +72,16 @@ classdef DoubleTrainedEC < EvolutionControl
         [~, pointID] = sort(modelOutput, 'ascend');
       end
       reevalID = false(1, nLambdaRest);
-      assert(surrogateOpts.evoControlRestrictedParam >= 0 && surrogateOpts.evoControlRestrictedParam <= 1, 'evoControlRestrictedParam out of bounds [0,1]');
-      nLambdaRest = ceil(nLambdaRest * surrogateOpts.evoControlRestrictedParam);
-      reevalID(pointID(1:nLambdaRest)) = true;
+      assert(obj.restrictedParam >= 0 && obj.restrictedParam <= 1, 'evoControlRestrictedParam out of bounds [0,1]');
+      nReeval = ceil(nLambdaRest * obj.restrictedParam);
+      reevalID(pointID(1:nReeval)) = true;
       xToReeval = xExtend(:, reevalID);
       xToReevalValid = xExtendValid(:, reevalID);
       zToReeval = zExtend(:, reevalID);
 
       % original-evaluate the chosen points
       [yNew, xNew, xNewValid, zNew, counteval] = ...
-          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, nLambdaRest, counteval, cmaesState, sampleOpts, varargin{:});
+          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, nReeval, counteval, cmaesState, sampleOpts, varargin{:});
       fprintf('counteval: %d\n', counteval)
       % update the Archive
       archive = archive.save(xNewValid', yNew', countiter);
@@ -88,12 +91,18 @@ classdef DoubleTrainedEC < EvolutionControl
       yPredict = obj.model.predict(xNewValid');
       kendall = corr(yPredict, yNew', 'type', 'Kendall');
       rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
-      fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', nPresampledPoints, nLambdaRest, rmse, kendall);
+      fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', nPresampledPoints, nReeval, rmse, kendall);
       surrogateStats = [rmse, kendall];
 
       % TODO: control the evolution process according to the model
       % Use Spearman? Pearson?
       % precision -> next TODO
+      alpha = surrogateOpts.evoControlAdaptivity;
+      if nReeval > 1
+        obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*(1-kendall)/2;
+      else
+        obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*RMSE;
+      end
 
       if ~all(reevalID)
         xTrain = [xTrain; xNewValid'];
