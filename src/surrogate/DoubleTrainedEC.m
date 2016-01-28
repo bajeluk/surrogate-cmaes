@@ -94,15 +94,14 @@ classdef DoubleTrainedEC < EvolutionControl
       fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', nPresampledPoints, nReeval, rmse, kendall);
       surrogateStats = [rmse, kendall];
 
-      % TODO: control the evolution process according to the model
-      % Use Spearman? Pearson?
-      % precision -> next TODO
+      % TODO: restrictedParam adaptivity
       alpha = surrogateOpts.evoControlAdaptivity;
       if nReeval > 1
         obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*(1-kendall)/2;
       else
-        obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*RMSE;
+        obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*rmse;
       end
+      fprintf('Restricted param: %f\n', obj.restrictedParam);
 
       if ~all(reevalID)
         xTrain = [xTrain; xNewValid'];
@@ -136,8 +135,6 @@ classdef DoubleTrainedEC < EvolutionControl
         fitness_raw = fitness_raw + 1.000001*diff;
         yNew = yNew + 1.000001*diff;
       end
-      
-      % TODO: count new restrictedParam value
               
       % save the resulting re-evaluated population as the returning parameters
       fitness_raw = [fitness_raw yNew];
