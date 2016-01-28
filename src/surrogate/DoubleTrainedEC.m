@@ -3,6 +3,7 @@ classdef DoubleTrainedEC < EvolutionControl
     model
     
     restrictedParam
+    rmse
   end
   
   methods 
@@ -10,6 +11,7 @@ classdef DoubleTrainedEC < EvolutionControl
     % constructor
       obj.model = [];
       obj.restrictedParam = surrogateOpts.evoControlRestrictedParam;
+      obj.rmse = [];
     end
     
     function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
@@ -90,17 +92,35 @@ classdef DoubleTrainedEC < EvolutionControl
       % calculate the models' precision
       yPredict = obj.model.predict(xNewValid');
       kendall = corr(yPredict, yNew', 'type', 'Kendall');
-      rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
-      fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', nPresampledPoints, nReeval, rmse, kendall);
-      surrogateStats = [rmse, kendall];
+      obj.rmse(countiter) = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
+      fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', nPresampledPoints, nReeval, obj.rmse(countiter), kendall);
+      surrogateStats = [obj.rmse(countiter), kendall];
 
       % TODO: restrictedParam adaptivity
       alpha = surrogateOpts.evoControlAdaptivity;
       if nReeval > 1
-        obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*(1-kendall)/2;
+        if kendall > 0
+          newValue = 1 - kendall;
+        else
+          newValue = 1;
+        end
       else
-        obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*rmse;
+        if countiter == 1 || obj.rmse(countiter-1) == 0
+          newValue = obj.restrictedParam;
+        else
+          ri = log10(obj.rmse(countiter-1) / obj.rmse(countiter));
+          if ri <= -1
+            newValue = 1;
+          elseif ri >= 1
+            newValue = 0;
+          elseif ri > 0
+            newValue = (1 - ri)*obj.restrictedParam;
+          else
+            newValue = obj.restrictedParam*(1 + ri) - ri;
+          end
+        end
       end
+      obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*newValue;
       fprintf('Restricted param: %f\n', obj.restrictedParam);
 
       if ~all(reevalID)
