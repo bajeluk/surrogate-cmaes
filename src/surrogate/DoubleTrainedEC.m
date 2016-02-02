@@ -3,6 +3,7 @@ classdef DoubleTrainedEC < EvolutionControl
     model
     
     restrictedParam
+    % TODO: rename restrictedParam --> origEvalsRatio
     rmse
   end
   
@@ -96,7 +97,9 @@ classdef DoubleTrainedEC < EvolutionControl
       fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', nPresampledPoints, nReeval, obj.rmse(countiter), kendall);
       surrogateStats = [obj.rmse(countiter), kendall];
 
-      % TODO: restrictedParam adaptivity
+      % origEvalsRatio adaptivity
+      %
+      % TODO: make a class controlling this adaptivity
       alpha = surrogateOpts.evoControlAdaptivity;
       if nReeval > 1
         if kendall > 0
