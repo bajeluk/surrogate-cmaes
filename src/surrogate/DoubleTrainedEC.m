@@ -2,17 +2,15 @@ classdef DoubleTrainedEC < EvolutionControl
   properties 
     model
     
-    restrictedParam
-    % TODO: rename restrictedParam --> origEvalsRatio
-    rmse
+    origRatioUpdater
   end
   
   methods 
     function obj = DoubleTrainedEC(surrogateOpts)
     % constructor
       obj.model = [];
-      obj.restrictedParam = surrogateOpts.evoControlRestrictedParam;
-      obj.rmse = [];
+      
+      obj.origRatioUpdater = OrigRatioUpdaterFactory(surrogateOpts);
     end
     
     function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
@@ -75,8 +73,8 @@ classdef DoubleTrainedEC < EvolutionControl
         [~, pointID] = sort(modelOutput, 'ascend');
       end
       reevalID = false(1, nLambdaRest);
-      assert(obj.restrictedParam >= 0 && obj.restrictedParam <= 1, 'evoControlRestrictedParam out of bounds [0,1]');
-      nReeval = ceil(nLambdaRest * obj.restrictedParam);
+      assert(obj.origRatioUpdater.getLastRatio() >= 0 && obj.origRatioUpdater.getLastRatio() <= 1, 'origRatio out of bounds [0,1]');
+      nReeval = ceil(nLambdaRest * obj.origRatioUpdater.getLastRatio());
       reevalID(pointID(1:nReeval)) = true;
       xToReeval = xExtend(:, reevalID);
       xToReevalValid = xExtendValid(:, reevalID);
@@ -93,38 +91,14 @@ classdef DoubleTrainedEC < EvolutionControl
       % calculate the models' precision
       yPredict = obj.model.predict(xNewValid');
       kendall = corr(yPredict, yNew', 'type', 'Kendall');
-      obj.rmse(countiter) = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
-      fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', nPresampledPoints, nReeval, obj.rmse(countiter), kendall);
-      surrogateStats = [obj.rmse(countiter), kendall];
+      rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
+      fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', nPresampledPoints, nReeval, rmse, kendall);
+      surrogateStats = [rmse, kendall];
 
-      % origEvalsRatio adaptivity
-      %
-      % TODO: make a class controlling this adaptivity
-      alpha = surrogateOpts.evoControlAdaptivity;
-      if nReeval > 1
-        if kendall > 0
-          newValue = 1 - kendall;
-        else
-          newValue = 1;
-        end
-      else
-        if countiter == 1 || obj.rmse(countiter-1) == 0
-          newValue = obj.restrictedParam;
-        else
-          ri = log10(obj.rmse(countiter-1) / obj.rmse(countiter));
-          if ri <= -1
-            newValue = 1;
-          elseif ri >= 1
-            newValue = 0;
-          elseif ri > 0
-            newValue = (1 - ri)*obj.restrictedParam;
-          else
-            newValue = obj.restrictedParam*(1 + ri) - ri;
-          end
-        end
-      end
-      obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*newValue;
-      fprintf('Restricted param: %f\n', obj.restrictedParam);
+      % origRatio adaptivity
+      obj.origRatioUpdater.update(yPredict, yNew', dim, lambda, countiter);
+      
+      fprintf('Restricted param: %f\n', obj.origRatioUpdater.getLastRatio());
 
       if ~all(reevalID)
         xTrain = [xTrain; xNewValid'];
