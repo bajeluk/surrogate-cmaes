@@ -146,9 +146,9 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
     fprintf('---------------------------------------------------------\n');
     fprintf('%s\n', err.identifier);
     fprintf('%s\n', err.message);
-    for sti = 1:length(err.stack)
-      disp(err.stack(sti));
-    end
+    fprintf('---------------------------------------------------------\n');
+    getReport(err);
+    fprintf('---------------------------------------------------------\n');
     if (exist('exp_results', 'var'))
       fprintf('---------------------------------------------------------\n');
       printSettings(1,  exp_settings, exp_results, surrogateParams, cmaesParams);
@@ -157,7 +157,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
     fprintf('#########################################################\n');
     % comment the following "exit(1)" when debugging -- it shutdowns the
     % whole Matlab if an error occures
-%    exit(1);
+    exit(1);
     throw(err);
   end
 end
