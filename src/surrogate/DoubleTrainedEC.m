@@ -10,7 +10,8 @@ classdef DoubleTrainedEC < EvolutionControl
     % constructor
       obj.model = [];
       
-      obj.origRatioUpdater = OrigRatioUpdaterFactory(surrogateOpts);
+      surrogateOpts.updaterType = defopts(surrogateOpts, 'updaterType', 'rmse');
+      obj.origRatioUpdater = OrigRatioUpdaterFactory.createUpdater(surrogateOpts);
     end
     
     function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)

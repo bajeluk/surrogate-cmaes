@@ -2,6 +2,11 @@ function tests = archiveTest
   tests = functiontests(localfunctions);
 end
 
+function setupOnce(testCase)
+% initial settings
+  cd(fullfile('..', '..'))
+end
+
 function testSaveArchive(testCase)
   X = (0:0.1:2)';
   y = sin(X);
