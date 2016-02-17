@@ -1,5 +1,5 @@
-classdef OrigRatioUpdater < handle
-  properties
+classdef (Abstract) OrigRatioUpdater < handle
+  properties (Abstract)
     origParams
     lastRatio
   end

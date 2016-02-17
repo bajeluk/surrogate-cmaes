@@ -7,6 +7,8 @@ classdef OrigRatioUpdaterRMSE < OrigRatioUpdater
     maxRatio
     minRatio
     updateRate
+    logRMSEWeights
+    logRMSERatioTreshold
     
     rmse
     lastUpdateGeneration
@@ -67,6 +69,7 @@ classdef OrigRatioUpdaterRMSE < OrigRatioUpdater
       % (update term in (eqn. 1) is positive)
       obj.logRMSERatioTreshold = defopts(obj.parsedParams, 'logRMSERatioTreshold', -0.1);
       obj.rmse = [];
+      obj.lastUpdateGeneration = 0;
     end
     
     function value = aggregateRMSETrend(obj)
@@ -85,9 +88,14 @@ classdef OrigRatioUpdaterRMSE < OrigRatioUpdater
       MAX_RMSE = 10^5;
       
       nWeights = min(length(obj.rmse) - 1, length(obj.logRMSEWeights));
-      localRMSE = obj.rmse(end - nWeights: end);
+      localRMSE = obj.rmse(end - nWeights : end);
       
-      localRMSE(isnan(localRMSE)) = 2*max(localRMSE(~isnan(localRMSE)));
+      local_max_rmse = 2*max(localRMSE(~isnan(localRMSE)));
+      if isempty(local_max_rmse)
+        localRMSE(isnan(localRMSE)) = [];
+      else
+        localRMSE(isnan(localRMSE)) = local_max_rmse;
+      end
       
       if isempty(localRMSE)
         localRMSE = MAX_RMSE;

@@ -16,7 +16,10 @@ classdef OrigRatioUpdaterConstant < OrigRatioUpdater
       obj = obj@OrigRatioUpdater(parameters);
       if isstruct(parameters)
         % starting value of ratio for initial generations
-        obj.lastRatio = defopts(obj.parsedParams, 'startRatio', 0.2);
+        obj.lastRatio = defopts(parameters, 'startRatio', 0.2);
+      elseif iscell(parameters)
+        parsedParams = struct(parameters{:});
+        obj.lastRatio = defopts(parsedParams, 'startRatio', 0.2);
       else
         assert(isnumeric(parameters), 'Invalid parameter for OrigRatioUpdaterConstant');
         obj.lastRatio = parameters;

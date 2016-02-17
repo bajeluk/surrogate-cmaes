@@ -8,12 +8,12 @@ classdef OrigRatioUpdaterFactory
           % including surrogateOpts.updaterType == 'constant'
           %
           % this awfull code is due to backward-compatibility O:-)
-          if ~(isfield(surrogateOpts, 'updaterParams'))
+          if ~(isfield(surrogateOpts, 'updaterParams')) || isempty(surrogateOpts.updaterParams)
             if ~(isfield(surrogateOpts, 'origEvalsRatio'))
-              if ~(isfield(surrogateOpts, 'restrictedParam'))
+              if ~(isfield(surrogateOpts, 'evoControlRestrictedParam'))
                 error('There''s not a parameter for ConstantRatioUpdater');
               else
-                p = surrogateOpts.restrictedParam;
+                p = surrogateOpts.evoControlRestrictedParam;
               end
             else
               p = surrogateOpts.origEvalsRatio;

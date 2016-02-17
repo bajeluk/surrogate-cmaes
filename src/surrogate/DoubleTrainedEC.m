@@ -10,7 +10,8 @@ classdef DoubleTrainedEC < EvolutionControl
     % constructor
       obj.model = [];
       
-      surrogateOpts.updaterType = defopts(surrogateOpts, 'updaterType', 'rmse');
+      surrogateOpts.updaterType = defopts(surrogateOpts, 'updaterType', 'none');
+      surrogateOpts.updaterParams = defopts(surrogateOpts, 'updaterParams', {});
       obj.origRatioUpdater = OrigRatioUpdaterFactory.createUpdater(surrogateOpts);
     end
     
@@ -74,8 +75,8 @@ classdef DoubleTrainedEC < EvolutionControl
         [~, pointID] = sort(modelOutput, 'ascend');
       end
       reevalID = false(1, nLambdaRest);
-      assert(obj.origRatioUpdater.getLastRatio() >= 0 && obj.origRatioUpdater.getLastRatio() <= 1, 'origRatio out of bounds [0,1]');
-      nReeval = ceil(nLambdaRest * obj.origRatioUpdater.getLastRatio());
+      assert(obj.origRatioUpdater.getLastRatio(countiter) >= 0 && obj.origRatioUpdater.getLastRatio(countiter) <= 1, 'origRatio out of bounds [0,1]');
+      nReeval = ceil(nLambdaRest * obj.origRatioUpdater.getLastRatio(countiter));
       reevalID(pointID(1:nReeval)) = true;
       xToReeval = xExtend(:, reevalID);
       xToReevalValid = xExtendValid(:, reevalID);
@@ -99,7 +100,7 @@ classdef DoubleTrainedEC < EvolutionControl
       % origRatio adaptivity
       obj.origRatioUpdater.update(yPredict, yNew', dim, lambda, countiter);
       
-      fprintf('Restricted param: %f\n', obj.origRatioUpdater.getLastRatio());
+      fprintf('Restricted param: %f\n', obj.origRatioUpdater.getLastRatio(countiter));
 
       if ~all(reevalID)
         xTrain = [xTrain; xNewValid'];
