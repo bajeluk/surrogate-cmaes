@@ -15,7 +15,7 @@ classdef (Abstract) OrigRatioUpdater < handle
       obj.origParams = parameters;
     end
     
-    function value = getLastRatio(obj)
+    function value = getLastRatio(obj, countiter)
       value = obj.lastRatio;
     end
   end

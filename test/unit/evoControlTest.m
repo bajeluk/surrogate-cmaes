@@ -18,7 +18,8 @@ function setupOnce(testCase)
   % original PopSize = '(4 + floor(3*log(N)))'
   evoControlTest_cmaesOpts.PopSize = (4 + floor(3*log(evoControlTest_dim)));
   
-  cd(fullfile('..', '..'))
+  % some machines require following change of directory
+  % cd(fullfile('..', '..'))
 end
 
 function teardownOnce(testCase)
@@ -31,7 +32,6 @@ function teardownOnce(testCase)
   end
 end
 
-%{
 %%%%%%%%%%%%%%%%%%%%%%%%
 % no evolution control %
 %%%%%%%%%%%%%%%%%%%%%%%%
@@ -196,7 +196,6 @@ function testDoubleTrainEvoControlPresample(testCase)
   verifyLessThan(testCase, counteval, 1.5*evoControlTest_cmaesOpts.MaxFunEvals)
   verifyNotEmpty(testCase, fmin);
 end
-%}
 
 function testDoubleTrainECRMSEUpdate(testCase)
 % test double-trained evolution control using rmse updater
@@ -217,7 +216,6 @@ function testDoubleTrainECRMSEUpdate(testCase)
   verifyLessThan(testCase, counteval, 1.5*evoControlTest_cmaesOpts.MaxFunEvals)
   verifyNotEmpty(testCase, fmin);
 end
-%{
 
 %%%%%%%%%%%%%%%%%%%%%%
 % strategy switching %
@@ -247,7 +245,6 @@ function testSwitchGenToNoneEC(testCase)
   verifyNotEmpty(testCase, fmin);
 end
 
-
 function testSwitchGenToDoubleTrainEC(testCase)
 % test switching from generation to double-trained evolution control
 
@@ -270,7 +267,6 @@ function testSwitchGenToDoubleTrainEC(testCase)
   verifyLessThan(testCase, counteval, 1.5*evoControlTest_cmaesOpts.MaxFunEvals)
   verifyNotEmpty(testCase, fmin);
 end
-
 
 function testSwitchDoubleTrainToNoneEC(testCase)
 % test switching from double-trained to none evolution control

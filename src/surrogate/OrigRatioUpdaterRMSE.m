@@ -92,22 +92,18 @@ classdef OrigRatioUpdaterRMSE < OrigRatioUpdater
       
       local_max_rmse = 2*max(localRMSE(~isnan(localRMSE)));
       if isempty(local_max_rmse)
-        localRMSE(isnan(localRMSE)) = [];
+        localRMSE(isnan(localRMSE)) = MAX_RMSE;
       else
         localRMSE(isnan(localRMSE)) = local_max_rmse;
       end
       
-      if isempty(localRMSE)
-        localRMSE = MAX_RMSE;
-      end
-      
-      assert(length(localRMSE) == nWeights, 'DEBUG assertion failed: length of RMSE ~= nWeights');
       if length(localRMSE) <= 1
         % we don't have enough RMSE history values ==> stay at the
         % current origRatio ==> set aggregateRMSETrend = 0
         value = 0;
         return
       end
+      assert(length(localRMSE)-1 == nWeights, 'DEBUG assertion failed: length of RMSE ~= nWeights + 1');
       
       % replace zeros for division
       localRMSE(localRMSE < eps) = 100*eps;
