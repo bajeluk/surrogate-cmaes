@@ -49,23 +49,18 @@ else
   # defined in exp/bash_settings.sh: RUNDIR="$SCRATCHDIR/surrogate-cmaes"
   mkdir -p "$RUNDIR"
   cd "$RUNDIR"
+  echo "====================="
+  echo "Unpacking the sources and the previously compiled binary..."
   tar -xf "$DEPLOY_FILE"
 fi
 
 # cd "$EXPPATH_SHORT/.."
 # ulimit -t unlimited
 
-module add matlab
-
-echo "====================="
-echo "Compiling..."
-lasthome="$HOME"
-HOME="$RUNDIR"
-make
-
 echo "====================="
 echo -n "Current dir:    "; pwd
 echo    '$HOME =        ' $HOME
+echo    '$MCR_CACHE_ROOT = ' $MCR_CACHE_ROOT
 echo    "Will be called:" $MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" $ID
 echo "====================="
 

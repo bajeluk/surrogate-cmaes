@@ -12,6 +12,7 @@ RUNDIR="$SCRATCHDIR/surrogate-cmaes"
 
 # Binary which is to be called as the individual jobs
 MATLAB_BINARY_CALL="exp/metacentrum_task_matlab"
+export MCR_CACHE_ROOT=$SCRATCHDIR
 
 # Deployment archive of Matlab source codes (for running and compilation
 # on a target machine)
