@@ -17,9 +17,11 @@ function setupOnce(testCase)
   evoControlTest_cmaesOpts.MaxFunEvals = 20*evoControlTest_dim;
   % original PopSize = '(4 + floor(3*log(N)))'
   evoControlTest_cmaesOpts.PopSize = (4 + floor(3*log(evoControlTest_dim)));
+  evoControlTest_cmaesOpts.SaveVariables = false;
+  evoControlTest_cmaesOpts.LogModulo = 0;
   
-  % some machines require following change of directory
-  % cd(fullfile('..', '..'))
+  % some machines require following change of directory, comment if not 
+  cd(fullfile('..', '..'))
 end
 
 function teardownOnce(testCase)

@@ -128,7 +128,7 @@ classdef GenerationEC < EvolutionControl
           bestFitnessArchive = min(archive.y);
           bestFitnessPopulation = min(fitness_raw);
           diff = max(bestFitnessArchive - bestFitnessPopulation, 0);
-          fitness_raw = fitness_raw + diff;
+          fitness_raw = fitness_raw + 1.000001*diff;
 
           % DEBUG:
           fprintf('  test ');

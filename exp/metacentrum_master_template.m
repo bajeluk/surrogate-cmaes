@@ -1,4 +1,4 @@
-function metacentrum_master_template(exp_id, varargin)
+function job = metacentrum_master_template(exp_id, varargin)
 % input parameters:
 % exp_id        -- experiment ID string
 % varargin{1}   -- vector of integer ID's of the parameter-combinations to try
@@ -6,6 +6,12 @@ function metacentrum_master_template(exp_id, varargin)
 % varargin{2}   -- string defining maximum (wall)time for Metacentrum machines
 %                  default: 4h
 
+  if nargin == 0
+    help metacentrum_master_template
+    job = [];
+    return
+  end
+  
   pathstr = [fileparts(mfilename('fullpath')) filesep 'experiments'];
   exppath = [pathstr filesep exp_id];
   load([exppath filesep 'scmaes_params.mat']);

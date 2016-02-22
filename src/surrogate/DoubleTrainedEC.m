@@ -100,7 +100,7 @@ classdef DoubleTrainedEC < EvolutionControl
       % origRatio adaptivity
       obj.origRatioUpdater.update(yPredict, yNew', dim, lambda, countiter);
       
-      fprintf('Restricted param: %f\n', obj.origRatioUpdater.getLastRatio(countiter));
+      fprintf('OrigRatio: %f\n', obj.origRatioUpdater.getLastRatio(countiter));
 
       if ~all(reevalID)
         xTrain = [xTrain; xNewValid'];
@@ -112,7 +112,7 @@ classdef DoubleTrainedEC < EvolutionControl
           surrogateStats = getModelStatistics(retrainedModel, cmaesState, surrogateOpts, sampleOpts, counteval);
         else
           % use values estimated by the old model
-          fprintf('Restricted: The new model could not be trained, using the not-retrained model.\n');
+          fprintf('DoubleTrained: The new model could not be trained, using the not-retrained model.\n');
           yNewRestricted = fvalExtend(~reevalID);
           surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval);
         end
