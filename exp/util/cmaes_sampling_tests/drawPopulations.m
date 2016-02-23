@@ -29,13 +29,15 @@ function drawPopulations(FUNC, cmaOutput, cmOptions)
   contour(X, Y, Z, 100);
 
   % iteratively draw the populations of each generation
-  for i = 1:length(cmaOutput.arxvalids)
+  for i = 1:max(cmaOutput.generations)
+    thisIdxs = cmaOutput.generations == i;
+    
     % draw current population
-    scatter(ax, cmaOutput.arxvalids{i}(1,:), cmaOutput.arxvalids{i}(2,:), 'bo');
+    scatter(ax, cmaOutput.arxvalids(1,thisIdxs), cmaOutput.arxvalids(2,thisIdxs), 'bo');
     
     % identify current CMA-ES internal variables
-    xmean = cmaOutput.means{i};   % mean 'm'
-    BD = cmaOutput.BDs{i} * cmaOutput.sigmas{i};  % eig decompos. of 'C'
+    xmean = cmaOutput.means(:,i);   % mean 'm'
+    BD = cmaOutput.BDs{i} * cmaOutput.sigmas(i);  % eig decompos. of 'C'
     
     % plot the mean 'm'
     plot(ax, xmean(1), xmean(2), 'k*');
@@ -47,7 +49,7 @@ function drawPopulations(FUNC, cmaOutput, cmOptions)
     pause;
     
     % convert the population to green
-    scatter(ax, cmaOutput.arxvalids{i}(1,:), cmaOutput.arxvalids{i}(2,:), 'go');
+    scatter(ax, cmaOutput.arxvalids(1,thisIdxs), cmaOutput.arxvalids(2,thisIdxs), 'go');
     plot(ax, xmean(1), xmean(2), 'g*');
     
     % delete the ellipsis and the basis vectors

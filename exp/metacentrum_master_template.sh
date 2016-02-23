@@ -63,8 +63,37 @@ if [ -f "$DEPLOY_DIR/$DEPLOY_ARCHIVE" ]; then
   sleep 5
 else
   # Packaging itself
+  echo "====================="
+  echo "Packaging sources..."
   tar -cvf "$DEPLOY_DIR/$DEPLOY_ARCHIVE" $FILES_TO_DEPLOY
-  echo ""
+  echo "====================="
+  COMPILE_DIR=$RUNDIR
+  mkdir -p $COMPILE_DIR
+  echo "extracting $DEPLOY_DIR/$DEPLOY_ARCHIVE into $COMPILE_DIR ..."
+  tar -xf "$DEPLOY_DIR/$DEPLOY_ARCHIVE" -C $COMPILE_DIR
+  echo "Compiling..."
+  cd $COMPILE_DIR
+  module add matlab
+  lasthome="$HOME"
+  HOME=$COMPILE_DIR
+
+  make
+
+  if [ $? -gt 0 ]; then
+    echo "Make failed. Exiting." >&2
+    exit 1
+  fi
+  HOME=$lasthome
+
+  echo "====================="
+  echo "Copying the resulting binary into the original directory '$CWD/../$MATLAB_BINARY_CALL'"
+  cp -p $MATLAB_BINARY_CALL "$CWD/../$MATLAB_BINARY_CALL"
+  echo "====================="
+  cd "$CWD/.."
+  echo "We are now here:" `pwd`
+  echo "Re-packing sources with the compiled binary in '$MATLAB_BINARY_CALL'"
+  tar -cvf "$DEPLOY_DIR/$DEPLOY_ARCHIVE" $FILES_TO_DEPLOY $MATLAB_BINARY_CALL
+  echo "====================="
 fi
 cd "$lastdir"
 #

@@ -1,9 +1,11 @@
 % Startup script for Surrogate CMA-ES
 
-addpath(genpath('src'));
-addpath(genpath('test'));
-addpath('exp');
-addpath(genpath('exp/util'));
-addpath(genpath('exp/vendor'));
-addpath('exp/experiments');
+disp(['executing surrogate-cmaes startup script...']);
+
+addpath(genpath(fullfile(pwd, 'src')));
+addpath(genpath(fullfile(pwd, 'test')));
+addpath(fullfile(pwd, 'exp'));
+addpath(genpath(fullfile(pwd, 'exp/util')));
+addpath(genpath(fullfile(pwd, 'exp/vendor')));
+addpath(fullfile(pwd, 'exp/experiments'));
 run('src/vendor/gpml-matlab-v3.2/startup.m');
