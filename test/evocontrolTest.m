@@ -35,7 +35,6 @@ end
   global evocontrolTest_dim;
 
   surrogateOpts.evoControl = 'none';
-  surrogateOpts.sampleFcn = @sampleCmaes;
 
   [xmin, fmin, counteval] = s_cmaes(evocontrolTest_fitness, 2*ones(evocontrolTest_dim,1), 2, evocontrolTest_cmaesOpts, 'SurrogateOptions', surrogateOpts);
 

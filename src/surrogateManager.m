@@ -25,7 +25,6 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
 
   % Defaults for surrogateOpts
   sDefaults.evoControl  = 'none';                 % none | individual | generation | doubletrained(restricted)
-  sDefaults.sampleFcn   = @sampleCmaes;           % sampleCmaes | ??? TODO ???
   sDefaults.evoControlPreSampleSize       = 0.2;  % 0..1
   sDefaults.evoControlIndividualExtension = 20;   % 1..inf (reasonable 10-100)
   sDefaults.evoControlSamplePreprocessing = false;

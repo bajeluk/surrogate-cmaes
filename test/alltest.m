@@ -3,8 +3,6 @@ function tests = alltest
 end
 
 function testStandardCmaesWorks(testCase)
-  surrogateOpts.sampleFcn = @sampleCmaes;
-
   [xmin, fmin, counteval] = s_cmaes('fellii', [2 2 2 2], 2);
 
   verifyEqual(testCase, counteval, 1100, 'RelTol', 0.2);
