@@ -20,8 +20,6 @@ function setupOnce(testCase)
   evoControlTest_cmaesOpts.SaveVariables = false;
   evoControlTest_cmaesOpts.LogModulo = 0;
   
-  % some machines require following change of directory, comment if not 
-  cd(fullfile('..', '..'))
 end
 
 function teardownOnce(testCase)
