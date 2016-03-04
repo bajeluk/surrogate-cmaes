@@ -15,12 +15,6 @@ classdef NoneEC < EvolutionControl
       lambda = cmaesState.lambda;
       countiter = cmaesState.countiter;
       
-      if (strcmpi(func2str(surrogateOpts.sampleFcn), 'samplecmaes'))
-        [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
-      else
-        error('surrogateManager: the only sampling method without model is "sampleCmaes()"');
-      end
-      
       archive = archive.save(arxvalid', fitness_raw', countiter);
 
       surrogateStats = NaN(1, 2);
