@@ -1,7 +1,7 @@
 Surrogate CMA-ES
 ================
 
-Surrogate CMA-ES (S-CMA-ES) is an surrogate-based optimizing evolution strategy. It is based on the N. Hansen's CMA-ES algorithm which is interconnected with Gaussian processes or random forests.
+Surrogate CMA-ES (S-CMA-ES) is a surrogate-based optimizing evolution strategy. It is based on the N. Hansen's CMA-ES algorithm which is interconnected with Gaussian processes or random forests.
 
 The optimizer can be called via the similar function interface as the original Matlab CMA-ES code:
 
@@ -178,7 +178,7 @@ _(end of example)_
 
 ### Running an individual task ###
 
-Having the experiment initialized, the individual task (with the chosen `task_id`) can be called with the function `metacentrum_task_matlab()`. It has the following synatax
+Having the experiment initialized, the individual task (with the chosen `task_id`) can be called with the function `metacentrum_task_matlab()`. It has the following syntax
 
 ```matlab
 metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
