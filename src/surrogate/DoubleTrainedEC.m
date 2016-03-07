@@ -95,13 +95,13 @@ classdef DoubleTrainedEC < EvolutionControl
       surrogateStats = [rmse, kendall];
 
       % TODO: restrictedParam adaptivity
-      alpha = surrogateOpts.evoControlAdaptivity;
-      if nReeval > 1
-        obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*(1-kendall)/2;
-      else
-        obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*rmse;
-      end
-      fprintf('Restricted param: %f\n', obj.restrictedParam);
+%       alpha = surrogateOpts.evoControlAdaptivity;
+%       if nReeval > 1
+%         obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*(1-kendall)/2;
+%       else
+%         obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*rmse;
+%       end
+%       fprintf('Restricted param: %f\n', obj.restrictedParam);
 
       if ~all(reevalID)
         xTrain = [xTrain; xNewValid'];
