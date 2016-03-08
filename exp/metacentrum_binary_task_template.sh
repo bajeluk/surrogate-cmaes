@@ -59,6 +59,7 @@ fi
 
 echo "====================="
 echo -n "Current dir:    "; pwd
+echo -n "Current node:   "; cat $PBS_NODEFILE
 echo    '$HOME =        ' $HOME
 echo    '$MCR_CACHE_ROOT = ' $MCR_CACHE_ROOT
 echo    "Will be called:" $MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" $ID
