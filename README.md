@@ -207,7 +207,9 @@ where
 
 Part of this tasks submission is using Matlab Compile Runtime (MCR) to compile the Matlab sources of all the project into a single binary `exp/metacentrum_task_matlab` which will be eventually called within each individual job. This considerably saves the available Matlab licenses since no Matlab license is needed for running this MCR compiled binary.
 
-See the `Makefile` in the project's root folder for the details regarding the MCR compilation, and adjust the `MC_INCLUDE` variable therein if additional files or folders needs to be used for computation. In addition to the `metacentrum_binary_task`, several other core source files are packed into a `tar` archive in the directory `deploy/` which is at the beginning of each task copied to each computational node -- adjust the variable `FILES_TO_DEPLOY` in the file `exp/bash_settings.sh` if more files are needed.
+See the `Makefile` in the project's root folder for the details regarding the MCR compilation, and adjust the `MC_INCLUDE` variable therein if additional files or folders needs to be used for computation. The MCR compilation is not performed if the binary `exp/metacentrum_binary_task` is up to date, which means newer than most of the m-files in directories `src/` and `exp/` -- see the dependencies specified in the variable `OTHERS` in the `Makefile`.
+
+In addition to the `metacentrum_binary_task`, several other core source files are packed into a `tar` archive `deploy/[exp_id]_src.tar` which is at the beginning of each task copied to each computational node -- adjust the variable `FILES_TO_DEPLOY` in the file `exp/bash_settings.sh` if more files are needed. If the archive `deploy/[exp_id]_src.tar` already exists before calling `exp/metacentrum_master_template.sh`, it is used for task submission as it is (i.e. without packing new sources of without MCR re-compilation).
 
 During the second part of the `metacentrum_master_template.sh` run, the script `exp/experiment/[exp_id]/binary_task.sh` (which is in fact a copy of `exp/metacentrum_binary_task_template.m`) will be submitted as individual tasks for the Metacentrum's PBS/Torque scheduler. See the file for the details.
 
