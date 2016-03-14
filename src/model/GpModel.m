@@ -80,7 +80,7 @@ classdef GpModel < Model
       obj.meanFcn = str2func(defopts(obj.options, 'meanFcn', 'meanConst'));
       obj.likFcn  = str2func(defopts(obj.options, 'likFcn',  'likGauss'));
       obj.infFcn  = str2func(defopts(obj.options, 'infFcn',  'infExactCountErrors'));
-      obj.options.normalizeY = defopts(obj.options, 'normalizeY', false);
+      obj.options.normalizeY = defopts(obj.options, 'normalizeY', true);
 
       % general model prediction options
       obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
@@ -192,6 +192,7 @@ classdef GpModel < Model
         [y, dev] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, yTrain, XWithShift);
         % un-normalize in the f-space (if there is any)
         y = y * obj.stdY + obj.shiftY;
+        dev = dev * obj.stdY;
 
         % % Calculate POI if it should be used
         % if (obj.options.usePOI)
