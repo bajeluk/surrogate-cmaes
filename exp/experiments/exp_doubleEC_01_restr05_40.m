@@ -1,4 +1,4 @@
-exp_id = 'exp_doubleEC_01_restrO5_40';
+exp_id = 'exp_doubleEC_01_restr05_40';
 exp_description = 'Surrogate CMA-ES model using double-trained EC with sd2 criterion and GPs with default population, and restrictedParam values 0.05, 0.4; 2, 3, 5, 10D';
 
 % BBOB/COCO framework settings
