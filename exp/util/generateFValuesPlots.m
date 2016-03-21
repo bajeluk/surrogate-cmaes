@@ -87,29 +87,30 @@ function generateFValuesPlots()
 
 end
 
-function [data,settings] = dataready(datapath,funcSet,numOfSettings,varargin)
-% Prepare data for further processing
-% Returns cell array functions x dimensions x settings and appropriate
-% settings.
+function [data, settings] = dataready(datapath, funcSet, numOfSettings, varargin)
+% Prepares data for further processing.
+% Returns cell array 'data' functions x dimensions x settings and 
+% appropriate settings.
 % 
 % numOfSettings - number of different settings included in folder
-% varargin - directory with multiple s-cmaes settings or pure cmaes (write
-% 'cmaes')
-  data = cell(length(funcSet.BBfunc),length(funcSet.dims),numOfSettings);
+% varargin      - directory with multiple s-cmaes settings or pure cmaes 
+%                 (write 'cmaes')
+  data = cell(length(funcSet.BBfunc), length(funcSet.dims), numOfSettings);
   
   % load and complete results
   if iscell(datapath) % data divided in multiple files
     datalist = {};
     for i = 1:length(datapath)
-      list = dir(fullfile(datapath{i},'*.mat'));
+      list = dir(fullfile(datapath{i}, '*.mat'));
       matId = true(1,length(list)); % ids of usable .mat files
-      if strfind([list.name],'scmaes_params')
+      if strfind([list.name], 'scmaes_params')
         matId(end) = false;
       end
-      if strfind([list.name],'metajob')
+      if strfind([list.name], 'metajob')
         matId(1) = false;
       end    
-      datalist(end+1:end+sum(matId)) = {list(matId).name};        % get rid of scmaes_params.mat or metajob.mat
+      datalist(end+1 : end+sum(matId)) = cellfun(@(x) fullfile(datapath, x), ...
+        {list(matId).name}, 'UniformOutput', false); % get rid of scmaes_params.mat or metajob.mat
     end
     
     % load data
@@ -145,11 +146,11 @@ function [data,settings] = dataready(datapath,funcSet,numOfSettings,varargin)
     if strfind([list.name],'metajob')
       matId(1) = false;
     end    
-    datalist = {list(matId).name};        % get rid of scmaes_params.mat or metajob.mat
+    datalist = cellfun(@(x) fullfile(datapath, x), {list(matId).name}, 'UniformOutput', false);        % get rid of scmaes_params.mat or metajob.mat
     
     % load data
     for i = 1:length(datalist)
-      S = load(datalist{i},'-mat','y_evals');
+      S = load(datalist{i}, '-mat', 'y_evals');
 %       if ~isempty(varargin) && strcmp(varargin{1},'cmaes')
 %         S.y_evals = S.y_evals(1:20); % cmaes ran too many times
 %       end
@@ -163,7 +164,7 @@ function [data,settings] = dataready(datapath,funcSet,numOfSettings,varargin)
     end
     
     % load settings
-    settings = cell(1,numOfSettings);
+    settings = cell(1, numOfSettings);
     for i = 1:numOfSettings
       S = load(datalist{i},'-mat','surrogateParams');
       idx = strfind(datalist{i},'_');

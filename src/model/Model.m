@@ -164,7 +164,7 @@ classdef (Abstract) Model
       % transform input variables using Mahalanobis distance
       if obj.transformCoordinates
         % compute coordinates in the (sigma*BD)-basis
-        %BDinv = inv(sigma*BD);
+        % BDinv = inv(sigma*BD);
         XTransf = ( (obj.trainSigma * obj.trainBD) \ X')';
       else
         XTransf = X;
@@ -180,7 +180,7 @@ classdef (Abstract) Model
         XtransfReduce = XTransf;
       end
 
-      [y,sd2] = modelPredict(obj,XtransfReduce);
+      [y, sd2] = modelPredict(obj,XtransfReduce);
 
     end
     
