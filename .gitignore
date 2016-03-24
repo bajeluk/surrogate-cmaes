@@ -10,6 +10,7 @@ variablescmaes.mat
 *.zip
 *.gz
 exp/experiments/*/
+exp/pproc/scripts/html/
 *.aux
 *.bbl
 *.blg
