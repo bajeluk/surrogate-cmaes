@@ -52,21 +52,21 @@ function [data, settings] = dataReady(datapath, funcSet, numOfSettings, varargin
         % TODO: automatically find appropriate setting id - from scmaes_params.mat
         id = 1;
       end
-      func = str2double(datalist{i}(1,idx(end-2)+1:idx(end-1)-1)); % function number
-      dim = str2double(datalist{i}(1,idx(end-1)+1:idx(end)-2));    % dimension number
+      func = str2double(datalist{i}(1, idx(end-2)+1 : idx(end-1)-1)); % function number
+      dim  = str2double(datalist{i}(1, idx(end-1)+1 : idx(end)-2));   % dimension number
       if any(func == funcSet.BBfunc) && any(dim == funcSet.dims)
-        S = load(datalist{i},'-mat','y_evals');
-        data{funcSet.BBfuncInv(func),funcSet.dimsInv(dim),mod(id,numOfSettings)+1}(end+1:end+length(S.y_evals),1) = S.y_evals;
+        S = load(datalist{i}, '-mat', 'y_evals');
+        data{funcSet.BBfuncInv(func), funcSet.dimsInv(dim), mod(id, numOfSettings)+1}(end+1:end+length(S.y_evals), 1) = S.y_evals;
       end
     end
     
     % load settings
-    settings = cell(1,numOfSettings);
+    settings = cell(1, numOfSettings);
     for i = 1:numOfSettings
-      S = load(datalist{i},'-mat','surrogateParams');
-      idx = strfind(datalist{i},'_');
-      id = str2double(datalist{i}(1,idx(end)+1:end-4));
-      settings{mod(id,numOfSettings)+1} = S.surrogateParams;
+      S = load(datalist{i}, '-mat', 'surrogateParams');
+      idx = strfind(datalist{i}, '_');
+      id = str2double(datalist{i}(1, idx(end)+1:end-4));
+      settings{mod(id, numOfSettings)+1} = S.surrogateParams;
     end
     
   else % data in one folder
