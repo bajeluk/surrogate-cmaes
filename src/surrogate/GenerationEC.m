@@ -122,13 +122,18 @@ classdef GenerationEC < EvolutionControl
           [predict_fitness_raw, ~] = shiftedModel.predict(arx(:,remainingIdx)');
           fitness_raw(remainingIdx) = predict_fitness_raw';
           disp(['Model.generationUpdate(): We are using the model for ', num2str(length(remainingIdx)), ' individuals.']);
-          % shift the predicted fitness: the best predicted fitness
-          % could not be better than the so-far best fitness -- it would fool CMA-ES!
-          % TODO: test if shifting ALL THE INDIVIDUALS (not only predicted) would help?
+          
+          % shift the f-values:
+          %   if the model predictions are better than the best original value
+          %   in the model's dataset, shift ALL (!) function values
+          %   Note: - all values have to be shifted in order to preserve predicted
+          %           ordering of values
+          %         - small constant is added because of the rounding errors
+          %           when numbers of different orders of magnitude are summed
           bestFitnessArchive = min(archive.y);
           bestFitnessPopulation = min(fitness_raw);
           diff = max(bestFitnessArchive - bestFitnessPopulation, 0);
-          fitness_raw = fitness_raw + diff;
+          fitness_raw = fitness_raw + 1.000001*diff;
 
           % DEBUG:
           fprintf('  test ');
