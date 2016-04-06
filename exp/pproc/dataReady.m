@@ -106,20 +106,20 @@ function [data, settings] = dataReady(datapath, funcSet, numOfSettings, varargin
     end
   end
   
-  data = divSmooth(data,funcSet);
+  data = divSmooth(data, funcSet);
   
 end
 
-function data = divSmooth(data,funcSet)
+function data = divSmooth(data, funcSet)
 % divide by dimension and make data smoother
-  [func,dims,nSettings] = size(data);
+  [func, dims, nSettings] = size(data);
   for s = 1:nSettings
     for d = 1:dims
       for f = 1:func
         fInstant = [];
         for i = 1:length(data{f,d,s})
           data{f,d,s}{i}(:,2) = ceil(data{f,d,s}{i}(:,2)/funcSet.dims(d));
-          fInstant(:,end+1) = smoothYEvals(data{f,d,s}{i}(:,1:2),250); % use only first two columns - fitness, evaluations
+          fInstant(:, end+1) = smoothYEvals(data{f,d,s}{i}(:,1:2), 250); % use only first two columns - fitness, evaluations
         end
         data{f,d,s} = fInstant;
       end
