@@ -61,7 +61,7 @@ RF1Col = [116 172 66];
 %   data = {trans_evals(:,:,rf1TransId),trans_evals(:,:,gp1TransId),trans_evals(:,:,rf5TransId),trans_evals(:,:,gp5TransId),cmaes_evals};
 %   datanames = {'RF1T','GP1T','RF5T','GP5T','CMA-ES'};
 
-data = {cmaes_evals,gp_evals(:,:,gp3Id),trans_evals(:,:,gp5TransId),rf_evals(:,:,rf1Id),trans_evals(:,:,rf1TransId),trans_evals(:,:,gp5TransId)};
+data = {cmaes_evals,gp_evals(:,:,gp3Id),trans_evals(:,:,gp5TransId),rf_evals(:,:,rf1Id),trans_evals(:,:,rf1TransId)};
 datanames = {'CMA-ES','GP3','GP5-trans','RF1','RF1-trans'};
 
 %   data = {cmaes_evals,gp_evals(:,:,gp3Id),trans_evals(:,:,gp5TransId),rf_evals(:,:,rf1Id),trans_evals(:,:,rf1TransId)};
@@ -73,7 +73,9 @@ for i = 1:length(funcSet.BBfunc)
   pdfNames{i} = fullfile(plotResultsFolder, ['f', num2str(funcSet.BBfunc(i))]);
 end
 
-han = fValuesPlot(data,datanames,funcSet,funcSet.dims,funcSet.BBfunc,colors);
+han = fValuesPlot(data, 'DataNames', datanames, 'DataDims', funcSet.dims, ...
+                        'DataFuns', funcSet.BBfunc, 'Colors', colors, ...
+                        'AverageDims', true);
 %   print2pdf(han,pdfNames,1)
 
 %   drawGraph(gp_evals,cmaes_evals,'cmaes',funcSet);

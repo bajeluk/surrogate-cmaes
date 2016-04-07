@@ -29,18 +29,10 @@ function [data, settings] = dataReady(datapath, funcSet, numOfSettings, varargin
   if iscell(datapath) % data divided between multiple folders
     datalist = {};
     for i = 1:length(datapath)
-      list = dir(fullfile(datapath{i}, '*.mat'));
-      matId = true(1,length(list)); % ids of usable .mat files
-      if strfind([list.name], 'scmaes_params')
-        matId(end) = false;
-      end
-      if strfind([list.name], 'metajob')
-        matId(1) = false;
-      end    
-      % get rid of scmaes_params.mat or metajob.mat
-      datalist(end+1 : end+sum(matId)) = cellfun(@(x) fullfile(datapath{i}, x), ...
-        {list(matId).name}, 'UniformOutput', false); 
+      actualDataList = gainDataList(datapath{i});
+      datalist(end+1 : end+length(actualDataList)) = actualDataList; 
     end
+    assert(~isempty(datalist), 'Useful data not found')
     
     % load data
     for i = 1:length(datalist)
@@ -61,25 +53,11 @@ function [data, settings] = dataReady(datapath, funcSet, numOfSettings, varargin
     end
     
     % load settings
-    settings = cell(1, numOfSettings);
-    for i = 1:numOfSettings
-      S = load(datalist{i}, '-mat', 'surrogateParams');
-      idx = strfind(datalist{i}, '_');
-      id = str2double(datalist{i}(1, idx(end)+1:end-4));
-      settings{mod(id, numOfSettings)+1} = S.surrogateParams;
-    end
+    settings = loadSettings(datalist, numOfSettings);
     
   else % data in one folder
-    list = dir(fullfile(datapath,'*.mat'));
-    matId = true(1,length(list));
-    if strfind([list.name],'scmaes_params')
-      matId(end) = false;
-    end
-    if strfind([list.name],'metajob')
-      matId(1) = false;
-    end    
-    % get rid of scmaes_params.mat or metajob.mat
-    datalist = cellfun(@(x) fullfile(datapath, x), {list(matId).name}, 'UniformOutput', false);        
+    datalist = gainDataList(datapath);
+    assert(~isempty(datalist), 'Useful data not found')
     
     % load data
     for i = 1:length(datalist)
@@ -97,32 +75,38 @@ function [data, settings] = dataReady(datapath, funcSet, numOfSettings, varargin
     end
     
     % load settings
-    settings = cell(1, numOfSettings);
-    for i = 1:numOfSettings
-      S = load(datalist{i}, '-mat', 'surrogateParams');
-      idx = strfind(datalist{i}, '_');
-      id = str2double(datalist{i}(1, idx(end)+1:end-4));
-      settings{mod(id, numOfSettings) + 1} = S.surrogateParams;
-    end
+    settings = loadSettings(datalist, numOfSettings);
   end
   
   data = divSmooth(data, funcSet);
   
 end
 
-function data = divSmooth(data, funcSet)
-% divide by dimension and make data smoother
-  [func, dims, nSettings] = size(data);
-  for s = 1:nSettings
-    for d = 1:dims
-      for f = 1:func
-        fInstant = [];
-        for i = 1:length(data{f,d,s})
-          data{f,d,s}{i}(:,2) = ceil(data{f,d,s}{i}(:,2)/funcSet.dims(d));
-          fInstant(:, end+1) = smoothYEvals(data{f,d,s}{i}(:,1:2), 250); % use only first two columns - fitness, evaluations
-        end
-        data{f,d,s} = fInstant;
-      end
-    end
+function settings = loadSettings(datalist, numOfSettings)
+% loads settings from datalist
+  settings = cell(1, numOfSettings);
+  for i = 1:numOfSettings
+    S = load(datalist{i}, '-mat', 'surrogateParams');
+    idx = strfind(datalist{i}, '_');
+    id = str2double(datalist{i}(1, idx(end)+1:end-4));
+    settings{mod(id, numOfSettings) + 1} = S.surrogateParams;
   end
+end
+
+function datalist = gainDataList(datapath)
+% finds list of data in defined path excluding matfiles 'scmaes_params.mat' 
+% and 'metajob.mat'
+
+  list = dir(fullfile(datapath, '*.mat'));
+  % ids of usable .mat files
+  matId = true(1, length(list));
+  if strfind([list.name], 'scmaes_params')
+    matId(end) = false;
+  end
+  if strfind([list.name], 'metajob')
+    matId(1) = false;
+  end    
+  % get rid of scmaes_params.mat or metajob.mat
+  datalist = cellfun(@(x) fullfile(datapath, x), {list(matId).name}, 'UniformOutput', false);  
+
 end
