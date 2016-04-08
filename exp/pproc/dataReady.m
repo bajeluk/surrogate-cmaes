@@ -1,4 +1,4 @@
-function [data, settings] = dataReady(datapath, funcSet, numOfSettings, varargin)
+function [data, settings] = dataReady(datapath, funcSet,  varargin)
 % Prepares data for further processing.
 % Returns cell array 'data' functions x dimensions x settings and 
 % appropriate 'settings'.
@@ -8,8 +8,6 @@ function [data, settings] = dataReady(datapath, funcSet, numOfSettings, varargin
 %   funcSet       - structure with fields 'BBfunc' (numbers of BBOB
 %                   functions) and 'dims' (numbers of dimensions) 
 %                   | structure
-%   numOfSettings - number of different settings included in folder 
-%                   | integer
 %   varargin      - directory with multiple s-cmaes settings or pure cmaes 
 %                   (write 'cmaes')
 %
@@ -18,12 +16,12 @@ function [data, settings] = dataReady(datapath, funcSet, numOfSettings, varargin
 %              | cell array
 %   settings - appropriate settings to 'data' | structure
 
-% TODO: automatically recognize numOfSettings - from scmaes_params.mat
-
-  data = cell(length(funcSet.BBfunc), length(funcSet.dims), numOfSettings);
+  BBfunc = funcSet.BBfunc;
+  dims = funcSet.dims;
+  BBfuncInv = inverseIndex(BBfunc);
+  dimsInv = inverseIndex(dims);
   
-  funcSet.BBfuncInv = inverseIndex(funcSet.BBfunc);
-  funcSet.dimsInv = inverseIndex(funcSet.dims);
+  data = cell(length(BBfunc), length(dims));
   
   % load and complete results
   if iscell(datapath) % data divided between multiple folders
@@ -32,65 +30,37 @@ function [data, settings] = dataReady(datapath, funcSet, numOfSettings, varargin
       actualDataList = gainDataList(datapath{i});
       datalist(end+1 : end+length(actualDataList)) = actualDataList; 
     end
-    assert(~isempty(datalist), 'Useful data not found')
-    
-    % load data
-    for i = 1:length(datalist)
-      idx = strfind(datalist{i}, '_');
-      % experiment setting id
-      id = str2double(datalist{i}(1, idx(end)+1:end-4));
-      % if folder does not contain all settings
-      if ~any(strfind(datalist{i}, varargin{1}))
-        % TODO: automatically find appropriate setting id - from scmaes_params.mat
-        id = 1;
-      end
-      func = str2double(datalist{i}(1, idx(end-2)+1 : idx(end-1)-1)); % function number
-      dim  = str2double(datalist{i}(1, idx(end-1)+1 : idx(end)-2));   % dimension number
-      if any(func == funcSet.BBfunc) && any(dim == funcSet.dims)
-        S = load(datalist{i}, '-mat', 'y_evals');
-        data{funcSet.BBfuncInv(func), funcSet.dimsInv(dim), mod(id, numOfSettings)+1}(end+1:end+length(S.y_evals), 1) = S.y_evals;
-      end
-    end
-    
-    % load settings
-    settings = loadSettings(datalist, numOfSettings);
-    
   else % data in one folder
     datalist = gainDataList(datapath);
-    assert(~isempty(datalist), 'Useful data not found')
-    
-    % load data
-    for i = 1:length(datalist)
-      S = load(datalist{i}, '-mat', 'y_evals');
-%       if ~isempty(varargin) && strcmp(varargin{1},'cmaes')
-%         S.y_evals = S.y_evals(1:20); % cmaes ran too many times
-%       end
+  end
+  assert(~isempty(datalist), 'Useful data not found')
+
+  settings = {};
+  % load data
+  for i = 1:length(datalist)
+    S = load(datalist{i}, '-mat', 'y_evals', 'surrogateParams');
+    if all(isfield(S, {'y_evals', 'surrogateParams'}))
+      % load settings
+      settingsId = cellfun(@(x) isequal(S.surrogateParams, x), settings);
+      if isempty(settingsId) || ~any(settingsId)
+        settings{end+1} = S.surrogateParams;
+        settingsId = length(settings);
+      else
+        settingsId = find(settingsId);
+      end
+
+      % load y-evals
       idx = strfind(datalist{i},'_');
       func = str2double(datalist{i}(1,idx(end-2)+1:idx(end-1)-1)); % function number
-      dim = str2double(datalist{i}(1,idx(end-1)+1:idx(end)-2));    % dimension number
-      if any(func == funcSet.BBfunc) && any(dim == funcSet.dims)
-        id = str2double(datalist{i}(1,idx(end)+1:end-4));          % experiment setting id
-        data{funcSet.BBfuncInv(func),funcSet.dimsInv(dim),mod(id,numOfSettings)+1} = S.y_evals;
+      dim  = str2double(datalist{i}(1,idx(end-1)+1:idx(end)-2));   % dimension number
+      if any(func == BBfunc) && any(dim == dims)
+        data{BBfuncInv(func), dimsInv(dim), settingsId} = S.y_evals;
       end
     end
-    
-    % load settings
-    settings = loadSettings(datalist, numOfSettings);
   end
-  
+    
   data = divSmooth(data, funcSet);
   
-end
-
-function settings = loadSettings(datalist, numOfSettings)
-% loads settings from datalist
-  settings = cell(1, numOfSettings);
-  for i = 1:numOfSettings
-    S = load(datalist{i}, '-mat', 'surrogateParams');
-    idx = strfind(datalist{i}, '_');
-    id = str2double(datalist{i}(1, idx(end)+1:end-4));
-    settings{mod(id, numOfSettings) + 1} = S.surrogateParams;
-  end
 end
 
 function datalist = gainDataList(datapath)

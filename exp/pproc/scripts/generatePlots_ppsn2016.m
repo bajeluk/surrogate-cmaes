@@ -11,32 +11,35 @@
 exppath = fullfile('exp', 'experiments');
 
 sd2_path = fullfile(exppath, 'exp_restrEC_04');
-% sd2_path20D = fullfile(exppath, 'exp_doubleEC_01_20D');
+sd2_path20D = fullfile(exppath, 'exp_doubleEC_01_20D');
 ei_poi_lcb_path = fullfile(exppath, 'exp_doubleEC_01_ei_poi_lcb');
-% ei_poi_lcb_path20D = fullfile(exppath, 'exp_doubleEC_01_ei_poi_lcb_20D');
+ei_poi_lcb_path20D = fullfile(exppath, 'exp_doubleEC_01_ei_poi_lcb_20D');
 cmaespath = fullfile(ei_poi_lcb_path, 'cmaes_results');
+cmaespath20D = fullfile(ei_poi_lcb_path20D, 'cmaes_results');
 
 saacmes_path = fullfile(exppath, 'saACMES');
 smac_path = fullfile(exppath, 'SMAC');
 
+% folder for results
 plotResultsFolder = '/tmp';
 
 % needed function and dimension settings
-funcSet.BBfunc = 1:4;
-funcSet.dims = [2, 3]; %, 3, 5, 10];
+funcSet.BBfunc = 1:24;
+funcSet.dims = [2, 3, 5, 10];
 
 % loading data
-% [sd2_evals, sd2_settings] = dataReady(sd2_path, funcSet, 4);
-[ei_poi_lcb_evals, ei_poi_lcb_settings] = dataReady(ei_poi_lcb_path, funcSet, 3);
-% [ei_poi_lcb20D_evals, ei_poi_lcb20D_settings] = dataReady(ei_poi_lcb_path20D, funcSet, 3);
+[sd2_evals, sd2_settings] = dataReady(sd2_path, funcSet);
+[ei_poi_lcb_evals, ei_poi_lcb_settings] = dataReady(ei_poi_lcb_path, funcSet);
+cmaes_evals = dataReady(cmaespath, funcSet, 'cmaes');
 
-saacmes_evals = bbobDataReady(saacmes_path, funcSet);
-smac_evals = readSMACResults(smac_path, funcSet);
-cmaes_evals = dataReady(cmaespath, funcSet, 1, 'cmaes');
+funcSet.dims = 20;
+[sd2_evals_20D, sd2_settings_20D] = dataReady(sd2_path20D, funcSet);
+[ei_poi_lcb_evals_20D, ei_poi_lcb_settings_20D] = dataReady(ei_poi_lcb_path20D, funcSet);
+cmaes_evals_20D = dataReady(cmaespath20D, funcSet, 'cmaes'); 
 
-%% f-values EI, PoI, lcb, sd2 comparison
-
-close all
+% funcSet.dims = [2, 3, 5, 10, 20];
+% saacmes_evals = bbobDataReady(saacmes_path, funcSet);
+% smac_evals = readSMACResults(smac_path, funcSet);
 
 % finding data indexes
 set.modelType = 'gp';
@@ -45,29 +48,32 @@ set.evoControlRestrictedParam = 0.1;
 
 set.modelOpts.predictionType = 'ei';
 eiId = getStructIndex(ei_poi_lcb_settings, set);
+eiId20D = getStructIndex(ei_poi_lcb_settings_20D, set);
 
 set.modelOpts.predictionType = 'poi';
 poiId = getStructIndex(ei_poi_lcb_settings, set);
+poiId20D = getStructIndex(ei_poi_lcb_settings_20D, set);
 
 set.modelOpts.predictionType = 'lcb';
 lcbId = getStructIndex(ei_poi_lcb_settings, set);
+lcbId20D = getStructIndex(ei_poi_lcb_settings_20D, set);
 
-% set.modelOpts.predictionType = 'sd2';
-% sd2Id = getStructIndex(sd2_settings, set);
+set.modelOpts.predictionType = 'sd2';
+sd2Id = getStructIndex(sd2_settings, set);
+sd2Id20D = getStructIndex(sd2_settings_20D, set);
 
-% set.evoControlModelGenerations = 5;
-% rf5TransId = getStructIndex(trans_settings,set);
-% 
-% set.modelType = 'gp';
-% set.evoControlSampleRange = 1;
-% gp5TransId = getStructIndex(trans_settings,set);
-% 
-% set.evoControlModelGenerations = 1;
-% gp1TransId = getStructIndex(trans_settings,set);
-% gp1Id = getStructIndex(gp_settings,set);
-% set.evoControlModelGenerations = 3;
-% gp3Id = getStructIndex(gp_settings,set);
-% 
+% concatenate data
+eiData  = [ei_poi_lcb_evals(:, :, eiId),  ei_poi_lcb_evals_20D(:, :, eiId20D)];
+poiData = [ei_poi_lcb_evals(:, :, poiId), ei_poi_lcb_evals_20D(:, :, poiId20D)];
+lcbData = [ei_poi_lcb_evals(:, :, lcbId), ei_poi_lcb_evals_20D(:, :, lcbId20D)];
+sd2Data = [sd2_evals(:, :, sd2Id), sd2_evals_20D(:, :, sd2Id20D)];
+% saacmesData = saacmes_evals;
+% smacData = smac_evals;
+cmaesData = [cmaes_evals, cmaes_evals_20D];
+
+%% f-values EI, PoI, lcb, sd2 comparison
+
+close all
 
 % color settings
 cmaesCol = [22 22 138];
@@ -78,17 +84,21 @@ sd2Col = [0 0 0];
 saacmesCol = [100 149 237];
 smacCol = [116 172 66];
 
-data = {ei_poi_lcb_evals(:, :, eiId), ...
-        smac_evals, ...
-        saacmes_evals, ...
-        cmaes_evals};
+data = {eiData, ...
+        poiData, ...
+        lcbData, ...
+        sd2Data, ...
+        cmaesData};
+%         smac_evals, ...
+%         saacmes_evals, ...
+%         cmaes_evals};
 
-% data = {ei_poi_lcb_evals(:, :, eiId), ...
+% data = {eiData, ...
 %         ei_poi_lcb_evals(:, :, poiId), ...
 %         ei_poi_lcb_evals(:, :, lcbId), ...
 %         saacmes_evals, ...
 %         cmaes_evals};
-datanames = {'EI', 'SMAC', 'saACMES', 'CMA-ES'};
+datanames = {'EI', 'poi', 'lcb', 'sd2', 'CMA-ES'};
 
 % data = {cmaes_evals,gp_evals(:,:,gp3Id),trans_evals(:,:,gp5TransId),rf_evals(:,:,rf1Id),trans_evals(:,:,rf1TransId),trans_evals(:,:,gp5TransId)};
 % datanames = {'CMA-ES','GP3','GP5-trans','RF1','RF1-trans'};
@@ -97,7 +107,7 @@ datanames = {'EI', 'SMAC', 'saACMES', 'CMA-ES'};
 %   datanames = {'CMA-ES','GP3','GP5-trans','RF1','RF1-trans'};
 
 
-colors = [eiCol; smacCol; saacmesCol; cmaesCol]/255;
+colors = [eiCol; poiCol; lcbCol; sd2Col; cmaesCol]/255;
 % for i = 1:length(funcSet.BBfunc)
 %   pdfNames{i} = fullfile(plotResultsFolder, ['f', num2str(funcSet.BBfunc(i))]);
 % end

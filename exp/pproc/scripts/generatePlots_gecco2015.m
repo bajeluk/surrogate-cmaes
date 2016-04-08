@@ -25,10 +25,11 @@ funcSet.BBfunc = [1, 2, 3, 5, 6, 8, 10, 11, 12, 13, 14, 20, 21];
 funcSet.dims = [2, 5, 10];
 
 % loading data
-[trans_evals, trans_settings] = dataReady(transPath10D, funcSet, 4);
-[rf_evals, rf_settings] = dataReady(rfpath, funcSet, 1, 'rflite');
-[gp_evals, gp_settings] = dataReady(gppath, funcSet, 6);
-cmaes_evals = dataReady(cmaespath, funcSet, 1, 'cmaes');
+[trans_evals, trans_settings] = dataReady(transPath10D, funcSet);
+[rf_evals, rf_settings] = dataReady(rfpath, funcSet, 'rflite');
+%%
+[gp_evals, gp_settings] = dataReady(gppath, funcSet);
+cmaes_evals = dataReady(cmaespath, funcSet, 'cmaes');
 
 % finding data indexes
 set.modelType = 'rf';
