@@ -28,14 +28,14 @@ funcSet.BBfunc = 1:24;
 funcSet.dims = [2, 3, 5, 10];
 
 % loading data
-[sd2_evals, sd2_settings] = dataReady(sd2_path, funcSet);
+% [sd2_evals, sd2_settings] = dataReady(sd2_path, funcSet);
 [ei_poi_lcb_evals, ei_poi_lcb_settings] = dataReady(ei_poi_lcb_path, funcSet);
 cmaes_evals = dataReady(cmaespath, funcSet, 'cmaes');
 
-funcSet.dims = 20;
-[sd2_evals_20D, sd2_settings_20D] = dataReady(sd2_path20D, funcSet);
-[ei_poi_lcb_evals_20D, ei_poi_lcb_settings_20D] = dataReady(ei_poi_lcb_path20D, funcSet);
-cmaes_evals_20D = dataReady(cmaespath20D, funcSet, 'cmaes'); 
+% funcSet.dims = 20;
+% [sd2_evals_20D, sd2_settings_20D] = dataReady(sd2_path20D, funcSet);
+% [ei_poi_lcb_evals_20D, ei_poi_lcb_settings_20D] = dataReady(ei_poi_lcb_path20D, funcSet);
+% cmaes_evals_20D = dataReady(cmaespath20D, funcSet, 'cmaes'); 
 
 % funcSet.dims = [2, 3, 5, 10, 20];
 % saacmes_evals = bbobDataReady(saacmes_path, funcSet);
@@ -48,32 +48,28 @@ set.evoControlRestrictedParam = 0.1;
 
 set.modelOpts.predictionType = 'ei';
 eiId = getStructIndex(ei_poi_lcb_settings, set);
-eiId20D = getStructIndex(ei_poi_lcb_settings_20D, set);
+% eiId20D = getStructIndex(ei_poi_lcb_settings_20D, set);
 
 set.modelOpts.predictionType = 'poi';
 poiId = getStructIndex(ei_poi_lcb_settings, set);
-poiId20D = getStructIndex(ei_poi_lcb_settings_20D, set);
+% poiId20D = getStructIndex(ei_poi_lcb_settings_20D, set);
 
 set.modelOpts.predictionType = 'lcb';
 lcbId = getStructIndex(ei_poi_lcb_settings, set);
-lcbId20D = getStructIndex(ei_poi_lcb_settings_20D, set);
+% lcbId20D = getStructIndex(ei_poi_lcb_settings_20D, set);
 
-set.modelOpts.predictionType = 'sd2';
-sd2Id = getStructIndex(sd2_settings, set);
-sd2Id20D = getStructIndex(sd2_settings_20D, set);
+% set.modelOpts.predictionType = 'sd2';
+% sd2Id = getStructIndex(sd2_settings, set);
+% sd2Id20D = getStructIndex(sd2_settings_20D, set);
 
 % concatenate data
-eiData  = [ei_poi_lcb_evals(:, :, eiId),  ei_poi_lcb_evals_20D(:, :, eiId20D)];
-poiData = [ei_poi_lcb_evals(:, :, poiId), ei_poi_lcb_evals_20D(:, :, poiId20D)];
-lcbData = [ei_poi_lcb_evals(:, :, lcbId), ei_poi_lcb_evals_20D(:, :, lcbId20D)];
-sd2Data = [sd2_evals(:, :, sd2Id), sd2_evals_20D(:, :, sd2Id20D)];
+eiData  = [ei_poi_lcb_evals(:, :, eiId)];  % ,  ei_poi_lcb_evals_20D(:, :, eiId20D)];
+poiData = [ei_poi_lcb_evals(:, :, poiId)]; % , ei_poi_lcb_evals_20D(:, :, poiId20D)];
+lcbData = [ei_poi_lcb_evals(:, :, lcbId)]; % , ei_poi_lcb_evals_20D(:, :, lcbId20D)];
+% sd2Data = [sd2_evals(:, :, sd2Id), sd2_evals_20D(:, :, sd2Id20D)];
 % saacmesData = saacmes_evals;
 % smacData = smac_evals;
-cmaesData = [cmaes_evals, cmaes_evals_20D];
-
-%% f-values EI, PoI, lcb, sd2 comparison
-
-close all
+cmaesData = [cmaes_evals(:, :, 1)]; % , cmaes_evals_20D];
 
 % color settings
 cmaesCol = [22 22 138];
@@ -83,6 +79,10 @@ lcbCol = [208 32 144];
 sd2Col = [0 0 0];
 saacmesCol = [100 149 237];
 smacCol = [116 172 66];
+
+%% f-values EI, PoI, lcb, sd2 comparison
+
+close all
 
 data = {eiData, ...
         poiData, ...
@@ -128,6 +128,23 @@ han = fValuesPlot(data, 'DataNames', datanames, 'DataDims', funcSet.dims, ...
 
 %   pdfname = fullfile(plotResultsFolder,'speedUp');
 % print2pdf(han, pdfNames, 1)
+
+%% reverse distribution
+close all
+
+data = {eiData, ...
+        poiData, ...
+        lcbData, ...
+        cmaesData};
+      
+datanames = {'EI', 'poi', 'lcb', 'CMA-ES'};
+
+colors = [eiCol; poiCol; lcbCol; cmaesCol]/255;
+      
+han = reverseDistributionPlot(data, ...
+                              'DataNames', datanames, 'Colors', colors, ...
+                              'PlotDims', [2, 5], 'PlotFuns', 1:5, ...
+                              'DefaultTargets', 10*(1:25), 'AverageDims', false);
 
 %% final clearing
 close all
