@@ -10,10 +10,19 @@
 % path settings
 exppath = fullfile('exp', 'experiments');
 
-sd2_path = fullfile(exppath, 'exp_restrEC_04');
+sd2_r10_20_path = fullfile(exppath, 'exp_restrEC_04');
+sd2_r05_40_path = fullfile(exppath, 'exp_doubleEC_01_restr05_40');
+sd2_r05_2pop_path = fullfile(exppath, 'exp_restrEC_04_2pop');
+sd2_r10_2pop_path = fullfile(exppath, 'exp_doubleEC_01_2pop');
+sd2_r20_40_2pop_path = fullfile(exppath, 'exp_doubleEC_01_2pop_restr20_40');
 sd2_path20D = fullfile(exppath, 'exp_doubleEC_01_20D');
+
 ei_poi_lcb_path = fullfile(exppath, 'exp_doubleEC_01_ei_poi_lcb');
 ei_poi_lcb_path20D = fullfile(exppath, 'exp_doubleEC_01_ei_poi_lcb_20D');
+
+gen_path = fullfile(exppath, 'exp_geneEC_10');
+gen_path20D = fullfile(exppath, 'exp_geneEC_10_20D');
+
 cmaespath = fullfile(ei_poi_lcb_path, 'cmaes_results');
 cmaespath20D = fullfile(ei_poi_lcb_path20D, 'cmaes_results');
 
@@ -28,13 +37,22 @@ funcSet.BBfunc = 1:24;
 funcSet.dims = [2, 3, 5, 10];
 
 % loading data
-[sd2_evals, sd2_settings] = dataReady(sd2_path, funcSet);
+% [sd2_r10_20_evals, sd2_r10_20_settings] = dataReady(sd2_r10_20_path, funcSet);
+% [sd2_r05_40_evals, sd2_r05_40_settings] = dataReady(sd2_r05_40_path, funcSet);
+% [sd2_r05_2pop_evals, sd2_r05_2pop_settings] = dataReady(sd2_r05_2pop_path, funcSet);
+% [sd2_r10_2pop_evals, sd2_r10_2pop_settings] = dataReady(sd2_r10_2pop_path, funcSet);
+% [sd2_r20_40_2pop_evals, sd2_r20_40_2pop_settings] = dataReady(sd2_r20_40_2pop_path, funcSet);
+
 [ei_poi_lcb_evals, ei_poi_lcb_settings] = dataReady(ei_poi_lcb_path, funcSet);
+
+% [gen_evals, gen_settings] = dataReady(gen_path, funcSet);
+
 cmaes_evals = dataReady(cmaespath, funcSet);
 
 funcSet.dims = 20;
 [sd2_evals_20D, sd2_settings_20D] = dataReady(sd2_path20D, funcSet);
 [ei_poi_lcb_evals_20D, ei_poi_lcb_settings_20D] = dataReady(ei_poi_lcb_path20D, funcSet);
+% [gen_evals_20D, gen_settings_20D] = dataReady(gen_path20D, funcSet);
 cmaes_evals_20D = dataReady(cmaespath20D, funcSet); 
 
 % funcSet.dims = [2, 3, 5, 10, 20];
@@ -59,17 +77,33 @@ lcbId = getStructIndex(ei_poi_lcb_settings, set);
 lcbId20D = getStructIndex(ei_poi_lcb_settings_20D, set);
 
 set.modelOpts.predictionType = 'sd2';
-sd2Id = getStructIndex(sd2_settings, set);
-sd2Id20D = getStructIndex(sd2_settings_20D, set);
+set.evoControlRestrictedParam = 0.05;
+sd2_r05_Id = getStructIndex(sd2_r05_40_settings, set);
+sd2_r05_Id20D = getStructIndex(sd2_settings_20D, set);
+
+set.evoControlRestrictedParam = 0.1;
+sd2_r10_Id = getStructIndex(sd2_r10_20_settings, set);
+sd2_r10_Id20D = getStructIndex(sd2_settings_20D, set);
+
+set.evoControlRestrictedParam = 0.2;
+sd2_r20_Id = getStructIndex(sd2_r10_20_settings, set);
+sd2_r20_Id20D = getStructIndex(sd2_settings_20D, set);
+
+set.evoControlRestrictedParam = 0.4;
+sd2_r40_Id = getStructIndex(sd2_r05_40_settings, set);
+sd2_r40_Id20D = getStructIndex(sd2_settings_20D, set);
+
+
+set.evoControlRestrictedParam = 0.05;
 
 % concatenate data
 eiData  = [ei_poi_lcb_evals(:, :, eiId),  ei_poi_lcb_evals_20D(:, :, eiId20D)];
 poiData = [ei_poi_lcb_evals(:, :, poiId), ei_poi_lcb_evals_20D(:, :, poiId20D)];
 lcbData = [ei_poi_lcb_evals(:, :, lcbId), ei_poi_lcb_evals_20D(:, :, lcbId20D)];
-sd2Data = [sd2_evals(:, :, sd2Id), sd2_evals_20D(:, :, sd2Id20D)];
+sd2Data_01 = [sd2_r10_20_evals(:, :, sd2_r10_Id), sd2_evals_20D(:, :, sd2_r10_Id20D)];
 % saacmesData = saacmes_evals;
 % smacData = smac_evals;
-cmaesData = [cmaes_evals(:, :, 1) , cmaes_evals_20D(:,:,1)];
+cmaesData = [cmaes_evals(:, :, 1) , cmaes_evals_20D(:, :, 1)];
 
 % color settings
 cmaesCol = [22 22 138];
@@ -135,7 +169,7 @@ close all
 data = {eiData, ...
         poiData, ...
         lcbData, ...
-        sd2Data, ...
+        sd2Data_01, ...
         cmaesData};
       
 datanames = {'EI', 'PoI', 'lcb', 'sd2', 'CMA-ES'};
