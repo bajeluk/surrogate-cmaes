@@ -1,28 +1,31 @@
-function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, defaultTargets, averageDims, refMeasure, nInstances)
+function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, defaultEvals, averageDims, refMeasure, nInstances, targetValue)
 % Returns cell array of relative statistics accross chosen dimensions 
 % for each function
 %
 % Input:
 %   refMeasure - handle to measure of reference data
 
-  if nargin < 7
-    nInstances = 15;
-    if nargin < 6
-      refMeasure = @(x, y) min(x, [], y);
-      if nargin < 5
-        averageDims = false;
-        if nargin < 4
-          defaultTargets = [2*(1:25), 5*(11:20), 10*(11:25)];
-          if nargin < 1
-            help relativeMeasure
-            return
+  if nargin < 8 
+    targetValue = 10^-8;
+    if nargin < 7
+      nInstances = 15;
+      if nargin < 6
+        refMeasure = @(x, y) min(x, [], y);
+        if nargin < 5
+          averageDims = false;
+          if nargin < 4
+            defaultEvals = [2*(1:25), 5*(11:20), 10*(11:25)];
+            if nargin < 1
+              help relativeMeasure
+              return
+            end
           end
         end
       end
     end
   end
   
-  % count each data mean
+  % count each data median
   data_stats = cellfun(@(D) gainStatistic(D, dimId, funcId, nInstances, averageDims, @median), ...
                             data, 'UniformOutput', false);
   
@@ -35,8 +38,19 @@ function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, defaultT
       allActualData = cell2mat(cellfun(@(D) D{f, d}, data_stats(nonEmptyData), 'UniformOutput', false));
       % count reference data
       refData = refMeasure(allActualData, 2);
-      % gain target values
-      yTargets = refData(defaultTargets);
+      % count reference evaluations
+      maxEval = find(refData <= targetValue, 1, 'first');
+      % no algorithm reached targetValue
+      if isempty(maxEval)
+        transformedEvals = defaultEvals;
+      % at least one algorithm reached targetValue
+      else
+        transformedEvals = ceil(defaultEvals/max(defaultEvals) * maxEval);
+      end
+      % Lukas logarithmic version
+%       yTargets = logspace(log(max(refData)), log(max(min(refData), targetValue)), length(defaultEvals));
+      % gain target y-values
+      yTargets = refData(transformedEvals);
       for D = 1 : length(data_stats)
         targetEvals{D}{f,d} = [];
         if nonEmptyData(D)

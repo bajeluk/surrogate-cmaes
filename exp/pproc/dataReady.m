@@ -1,4 +1,4 @@
-function [data, settings] = dataReady(datapath, funcSet,  varargin)
+function [data, settings] = dataReady(datapath, funcSet)
 % Prepares data for further processing.
 % Returns cell array 'data' functions x dimensions x settings and 
 % appropriate 'settings'.
@@ -8,8 +8,6 @@ function [data, settings] = dataReady(datapath, funcSet,  varargin)
 %   funcSet       - structure with fields 'BBfunc' (numbers of BBOB
 %                   functions) and 'dims' (numbers of dimensions) 
 %                   | structure
-%   varargin      - directory with multiple s-cmaes settings or pure cmaes 
-%                   (write 'cmaes')
 %
 % Output:
 %   data     - aggregated data of size functions x dimensions x settings 
@@ -24,13 +22,16 @@ function [data, settings] = dataReady(datapath, funcSet,  varargin)
   data = cell(length(BBfunc), length(dims));
   
   % load and complete results
-  if iscell(datapath) % data divided between multiple folders
+
+  % data divided between multiple folders
+  if iscell(datapath) 
     datalist = {};
     for i = 1:length(datapath)
       actualDataList = gainDataList(datapath{i});
       datalist(end+1 : end+length(actualDataList)) = actualDataList; 
     end
-  else % data in one folder
+  % data in one folder
+  else 
     datalist = gainDataList(datapath);
   end
   assert(~isempty(datalist), 'Useful data not found')
@@ -38,7 +39,9 @@ function [data, settings] = dataReady(datapath, funcSet,  varargin)
   settings = {};
   % load data
   for i = 1:length(datalist)
+    warning('off', 'MATLAB:load:variableNotFound')
     S = load(datalist{i}, '-mat', 'y_evals', 'surrogateParams');
+    warning('on', 'MATLAB:load:variableNotFound')
     if all(isfield(S, {'y_evals', 'surrogateParams'}))
       % load settings
       settingsId = cellfun(@(x) isequal(S.surrogateParams, x), settings);
@@ -55,6 +58,11 @@ function [data, settings] = dataReady(datapath, funcSet,  varargin)
       dim  = str2double(datalist{i}(1,idx(end-1)+1:idx(end)-2));   % dimension number
       if any(func == BBfunc) && any(dim == dims)
         data{BBfuncInv(func), dimsInv(dim), settingsId} = S.y_evals;
+      end
+    else
+      if ~(isempty(regexp(datalist{i}, '_tmp_\d*.mat', 'once')) || ... % temporary mat-files
+          isempty(regexp(datalist{i}, '_\d*_ERROR.mat', 'once')) )    % error files
+        fprintf('Variable ''y_evals'' or ''surrogateParams'' not found in %s\n', datalist{i})
       end
     end
   end
