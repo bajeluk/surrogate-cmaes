@@ -44,7 +44,7 @@ function data = bbobDataReady(datapath, funcSet)
         end
         data{fi, di}{length(instanceStartId)} = actualData.data(instanceStartId(end):end, [3,1]);
       catch
-        warning('Unable to open function %d dimension %d', f, d)
+        warning('Unable to open function %d dimension %d.', f, d)
       end
     end
   end

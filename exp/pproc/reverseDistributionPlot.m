@@ -70,12 +70,12 @@ function handle = reverseDistributionPlot(data, varargin)
         nEmptyId = inverseIndex(notEmptyData);
         h = zeros(1, sum(notEmptyData));
         ftitle = cell(1, sum(notEmptyData));
-        h(1) = plot(targetEvals{1}{f,d}, length(targetEvals{1}{f,d}): -1 : 1, ...
+        h(1) = plot(targetEvals{1}{f,d}, length(targetEvals{1}{f,d}) -1 : -1 : 0, ...
           'LineWidth', lineWidth, 'Color', colors(nEmptyId(1), :));
         ftitle{1} = datanames{nEmptyId(1)};
         hold on
         for dat = 2:sum(notEmptyData)
-          h(dat) = plot(targetEvals{dat}{f,d}, length(targetEvals{1}{f,d}): -1 : 1, ...
+          h(dat) = plot(targetEvals{dat}{f,d}, length(targetEvals{1}{f,d}) -1 : -1 : 0, ...
           'LineWidth', lineWidth, 'Color', colors(nEmptyId(dat), :));
           ftitle{dat} = datanames{nEmptyId(dat)};
         end
@@ -90,6 +90,9 @@ function handle = reverseDistributionPlot(data, varargin)
       else
         title(['f', num2str(BBfunc(f)), ' ', num2str(dims(d)),'D'])
       end
+      ax = gca;
+      reverseYTargets = yTargets(end:-1:1);
+      ax.YTickLabels = [arrayfun(@(x) sprintf('%0.1e', x), reverseYTargets(ax.YTick(1:end-1) + 1)', 'UniformOutput', false), {''}];
       xlabel('Number of evaluations / D')
       ylabel('Targets')
       hold off

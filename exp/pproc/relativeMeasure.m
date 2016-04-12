@@ -40,17 +40,23 @@ function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, defaultE
       refData = refMeasure(allActualData, 2);
       % count reference evaluations
       maxEval = find(refData <= targetValue, 1, 'first');
+      minEval = find(~isnan(refData), 1, 'first');
       % no algorithm reached targetValue
-      if isempty(maxEval)
+      if isempty(maxEval) && min(defaultEvals) >= minEval
         transformedEvals = defaultEvals;
       % at least one algorithm reached targetValue
       else
-        transformedEvals = ceil(defaultEvals/max(defaultEvals) * maxEval);
+        transformedEvals = minEval + round((defaultEvals - min(defaultEvals))/(max(defaultEvals) - min(defaultEvals)) * (maxEval - minEval));
       end
-      % Lukas logarithmic version
+      % bajeluk logarithmic version
 %       yTargets = logspace(log(max(refData)), log(max(min(refData), targetValue)), length(defaultEvals));
       % gain target y-values
-      yTargets = refData(transformedEvals);
+      if isempty(maxEval)
+        yTargets = refData(transformedEvals);  
+      else
+        yTargets = [refData(transformedEvals(1:end-1)); targetValue];
+      end
+      
       for D = 1 : length(data_stats)
         targetEvals{D}{f,d} = [];
         if nonEmptyData(D)

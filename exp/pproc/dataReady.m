@@ -40,13 +40,20 @@ function [data, settings] = dataReady(datapath, funcSet)
   % load data
   for i = 1:length(datalist)
     warning('off', 'MATLAB:load:variableNotFound')
-    S = load(datalist{i}, '-mat', 'y_evals', 'surrogateParams');
+    S = load(datalist{i}, '-mat', 'y_evals', 'surrogateParams', 'cmaesParams');
     warning('on', 'MATLAB:load:variableNotFound')
-    if all(isfield(S, {'y_evals', 'surrogateParams'}))
+    if all(isfield(S, {'y_evals', 'surrogateParams', 'cmaesParams'}))
+      % unify parameters to one settings structure
+      actualSettings = S.surrogateParams;
+      fCmaesParams = fields(S.cmaesParams);
+      valCmaesParams = struct2cell(S.cmaesParams);
+      for f = 1:length(fCmaesParams)
+        actualSettings.(fCmaesParams{f}) = valCmaesParams{f};
+      end
       % load settings
-      settingsId = cellfun(@(x) isequal(S.surrogateParams, x), settings);
+      settingsId = cellfun(@(x) isequal(actualSettings, x), settings);
       if isempty(settingsId) || ~any(settingsId)
-        settings{end+1} = S.surrogateParams;
+        settings{end+1} = actualSettings;
         settingsId = length(settings);
       else
         settingsId = find(settingsId);
@@ -62,7 +69,7 @@ function [data, settings] = dataReady(datapath, funcSet)
     else
       if ~(isempty(regexp(datalist{i}, '_tmp_\d*.mat', 'once')) || ... % temporary mat-files
           isempty(regexp(datalist{i}, '_\d*_ERROR.mat', 'once')) )    % error files
-        fprintf('Variable ''y_evals'' or ''surrogateParams'' not found in %s\n', datalist{i})
+        fprintf('Variable ''y_evals'', ''surrogateParams'', or ''cmaesParams'' not found in %s.\n', datalist{i})
       end
     end
   end
