@@ -1,4 +1,4 @@
-function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, defaultEvals, averageDims, refMeasure, nInstances, targetValue)
+function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, defaultEvals, aggregateDims, refMeasure, nInstances, targetValue)
 % Returns cell array of relative statistics accross chosen dimensions 
 % for each function
 %
@@ -12,7 +12,7 @@ function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, defaultE
       if nargin < 6
         refMeasure = @(x, y) min(x, [], y);
         if nargin < 5
-          averageDims = false;
+          aggregateDims = false;
           if nargin < 4
             defaultEvals = [2*(1:25), 5*(11:20), 10*(11:25)];
             if nargin < 1
@@ -26,7 +26,7 @@ function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, defaultE
   end
   
   % count each data median
-  data_stats = cellfun(@(D) gainStatistic(D, dimId, funcId, nInstances, averageDims, @median), ...
+  data_stats = cellfun(@(D) gainStatistic(D, dimId, funcId, nInstances, false, @median), ...
                             data, 'UniformOutput', false);
   
   % compute reference data
@@ -52,16 +52,16 @@ function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, defaultE
 %       yTargets = logspace(log(max(refData)), log(max(min(refData), targetValue)), length(defaultEvals));
       % gain target y-values
       if isempty(maxEval)
-        yTargets = refData(transformedEvals);  
+        yTargets{d} = refData(transformedEvals);  
       else
-        yTargets = [refData(transformedEvals(1:end-1)); targetValue];
+        yTargets{d} = [refData(transformedEvals(1:end-1)); targetValue];
       end
       
       for D = 1 : length(data_stats)
         targetEvals{D}{f,d} = [];
         if nonEmptyData(D)
-          for t = 1 : length(yTargets)
-            targetEvaluation = find(data_stats{D}{f,d} <= yTargets(t), 1, 'first');
+          for t = 1 : length(yTargets{d})
+            targetEvaluation = find(data_stats{D}{f,d} <= yTargets{d}(t), 1, 'first');
             if isempty(targetEvaluation)
               targetEvals{D}{f,d}(end+1) = NaN;
             else
@@ -71,6 +71,19 @@ function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, defaultE
         end
       end
     end
+    
+    % aggregate results across dimensions
+    if aggregateDims
+      targetEvals{D}{f} = ceil(funIgnoreNaN(@median, cell2mat(targetEvals{D}(f,:)')));
+    end
+    
   end
   
+end
+
+function res = funIgnoreNaN(fun, X)
+% calculates median ignoring NaN values
+  for i = 1:size(X, 2)
+    res(i) = fun(X(~isnan(X(:, i)), i));
+  end
 end

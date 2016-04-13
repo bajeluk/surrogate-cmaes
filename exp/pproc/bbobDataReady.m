@@ -27,7 +27,7 @@ function data = bbobDataReady(datapath, funcSet)
   funcSet.dimsInv = inverseIndex(funcSet.dims);
   
   % load results
-  assert(isdir(datapath), 'Source path is not a folder')
+  assert(isdir(datapath), '%s is not a folder', datapath)
   
   for f = funcSet.BBfunc
     for d = funcSet.dims

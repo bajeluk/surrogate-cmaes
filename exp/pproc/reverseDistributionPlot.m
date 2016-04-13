@@ -16,6 +16,7 @@ function handle = reverseDistributionPlot(data, varargin)
     settings = struct(varargin{:});
   end
   
+  % initalize settings
   numOfData = length(data);
   datanames = defopts(settings, 'DataNames', ...
     arrayfun(@(x) ['ALG', num2str(x)], 1:numOfData, 'UniformOutput', false));
@@ -91,7 +92,7 @@ function handle = reverseDistributionPlot(data, varargin)
         title(['f', num2str(BBfunc(f)), ' ', num2str(dims(d)),'D'])
       end
       ax = gca;
-      reverseYTargets = yTargets(end:-1:1);
+      reverseYTargets = yTargets{d}(end:-1:1);
       ax.YTickLabels = [arrayfun(@(x) sprintf('%0.1e', x), reverseYTargets(ax.YTick(1:end-1) + 1)', 'UniformOutput', false), {''}];
       xlabel('Number of evaluations / D')
       ylabel('Targets')
