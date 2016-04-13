@@ -8,15 +8,16 @@ function handle = fValuesPlot(data, varargin)
 %   settings - pairs of property (string) and value or struct with 
 %              properties as fields:
 %
-%     'DataNames'   - cell array of data names (e.g. names of algorithms)
-%     'DataDims'    - dimensions of data
-%     'DataFuns'    - functions of data
-%     'PlotDims'    - dimensions chosen to plot
-%     'PlotFuns'    - functions chosen to plot
-%     'Colors'      - colors of individual algorithms
-%     'AverageDims' - average dimensions in plots | boolean
-%     'Statistic'   - statistic of data | string or handle (@mean, @median)
-%     'Dependency'  - 'algorithm' or 'dimension'
+%     'DataNames'     - cell array of data names (e.g. names of algorithms)
+%     'DataDims'      - dimensions of data
+%     'DataFuns'      - functions of data
+%     'PlotDims'      - dimensions chosen to plot
+%     'PlotFuns'      - functions chosen to plot
+%     'Colors'        - colors of individual algorithms
+%     'AggregateDims' - aggregate dimensions in plots | boolean
+%     'Statistic'     - statistic of data | string or handle (@mean, 
+%                       @median)
+%     'Dependency'    - 'algorithm' or 'dimension'
 %
 % Output:
 %   handle - handles of resulting figures
@@ -47,7 +48,7 @@ function handle = fValuesPlot(data, varargin)
   dims    = defopts(settings, 'PlotDims', funcSet.dims);
   BBfunc  = defopts(settings, 'PlotFuns', funcSet.BBfunc);
   colors  = defopts(settings, 'Colors', rand(numOfData, 3));
-  avgDims = defopts(settings, 'AverageDims', false);
+  avgDims = defopts(settings, 'AggregateDims', false);
   dependency = defopts(settings, 'Dependency', 'algorithms');
   statistic = defopts(settings, 'Statistic', @mean);
   if ischar(statistic)

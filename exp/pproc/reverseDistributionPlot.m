@@ -26,7 +26,7 @@ function handle = reverseDistributionPlot(data, varargin)
   dims    = defopts(settings, 'PlotDims', funcSet.dims);
   BBfunc  = defopts(settings, 'PlotFuns', funcSet.BBfunc);
   colors  = defopts(settings, 'Colors', rand(numOfData, 3));
-  avgDims = defopts(settings, 'AverageDims', false);
+  aggDims = defopts(settings, 'AggregateDims', false);
   defTargets = defopts(settings, 'DefaultTargets', [2*(1:25), 5*(11:20), 10*(11:25)]);
   
   % get function and dimension IDs
@@ -45,13 +45,14 @@ function handle = reverseDistributionPlot(data, varargin)
   % count relative distances
   useMaxInstances = 15;
   [targetEvals, yTargets] = ...
-    relativeMeasure(data, dimIds, funcIds, defTargets, avgDims, ...
-    @(x, y) min(x, [], y), useMaxInstances);
+    relativeMeasure(data, dimIds, funcIds, ...
+                   'DefaultTargets', defTargets, 'AggregateDims', aggDims, ...
+                   'RefMeasure', @(x, y) min(x, [], y), 'MaxInstances', useMaxInstances);
   
   % plot values
   lineWidth = 2;
   
-  if avgDims
+  if aggDims
     nDimsToPlot = 1;
   else
     nDimsToPlot = length(dims);
@@ -86,14 +87,16 @@ function handle = reverseDistributionPlot(data, varargin)
       end
       
       % final title and axis labeling
-      if avgDims
+      if aggDims
         title(['f', num2str(BBfunc(f))])
       else
         title(['f', num2str(BBfunc(f)), ' ', num2str(dims(d)),'D'])
       end
       ax = gca;
-      reverseYTargets = yTargets{d}(end:-1:1);
-      ax.YTickLabels = [arrayfun(@(x) sprintf('%0.1e', x), reverseYTargets(ax.YTick(1:end-1) + 1)', 'UniformOutput', false), {''}];
+      if ~aggDims
+        reverseYTargets = yTargets{d}(end:-1:1);
+        ax.YTickLabels = [arrayfun(@(x) sprintf('%0.1e', x), reverseYTargets(ax.YTick(1:end-1) + 1)', 'UniformOutput', false), {''}];
+      end
       xlabel('Number of evaluations / D')
       ylabel('Targets')
       hold off

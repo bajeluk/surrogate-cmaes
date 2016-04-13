@@ -1,29 +1,37 @@
-function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, defaultEvals, aggregateDims, refMeasure, nInstances, targetValue)
+function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, varargin)
 % Returns cell array of relative statistics accross chosen dimensions 
 % for each function
 %
 % Input:
-%   refMeasure - handle to measure of reference data
+%   data
+%   dimId
+%   funId
+%   settings:
+%     RefMeasure - handle to measure of reference data
+%     DefaultTargets
 
-  if nargin < 8 
-    targetValue = 10^-8;
-    if nargin < 7
-      nInstances = 15;
-      if nargin < 6
-        refMeasure = @(x, y) min(x, [], y);
-        if nargin < 5
-          aggregateDims = false;
-          if nargin < 4
-            defaultEvals = [2*(1:25), 5*(11:20), 10*(11:25)];
-            if nargin < 1
-              help relativeMeasure
-              return
-            end
-          end
-        end
-      end
-    end
+  % initialization
+  targetEvals = {};
+  yTargets = {};
+  if nargin < 1 || isempty(data)
+    help relativeMeasure
+    return
   end
+  if isstruct(varargin)
+    settings = varargin;
+  else
+    % keep cells as cells due to struct command
+    vararCellId = cellfun(@iscell, varargin);
+    varargin(vararCellId) = {varargin(vararCellId)};
+    settings = struct(varargin{:});
+  end
+
+  % initialize settings
+  targetValue = defopts(settings, 'TargetValue', 10^-8);
+  nInstances = defopts(settings, 'MaxInstances', 15);
+  refMeasure = defopts(settings, 'RefMeasure', @(x, y) min(x, [], y));
+  aggregateDims = defopts(settings, 'AggregateDims', false);
+  defaultEvals = defopts(settings, 'DefaultTargets', [2*(1:25), 5*(11:20), 10*(11:25)]);
   
   % count each data median
   data_stats = cellfun(@(D) gainStatistic(D, dimId, funcId, nInstances, false, @median), ...
@@ -74,16 +82,18 @@ function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, defaultE
     
     % aggregate results across dimensions
     if aggregateDims
-      targetEvals{D}{f} = ceil(funIgnoreNaN(@median, cell2mat(targetEvals{D}(f,:)')));
+      targetEvals{D}{f} = ceil(funReplaceNaN(@median, cell2mat(targetEvals{D}(f, :)')));
     end
     
   end
   
 end
 
-function res = funIgnoreNaN(fun, X)
-% calculates median ignoring NaN values
+function res = funReplaceNaN(fun, X)
+% calculates function replacing NaN values by maximal values
+  maxValue = max(max(X));
   for i = 1:size(X, 2)
-    res(i) = fun(X(~isnan(X(:, i)), i));
+    X(isnan(X(:, i)), i) = maxValue;
+    res(i) = fun(X(:, i));
   end
 end
