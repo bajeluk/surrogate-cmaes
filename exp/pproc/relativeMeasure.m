@@ -28,24 +28,22 @@ function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, varargin
 
   % initialize settings
   targetValue = defopts(settings, 'TargetValue', 10^-8);
-  nInstances = defopts(settings, 'MaxInstances', 15);
+  maxInstances = defopts(settings, 'MaxInstances', 15);
   refMeasure = defopts(settings, 'RefMeasure', @(x, y) min(x, [], y));
   aggregateDims = defopts(settings, 'AggregateDims', false);
   defaultEvals = defopts(settings, 'DefaultTargets', [2*(1:25), 5*(11:20), 10*(11:25)]);
   
-  % count each data median
-  data_stats = cellfun(@(D) gainStatistic(D, dimId, funcId, nInstances, false, @median), ...
-                            data, 'UniformOutput', false);
-  
-  % compute reference data
-  [nFunc, nDims] = size(data_stats{1});
+  [nFunc, nDims] = size(data{1});
   for f = 1 : nFunc
     for d = 1 : nDims
       % gather all data from function f and dimension d
-      nonEmptyData = ~cellfun(@(D) isempty(D{f, d}), data_stats);
-      allActualData = cell2mat(cellfun(@(D) D{f, d}, data_stats(nonEmptyData), 'UniformOutput', false));
+      nonEmptyData = ~cellfun(@(D) isempty(D{f, d}), data);
+      allActualData = cellfun(@(D) D{f, d}(:, 1:maxInstances), data(nonEmptyData), 'UniformOutput', false);
+      % count each data median
+      data_stats = cellfun(@(D) funIgnoreNaN(@(x) median(x, 2), D), allActualData, 'UniformOutput', false);
+      data_stats = cell2mat(data_stats')';
       % count reference data
-      refData = refMeasure(allActualData, 2);
+      refData = refMeasure(data_stats, 2); 
       % count reference evaluations
       maxEval = find(refData <= targetValue, 1, 'first');
       minEval = find(~isnan(refData), 1, 'first');
@@ -56,8 +54,7 @@ function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, varargin
       else
         transformedEvals = minEval + round((defaultEvals - min(defaultEvals))/(max(defaultEvals) - min(defaultEvals)) * (maxEval - minEval));
       end
-      % bajeluk logarithmic version
-%       yTargets = logspace(log(max(refData)), log(max(min(refData), targetValue)), length(defaultEvals));
+      
       % gain target y-values
       if isempty(maxEval)
         yTargets{d} = refData(transformedEvals);  
@@ -65,16 +62,17 @@ function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, varargin
         yTargets{d} = [refData(transformedEvals(1:end-1)); targetValue];
       end
       
-      for D = 1 : length(data_stats)
-        targetEvals{D}{f,d} = [];
+      for D = 1 : length(data)
+        nInstances = size(data{D}{f,d}, 2);
+        targetEvals{D}{f,d} = NaN(length(yTargets{d}), nInstances);
         if nonEmptyData(D)
           for t = 1 : length(yTargets{d})
-            targetEvaluation = find(data_stats{D}{f,d} <= yTargets{d}(t), 1, 'first');
-            if isempty(targetEvaluation)
-              targetEvals{D}{f,d}(end+1) = NaN;
-            else
-              targetEvals{D}{f,d}(end+1) = targetEvaluation;
-            end
+            targetEvaluation = arrayfun(@(x) ...
+                               find(data{D}{f,d}(:,x) <= yTargets{d}(t), 1, 'first'), ...
+                               1 : nInstances, ...
+                               'UniformOutput', false);
+            notEmptyTargetId = cellfun(@(x) ~isempty(x), targetEvaluation);
+            targetEvals{D}{f,d}(end+1, notEmptyTargetId) = cell2mat(targetEvaluation(notEmptyTargetId));
           end
         end
       end
@@ -87,6 +85,14 @@ function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, varargin
     
   end
   
+end
+
+function res = funIgnoreNaN(fun, X)
+% calculates function ignoring NaN values
+% returns NaN only if all values are NaN
+  for i = 1:size(X, 1)
+    res(i) = fun(X(i, ~isnan(X(i, :))));
+  end
 end
 
 function res = funReplaceNaN(fun, X)

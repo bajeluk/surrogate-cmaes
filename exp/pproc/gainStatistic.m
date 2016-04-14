@@ -4,7 +4,7 @@ function stats = gainStatistic(data, dimId, funcId, nInstances, averageDims, sta
 % Input:
 %   statistic - handle to statistic function | @mean, @median
 
-  if nargin < 4
+  if nargin < 4 || isempty(nInstances)
     nInstances = 15;
     if nargin < 5
       averageDims = true;
