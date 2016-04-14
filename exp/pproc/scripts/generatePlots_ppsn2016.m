@@ -60,7 +60,7 @@ cmaes_evals = cmaes_evals(:, :, 1);
 funcSet.dims = 20;
 [sd2_evals_20D, sd2_settings_20D] = dataReady(sd2_path20D, funcSet);
 [ei_poi_lcb_evals_20D, ei_poi_lcb_settings_20D] = dataReady(ei_poi_lcb_path20D, funcSet);
-% [gen_evals_20D, gen_settings_20D] = dataReady(gen_path20D, funcSet);
+[gen_evals_20D, gen_settings_20D] = dataReady(gen_path20D, funcSet);
 cmaes_evals_20D = dataReady(cmaespath20D, funcSet); 
 
 funcSet.dims = [2, 3, 5, 10, 20];
@@ -72,7 +72,7 @@ set.modelType = 'gp';
 set.modelOpts.normalizeY = true;
 set.evoControlModelGenerations = 5;
 genId = getStructIndex(gen_settings, set);
-% genId20D = getStructIndex(gen_settings_20D, set);
+genId20D = getStructIndex(gen_settings_20D, set);
 
 set = rmfield(set, 'evoControlModelGenerations');
 set.evoControlRestrictedParam = 0.1;
