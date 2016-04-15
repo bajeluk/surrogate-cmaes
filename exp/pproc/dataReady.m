@@ -30,11 +30,13 @@ function [data, settings] = dataReady(datapath, funcSet)
       actualDataList = gainDataList(datapath{i});
       datalist(end+1 : end+length(actualDataList)) = actualDataList; 
     end
+    errPathList = cell2mat(cellfun(@(x) [x, ' '], datapath, 'UniformOutput', false));
   % data in one folder
   else 
     datalist = gainDataList(datapath);
+    errPathList = datapath;
   end
-  assert(~isempty(datalist), 'Useful data not found')
+  assert(~isempty(datalist), 'Useful data not found in folder %s.', errPathList)
 
   settings = {};
   % load data

@@ -33,12 +33,15 @@ function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, varargin
   aggregateDims = defopts(settings, 'AggregateDims', false);
   defaultEvals = defopts(settings, 'DefaultTargets', [2*(1:25), 5*(11:20), 10*(11:25)]);
   
-  [nFunc, nDims] = size(data{1});
+  nFunc = length(funcId);
+  nDims = length(dimId);
   for f = 1 : nFunc
     for d = 1 : nDims
+      fId = funcId(f);
+      dId = dimId(d);
       % gather all data from function f and dimension d
-      nonEmptyData = ~cellfun(@(D) isempty(D{f, d}), data);
-      allActualData = cellfun(@(D) D{f, d}(:, 1:maxInstances), data(nonEmptyData), 'UniformOutput', false);
+      nonEmptyData = ~cellfun(@(D) isempty(D{fId, dId}), data);
+      allActualData = cellfun(@(D) D{fId, dId}(:, 1:maxInstances), data(nonEmptyData), 'UniformOutput', false);
       % count each data median
       data_stats = cellfun(@(D) funIgnoreNaN(@(x) median(x, 2), D), allActualData, 'UniformOutput', false);
       data_stats = cell2mat(data_stats')';
@@ -57,34 +60,62 @@ function [targetEvals, yTargets] = relativeMeasure(data, dimId, funcId, varargin
       
       % gain target y-values
       if isempty(maxEval)
-        yTargets{d} = refData(transformedEvals);  
+        yTargets{f,d} = refData(transformedEvals);  
       else
-        yTargets{d} = [refData(transformedEvals(1:end-1)); targetValue];
+        yTargets{f,d} = [refData(transformedEvals(1:end-1)); targetValue];
       end
       
       for D = 1 : length(data)
-        nInstances = size(data{D}{f,d}, 2);
-        targetEvals{D}{f,d} = NaN(length(yTargets{d}), nInstances);
+        [nEvals, nInstances] = size(data{D}{fId, dId});
+        nInstances = min(maxInstances, nInstances);
+        targetEvals{D}{f,d} = zeros(nInstances, nEvals);
         if nonEmptyData(D)
-          for t = 1 : length(yTargets{d})
-            targetEvaluation = arrayfun(@(x) ...
-                               find(data{D}{f,d}(:,x) <= yTargets{d}(t), 1, 'first'), ...
-                               1 : nInstances, ...
-                               'UniformOutput', false);
-            notEmptyTargetId = cellfun(@(x) ~isempty(x), targetEvaluation);
-            targetEvals{D}{f,d}(end+1, notEmptyTargetId) = cell2mat(targetEvaluation(notEmptyTargetId));
+          for instId = 1:nInstances
+            tId = 1;
+            dataColumn = data{D}{fId, dId}(:, instId);
+            for evalId = 1:nEvals
+              if (tId <= length(yTargets{f,d})) && (dataColumn(evalId) <= yTargets{f,d}(tId))
+                tId = findNextTarget(yTargets{f,d}, dataColumn(evalId), tId);
+              end
+              targetEvals{D}{f,d}(instId, evalId) = tId - 1;
+            end
           end
+        end
+        
+        % aggregate in one function one dimension
+        if ~aggregateDims
+          targetEvals{D}{f,d} = ceil(median(targetEvals{D}{f,d}));
         end
       end
     end
     
     % aggregate results across dimensions
     if aggregateDims
-      targetEvals{D}{f} = ceil(funReplaceNaN(@median, cell2mat(targetEvals{D}(f, :)')));
+      for D = 1 : length(data)
+        targetEvals{D}{f} = ceil(median(cell2mat(targetEvals{D}(f, :)')));
+      end
     end
     
   end
   
+  if aggregateDims
+    for D = 1 : length(data)
+      targetEvals{D} = targetEvals{D}(:,1);
+    end
+  end
+  
+end
+
+function t = findNextTarget(targets, value, tId)
+% find next target in 'targets' such that it is <= value starting from 
+% index tId
+  t = length(targets) + 1;
+  for i = tId : length(targets)
+    if targets(i) < value
+      t = i;
+      return
+    end
+  end
 end
 
 function res = funIgnoreNaN(fun, X)

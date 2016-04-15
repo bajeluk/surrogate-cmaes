@@ -28,6 +28,7 @@ function handle = reverseDistributionPlot(data, varargin)
   colors  = defopts(settings, 'Colors', rand(numOfData, 3));
   aggDims = defopts(settings, 'AggregateDims', false);
   defTargets = defopts(settings, 'DefaultTargets', [2*(1:25), 5*(11:20), 10*(11:25)]);
+  useMaxEvals = defopts(settings, 'MaxEvals', 250);
   
   % get function and dimension IDs
   dimInvIds = inverseIndex(funcSet.dims);
@@ -72,12 +73,19 @@ function handle = reverseDistributionPlot(data, varargin)
         nEmptyId = inverseIndex(notEmptyData);
         h = zeros(1, sum(notEmptyData));
         ftitle = cell(1, sum(notEmptyData));
-        h(1) = plot(targetEvals{1}{f,d}, length(targetEvals{1}{f,d}) -1 : -1 : 0, ...
+        
+        % gain values to plot
+        allPlotValues = cell2mat(arrayfun(@(x) (targetEvals{x}{f,d}), 1:sum(notEmptyData), 'UniformOutput', false)');
+        numOfEvals = min([find(all(allPlotValues == max(max(allPlotValues))), 1, 'first'), useMaxEvals]);
+        numOfTargets = length(yTargets{f,d});
+        plotValues = numOfTargets - allPlotValues(1, 1:numOfEvals);
+        h(1) = plot(1:numOfEvals, plotValues, ...
           'LineWidth', lineWidth, 'Color', colors(nEmptyId(1), :));
         ftitle{1} = datanames{nEmptyId(1)};
         hold on
         for dat = 2:sum(notEmptyData)
-          h(dat) = plot(targetEvals{dat}{f,d}, length(targetEvals{1}{f,d}) -1 : -1 : 0, ...
+          plotValues = numOfTargets - allPlotValues(dat, 1:numOfEvals);
+          h(dat) = plot(1:numOfEvals, plotValues, ...
           'LineWidth', lineWidth, 'Color', colors(nEmptyId(dat), :));
           ftitle{dat} = datanames{nEmptyId(dat)};
         end
@@ -94,7 +102,7 @@ function handle = reverseDistributionPlot(data, varargin)
       end
       ax = gca;
       if ~aggDims
-        reverseYTargets = yTargets{d}(end:-1:1);
+        reverseYTargets = yTargets{f,d}(end:-1:1);
         ax.YTickLabels = [arrayfun(@(x) sprintf('%0.1e', x), reverseYTargets(ax.YTick(1:end-1) + 1)', 'UniformOutput', false), {''}];
       end
       xlabel('Number of evaluations / D')
