@@ -51,7 +51,7 @@ function handle = relativeFValuesPlot(data, varargin)
   aggDims = defopts(settings, 'AggregateDims', false);
   aggFuns = defopts(settings, 'AggregateFuns', false);
   minValue = defopts(settings, 'MinValue', 10^(-8));
-  maxEval = defopts(settings, 'MaxEval', 250);
+  maxEval = defopts(settings, 'MaxEval', 100);
   statistic = defopts(settings, 'Statistic', @mean);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
@@ -98,7 +98,7 @@ function handle = relativePlot(data_stats, dims, BBfunc, numOfFuncIds, datanames
 % dimension
 
   numOfData = length(data_stats);
-  evaldim = 1:length(data_stats{1}{1});
+  evaldim = 1:min(length(data_stats{1}{1}), maxEval);
   medianLineWidth = 2;
   minGraph = 10e-8;
   maxGraph = 1;
