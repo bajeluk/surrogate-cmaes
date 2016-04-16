@@ -7,7 +7,16 @@
 
 %% load data
 
-tmpFName = '/tmp/ppsndata.mat';
+% checkout file containing all loaded data
+if ispc
+  osTmp = fullfile('exp', 'pproc', 'scripts', 'tmp');
+  if ~exist(osTmp, 'dir')
+    mkdir(osTmp)
+  end
+else
+  osTmp = '/tmp';
+end
+tmpFName = fullfile(osTmp, 'ppsndata.mat');
 if (exist(tmpFName', 'file'))
   load(tmpFName);
 else
@@ -18,7 +27,8 @@ exppath = fullfile('exp', 'experiments');
 sd2_r10_20_path = fullfile(exppath, 'exp_restrEC_04');
 sd2_r05_40_path = fullfile(exppath, 'exp_doubleEC_01_restr05_40');
 sd2_r05_2pop_path = fullfile(exppath, 'exp_restrEC_04_2pop');
-sd2_r10_2pop_path = fullfile(exppath, 'exp_doubleEC_01_2pop');sd2_r20_40_2pop_path = fullfile(exppath, 'exp_doubleEC_01_2pop_restr20_40');
+sd2_r10_2pop_path = fullfile(exppath, 'exp_doubleEC_01_2pop');
+sd2_r20_40_2pop_path = fullfile(exppath, 'exp_doubleEC_01_2pop_restr20_40');
 sd2_path20D = fullfile(exppath, 'exp_doubleEC_01_20D');
 
 ei_poi_lcb_path = fullfile(exppath, 'exp_doubleEC_01_ei_poi_lcb');
@@ -30,7 +40,8 @@ gen_path20D = fullfile(exppath, 'exp_geneEC_10_20D');
 cmaespath = fullfile(ei_poi_lcb_path, 'cmaes_results');
 cmaespath20D = fullfile(ei_poi_lcb_path20D, 'cmaes_results');
 
-saacmes_path = fullfile(exppath, 'saACMES');
+saacmes_path = fullfile(exppath, 'exp_saACMES_03_10D');
+saacmes_path20D = fullfile(exppath, 'exp_saACMES_03_20D');
 smac_path = fullfile(exppath, 'SMAC');
 
 % folder for results
@@ -61,6 +72,8 @@ for f = 1:size(cmaes_evals, 1)
 end
 cmaes_evals = cmaes_evals(:, :, 1);
 
+saacmes_evals = dataReady(saacmes_path, funcSet);
+
 funcSet.dims = 20;
 [sd2_evals_20D, sd2_settings_20D] = dataReady(sd2_path20D, funcSet);
 [ei_poi_lcb_evals_20D, ei_poi_lcb_settings_20D] = dataReady(ei_poi_lcb_path20D, funcSet);
@@ -76,11 +89,13 @@ for f = 1:size(cmaes_evals_20D, 1)
 end
 cmaes_evals_20D = cmaes_evals_20D(:, :, 1);
 
+saacmes_evals_20D = dataReady(saacmes_path20D, funcSet);
+
 funcSet.dims = [2, 3, 5, 10, 20];
-saacmes_evals = bbobDataReady(saacmes_path, funcSet);
 smac_evals = readSMACResults(smac_path, funcSet);
 
 % finding data indexes
+clear set
 set.modelType = 'gp';
 set.modelOpts.normalizeY = true;
 set.evoControlModelGenerations = 5;
@@ -152,7 +167,7 @@ sd2Data_10_2pop = [sd2_r10_2pop_evals(:, :, sd2_r10_2pop_Id), sd2_evals_20D(:, :
 sd2Data_20_2pop = [sd2_r20_40_2pop_evals(:, :, sd2_r20_2pop_Id), sd2_evals_20D(:, :, sd2_r20_2pop_Id20D)];
 sd2Data_40_2pop = [sd2_r20_40_2pop_evals(:, :, sd2_r40_2pop_Id), sd2_evals_20D(:, :, sd2_r40_2pop_Id20D)];
 
-saacmesData = saacmes_evals;
+saacmesData = [saacmes_evals, saacmes_evals_20D];
 smacData = smac_evals;
 cmaesData = [cmaes_evals(:, :, 1) , cmaes_evals_20D(:, :, 1)];
 genData = [gen_evals(:, :, genId), gen_evals_20D(:, :, genId20D)];
@@ -199,7 +214,7 @@ datanames = {'EI', 'poi', 'lcb', 'sd2', 'saACMES', 'CMA-ES'};
 
 colors = [eiCol; poiCol; lcbCol; sd2Col; saacmesCol; cmaesCol]/255;
 
-plotDims = [2, 5, 10, 20];
+plotDims = [2, 3, 5, 10, 20];
 
 for f = funcSet.BBfunc
 
@@ -237,7 +252,7 @@ datanames = {'0.05', '0.1', '0.2', '0.4', 'saACMES', 'CMA-ES'};
 
 colors = [sd2Col_05; sd2Col_10; sd2Col_20; sd2Col_40; saacmesCol; cmaesCol]/255;
 
-plotDims = [2, 5, 10, 20];
+plotDims = [2, 3, 5, 10, 20];
 
 for f = funcSet.BBfunc
 
@@ -276,11 +291,15 @@ data = {sd2Data_05, ...
         saacmesData, ...
         cmaesData};
 
-datanames = {'0.05', '0.1', '0.2', '0.4', '0.05 2pop', '0.1 2pop', '0.2 2pop', '0.4 2pop', 'saACMES', 'CMA-ES'};
+datanames = {'0.05', '0.1', '0.2', '0.4', ...
+             '0.05 2pop', '0.1 2pop', '0.2 2pop', '0.4 2pop', ...
+             'saACMES', 'CMA-ES'};
 
-colors = [sd2Col_05; sd2Col_10; sd2Col_20; sd2Col_40; sd2Col_05_2pop; sd2Col_10_2pop; sd2Col_20_2pop; sd2Col_40_2pop; saacmesCol; cmaesCol]/255;
+colors = [sd2Col_05; sd2Col_10; sd2Col_20; sd2Col_40; ...
+          sd2Col_05_2pop; sd2Col_10_2pop; sd2Col_20_2pop; sd2Col_40_2pop; ...
+          saacmesCol; cmaesCol]/255;
 
-plotDims = [2, 5, 10, 20];
+plotDims = [2, 3, 5, 10, 20];
 
 for f = funcSet.BBfunc
 
@@ -305,9 +324,8 @@ han = relativeFValuesPlot(data, ...
                               'Statistic', @median, 'AggregateFuns', true);
 
 
-%% Algorithm comparison: DTS-CMA-ES, GS-CMA-ES, saACMES. SMAC, CMA-ES
-% Aggregation of function values across dimensions 2, 5, 10, 20.
-% Dimension 3 is omitted due to SMAC results absence.
+%% Algorithm comparison: DTS-CMA-ES, S-CMA-ES, saACMES, SMAC, CMA-ES
+% Aggregation of function values across dimensions 2, 3, 5, 10, 20.
 
 data = {sd2Data_10, ...
         genData, ...
@@ -315,11 +333,11 @@ data = {sd2Data_10, ...
         smacData, ...
         cmaesData};
 
-datanames = {'DTS-CMA-ES', 'GS-CMA-ES', 'saACMES', 'SMAC', 'CMA-ES'};
+datanames = {'DTS-CMA-ES', 'S-CMA-ES', 'saACMES', 'SMAC', 'CMA-ES'};
 
 colors = [sd2Col; genCol; saacmesCol; smacCol; cmaesCol]/255;
 
-plotDims = [2, 5, 10, 20];
+plotDims = [2, 3, 5, 10, 20];
 
 for f = funcSet.BBfunc
 
@@ -404,32 +422,36 @@ han = relativeFValuesPlot(data, ...
 %                         'Dependency', 'alg');
 % %   print2pdf(han, pdfNames, 1)
 % 
-%% EI, PoI, lcb, sd2: reverse distribution comparison
+
+%% Algorithm comparison: DTS-CMA-ES, S-CMA-ES, saACMES, SMAC, CMA-ES
+% Aggregation of function values across dimensions 2, 3, 5, 10, 20.
+
 % close all
 % 
-% data = {eiData, ...
-%         poiData, ...
-%         lcbData, ...
-%         sd2Data_10, ...
+% data = {sd2Data_10, ...
+%         genData, ...
+%         saacmesData, ...
+%         smacData, ...
 %         cmaesData};
-%       
-% datanames = {'EI', 'PoI', 'lcb', 'sd2', 'CMA-ES'};
 % 
-% colors = [eiCol; poiCol; lcbCol; sd2Col; cmaesCol]/255;
+% datanames = {'DTS-CMA-ES', 'S-CMA-ES', 'saACMES', 'SMAC', 'CMA-ES'};
 % 
-% func = 1:4;
+% colors = [sd2Col; genCol; saacmesCol; smacCol; cmaesCol]/255;
+% 
+% plotFunc = 1:4;
+% plotDims = [3 20];
 %       
 % han = relativeFValuesPlot(data, ...
 %                               'DataNames', datanames, 'DataDims', funcSet.dims, ...
 %                               'DataFuns', funcSet.BBfunc, 'Colors', colors, ...
-%                               'PlotFuns', func, 'PlotDims', [2],...funcSet.dims, ...
+%                               'PlotFuns', plotFunc, 'PlotDims', plotDims,...
 %                               'DefaultTargets', 10*(1:25), 'AggregateDims', false,...
 %                               'Statistic', @median, 'AggregateFuns', false);
 %                             
 % han = relativeFValuesPlot(data, ...
 %                               'DataNames', datanames, 'DataDims', funcSet.dims, ...
 %                               'DataFuns', funcSet.BBfunc, 'Colors', colors, ...
-%                               'PlotFuns', func, 'PlotDims', [2],...funcSet.dims, ...
+%                               'PlotFuns', plotFunc, 'PlotDims', plotDims,...
 %                               'DefaultTargets', 10*(1:25), 'AggregateDims', false,...
 %                               'Statistic', @median, 'AggregateFuns', true);
 

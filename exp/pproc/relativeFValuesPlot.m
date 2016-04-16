@@ -76,8 +76,12 @@ function handle = relativeFValuesPlot(data, varargin)
 
   % count means
   useMaxInstances = 15;
-  data_stats = cellfun(@(D) gainStatistic(D, dimIds, funcIds, useMaxInstances, false, statistic), ...
-                            data, 'UniformOutput', false);
+  data_stats = cellfun(@(D) gainStatistic(D, dimIds, funcIds, ...
+                            'MaxInstances', useMaxInstances, ...
+                            'AverageDims', false, ...
+                            'Statistic', statistic, ...
+                            'SuppWarning', true), ...
+                       data, 'UniformOutput', false);
                           
   % minimal value cannot be lower than minValue
   for D = 1:numOfData
@@ -110,6 +114,10 @@ function handle = relativePlot(data_stats, dims, BBfunc, numOfFuncIds, datanames
       notEmptyData = true(1, numOfData);
       for dat = 1:numOfData
         notEmptyData(dat) = ~isempty(data_stats{dat}{f,d});
+        if ~notEmptyData(dat)
+          warning('%s is missing in function %d and dimension %d.', datanames{dat}, f, d)
+          relativeData{dat}{f, d} = [];
+        end
       end
       if any(notEmptyData)
         nEmptyId = inverseIndex(notEmptyData);
@@ -143,7 +151,7 @@ function handle = relativePlot(data_stats, dims, BBfunc, numOfFuncIds, datanames
     for D = 1:numOfData
       for d = 1:length(dims)
         nFuns = size(relativeData{D}, 1);
-        relativeData{D}{1, d} = mean(cell2mat(arrayfun(@(x) relativeData{D}{x,d}, 1:nFuns, 'UniformOutput', false)'));
+        relativeData{D}{1, d} = mean(cell2mat(arrayfun(@(x) relativeData{D}{x,d}, 1:nFuns, 'UniformOutput', false)'), 1);
       end
       relativeData{D} = relativeData{D}(1, :);
     end
@@ -159,6 +167,8 @@ function handle = relativePlot(data_stats, dims, BBfunc, numOfFuncIds, datanames
         notEmptyData(dat) = ~isempty(relativeData{dat}{f, d});
       end
       if any(notEmptyData)
+        nEmptyId = inverseIndex(notEmptyData);
+        nUsefulData = sum(notEmptyData);
         h = zeros(1, nUsefulData);
         ftitle = cell(1, nUsefulData);
         % mean
