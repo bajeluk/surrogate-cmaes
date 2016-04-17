@@ -20,6 +20,14 @@ tmpFName = fullfile(osTmp, 'ppsndata.mat');
 if (exist(tmpFName', 'file'))
   load(tmpFName);
 else
+  
+% folder for results
+if ispc
+  actualFolder = pwd;
+  plotResultsFolder = fullfile(actualFolder(1:end - 1 - length('surrogate-cmaes')), 'latex_scmaes', 'ppsn2016paper', 'images');
+else
+  plotResultsFolder = osTmp;
+end
 
 % path settings
 exppath = fullfile('exp', 'experiments');
@@ -40,12 +48,12 @@ gen_path20D = fullfile(exppath, 'exp_geneEC_10_20D');
 cmaespath = fullfile(ei_poi_lcb_path, 'cmaes_results');
 cmaespath20D = fullfile(ei_poi_lcb_path20D, 'cmaes_results');
 
-saacmes_path = fullfile(exppath, 'exp_saACMES_03_10D');
-saacmes_path20D = fullfile(exppath, 'exp_saACMES_03_20D');
+saacmes_path = {fullfile(exppath, 'BIPOP-saACM-k', 'saACMESlambdaRevMinIter3v2_23510Dnew0', 'ActiveOptACMd'), ...
+                fullfile(exppath, 'BIPOP-saACM-k', 'saACMESlambdaRevMinIter3v2_20Dnew0', 'ActiveOptACMd'), ...
+                fullfile(exppath, 'BIPOP-saACM-k', 'saACMESlambdaRevMinIter3v2_20Dnew1', 'ActiveOptACMd'), ...
+                fullfile(exppath, 'BIPOP-saACM-k', 'saACMESlambdaRevMinIter3v2_20Dnew2', 'ActiveOptACMd'), ...
+                fullfile(exppath, 'BIPOP-saACM-k', 'saACMESlambdaRevMinIter3v2_20Dnew3', 'ActiveOptACMd')};
 smac_path = fullfile(exppath, 'SMAC');
-
-% folder for results
-plotResultsFolder = '/tmp';
 
 % needed function and dimension settings
 funcSet.BBfunc = 1:24;
@@ -72,8 +80,6 @@ for f = 1:size(cmaes_evals, 1)
 end
 cmaes_evals = cmaes_evals(:, :, 1);
 
-saacmes_evals = dataReady(saacmes_path, funcSet);
-
 funcSet.dims = 20;
 [sd2_evals_20D, sd2_settings_20D] = dataReady(sd2_path20D, funcSet);
 [ei_poi_lcb_evals_20D, ei_poi_lcb_settings_20D] = dataReady(ei_poi_lcb_path20D, funcSet);
@@ -89,9 +95,8 @@ for f = 1:size(cmaes_evals_20D, 1)
 end
 cmaes_evals_20D = cmaes_evals_20D(:, :, 1);
 
-saacmes_evals_20D = dataReady(saacmes_path20D, funcSet);
-
 funcSet.dims = [2, 3, 5, 10, 20];
+saacmes_evals = bbobDataReady(saacmes_path, funcSet);
 smac_evals = readSMACResults(smac_path, funcSet);
 
 % finding data indexes
@@ -167,7 +172,7 @@ sd2Data_10_2pop = [sd2_r10_2pop_evals(:, :, sd2_r10_2pop_Id), sd2_evals_20D(:, :
 sd2Data_20_2pop = [sd2_r20_40_2pop_evals(:, :, sd2_r20_2pop_Id), sd2_evals_20D(:, :, sd2_r20_2pop_Id20D)];
 sd2Data_40_2pop = [sd2_r20_40_2pop_evals(:, :, sd2_r40_2pop_Id), sd2_evals_20D(:, :, sd2_r40_2pop_Id20D)];
 
-saacmesData = [saacmes_evals, saacmes_evals_20D];
+saacmesData = saacmes_evals;
 smacData = smac_evals;
 cmaesData = [cmaes_evals(:, :, 1) , cmaes_evals_20D(:, :, 1)];
 genData = [gen_evals(:, :, genId), gen_evals_20D(:, :, genId20D)];
@@ -200,6 +205,133 @@ if (~exist(tmpFName, 'file'))
 end
 
 end
+
+%% Used Output
+
+%% Criterion comparison: EI, PoI, lcb, sd2
+% Aggregation of function values across dimensions  5, 20.
+
+data = {eiData, ...
+        poiData, ...
+        lcbData, ...
+        sd2Data_10, ...
+        cmaesData};
+
+datanames = {'EI', 'poi', 'lcb', 'sd2', 'CMA-ES'};
+
+colors = [eiCol; poiCol; lcbCol; sd2Col; cmaesCol]/255;
+
+plotDims = [5, 20];
+
+clear pdfNames
+for i = 1:length(plotDims)
+  pdfNames{i} = fullfile(plotResultsFolder, ['crit', num2str(plotDims(i)), 'D']);
+end
+
+close all
+han = relativeFValuesPlot(data, ...
+                              'DataNames', datanames, 'DataDims', funcSet.dims, ...
+                              'DataFuns', funcSet.BBfunc, 'Colors', colors, ...
+                              'PlotFuns', funcSet.BBfunc, 'PlotDims', plotDims, ...
+                              'AggregateDims', false,...
+                              'Statistic', @median, 'AggregateFuns', true);
+                            
+print2pdf(han, pdfNames, 1)
+
+%% Population size comparison: default, 2*default
+% Aggregation of function values across dimensions 5, 20.
+
+data = {sd2Data_05, ...
+        sd2Data_10, ...
+        sd2Data_20, ...
+        sd2Data_40, ...
+        sd2Data_05_2pop, ...
+        sd2Data_10_2pop, ...
+        sd2Data_20_2pop, ...
+        sd2Data_40_2pop, ...
+        cmaesData};
+
+datanames = {'0.05', '0.1', '0.2', '0.4', ...
+             '0.05 2pop', '0.1 2pop', '0.2 2pop', '0.4 2pop', ...
+             'CMA-ES'};
+
+colors = [sd2Col_05; sd2Col_10; sd2Col_20; sd2Col_40; ...
+          sd2Col_05_2pop; sd2Col_10_2pop; sd2Col_20_2pop; sd2Col_40_2pop; ...
+          cmaesCol]/255;
+        
+plotDims = [5, 20];
+
+clear pdfNames
+for i = 1:length(plotDims)
+  pdfNames{i} = fullfile(plotResultsFolder, ['pop', num2str(plotDims(i)), 'D']);
+end
+
+close all
+han = relativeFValuesPlot(data, ...
+                              'DataNames', datanames, 'DataDims', funcSet.dims, ...
+                              'DataFuns', funcSet.BBfunc, 'Colors', colors, ...
+                              'PlotFuns', funcSet.BBfunc, 'PlotDims', plotDims, ...
+                              'AggregateDims', false,...
+                              'Statistic', @median, 'AggregateFuns', true);
+                            
+print2pdf(han, pdfNames, 1)
+
+%% Algorithm comparison: DTS-CMA-ES, S-CMA-ES, saACMES, SMAC, CMA-ES
+% Aggregation of function values across dimensions 2, 5, 10, 20.
+
+data = {sd2Data_10, ...
+        sd2Data_05_2pop, ...
+        genData, ...
+        saacmesData, ...
+        smacData, ...
+        cmaesData};
+
+datanames = {'DTS 0.1 1pop', 'DTS 0.05 2pop', 'S-CMA-ES', 'saACMES', 'SMAC', 'CMA-ES'};
+
+colors = [sd2Col_10; sd2Col_05_2pop; genCol; saacmesCol; smacCol; cmaesCol]/255;
+
+plotDims = [2, 5, 10, 20];
+
+clear pdfNames
+for i = 1:length(plotDims)
+  pdfNames{i} = fullfile(plotResultsFolder, ['alg', num2str(plotDims(i)), 'D']);
+end
+
+close all
+han = relativeFValuesPlot(data, ...
+                              'DataNames', datanames, 'DataDims', funcSet.dims, ...
+                              'DataFuns', funcSet.BBfunc, 'Colors', colors, ...
+                              'PlotFuns', funcSet.BBfunc, 'PlotDims', plotDims, ...
+                              'AggregateDims', false,...
+                              'Statistic', @median, 'AggregateFuns', true);
+                            
+print2pdf(han, pdfNames, 1)
+
+%% Algorithm ranking comparison: DTS 0.1 1pop, DTS 0.05 2pop, S-CMA-ES, saACMES, SMAC, CMA-ES
+% Aggregation of function values across dimensions 2, 3, 5, 10, 20.
+
+close all
+
+data = {sd2Data_10, ...
+        sd2Data_05_2pop, ...
+        genData, ...
+        saacmesData, ...
+        smacData, ...
+        cmaesData};
+
+datanames = {'DTS 0.1 1pop', 'DTS 0.05 2pop', 'S-CMA-ES', 'saACMES', 'SMAC', 'CMA-ES'};
+
+tableFunc = funcSet.BBfunc;
+tableDims = funcSet.dims;
+      
+table = rankingTable(data, 'DataNames', datanames, ...
+                           'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
+                           'TableFuns', tableFunc, 'TableDims', tableDims,...
+                           'Evaluations', [20 40 80]);
+                         
+%% Testing Output
+
+
 %% Criterion comparison: EI, PoI, lcb, sd2
 % Aggregation of function values across dimensions 2, 3, 5, 10, 20.
 

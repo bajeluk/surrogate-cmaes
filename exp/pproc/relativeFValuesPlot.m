@@ -93,15 +93,16 @@ function handle = relativeFValuesPlot(data, varargin)
   end
   
   % draw plot
-  handle = relativePlot(data_stats, dims, BBfunc, length(funcIds), datanames, colors, aggDims, aggFuns, maxEval);
+  handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval);
 
 end
 
-function handle = relativePlot(data_stats, dims, BBfunc, numOfFuncIds, datanames, colors, aggDims, aggFuns, maxEval)
+function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval)
 % Plots quantile graph of different algorithms in one function and one
 % dimension
 
   numOfData = length(data_stats);
+  numOfFuncIds = length(BBfunc);
   evaldim = 1:min(length(data_stats{1}{1}), maxEval);
   medianLineWidth = 2;
   minGraph = 10e-8;
@@ -115,7 +116,7 @@ function handle = relativePlot(data_stats, dims, BBfunc, numOfFuncIds, datanames
       for dat = 1:numOfData
         notEmptyData(dat) = ~isempty(data_stats{dat}{f,d});
         if ~notEmptyData(dat)
-          warning('%s is missing in function %d and dimension %d.', datanames{dat}, f, d)
+          warning('%s is missing in function %d and dimension %d.', datanames{dat}, BBfunc(f), dims(d))
           relativeData{dat}{f, d} = [];
         end
       end
