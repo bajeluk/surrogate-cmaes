@@ -183,7 +183,7 @@ poiCol = [255 215 0];
 lcbCol = [208 32 144];
 sd2Col = [0 0 0];
 saacmesCol = [100 149 237];
-smacCol = [116 172 66];
+smacCol = [255, 155, 0];
 genCol = [178,34,34];
 
 sd2Col_05 = [0 0 139];
@@ -222,16 +222,14 @@ colors = [eiCol; poiCol; lcbCol; sd2Col; cmaesCol]/255;
 plotDims = [5, 20];
 
 clear pdfNames
-for i = 1:length(plotDims)
-  pdfNames{i} = fullfile(plotResultsFolder, ['crit', num2str(plotDims(i)), 'D']);
-end
+pdfNames = fullfile(plotResultsFolder, 'crit5_20D');
 
 close all
 han = relativeFValuesPlot(data, ...
                               'DataNames', datanames, 'DataDims', funcSet.dims, ...
                               'DataFuns', funcSet.BBfunc, 'Colors', colors, ...
                               'PlotFuns', funcSet.BBfunc, 'PlotDims', plotDims, ...
-                              'AggregateDims', false,...
+                              'AggregateDims', false, 'OneFigure', true, ...
                               'Statistic', @median, 'AggregateFuns', true);
                             
 print2pdf(han, pdfNames, 1)
@@ -260,16 +258,14 @@ colors = [sd2Col_05; sd2Col_10; sd2Col_20; sd2Col_40; ...
 plotDims = [5, 20];
 
 clear pdfNames
-for i = 1:length(plotDims)
-  pdfNames{i} = fullfile(plotResultsFolder, ['pop', num2str(plotDims(i)), 'D']);
-end
+pdfNames = fullfile(plotResultsFolder, 'pop5_20D');
 
 close all
 han = relativeFValuesPlot(data, ...
                               'DataNames', datanames, 'DataDims', funcSet.dims, ...
                               'DataFuns', funcSet.BBfunc, 'Colors', colors, ...
                               'PlotFuns', funcSet.BBfunc, 'PlotDims', plotDims, ...
-                              'AggregateDims', false,...
+                              'AggregateDims', false, 'OneFigure', true, ...
                               'Statistic', @median, 'AggregateFuns', true);
                             
 print2pdf(han, pdfNames, 1)
@@ -291,16 +287,14 @@ colors = [sd2Col_10; sd2Col_05_2pop; genCol; saacmesCol; smacCol; cmaesCol]/255;
 plotDims = [2, 5, 10, 20];
 
 clear pdfNames
-for i = 1:length(plotDims)
-  pdfNames{i} = fullfile(plotResultsFolder, ['alg', num2str(plotDims(i)), 'D']);
-end
+pdfNames = fullfile(plotResultsFolder, 'alg2_5_10_20D');
 
 close all
 han = relativeFValuesPlot(data, ...
                               'DataNames', datanames, 'DataDims', funcSet.dims, ...
                               'DataFuns', funcSet.BBfunc, 'Colors', colors, ...
                               'PlotFuns', funcSet.BBfunc, 'PlotDims', plotDims, ...
-                              'AggregateDims', false,...
+                              'AggregateDims', false, 'OneFigure', true, ...
                               'Statistic', @median, 'AggregateFuns', true);
                             
 print2pdf(han, pdfNames, 1)

@@ -135,6 +135,7 @@ function [table, ranks] = rankingTable(data, varargin)
   fprintf(FID, '\\hline\n');
   % make datanames equally long
   datanames = sameLength(datanames);
+  % data rows
   for dat = 1:numOfData
     printString = '';
     % dimensions
@@ -155,6 +156,7 @@ function [table, ranks] = rankingTable(data, varargin)
   for e = 2:nEvals
     printString = [printString, ', ', num2str(evaluations(e))];
   end
+  fprintf(FID, '\\vspace{1mm}\n');
   fprintf(FID, '\\caption{Counts of the 1st ranks according to the lowest achieved $\\Delta_f$ for different FE/D = \\{%s\\}.}\n', printString);
   fprintf(FID, '\\label{tab:fed}\n');
   fprintf(FID, '\\end{table}\n');

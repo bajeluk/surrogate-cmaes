@@ -18,6 +18,7 @@ function handle = relativeFValuesPlot(data, varargin)
 %     'Statistic'     - statistic of data | string or handle (@mean, 
 %                       @median)
 %     'MinValue'      - minimal possible function value
+%     'OneFigure'     - plot in one figure | boolean
 %
 % Output:
 %   handle - handles of resulting figures
@@ -39,6 +40,8 @@ function handle = relativeFValuesPlot(data, varargin)
     varargin(vararCellId) = {varargin(vararCellId)};
     settings = struct(varargin{:});
   end
+  % TODO: rewrite to settings structure which can be given as an argument
+  % to other functions
   numOfData = length(data);
   datanames = defopts(settings, 'DataNames', ...
     arrayfun(@(x) ['ALG', num2str(x)], 1:numOfData, 'UniformOutput', false));
@@ -53,6 +56,7 @@ function handle = relativeFValuesPlot(data, varargin)
   minValue = defopts(settings, 'MinValue', 1e-8);
   maxEval = defopts(settings, 'MaxEval', 100);
   statistic = defopts(settings, 'Statistic', @mean);
+  oneFigure = defopts(settings, 'OneFigure', false);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
       statistic = @(x, dim) quantile(x, [0.25, 0.5, 0.75], dim);
@@ -93,20 +97,20 @@ function handle = relativeFValuesPlot(data, varargin)
   end
   
   % draw plot
-  handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval);
+  handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval, oneFigure);
 
 end
 
-function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval)
-% Plots quantile graph of different algorithms in one function and one
-% dimension
+function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval, oneFigure)
+% Plots scaled graph of different algorithms in all defined functions and 
+% one all dimensions
 
   numOfData = length(data_stats);
   numOfFuncIds = length(BBfunc);
   evaldim = 1:min(length(data_stats{1}{1}), maxEval);
-  medianLineWidth = 2;
   minGraph = -8;
   maxGraph =  0;
+  splitLegend = true;
   
   for f = 1:numOfFuncIds
     % find useful data and plot 
@@ -166,45 +170,82 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
     nFunsToPlot = length(BBfunc);
   end
   
-  handle = zeros(1, nDimsToPlot*nFunsToPlot);
-  for f = 1:nFunsToPlot
-    for d = 1:nDimsToPlot
-      handle((d-1) * nFunsToPlot + f) = figure('Units', 'centimeters', 'Position', [1 1 12.5 6]);
-      for dat = 1:numOfData
-        notEmptyData(dat) = ~isempty(relativeData{dat}{f, d});
-      end
-      if any(notEmptyData)
-        nEmptyId = inverseIndex(notEmptyData);
-        nUsefulData = sum(notEmptyData);
-        h = zeros(1, nUsefulData);
-        ftitle = cell(1, nUsefulData);
-        % mean
-        h(1) = plot(evaldim, relativeData{nEmptyId(1)}{f, d}(1:maxEval), ...
-          'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(1), :));
-        ftitle{1} = datanames{nEmptyId(1)};
-        hold on
-        grid on
-        for dat = 2:nUsefulData
-          h(dat) = plot(evaldim, relativeData{nEmptyId(dat)}{f, d}(1:maxEval), ...
-            'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(dat), :));
-          ftitle{dat} = datanames{nEmptyId(dat)};
-        end
-        legend(h, ftitle, 'Location', 'NorthEast')
-      else
-        warning('Function %d dimension %d has no data available', BBfunc(f), dims(d))
-      end
+  if oneFigure && (nFunsToPlot*nDimsToPlot > 1)
+    nRows = ceil(nFunsToPlot*nDimsToPlot/2);
+    handle = figure('Units', 'centimeters', 'Position', [1 1 20 6*nRows]);
+    subplot(nRows, 2, 1)
+    onePlot(relativeData, 1, 1, evaldim, maxEval, colors, datanames, aggFuns, aggDims, BBfunc, dims, true);
+    if nFunsToPlot > 1
+      fStart = 2;
+      dStart = 1;
+    elseif nDimsToPlot > 1
+      fStart = 1;
+      dStart = 2;
+    else
+      fStart = 2;
+    end
       
-      titleString = '';
-      if ~aggFuns
-        titleString = ['f', num2str(BBfunc(f))];
+    for f = fStart:nFunsToPlot
+      for d = dStart:nDimsToPlot
+        plotId = (d-1) * nFunsToPlot + f;
+        subplot(nRows, 2, plotId)
+        onePlot(relativeData, f, d, evaldim, maxEval, colors, datanames, aggFuns, aggDims, BBfunc, dims, false);
       end
-      if ~aggDims
-        titleString = [titleString, ' ', num2str(dims(d)),'D'];
+    end
+  else
+    handle = zeros(1, nDimsToPlot*nFunsToPlot);
+    dispLegend = true;
+    for f = 1:nFunsToPlot
+      for d = 1:nDimsToPlot
+        handle((d-1) * nFunsToPlot + f) = figure('Units', 'centimeters', 'Position', [1 1 12.5 6]);
+        onePlot(relativeData, f, d, evaldim, maxEval, colors, datanames, aggFuns, aggDims, BBfunc, dims, dispLegend);
       end
-      title(titleString)
-      xlabel('Number of evaluations / D')
-      ylabel('Minimum function values')
-      hold off
     end
   end
+  
+end
+
+function handle = onePlot(relativeData, fId, dId, evaldim, maxEval, colors, datanames, aggFuns, aggDims, BBfunc, dims, dispLegend)
+% Plots one scaled graph 
+
+  medianLineWidth = 2;
+
+  for dat = 1:length(relativeData)
+    notEmptyData(dat) = ~isempty(relativeData{dat}{fId, dId});
+  end
+  if any(notEmptyData)
+    nEmptyId = inverseIndex(notEmptyData);
+    nUsefulData = sum(notEmptyData);
+    h = zeros(1, nUsefulData);
+    ftitle = cell(1, nUsefulData);
+    % mean
+    h(1) = plot(evaldim, relativeData{nEmptyId(1)}{fId, dId}(1:maxEval), ...
+      'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(1), :));
+    ftitle{1} = datanames{nEmptyId(1)};
+    hold on
+    grid on
+    for dat = 2:nUsefulData
+      h(dat) = plot(evaldim, relativeData{nEmptyId(dat)}{fId, dId}(1:maxEval), ...
+        'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(dat), :));
+      ftitle{dat} = datanames{nEmptyId(dat)};
+    end
+    if dispLegend
+      legend(h, ftitle, 'Location', 'NorthEast')
+    end
+  else
+    warning('Function %d dimension %d has no data available', BBfunc(fId), dims(dId))
+  end
+
+  titleString = '';
+  if ~aggFuns
+    titleString = ['f', num2str(BBfunc(fId))];
+  end
+  if ~aggDims
+    titleString = [titleString, ' ', num2str(dims(dId)),'D'];
+  end
+  title(titleString)
+  xlabel('Number of evaluations / D')
+  ylabel('\Delta_f^{log}')
+  hold off
+
 end
