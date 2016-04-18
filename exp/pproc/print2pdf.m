@@ -47,7 +47,11 @@ function print2pdf(handle, pdfname, overwrite)
   % count existing files
   existingPDFs = [];
   for f = 1:nFig
-    if exist(pdfname{f},'file')
+    pdfFolderId = strfind(pdfname{f}, filesep);
+    pdfFolder = pdfname{f}(1:pdfFolderId(end) - 1);
+    if ~exist(pdfFolder, 'dir')
+      mkdir(pdfFolder)
+    elseif exist(pdfname{f},'file')
       existingPDFs(end+1) = f;            
     end
   end

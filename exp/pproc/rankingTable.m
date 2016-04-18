@@ -48,8 +48,10 @@ function [table, ranks] = rankingTable(data, varargin)
   BBfunc  = defopts(settings, 'TableFuns', funcSet.BBfunc);
   evaluations = defopts(settings, 'Evaluations', [20 40 80]);
   statistic = defopts(settings, 'Statistic', @median);
-  resultFolder = fullfile('exp', 'pproc', 'tex');
-  resultFile = defopts(settings, 'ResultFile', fullfile(resultFolder, 'rankTable.tex'));
+  defResultFolder = fullfile('exp', 'pproc', 'tex');
+  resultFile = defopts(settings, 'ResultFile', fullfile(defResultFolder, 'rankTable.tex'));
+  fileID = strfind(resultFile, filesep);
+  resultFolder = resultFile(1 : fileID(end) - 1);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
       statistic = @(x, dim) quantile(x, [0.25, 0.5, 0.75], dim);
@@ -88,8 +90,13 @@ function [table, ranks] = rankingTable(data, varargin)
   for f = 1:nFunc
     for d = 1:nDims
       notEmptyData = inverseIndex(arrayfun(@(x) ~isempty(data_stats{x}{f,d}), 1:numOfData));
-      [~, I] = sort(cell2mat(arrayfun(@(x) data_stats{x}{f,d}(evaluations), notEmptyData, 'UniformOutput', false)), 2);
-      ranks{f,d}(:, notEmptyData) = I;
+      for e = 1:nEvals
+        thisData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}(evaluations(e)), notEmptyData, 'UniformOutput', false));
+        thisData = max(thisData, 1e-8 * ones(size(thisData)));
+        [~, ~, I] = unique(thisData);
+%         [~, I2] = sort(cell2mat(arrayfun(@(x) data_stats{x}{f,d}(e), notEmptyData, 'UniformOutput', false)));
+        ranks{f,d}(e, notEmptyData) = I';
+      end
     end
   end
 
@@ -110,6 +117,7 @@ function [table, ranks] = rankingTable(data, varargin)
   end
   FID = fopen(resultFile, 'w');
   fprintf(FID, '\\begin{table}\n');
+  fprintf(FID, '\\centering\n');
   fprintf(FID, '\\begin{tabular}[pos]{| l %s |}\n', repmat('|c',1, nEvals*(nDims+1)));
   fprintf(FID, '\\hline\n');
   fprintf(FID, '{} ');
@@ -147,7 +155,7 @@ function [table, ranks] = rankingTable(data, varargin)
   for e = 2:nEvals
     printString = [printString, ', ', num2str(evaluations(e))];
   end
-  fprintf(FID, '\\caption{Numbers of the 1st ranks according to the lowest achieved $\\Delta_f$ in different FE/D = \\{%s\\}.}\n', printString);
+  fprintf(FID, '\\caption{Counts of the 1st ranks according to the lowest achieved $\\Delta_f$ for different FE/D = \\{%s\\}.}\n', printString);
   fprintf(FID, '\\label{tab:fed}\n');
   fprintf(FID, '\\end{table}\n');
 

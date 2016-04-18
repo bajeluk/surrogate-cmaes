@@ -22,12 +22,10 @@ if (exist(tmpFName', 'file'))
 else
   
 % folder for results
-if ispc
-  actualFolder = pwd;
-  plotResultsFolder = fullfile(actualFolder(1:end - 1 - length('surrogate-cmaes')), 'latex_scmaes', 'ppsn2016paper', 'images');
-else
-  plotResultsFolder = osTmp;
-end
+actualFolder = pwd;
+articleFolder = fullfile(actualFolder(1:end - 1 - length('surrogate-cmaes')), 'latex_scmaes', 'ppsn2016paper');
+plotResultsFolder = fullfile(articleFolder, 'images');
+tableFolder = fullfile(articleFolder, 'tex');
 
 % path settings
 exppath = fullfile('exp', 'experiments');
@@ -323,11 +321,14 @@ datanames = {'DTS 0.1 1pop', 'DTS 0.05 2pop', 'S-CMA-ES', 'saACMES', 'SMAC', 'CM
 
 tableFunc = funcSet.BBfunc;
 tableDims = funcSet.dims;
+
+resultTable = fullfile(tableFolder, 'rankTable.tex');
       
-table = rankingTable(data, 'DataNames', datanames, ...
+[table, ranks] = rankingTable(data, 'DataNames', datanames, ...
                            'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
                            'TableFuns', tableFunc, 'TableDims', tableDims,...
-                           'Evaluations', [20 40 80]);
+                           'Evaluations', [20 40 80], ...
+                           'ResultFile', resultTable);
                          
 %% Testing Output
 
@@ -460,14 +461,15 @@ han = relativeFValuesPlot(data, ...
 % Aggregation of function values across dimensions 2, 3, 5, 10, 20.
 
 data = {sd2Data_10, ...
+        sd2Data_05_2pop, ...
         genData, ...
         saacmesData, ...
         smacData, ...
         cmaesData};
 
-datanames = {'DTS-CMA-ES', 'S-CMA-ES', 'saACMES', 'SMAC', 'CMA-ES'};
+datanames = {'DTS-CMA-ES', '0.05 2pop', 'S-CMA-ES', 'saACMES', 'SMAC', 'CMA-ES'};
 
-colors = [sd2Col; genCol; saacmesCol; smacCol; cmaesCol]/255;
+colors = [sd2Col; sd2Col_05_2pop; genCol; saacmesCol; smacCol; cmaesCol]/255;
 
 plotDims = [2, 3, 5, 10, 20];
 
@@ -481,7 +483,7 @@ for f = funcSet.BBfunc
                               'DataNames', datanames, 'DataDims', funcSet.dims, ...
                               'DataFuns', funcSet.BBfunc, 'Colors', colors, ...
                               'PlotFuns', f, 'PlotDims', plotDims, ...
-                              'AggregateDims', true,...
+                              'AggregateDims', false,...
                               'Statistic', @median, 'AggregateFuns', false);
 end
 %%

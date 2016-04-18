@@ -50,7 +50,7 @@ function handle = relativeFValuesPlot(data, varargin)
   colors  = defopts(settings, 'Colors', rand(numOfData, 3));
   aggDims = defopts(settings, 'AggregateDims', false);
   aggFuns = defopts(settings, 'AggregateFuns', false);
-  minValue = defopts(settings, 'MinValue', 10^(-8));
+  minValue = defopts(settings, 'MinValue', 1e-8);
   maxEval = defopts(settings, 'MaxEval', 100);
   statistic = defopts(settings, 'Statistic', @mean);
   if ischar(statistic)
@@ -105,8 +105,8 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
   numOfFuncIds = length(BBfunc);
   evaldim = 1:min(length(data_stats{1}{1}), maxEval);
   medianLineWidth = 2;
-  minGraph = 10e-8;
-  maxGraph = 1;
+  minGraph = -8;
+  maxGraph =  0;
   
   for f = 1:numOfFuncIds
     % find useful data and plot 
@@ -125,10 +125,16 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
         nUsefulData = sum(notEmptyData);
         % count f-values ratio
         actualData = cell2mat(arrayfun(@(D) data_stats{nEmptyId(D)}{f,d}, 1:nUsefulData, 'UniformOutput', false));
+        nData = min(maxEval, size(actualData, 1));
+        actualData = log10( actualData(1:nData, :) );
         actualMin = min(min(actualData));
         actualMax = max(max(actualData));
         for D = 1:nUsefulData
-          relativeData{nEmptyId(D)}{f, d} = log(((actualData(:, D) - actualMin) * (maxGraph - minGraph)/(actualMax - actualMin))' + minGraph);
+          % % this is old version for scaling BEFORE logarithm
+          % minGraph = 1e-8; maxGraph = 1;
+          % relativeData{nEmptyId(D)}{f, d} = log10(thisData);
+          thisData = ((actualData(:, D) - actualMin) * (maxGraph - minGraph)/(actualMax - actualMin))' + minGraph;
+          relativeData{nEmptyId(D)}{f, d} = thisData;
         end
       end
     end
