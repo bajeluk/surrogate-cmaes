@@ -19,6 +19,7 @@ function handle = relativeFValuesPlot(data, varargin)
 %                       @median)
 %     'MinValue'      - minimal possible function value
 %     'OneFigure'     - plot in one figure | boolean
+%     'SplitLegend'   - legend splitted in first two graphs | boolean 
 %
 % Output:
 %   handle - handles of resulting figures
@@ -176,7 +177,7 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
     subplot(nRows, 2, 1)
     onePlot(relativeData, 1, 1, evaldim, maxEval, colors, ...
             datanames, aggFuns, aggDims, BBfunc, dims, true, ...
-            1, false);
+            1*splitLegend, false);
     if nDimsToPlot > 1
       f = 1;
       d = 2;
@@ -186,8 +187,8 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
     end
     subplot(nRows, 2, 2)
     onePlot(relativeData, f, d, evaldim, maxEval, colors, ...
-            datanames, aggFuns, aggDims, BBfunc, dims, true, ...
-            2, true);
+            datanames, aggFuns, aggDims, BBfunc, dims, splitLegend, ...
+            2*splitLegend, true);
     
     if (nFunsToPlot*nDimsToPlot > 2)
       if nDimsToPlot > 2

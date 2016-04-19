@@ -118,13 +118,13 @@ function [table, ranks] = rankingTable(data, varargin)
   FID = fopen(resultFile, 'w');
   fprintf(FID, '\\begin{table}\n');
   fprintf(FID, '\\centering\n');
-  fprintf(FID, '\\begin{tabular}[pos]{| l %s |}\n', repmat('|c',1, nEvals*(nDims+1)));
+  fprintf(FID, '\\begin{tabular}[pos]{| l %s |}\n', repmat([' |', repmat(' c',1, nEvals)], 1, nDims+1));
   fprintf(FID, '\\hline\n');
   fprintf(FID, '{} ');
   for d = 1:nDims
-    fprintf(FID, '& \\multicolumn{%d}{|c|}{%dD} ', nEvals, dims(d));
+    fprintf(FID, '& \\multicolumn{%d}{c|}{%dD} ', nEvals, dims(d));
   end
-  fprintf(FID, '& \\multicolumn{%d}{|c|}{$\\sum$} \\\\\n', nEvals);
+  fprintf(FID, '& \\multicolumn{%d}{c|}{$\\sum$} \\\\\n', nEvals);
   printString = '';
   for d = 1:nDims + 1
     for e = 1:nEvals
@@ -159,8 +159,8 @@ function [table, ranks] = rankingTable(data, varargin)
       printString = [printString, ' & ', num2str(sum(arrayfun(@(x) table{dat,x}(1,e), 1:nDims)))];
     end
     fprintf(FID, '%s%s \\\\\n', datanames{dat}, printString);
-    fprintf(FID, '\\hline\n');
   end
+  fprintf(FID, '\\hline\n');
   fprintf(FID, '\\end{tabular}\n');
   printString = num2str(evaluations(1));
   for e = 2:nEvals
