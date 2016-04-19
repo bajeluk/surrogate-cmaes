@@ -82,7 +82,7 @@ funcSet.dims = 20;
 [sd2_evals_20D, sd2_settings_20D] = dataReady(sd2_path20D, funcSet);
 [ei_poi_lcb_evals_20D, ei_poi_lcb_settings_20D] = dataReady(ei_poi_lcb_path20D, funcSet);
 [gen_evals_20D, gen_settings_20D] = dataReady(gen_path20D, funcSet);
-% This is a hack due to distributed and mearged part of 20D experiment:
+% This is a hack due to distributed and merged part of 20D experiment:
 if (length(gen_settings_20D) > 4)
   gen_settings_20D(1:4) = gen_settings_20D((end-3):end);
   gen_settings_20D(5:end) = [];
@@ -191,7 +191,7 @@ saacmesCol = [100 149 237];
 smacCol = [255, 155, 0];
 genCol = [178,34,34];
 
-sd2Col_05 = [0 0 139];
+sd2Col_05 = [200 170 39];
 sd2Col_10 = sd2Col;
 sd2Col_20 = [148 0 211];
 sd2Col_40 = [255 20 147];
@@ -285,7 +285,7 @@ data = {sd2Data_10, ...
         smacData, ...
         cmaesData};
 
-datanames = {'DTS 0.1 1pop', 'DTS 0.05 2pop', 'S-CMA-ES', 'saACMES', 'SMAC', 'CMA-ES'};
+datanames = {'DTS 0.1  1pop', 'DTS 0.05 2pop', 'S-CMA-ES', 'saACMES', 'SMAC', 'CMA-ES'};
 
 colors = [sd2Col_10; sd2Col_05_2pop; genCol; saacmesCol; smacCol; cmaesCol]/255;
 

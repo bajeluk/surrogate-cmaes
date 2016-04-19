@@ -57,6 +57,7 @@ function handle = relativeFValuesPlot(data, varargin)
   maxEval = defopts(settings, 'MaxEval', 100);
   statistic = defopts(settings, 'Statistic', @mean);
   oneFigure = defopts(settings, 'OneFigure', false);
+  splitLegend = defopts(settings, 'SplitLegend', false);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
       statistic = @(x, dim) quantile(x, [0.25, 0.5, 0.75], dim);
@@ -97,11 +98,11 @@ function handle = relativeFValuesPlot(data, varargin)
   end
   
   % draw plot
-  handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval, oneFigure);
+  handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval, oneFigure, splitLegend);
 
 end
 
-function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval, oneFigure)
+function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval, oneFigure, splitLegend)
 % Plots scaled graph of different algorithms in all defined functions and 
 % one all dimensions
 
@@ -110,7 +111,6 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
   evaldim = 1:min(length(data_stats{1}{1}), maxEval);
   minGraph = -8;
   maxGraph =  0;
-  splitLegend = true;
   
   for f = 1:numOfFuncIds
     % find useful data and plot 
@@ -174,22 +174,39 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
     nRows = ceil(nFunsToPlot*nDimsToPlot/2);
     handle = figure('Units', 'centimeters', 'Position', [1 1 20 6*nRows]);
     subplot(nRows, 2, 1)
-    onePlot(relativeData, 1, 1, evaldim, maxEval, colors, datanames, aggFuns, aggDims, BBfunc, dims, true);
-    if nFunsToPlot > 1
-      fStart = 2;
-      dStart = 1;
-    elseif nDimsToPlot > 1
-      fStart = 1;
-      dStart = 2;
+    onePlot(relativeData, 1, 1, evaldim, maxEval, colors, ...
+            datanames, aggFuns, aggDims, BBfunc, dims, true, ...
+            1, false);
+    if nDimsToPlot > 1
+      f = 1;
+      d = 2;
     else
-      fStart = 2;
+      f = 2;
+      d = 1;
     end
-      
-    for f = fStart:nFunsToPlot
-      for d = dStart:nDimsToPlot
-        plotId = (d-1) * nFunsToPlot + f;
-        subplot(nRows, 2, plotId)
-        onePlot(relativeData, f, d, evaldim, maxEval, colors, datanames, aggFuns, aggDims, BBfunc, dims, false);
+    subplot(nRows, 2, 2)
+    onePlot(relativeData, f, d, evaldim, maxEval, colors, ...
+            datanames, aggFuns, aggDims, BBfunc, dims, true, ...
+            2, true);
+    
+    if (nFunsToPlot*nDimsToPlot > 2)
+      if nDimsToPlot > 2
+        fStart = 1;
+        dStart = 3;
+      else
+        fStart = f + 1;
+        dStart = 1;
+      end
+
+      for f = fStart:nFunsToPlot
+        for d = dStart:nDimsToPlot
+          plotId = (d-1) * nFunsToPlot + f;
+          omitYLabel = ~logical(mod(plotId, 2));
+          subplot(nRows, 2, plotId)
+          onePlot(relativeData, f, d, evaldim, maxEval, colors, ...
+            datanames, aggFuns, aggDims, BBfunc, dims, false, ...
+            0, omitYLabel);
+        end
       end
     end
   else
@@ -198,14 +215,18 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
     for f = 1:nFunsToPlot
       for d = 1:nDimsToPlot
         handle((d-1) * nFunsToPlot + f) = figure('Units', 'centimeters', 'Position', [1 1 12.5 6]);
-        onePlot(relativeData, f, d, evaldim, maxEval, colors, datanames, aggFuns, aggDims, BBfunc, dims, dispLegend);
+        onePlot(relativeData, f, d, evaldim, maxEval, colors, ...
+                datanames, aggFuns, aggDims, BBfunc, dims, dispLegend, ...
+                0, false);
       end
     end
   end
   
 end
 
-function handle = onePlot(relativeData, fId, dId, evaldim, maxEval, colors, datanames, aggFuns, aggDims, BBfunc, dims, dispLegend)
+function onePlot(relativeData, fId, dId, evaldim, maxEval, colors, ...
+                 datanames, aggFuns, aggDims, BBfunc, dims, dispLegend, ...
+                 splitLegendOption, omitYLabel)
 % Plots one scaled graph 
 
   medianLineWidth = 2;
@@ -230,7 +251,15 @@ function handle = onePlot(relativeData, fId, dId, evaldim, maxEval, colors, data
       ftitle{dat} = datanames{nEmptyId(dat)};
     end
     if dispLegend
-      legend(h, ftitle, 'Location', 'NorthEast')
+      switch splitLegendOption
+        case 0
+          legIds = true(1, nUsefulData);
+        case 1
+          legIds = [true(1, floor(nUsefulData/2)), false(1, nUsefulData - floor(nUsefulData/2))];
+        case 2
+          legIds = [false(1, floor(nUsefulData/2)), true(1, nUsefulData - floor(nUsefulData/2))];
+      end
+      legend(h(legIds), ftitle(legIds), 'Location', 'NorthEast')
     end
   else
     warning('Function %d dimension %d has no data available', BBfunc(fId), dims(dId))
@@ -245,7 +274,9 @@ function handle = onePlot(relativeData, fId, dId, evaldim, maxEval, colors, data
   end
   title(titleString)
   xlabel('Number of evaluations / D')
-  ylabel('\Delta_f^{log}')
+%   if ~omitYLabel
+    ylabel('\Delta_f^{log}')
+%   end
   hold off
 
 end

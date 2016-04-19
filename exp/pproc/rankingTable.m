@@ -103,9 +103,9 @@ function [table, ranks] = rankingTable(data, varargin)
   % aggregate ranks accross functions
   for dat = 1:numOfData
     for d = 1:nDims
-      for r = 1:numOfData
+      for ranking = 1:numOfData
         for e = 1:nEvals
-          table{dat, d}(r, e) = sum(arrayfun(@(x) ranks{x,d}(e, dat) == r, 1:nFunc));
+          table{dat, d}(ranking, e) = sum(arrayfun(@(x) ranks{x,d}(e, dat) == ranking, 1:nFunc));
         end
       end
     end
@@ -140,12 +140,22 @@ function [table, ranks] = rankingTable(data, varargin)
     printString = '';
     % dimensions
     for d = 1:nDims
+      maxDataRanks = max(cell2mat(arrayfun(@(x) table{x,d}(1,:), 1:numOfData, 'UniformOutput', false)'));
       for e = 1:nEvals
-        printString = [printString, ' & ', num2str(table{dat,d}(1,e))];
+        % print only first ranks
+        sumRank = table{dat,d}(1,e);
+        if sumRank == maxDataRanks(e)
+          % print the best in bold
+          rankStr = ['\textbf{', num2str(sumRank), '}'];
+        else
+          rankStr = num2str(sumRank);
+        end
+        printString = [printString, ' & ', rankStr];
       end
     end
     % sum
     for e = 1:nEvals
+      % print only first ranks
       printString = [printString, ' & ', num2str(sum(arrayfun(@(x) table{dat,x}(1,e), 1:nDims)))];
     end
     fprintf(FID, '%s%s \\\\\n', datanames{dat}, printString);
