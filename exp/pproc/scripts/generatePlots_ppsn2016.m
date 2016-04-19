@@ -82,6 +82,11 @@ funcSet.dims = 20;
 [sd2_evals_20D, sd2_settings_20D] = dataReady(sd2_path20D, funcSet);
 [ei_poi_lcb_evals_20D, ei_poi_lcb_settings_20D] = dataReady(ei_poi_lcb_path20D, funcSet);
 [gen_evals_20D, gen_settings_20D] = dataReady(gen_path20D, funcSet);
+% This is a hack due to distributed and mearged part of 20D experiment:
+if (length(gen_settings_20D) > 4)
+  gen_settings_20D(1:4) = gen_settings_20D((end-3):end);
+  gen_settings_20D(5:end) = [];
+end
 
 % concatenate cmaes 20D
 cmaes_evals_20D = dataReady(cmaespath20D, funcSet);
@@ -477,7 +482,7 @@ for f = funcSet.BBfunc
                               'DataNames', datanames, 'DataDims', funcSet.dims, ...
                               'DataFuns', funcSet.BBfunc, 'Colors', colors, ...
                               'PlotFuns', f, 'PlotDims', plotDims, ...
-                              'AggregateDims', false,...
+                              'AggregateDims', true,...
                               'Statistic', @median, 'AggregateFuns', false);
 end
 %%
