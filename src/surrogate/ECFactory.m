@@ -8,6 +8,8 @@ classdef ECFactory
           obj = GenerationEC(surrogateOpts);
         case {'doubletrained', 'restricted'}
           obj = DoubleTrainedEC(surrogateOpts);
+        case 'maes'
+          obj = ModelAssistedEC();
         case 'none'
           obj = NoneEC();
         otherwise

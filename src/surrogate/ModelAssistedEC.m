@@ -6,10 +6,6 @@ classdef ModelAssistedEC < IndividualEC
   % Pre-Selection Criterion",
   % IEEE Congress on Evolutionary Computation,CEC 2003: 692-699
 
-  properties
-    model
-  end
-
   methods
     function obj = ModelAssistedEC()
       % constructor
@@ -31,8 +27,10 @@ classdef ModelAssistedEC < IndividualEC
       sigma = cmaesState.sigma;
       lambda = cmaesState.lambda;
       countiter = cmaesState.countiter;
+      dim = cmaesState.dim;
 
       % create model
+      surrogateOpts.modelOpts.hyp.cov = myeval(surrogateOpts.modelOpts.hyp.cov);
       obj.model = ModelFactory.createModel(surrogateOpts.modelType, surrogateOpts.modelOpts, xmean');
 
       if (isempty(obj.model))
@@ -50,7 +48,7 @@ classdef ModelAssistedEC < IndividualEC
         presample(minTrainSize, cmaesState, surrogateOpts, sampleOpts, archive, counteval, xTrain, yTrain, varargin{:});
 
       nPresampledPoints = size(arxvalid, 2);
-      if (nPresampledPoints == lambda)
+      if (nPresampledPoints > 0)
         warning('%d presampled points (lambda ==  %d)', nPresampledPoints, lambda);
         return
       end
@@ -61,6 +59,9 @@ classdef ModelAssistedEC < IndividualEC
         warning('ModelAssistedEC.runGeneration(): model not trained');
         return
       end
+
+      % no presampled points are assumed at this point
+      nLambdaRest = lambda;
 
       % sample the enlarged population of size 'gamma * nLambdaRest'
       extendSize = ceil(surrogateOpts.evoControlIndividualExtension ...
