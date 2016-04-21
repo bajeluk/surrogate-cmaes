@@ -212,12 +212,11 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
     end
   else
     handle = zeros(1, nDimsToPlot*nFunsToPlot);
-    dispLegend = true;
     for f = 1:nFunsToPlot
       for d = 1:nDimsToPlot
         handle((d-1) * nFunsToPlot + f) = figure('Units', 'centimeters', 'Position', [1 1 12.5 6]);
         onePlot(relativeData, f, d, evaldim, maxEval, colors, ...
-                datanames, aggFuns, aggDims, BBfunc, dims, dispLegend, ...
+                datanames, aggFuns, aggDims, BBfunc, dims, ~splitLegend || (f == 1 && d == 1), ...
                 0, false);
       end
     end
@@ -229,6 +228,9 @@ function onePlot(relativeData, fId, dId, evaldim, maxEval, colors, ...
                  datanames, aggFuns, aggDims, BBfunc, dims, dispLegend, ...
                  splitLegendOption, omitYLabel)
 % Plots one scaled graph 
+%
+% Note: Omitting y-label is currently unabled. To change this status
+% uncomment rows at the end of onePlot function.
 
   medianLineWidth = 2;
 

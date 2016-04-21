@@ -94,7 +94,6 @@ function [table, ranks] = rankingTable(data, varargin)
         thisData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}(evaluations(e)), notEmptyData, 'UniformOutput', false));
         thisData = max(thisData, 1e-8 * ones(size(thisData)));
         [~, ~, I] = unique(thisData);
-%         [~, I2] = sort(cell2mat(arrayfun(@(x) data_stats{x}{f,d}(e), notEmptyData, 'UniformOutput', false)));
         ranks{f,d}(e, notEmptyData) = I';
       end
     end
@@ -111,20 +110,62 @@ function [table, ranks] = rankingTable(data, varargin)
     end
   end
   
+  % create first rank table
+  rankTable = createTable(table, 1);
+  
   % print table
   if ~exist(resultFolder, 'dir')
     mkdir(resultFolder)
   end
   FID = fopen(resultFile, 'w');
+  printTable(FID, rankTable, dims, evaluations, datanames, nFunc)
+  fclose(FID);
+  
+  fprintf('Table written to %s\n', resultFile);
+
+end
+
+function rankTable = createTable(table, rank)
+% Creates table of sums of rank
+  
+  [numOfData, nDims] = size(table);
+  nEvals = size(table{1,1}, 2);
+  
+  rankTable = zeros(numOfData, (nDims+1)*nEvals);
+  % data
+  for dat = 1:numOfData
+    % dimensions
+    for d = 1:nDims
+      % evaluations
+      for e = 1:nEvals
+        % gain ranks
+        rankTable(dat, (d-1)*nEvals + e) = table{dat,d}(rank, e);
+      end
+    end
+    % rank sums
+    for e = 1:nEvals
+      % print only first ranks
+      rankTable(dat, nDims*nEvals + e) = sum(arrayfun(@(x) table{dat,x}(rank, e), 1:nDims));
+    end
+  end
+end
+
+function printTable(FID, table, dims, evaluations, datanames, nFunc)
+% Prints table to file FID
+
+  [numOfData, nColumns] = size(table);
+  nDims = length(dims);
+  nEvals = length(evaluations);
+  
   fprintf(FID, '\\begin{table}\n');
   fprintf(FID, '\\centering\n');
-  fprintf(FID, '\\begin{tabular}[pos]{| l %s |}\n', repmat([' |', repmat(' c',1, nEvals)], 1, nDims+1));
+  fprintf(FID, '\\begin{tabular}[pos]{ l %s }\n', repmat([' |', repmat(' c', 1, nEvals)], 1, nDims+1));
   fprintf(FID, '\\hline\n');
   fprintf(FID, '{} ');
   for d = 1:nDims
     fprintf(FID, '& \\multicolumn{%d}{c|}{%dD} ', nEvals, dims(d));
   end
-  fprintf(FID, '& \\multicolumn{%d}{c|}{$\\sum$} \\\\\n', nEvals);
+  fprintf(FID, '& \\multicolumn{%d}{c}{$\\sum$} \\\\\n', nEvals);
   printString = '';
   for d = 1:nDims + 1
     for e = 1:nEvals
@@ -135,46 +176,45 @@ function [table, ranks] = rankingTable(data, varargin)
   fprintf(FID, '\\hline\n');
   % make datanames equally long
   datanames = sameLength(datanames);
+  % find max sums of ranks
+  maxTableRanks = max(table);
   % data rows
   for dat = 1:numOfData
     printString = '';
-    % dimensions
-    for d = 1:nDims
-      maxDataRanks = max(cell2mat(arrayfun(@(x) table{x,d}(1,:), 1:numOfData, 'UniformOutput', false)'));
-      for e = 1:nEvals
-        % print only first ranks
-        sumRank = table{dat,d}(1,e);
-        if sumRank == maxDataRanks(e)
-          % print the best in bold
-          rankStr = ['\textbf{', num2str(sumRank), '}'];
-        else
-          rankStr = num2str(sumRank);
-        end
-        printString = [printString, ' & ', rankStr];
+    % columns
+    for col = 1:nColumns
+      sumRank = table(dat, col);
+      if sumRank == maxTableRanks(col)
+        % print best data in bold
+        printString = [printString, ' & ', '\textbf{', num2str(sumRank), '}'];
+      else
+        printString = [printString, ' & ', num2str(sumRank)];
       end
-    end
-    % sum
-    for e = 1:nEvals
-      % print only first ranks
-      printString = [printString, ' & ', num2str(sum(arrayfun(@(x) table{dat,x}(1,e), 1:nDims)))];
     end
     fprintf(FID, '%s%s \\\\\n', datanames{dat}, printString);
   end
   fprintf(FID, '\\hline\n');
   fprintf(FID, '\\end{tabular}\n');
-  printString = num2str(evaluations(1));
-  for e = 2:nEvals
-    printString = [printString, ', ', num2str(evaluations(e))];
-  end
+  % evaluation numbers
+  evalString = arrayString(evaluations, ',');
+  % dimension numbers 
+  dimString = arrayString(dims, ',');
+  % caption printing
   fprintf(FID, '\\vspace{1mm}\n');
-  fprintf(FID, '\\caption{Counts of the 1st ranks according to the lowest achieved $\\Delta_f$ for different FE/D = \\{%s\\}.}\n', printString);
+  fprintf(FID, ['\\caption{Counts of the 1st ranks from %d benchmark functions according to the lowest achieved ', ...
+                '$\\Delta_f^\\text{med}$ for different FE/D = \\{%s\\} and dimensions D = \\{%s\\}.}\n'], ...
+                nFunc, evalString, dimString);
   fprintf(FID, '\\label{tab:fed}\n');
   fprintf(FID, '\\end{table}\n');
-
-  fclose(FID);
   
-  fprintf('Table written to %s\n', resultFile);
+end
 
+function str = arrayString(vector, delimiter)
+% returns string containing 'vector' elements separated by 'delimiter'
+  str = num2str(vector(1));
+  for e = 2:length(vector);
+    str = [str, delimiter, ' ', num2str(vector(e))];
+  end
 end
 
 function cellOfStr = sameLength(cellOfStr)
