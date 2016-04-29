@@ -19,15 +19,14 @@ classdef ModelAssistedEC < IndividualEC
       arx = [];
       arxvalid = [];
       arz = [];
-      counteval = 0;
       surrogateStats = NaN(1, 2);
 
       % extract cmaes state variables
       xmean = cmaesState.xmean;
       sigma = cmaesState.sigma;
       lambda = cmaesState.lambda;
-      countiter = cmaesState.countiter;
       dim = cmaesState.dim;
+      countiter = cmaesState.countiter;
 
       % create model
       surrogateOpts.modelOpts.hyp.cov = myeval(surrogateOpts.modelOpts.hyp.cov);
@@ -35,42 +34,33 @@ classdef ModelAssistedEC < IndividualEC
 
       if (isempty(obj.model))
         % model could not be created :( use the standard CMA-ES
-        error('ModelAssistedEC.runGeneration(): could not create a model');
+        warning('ModelAssistedEC.runGeneration(): could not create a model');
         return;
       end
 
-      minTrainSize = obj.getMinTrainSize(cmaesState);
-
       nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
-      [xTrain, yTrain] = obj.getRecentData(archive, nArchivePoints);
+      [xTrain, yTrain] = ModelAssistedEC.getRecentData(archive, nArchivePoints);
 
-      [fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] = ...
-        presample(minTrainSize, cmaesState, surrogateOpts, sampleOpts, archive, counteval, xTrain, yTrain, varargin{:});
-
-      nPresampledPoints = size(arxvalid, 2);
-      if (nPresampledPoints > 0)
-        warning('%d presampled points (lambda ==  %d)', nPresampledPoints, lambda);
-        return
+      if (size(xTrain, 1) < nArchivePoints)
+        warning('not enough points (%d) for training (required %d)', size(xTrain, 1), nArchivePoints);
+        return;
       end
 
       obj.model = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
 
       if (~obj.model.isTrained())
         warning('ModelAssistedEC.runGeneration(): model not trained');
-        return
+        return;
       end
 
-      % no presampled points are assumed at this point
-      nLambdaRest = lambda;
-
-      % sample the enlarged population of size 'gamma * nLambdaRest'
+      % sample the enlarged population of size 'gamma * lambda'
       extendSize = ceil(surrogateOpts.evoControlIndividualExtension ...
           * lambda);
       [xExtend, xExtendValid, zExtend] = ...
           sampleCmaesNoFitness(sigma, extendSize, cmaesState, sampleOpts);
 
       % calculate the model prediction for the extended population
-      yExtend = obj.model.getModelOutput(xExtend');
+      yExtend = obj.getModelOutput(xExtend');
 
       % choose lambda best points
       [xToReeval, xToReevalValid, zToReeval] = ...
@@ -79,7 +69,7 @@ classdef ModelAssistedEC < IndividualEC
 
       % original-evaluate the chosen points
       [yNew, xNew, xNewValid, zNew, counteval] = ...
-          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, nLambdaRest, counteval, cmaesState, sampleOpts, varargin{:});
+          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, lambda, counteval, cmaesState, sampleOpts, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
       fprintf('counteval: %d\n', counteval)
       % update the Archive
@@ -90,7 +80,7 @@ classdef ModelAssistedEC < IndividualEC
       yPredict = obj.model.predict(xNewValid');
       kendall = corr(yPredict, yNew', 'type', 'Kendall');
       rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
-      fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', nPresampledPoints, nLambdaRest, rmse, kendall);
+      fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', 0, lambda, rmse, kendall);
       surrogateStats = [rmse kendall];
 
       % save the resulting re-evaluated population as the returning parameters
@@ -100,11 +90,25 @@ classdef ModelAssistedEC < IndividualEC
       arz = [arz zNew];
     end % function
 
-    function minTrainSize = getMinTrainSize(obj, cmaesState)
-      minTrainSize = 2 * cmaesState.lambda;
-    end % function
+    function [output, y] = getModelOutput(obj, X)
+      % overrides 'Model.getModelOutput' especially in the 'poi' branch
+      % where 'target' is set exactly to 'fmin'
+      [y, sd2] = obj.model.predict(X);
+      fmin = min(obj.model.dataset.y);
 
-    function [X, y] = getRecentData(obj, archive, n)
+      switch lower(obj.model.predictionType)
+        case 'fvalues' % mean function values
+          output = y;
+
+        case 'poi' % probability of improvement
+          target = fmin;
+          output = getPOI(X, y, sd2, target);
+      end
+    end % function
+  end % methods
+
+  methods (Static)
+    function [X, y] = getRecentData(archive, n)
       % Get up to 'n' most recently added points from 'archive'.
       nData = length(archive.y);
       X = []; y = [];
@@ -117,7 +121,7 @@ classdef ModelAssistedEC < IndividualEC
         return;
       end
     end % function
-  end % methods
+  end % methods (Static)
 end % classdef
 
 function res = myeval(s)
