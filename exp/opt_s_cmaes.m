@@ -40,52 +40,25 @@ for fname = fieldnames(cmParams)'
   cmOptions.(fname{1}) = cmParams.(fname{1});
 end
 
-% refining multistarts
-for ilaunch = 1:1e4; % up to 1e4 times
-  % % try fminsearch from Matlab, modified to take usual_delta as arg
-  % x = fminsearch_mod(FUN, xstart, usual_delta, cmOptions);
-  % standard fminsearch()
+ilaunch = 1;
 
-  % Info about tested function is for debugging purposes
-  bbob_handlesF = benchmarks('handles');
-  sgParams.modelOpts.bbob_func = bbob_handlesF{bbParams.functions(1)};
-  sgParams.expFileID = [num2str(bbParams.functions(1)) '_' num2str(dim) 'D_' num2str(id)];
-  % DEBUG: generate data for testing model regresssion
-  % TODO: comment this line! :)
-  % sgParams.saveModelTrainingData = [ 10 25 50 100 200 300 470 700 900 1200 1500 2000 2400 ];
+% Info about tested function is for debugging purposes
+bbob_handlesF = benchmarks('handles');
+sgParams.modelOpts.bbob_func = bbob_handlesF{bbParams.functions(1)};
+sgParams.expFileID = [num2str(bbParams.functions(1)) '_' num2str(dim) 'D_' num2str(id)];
+% DEBUG: generate data for testing model regresssion
+% TODO: comment this line! :)
+% sgParams.saveModelTrainingData = [ 10 25 50 100 200 300 470 700 900 1200 1500 2000 2400 ];
 
-  [x fmin counteval stopflag out bestever y_eval] = s_cmaes(FUN, xstart, 8/3, cmOptions, 'SurrogateOptions', sgParams);
+[x fmin counteval stopflag out bestever y_eval] = s_cmaes(FUN, xstart, 8/3, cmOptions, 'SurrogateOptions', sgParams);
 
-  n_y_evals = size(y_eval,1);
-  y_eval(:,1) = y_eval(:,1) - (ftarget - fDelta) * ones(n_y_evals,1);
-  y_evals = [y_evals; y_eval];
+n_y_evals = size(y_eval,1);
+y_eval(:,1) = y_eval(:,1) - (ftarget - fDelta) * ones(n_y_evals,1);
+y_evals = [y_evals; y_eval];
 
-  if (nargout > 0)
-    varargout{1} = out;
-  else
-    varargout = cell(0);
-  end
-
-  % terminate if ftarget or maxfunevals reached
-  if (feval(FUN, 'fbest') < ftarget || ...
-      feval(FUN, 'evaluations') >= maxfunevals)
-    break;
-  end
-  % % terminate with some probability
-  % if rand(1,1) > 0.98/sqrt(ilaunch)
-  %   break;
-  % end
-  xstart = x; % try to improve found solution
-  % % we do not use usual_delta :/
-  % usual_delta = 0.1 * 0.1^rand(1,1); % with small "radius"
-  % if useful, modify more options here for next launch
+if (nargout > 0)
+  varargout{1} = out;
+else
+  varargout = cell(0);
 end
 
-  function stop = callback(x, optimValues, state)
-    stop = false;
-    if optimValues.fval < ftarget
-      stop = true;
-    end
-  end % function callback
-
-end % function
