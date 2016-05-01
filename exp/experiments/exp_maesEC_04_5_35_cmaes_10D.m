@@ -1,5 +1,5 @@
-exp_id = 'exp_maesEC_03_1_10_cmaes_10D';
-exp_description = 'Model Assisted Evolution Strategy (Ulmer, 2003), GP model, (1,10) CMA-ES, individual EC, 3*lambda pre-selection, 2*lambda training points, POI or mean prediction, 24 functions, 15 instances';
+exp_id = 'exp_maesEC_04_5_35_cmaes_10D';
+exp_description = 'Model Assisted Evolution Strategy (Ulmer, 2003), GP model, (5,35) CMA-ES, individual EC, 3*lambda pre-selection, 2*lambda training points, POI or mean prediction, 24 functions, 15 instances';
 
 % BBOB/COCO framework settings
 
@@ -43,8 +43,8 @@ modelParams = { ...
 % CMA-ES parameters
 
 cmaesParams = { ...
-  'PopSize',            { 10 }, ...                         % 35, '(4 + floor(3*log(N)))', '(8 + floor(6*log(N)))';
-  'ParentNumber',       { 1 }, ...                          % 5, default is 'floor(popsize/2)'
+  'PopSize',            { 35 }, ...                         % 35, '(4 + floor(3*log(N)))', '(8 + floor(6*log(N)))';
+  'ParentNumber',       { 5 }, ...                          % 5, default is 'floor(popsize/2)'
   'Restarts',           { 4 }, ...
 };
 
