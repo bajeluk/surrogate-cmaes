@@ -52,10 +52,13 @@ function handle = relativeFValuesPlot(data, varargin)
   dims    = defopts(settings, 'PlotDims', funcSet.dims);
   BBfunc  = defopts(settings, 'PlotFuns', funcSet.BBfunc);
   colors  = defopts(settings, 'Colors', rand(numOfData, 3));
+  if max(colors) > 1
+    colors = colors / 255;
+  end
   aggDims = defopts(settings, 'AggregateDims', false);
   aggFuns = defopts(settings, 'AggregateFuns', false);
   minValue = defopts(settings, 'MinValue', 1e-8);
-  maxEval = defopts(settings, 'MaxEval', 100);
+  maxEval = defopts(settings, 'MaxEval', 250);
   statistic = defopts(settings, 'Statistic', @mean);
   oneFigure = defopts(settings, 'OneFigure', false);
   splitLegend = defopts(settings, 'SplitLegend', false);
