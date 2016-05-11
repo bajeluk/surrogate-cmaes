@@ -19,7 +19,11 @@ function handle = relativeFValuesPlot(data, varargin)
 %                       @median)
 %     'MinValue'      - minimal possible function value
 %     'OneFigure'     - plot in one figure | boolean
-%     'SplitLegend'   - legend splitted in first two graphs | boolean 
+%     'LegendOption'  - legend settings:
+%                         'show'  - show legend
+%                         'hide'  - do not show legend
+%                         'split' - legend splitted in first two graphs
+%                         'out'   - legend is out of the last graph
 %     'OmitYLabel'    - omit y-label in even plots | boolean
 %
 % Output:
@@ -42,8 +46,8 @@ function handle = relativeFValuesPlot(data, varargin)
     varargin(vararCellId) = {varargin(vararCellId)};
     settings = struct(varargin{:});
   end
-  % TODO: rewrite to settings structure which can be given as an argument
-  % to other functions
+  
+  % parse settings
   numOfData = length(data);
   plotSet.datanames = defopts(settings, 'DataNames', ...
     arrayfun(@(x) ['ALG', num2str(x)], 1:numOfData, 'UniformOutput', false));
@@ -63,7 +67,8 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.maxEval = defopts(settings, 'MaxEval', 250);
   statistic = defopts(settings, 'Statistic', @mean);
   plotSet.oneFigure = defopts(settings, 'OneFigure', false);
-  plotSet.splitLegend = defopts(settings, 'SplitLegend', false);
+  plotSet.legendOption = defopts(settings, 'LegendOption', 'show');
+%   plotSet.splitLegend = defopts(settings, 'SplitLegend', false);
   plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
@@ -105,11 +110,11 @@ function handle = relativeFValuesPlot(data, varargin)
   end
   
   % draw plot
-  handle = relativePlot(data_stats, plotSet); % dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval, oneFigure, splitLegend, omitYLabel);
+  handle = relativePlot(data_stats, plotSet);
 
 end
 
-function handle = relativePlot(data_stats, settings) % dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval, oneFigure, splitLegend, omitYLabel)
+function handle = relativePlot(data_stats, settings)
 % Plots scaled graph of different algorithms in all defined functions and 
 % one all dimensions
 
@@ -117,6 +122,14 @@ function handle = relativePlot(data_stats, settings) % dims, BBfunc, datanames, 
   numOfFuncIds = length(settings.BBfunc);
   minGraph = -8;
   maxGraph =  0;
+  dispLegend = true;
+  splitLegend = false;
+  if strcmp(settings.legendOption, 'split')
+    splitLegend = true;
+  end
+  if strcmp(settings.legendOption, 'hide')
+    dispLegend = false;
+  end
   
   for f = 1:numOfFuncIds
     % find useful data and plot 
@@ -150,6 +163,7 @@ function handle = relativePlot(data_stats, settings) % dims, BBfunc, datanames, 
     end
   end
   
+  % aggregate accross dimensions
   if settings.aggDims
     nDimsToPlot = 1;
     for D = 1:numOfData
@@ -163,6 +177,7 @@ function handle = relativePlot(data_stats, settings) % dims, BBfunc, datanames, 
     nDimsToPlot = length(settings.dims);
   end
   
+  % aggregate accross functions
   if settings.aggFuns
     nFunsToPlot = 1;
     for D = 1:numOfData
@@ -176,12 +191,16 @@ function handle = relativePlot(data_stats, settings) % dims, BBfunc, datanames, 
     nFunsToPlot = length(settings.BBfunc);
   end
   
-  if settings.oneFigure && (nFunsToPlot*nDimsToPlot > 1)
-    nRows = ceil(nFunsToPlot*nDimsToPlot/2);
+  nPlots = nFunsToPlot*nDimsToPlot;
+  
+  % all plots one figure
+  if settings.oneFigure && (nPlots > 1)
+    nRows = ceil(nPlots/2);
     handle = figure('Units', 'centimeters', 'Position', [1 1 20 6*nRows]);
+    % first plot
     subplot(nRows, 2, 1)
-    onePlot(relativeData, 1, 1,settings, true, ...
-            1*settings.splitLegend, false);
+    onePlot(relativeData, 1, 1, settings, dispLegend, ...
+            1*splitLegend, false);
     if nDimsToPlot > 1
       f = 1;
       d = 2;
@@ -189,11 +208,12 @@ function handle = relativePlot(data_stats, settings) % dims, BBfunc, datanames, 
       f = 2;
       d = 1;
     end
+    % second plot
     subplot(nRows, 2, 2)
-    onePlot(relativeData, f, d, settings, settings.splitLegend, ...
-            2*settings.splitLegend, settings.omitYLabel);
-    
-    if (nFunsToPlot*nDimsToPlot > 2)
+    onePlot(relativeData, f, d, settings, splitLegend, ...
+            2*splitLegend, settings.omitYLabel);
+    % the rest of plots
+    if (nPlots > 2)
       if nDimsToPlot > 2
         fStart = 1;
         dStart = 3;
@@ -212,12 +232,28 @@ function handle = relativePlot(data_stats, settings) % dims, BBfunc, datanames, 
         end
       end
     end
+    
+  % one plot one figure
   else
-    handle = zeros(1, nDimsToPlot*nFunsToPlot);
+    handle = zeros(1, nPlots);
+    % legend settings
+    if strcmp(settings.legendOption, 'out')
+      maxNameLength = max(cellfun(@length, settings.datanames));
+      legendShiftFig = 2.5 + 0.12*maxNameLength;
+      legendFigNum = nPlots;
+      settings.legendLocation = 'EastOutside';
+    else
+      legendShiftFig = 0;
+      legendFigNum = 1;
+      settings.legendLocation = 'NorthEast';
+    end
+    
+    % plot all functions and dimensions
     for f = 1:nFunsToPlot
       for d = 1:nDimsToPlot
-        handle((d-1) * nFunsToPlot + f) = figure('Units', 'centimeters', 'Position', [1 1 12.5 6]);
-        onePlot(relativeData, f, d, settings, ~settings.splitLegend || (f == 1 && d == 1), ...
+        handle((d-1) * nFunsToPlot + f) = ...
+          figure('Units', 'centimeters', 'Position', [1, 1, 12.5 + legendShiftFig*(f*d == legendFigNum), 6]);
+        onePlot(relativeData, f, d, settings, dispLegend && (strcmp(settings.legendOption, 'show') || (f*d == legendFigNum)), ...
                 0, false);
       end
     end
@@ -226,7 +262,7 @@ function handle = relativePlot(data_stats, settings) % dims, BBfunc, datanames, 
 end
 
 function onePlot(relativeData, fId, dId, ...
-                 settings, dispLegend, splitLegendOption, omitYLabel)
+                 settings, dispLegend, splitLegendStatus, omitYLabel)
 % Plots one scaled graph 
 %
 % Note: Omitting y-label is currently enabled. To change this status
@@ -266,7 +302,7 @@ function onePlot(relativeData, fId, dId, ...
       ftitle{dat} = datanames{nEmptyId(dat)};
     end
     if dispLegend
-      switch splitLegendOption
+      switch splitLegendStatus
         case 0
           legIds = true(1, nUsefulData);
         case 1
@@ -274,7 +310,7 @@ function onePlot(relativeData, fId, dId, ...
         case 2
           legIds = [false(1, floor(nUsefulData/2)), true(1, nUsefulData - floor(nUsefulData/2))];
       end
-      legend(h(legIds), ftitle(legIds), 'Location', 'NorthEast')
+      legend(h(legIds), ftitle(legIds), 'Location', settings.legendLocation)
     end
   else
     warning('Function %d dimension %d has no data available', BBfunc(fId), dims(dId))
@@ -292,6 +328,13 @@ function onePlot(relativeData, fId, dId, ...
   if ~omitYLabel
     ylabel('\Delta_f^{log}')
   end
+  
+%   a = get(gcf, 'children');
+%   b = get(gca, 'children'); 
+%   set(a, 'visible', 'off');
+%   set(b, 'visible', 'off');
+%   legfs = get(a(end-1),'FontSize'); %get legend fontsize
+%   set(a(end-1),'FontSize',legfs+1); %make legend appear larger
   hold off
 
 end
