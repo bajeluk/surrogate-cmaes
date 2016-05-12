@@ -51,6 +51,7 @@ function handle = relativeFValuesPlot(data, varargin)
   numOfData = length(data);
   plotSet.datanames = defopts(settings, 'DataNames', ...
     arrayfun(@(x) ['ALG', num2str(x)], 1:numOfData, 'UniformOutput', false));
+  assert(length(plotSet.datanames) == numOfData, 'Number of data and number of DataNames are not the same')
   defaultDims = [2, 3, 5, 10, 20, 40];
   funcSet.dims   = defopts(settings, 'DataDims', defaultDims(1:size(data{1}, 2)));
   funcSet.BBfunc = defopts(settings, 'DataFuns', 1:size(data{1}, 1));
@@ -130,6 +131,8 @@ function handle = relativePlot(data_stats, settings)
   if strcmp(settings.legendOption, 'hide')
     dispLegend = false;
   end
+  settings.legendLocation = 'NorthEast';
+
   
   for f = 1:numOfFuncIds
     % find useful data and plot 
@@ -245,7 +248,6 @@ function handle = relativePlot(data_stats, settings)
     else
       legendShiftFig = 0;
       legendFigNum = 1;
-      settings.legendLocation = 'NorthEast';
     end
     
     % plot all functions and dimensions
