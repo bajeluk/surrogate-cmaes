@@ -21,8 +21,16 @@ function generateReport(expFolder)
   settings = getSettings(params);
   BBfunc = cell2mat(settings.bbParamDef.functions);
   dims   = cell2mat(settings.bbParamDef.dimensions);
-  nAlgs  = prod(cellfun(@length, [{params.cmParamDef.values}, {params.sgParamDef.values}]));
   
+  paramNames = [fieldnames(settings.sgParamDef); fieldnames(settings.cmParamDef)];
+  algParams = cell2struct([struct2cell(settings.sgParamDef); struct2cell(settings.cmParamDef)], paramNames, 1);
+  algParams = rmfield(algParams, 'experimentPath');
+  nAlgs  = prod(structfun(@length, algParams));
+  
+  % find different settings
+%   difFields = structfun(@length, algParams) > 1;
+%   difParams = paramNames(difFields);
+%   algValues = 
   
   % open report file
   ppFolder = fullfile(expFolder, 'pproc');
