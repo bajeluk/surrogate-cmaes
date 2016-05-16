@@ -48,6 +48,8 @@ for ilaunch = 1:1e4; % up to 1e4 times
 
   % Info about tested function is for debugging purposes
   bbob_handlesF = benchmarks('handles');
+  noisyHandles = benchmarksnoisy('handles');
+  bbob_handlesF(100+(1:length(noisyHandles))) = noisyHandles;
   sgParams.modelOpts.bbob_func = bbob_handlesF{bbParams.functions(1)};
   sgParams.expFileID = [num2str(bbParams.functions(1)) '_' num2str(dim) 'D_' num2str(id)];
   % DEBUG: generate data for testing model regresssion
