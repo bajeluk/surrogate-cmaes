@@ -52,14 +52,6 @@ function generateReport(expFolder)
   fprintf(FID, '%% Created on %s in folder %s.\n', datestr(now), ppFolder);
   fprintf(FID, '\n');
   
-  % experiment settings
-  fprintf(FID, '%%%% Experiment settings\n');
-  fprintf(FID, '%% \n');
-  % keep only parameter fields
-  parSettings = rmfield(settings, {'exp_id', 'exppath_short', 'logDir'});
-  printStructure(parSettings, FID, 'StructName', '%%  ')
-  fprintf(FID, '\n');
-  
   % data loading
   fprintf(FID, '%%%% Load data\n');
   fprintf(FID, '\n');
@@ -77,8 +69,7 @@ function generateReport(expFolder)
   fprintf(FID, 'expData = arrayfun(@(x) exp_evals(:,:,x), 1:nSettings, ''UniformOutput'', false);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% create algorithm names\n');
-  expAlgNames = arrayfun(@(x) ['ALG', num2str(x)], 1:nAlgs, 'UniformOutput', false);
-  printStructure(expAlgNames, FID)
+  fprintf(FID, 'expAlgNames = arrayfun(@(x) [''ALG'', num2str(x)], 1:nSettings, ''UniformOutput'', false);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% color settings\n');
   expCol = randi(256, nAlgs, 3) - 1;
@@ -100,6 +91,29 @@ function generateReport(expFolder)
   fprintf(FID, 'end\n');
   fprintf(FID, 'algorithms = alg.algorithm;\n');
   fprintf(FID, '\n');
+  
+  % experiment settings
+  fprintf(FID, '%%%% Experiment settings\n');
+  fprintf(FID, '%% \n');
+  % keep only parameter fields
+  parSettings = rmfield(settings, {'exp_id', 'exppath_short', 'logDir'});
+  printStructure(parSettings, FID, 'StructName', '%%  ')
+  fprintf(FID, '\n');
+  % print algorithms differences
+  fprintf(FID, '%% print algorithms differences\n');
+  fprintf(FID, 'fprintf(''Algorithm settings differences:\\n\\n'')\n');
+  fprintf(FID, '[dFields, dValues] = difField(exp_settings);\n');
+  fprintf(FID, 'if ~isempty(dFields)\n');
+  fprintf(FID, '  for s = 1:nSettings\n');
+  fprintf(FID, '    fprintf(''  %%s:\\n'', expAlgNames{s})\n');
+  fprintf(FID, '    for f = 1:length(dFields)\n');
+  fprintf(FID, '      fprintf(''    %%s = %%s;\\n'', dFields{f}, printStructure(dValues{s}, 1, ''Format'', ''value''))\n');
+  fprintf(FID, '    end\n');
+  fprintf(FID, '    fprintf(''\\n'')\n');
+  fprintf(FID, '  end\n');
+  fprintf(FID, 'end\n');
+  fprintf(FID, '\n');
+
   
   % tested algorithms comparison
   fprintf(FID, '%%%% Tested algorithms comparison\n');
