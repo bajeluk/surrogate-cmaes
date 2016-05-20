@@ -4,7 +4,7 @@ function handle = relativeFValuesPlot(data, varargin)
 % evaluations / dimension for individual functions.
 %
 % Input:
-%   data      - cell array of data
+%   data     - cell array of data
 %   settings - pairs of property (string) and value or struct with 
 %              properties as fields:
 %

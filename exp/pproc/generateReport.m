@@ -4,49 +4,67 @@ function generateReport(expFolder)
 % See Also:
 %   relativeFValuesPlot
 
-%TODO: settings comparison - what is different between individual settings
+% Issues:
+%   How to name report in multi-experiment comparison?
+%   Where to put report in multi-experiment comparison?
  
   if nargin < 1
     help generateReport
     return
   end
+  if ~iscell(expFolder)
+    expFolder = {expFolder};
+  end
   
-  assert(isdir(expFolder), '%s is not a folder', expFolder)
-  paramFile = fullfile(expFolder, 'scmaes_params.mat');
-  assert(logical(exist(paramFile, 'file')), 'Folder %s does not contain scmaes_params.mat', expFolder)
+  isFolder = cellfun(@isdir, expFolder);
+  assert(any(isFolder), 'No input is a folder')
+  % TODO: warning which input folders were not found
+  paramFile = cellfun(@(x) fullfile(x, 'scmaes_params.mat'), expFolder(isFolder), 'UniformOutput', false);
+  existParFile = cellfun(@(x) logical(exist(x, 'file')), paramFile);
+  assert(any(existParFile), 'No input folder contain scmaes_params.mat')
+  paramFile = paramFile(existParFile);
+  % TODO: warning in which input folders was not found scmaes_params.mat
   
+  % initialize key variables
+  nParamFiles = length(paramFile);
+  settings = cell(nParamFiles, 1);
+  expName  = cell(nParamFiles, 1);
+  BBfunc   = cell(nParamFiles, 1);
+  dims     = cell(nParamFiles, 1);
   % load data
-  params = load(paramFile);
-  expName = params.exp_id;
-  settings = getSettings(params);
-  BBfunc = cell2mat(settings.bbParamDef.functions);
-  dims   = cell2mat(settings.bbParamDef.dimensions);
-  
-  paramNames = [fieldnames(settings.sgParamDef); fieldnames(settings.cmParamDef)];
-  algParams = cell2struct([struct2cell(settings.sgParamDef); struct2cell(settings.cmParamDef)], paramNames, 1);
-  algParams = rmfield(algParams, 'experimentPath');
-  nAlgs  = prod(structfun(@length, algParams));
-  
-  % find different settings
-%   difFields = structfun(@length, algParams) > 1;
-%   difParams = paramNames(difFields);
-%   algValues = 
+  for s = 1 : nParamFiles
+    settings{s} = load(paramFile{s});
+    expName{s} = settings{s}.exp_id;
+    settings{s} = getSettings(settings{s});
+    BBfunc{s} = cell2mat(settings{s}.bbParamDef.functions);
+    dims{s}   = cell2mat(settings{s}.bbParamDef.dimensions);
+  end
+  BBfunc = unique([BBfunc{:}]);
+  dims = unique([dims{:}]);
   
   % open report file
-  ppFolder = fullfile(expFolder, 'pproc');
-  reportFile = fullfile(ppFolder, [expName, '_report.m']);
+  ppFolder = fullfile(paramFile{1}(1:end - length('/scmaes_params.mat')), 'pproc');
+  reportFile = fullfile(ppFolder, [expName{1}, '_', num2str(nParamFiles), 'report.m']);
   FID = fopen(reportFile, 'w');
   
   % print report
   
   % introduction
-  fprintf(FID, '%%%% %s report\n', expName);
+  allExpName = [cellfun(@(x) [x, ', '], expName(1:end-1)', 'UniformOutput', false), expName(end)];
+  fprintf(FID, '%%%% %s report\n', [allExpName{:}]);
   fprintf(FID, '%% Script for making graphs comparing the dependences of minimal function\n');
   fprintf(FID, '%% values on the number of function values of different algorithm settings\n');
-  fprintf(FID, '%% tested in experiment %s. Moreover, algorithm settings are compared\n', expName);
+  fprintf(FID, '%% tested in experiments %s. Moreover, algorithm settings are compared\n', [allExpName{:}]);
   fprintf(FID, '%% to important algorithms in continuous black-box optimization field \n');
   fprintf(FID, '%% (CMA-ES, BIPOP-s*ACM-ES, SMAC, S-CMA-ES, and DTS-CMA-ES).\n');
   fprintf(FID, '%% \n');
+  for s = 1:nParamFiles
+    fprintf(FID, '%% *%s:*\n', expName{s});
+    if isfield(settings{s}, 'exp_description')
+      fprintf(FID, '%% %s\n', settings{s}.exp_description);
+    end
+    fprintf(FID, '%% \n');
+  end
   fprintf(FID, '%% To gain results publish this script.\n');
   fprintf(FID, '%% \n');
   fprintf(FID, '%% Created on %s in folder %s.\n', datestr(now), ppFolder);
@@ -55,8 +73,10 @@ function generateReport(expFolder)
   % data loading
   fprintf(FID, '%%%% Load data\n');
   fprintf(FID, '\n');
-  fprintf(FID, 'expFolder = ''%s'';\n', expFolder);
-  fprintf(FID, 'resFolder = fullfile(expFolder, ''pproc'');\n');
+  for s = 1:nParamFiles
+    fprintf(FID, 'expFolder{%d} = ''%s'';\n', s, expFolder{s});
+  end
+  fprintf(FID, 'resFolder = fullfile(expFolder{1}, ''pproc'');\n');
   fprintf(FID, 'if ~isdir(resFolder)\n');
   fprintf(FID, '  mkdir(resFolder)\n');
   fprintf(FID, 'end\n');
@@ -64,18 +84,17 @@ function generateReport(expFolder)
   fprintf(FID, '%% loading results\n');
   fprintf(FID, 'funcSet.BBfunc = %s;\n', printStructure(BBfunc, FID, 'Format', 'value'));
   fprintf(FID, 'funcSet.dims = %s;\n', printStructure(dims, FID, 'Format', 'value'));
-  fprintf(FID, '[exp_evals, exp_settings] = dataReady(expFolder, funcSet);\n');
-  fprintf(FID, 'nSettings = length(exp_settings);\n');
-  fprintf(FID, 'expData = arrayfun(@(x) exp_evals(:,:,x), 1:nSettings, ''UniformOutput'', false);\n');
+  fprintf(FID, '[expData, expSettings] = catEvalSet(expFolder, funcSet);\n');
+  fprintf(FID, 'nSettings = length(expSettings);\n');
+  fprintf(FID, 'expData = arrayfun(@(x) expData(:,:,x), 1:nSettings, ''UniformOutput'', false);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% create algorithm names\n');
   fprintf(FID, 'expAlgNames = arrayfun(@(x) [''ALG'', num2str(x)], 1:nSettings, ''UniformOutput'', false);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% color settings\n');
-  expCol = randi(256, nAlgs, 3) - 1;
-  printStructure(expCol, FID);
+  fprintf(FID, 'expCol = getAlgColors(nSettings);\n');
   fprintf(FID, '\n');
-  fprintf(FID, '%% load algorithms to compare\n');
+  fprintf(FID, '%% load algorithms for comparison\n');
   fprintf(FID, 'algMat = fullfile(''exp'', ''pproc'', ''compAlgMat.mat'');\n');
   fprintf(FID, 'if ~exist(algMat, ''file'')\n');
   fprintf(FID, '  try\n');
@@ -95,19 +114,25 @@ function generateReport(expFolder)
   % experiment settings
   fprintf(FID, '%%%% Experiment settings\n');
   fprintf(FID, '%% \n');
-  % keep only parameter fields
-  parSettings = rmfield(settings, {'exp_id', 'exppath_short', 'logDir'});
-  printStructure(parSettings, FID, 'StructName', '%%  ')
+  for s = 1:nParamFiles
+    fprintf(FID, '%% * *%s*:\n', expName{s});
+    fprintf(FID, '%% \n');
+    % keep only parameter fields
+    fieldsToRemove = {'exp_id', 'exppath_short', 'exp_description', 'logDir'};
+    parSettings = rmfield(settings{s}, fieldsToRemove(isfield(settings{s}, fieldsToRemove)));
+    printStructure(parSettings, FID, 'StructName', '%%  ')
+    fprintf(FID, '%% \n');
+  end
   fprintf(FID, '\n');
   % print algorithms differences
   fprintf(FID, '%% print algorithms differences\n');
   fprintf(FID, 'fprintf(''Algorithm settings differences:\\n\\n'')\n');
-  fprintf(FID, '[dFields, dValues] = difField(exp_settings);\n');
+  fprintf(FID, '[dFields, dValues] = difField(expSettings);\n');
   fprintf(FID, 'if ~isempty(dFields)\n');
   fprintf(FID, '  for s = 1:nSettings\n');
   fprintf(FID, '    fprintf(''  %%s:\\n'', expAlgNames{s})\n');
   fprintf(FID, '    for f = 1:length(dFields)\n');
-  fprintf(FID, '      fprintf(''    %%s = %%s;\\n'', dFields{f}, printStructure(dValues{s}, 1, ''Format'', ''value''))\n');
+  fprintf(FID, '      fprintf(''    %%s = %%s;\\n'', dFields{f}, printStructure(dValues{f, s}, 1, ''Format'', ''value''))\n');
   fprintf(FID, '    end\n');
   fprintf(FID, '    fprintf(''\\n'')\n');
   fprintf(FID, '  end\n');
@@ -166,7 +191,9 @@ function generateReport(expFolder)
   
   % finalize
   fprintf(FID, '\n');
+  fprintf(FID, '%%%% Final clearing\n');
   fprintf(FID, 'close all\n');
+  fprintf(FID, 'clear s f\n');
   
   % close report file
   fclose(FID);
