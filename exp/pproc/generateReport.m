@@ -3,10 +3,6 @@ function generateReport(expFolder)
 %
 % See Also:
 %   relativeFValuesPlot
-
-% Issues:
-%   How to name report in multi-experiment comparison?
-%   Where to put report in multi-experiment comparison?
  
   if nargin < 1
     help generateReport
@@ -43,8 +39,16 @@ function generateReport(expFolder)
   dims = unique([dims{:}]);
   
   % open report file
-  ppFolder = fullfile(paramFile{1}(1:end - length('/scmaes_params.mat')), 'pproc');
-  reportFile = fullfile(ppFolder, [expName{1}, '_', num2str(nParamFiles), 'report.m']);
+  ppFolder = cellfun(@(x) fullfile(x(1:end - length('/scmaes_params.mat')), 'pproc'), paramFile, 'UniformOutput', false);
+  if ~isdir(ppFolder{1})
+    mkdir(ppFolder{1})
+  end
+  if nParamFiles > 1
+    reportName = ['multi_exp_', num2str(nParamFiles), 'report_', num2str(hashGen(expName)), '.m'];
+  else
+    reportName = [expName{1}, '_report.m'];
+  end
+  reportFile = fullfile(ppFolder{1}, reportName);
   FID = fopen(reportFile, 'w');
   
   % print report
@@ -54,7 +58,8 @@ function generateReport(expFolder)
   fprintf(FID, '%%%% %s report\n', [allExpName{:}]);
   fprintf(FID, '%% Script for making graphs comparing the dependences of minimal function\n');
   fprintf(FID, '%% values on the number of function values of different algorithm settings\n');
-  fprintf(FID, '%% tested in experiments %s. Moreover, algorithm settings are compared\n', [allExpName{:}]);
+  fprintf(FID, '%% tested in experiments %s.\n', [allExpName{:}]);
+  fprintf(FID, '%% Moreover, algorithm settings are compared\n');
   fprintf(FID, '%% to important algorithms in continuous black-box optimization field \n');
   fprintf(FID, '%% (CMA-ES, BIPOP-s*ACM-ES, SMAC, S-CMA-ES, and DTS-CMA-ES).\n');
   fprintf(FID, '%% \n');
@@ -67,7 +72,11 @@ function generateReport(expFolder)
   end
   fprintf(FID, '%% To gain results publish this script.\n');
   fprintf(FID, '%% \n');
-  fprintf(FID, '%% Created on %s in folder %s.\n', datestr(now), ppFolder);
+  fprintf(FID, '%% Created on %s', datestr(now));
+  if nParamFiles == 1
+    fprintf(FID, 'in folder %s', ppFolder{1});
+  end
+  fprintf(FID, '.\n');
   fprintf(FID, '\n');
   
   % data loading
@@ -197,6 +206,16 @@ function generateReport(expFolder)
   
   % close report file
   fclose(FID);
+  
+  % copy report file to all pproc folders
+  if nParamFiles > 1
+    for f = 2 : nParamFiles
+      if ~isdir(ppFolder{f})
+        mkdir(ppFolder{f})
+      end
+      copyfile(reportFile, fullfile(ppFolder{f}, reportName));
+    end
+  end
 
 end
 
@@ -223,4 +242,9 @@ function value = getParam(setting, paramName)
   else
     value = [];
   end
+end
+
+function fileNum = hashGen(folders)
+% generates hash for result file
+ fileNum = num2hex(sum(cellfun(@(x) sum(single(x).*(1:length(x))), folders)));
 end
