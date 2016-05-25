@@ -1,5 +1,9 @@
 function generateReport(expFolder)
-% generateReport(expFolder) generates report of experiment in expFolder.
+% generateReport(expFolder) generates report of experiments in expFolder.
+%
+% Input:
+%   expFolder - folder or folders containing experiments (i.e. containing
+%               scmaes_params.mat file) | string or cell-array of strings
 %
 % See Also:
 %   relativeFValuesPlot
@@ -44,7 +48,7 @@ function generateReport(expFolder)
     mkdir(ppFolder{1})
   end
   if nParamFiles > 1
-    reportName = ['multi_exp_', num2str(nParamFiles), 'report_', num2str(hashGen(expName)), '.m'];
+    reportName = ['exp_', num2str(nParamFiles), 'report_', num2str(hashGen(expName)), '.m'];
   else
     reportName = [expName{1}, '_report.m'];
   end

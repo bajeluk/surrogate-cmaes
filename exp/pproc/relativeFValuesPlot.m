@@ -238,32 +238,36 @@ function handle = relativePlot(data_stats, settings)
     
   % one plot one figure
   else
-    handle = zeros(1, nPlots);
+    
     % legend settings
     if strcmp(settings.legendOption, 'out')
-      maxNameLength = max(cellfun(@length, settings.datanames));
-      legendShiftFig = 2.5 + 0.12*maxNameLength;
-      legendFigNum = nPlots;
+      handle = zeros(1, nPlots + 1);
+      legendFigNum = nPlots + 1;
       settings.legendLocation = 'EastOutside';
     else
-      legendShiftFig = 0;
+      handle = zeros(1, nPlots);
       legendFigNum = 1;
     end
     
     % plot all functions and dimensions
+    plottedInAny = false(1, numOfData);
     for f = 1:nFunsToPlot
       for d = 1:nDimsToPlot
         handle((d-1) * nFunsToPlot + f) = ...
-          figure('Units', 'centimeters', 'Position', [1, 1, 12.5 + legendShiftFig*(f*d == legendFigNum), 6]);
-        onePlot(relativeData, f, d, settings, dispLegend && (strcmp(settings.legendOption, 'show') || (f*d == legendFigNum)), ...
+          figure('Units', 'centimeters', 'Position', [1, 1, 12.5, 6]);
+        plottedInAny = plottedInAny | ...
+          onePlot(relativeData, f, d, settings, dispLegend && (strcmp(settings.legendOption, 'show') || (f*d == legendFigNum)), ...
                 0, false);
       end
+    end
+    if strcmp(settings.legendOption, 'out')
+      handle(legendFigNum) = soloLegend(settings.colors(plottedInAny, :), settings.datanames(plottedInAny), 2);
     end
   end
   
 end
 
-function onePlot(relativeData, fId, dId, ...
+function notEmptyData = onePlot(relativeData, fId, dId, ...
                  settings, dispLegend, splitLegendStatus, omitYLabel)
 % Plots one scaled graph 
 %
@@ -331,12 +335,39 @@ function onePlot(relativeData, fId, dId, ...
     ylabel('\Delta_f^{log}')
   end
   
-%   a = get(gcf, 'children');
-%   b = get(gca, 'children'); 
-%   set(a, 'visible', 'off');
-%   set(b, 'visible', 'off');
-%   legfs = get(a(end-1),'FontSize'); %get legend fontsize
-%   set(a(end-1),'FontSize',legfs+1); %make legend appear larger
   hold off
 
+end
+
+function h = soloLegend(colors, names, lineWidth)
+% plots legend in solo figure
+
+  nNames = length(names);
+  yDiff = 1/(2*nNames);
+  margin = yDiff;
+  x_line_length = 2*margin;
+  
+  h = figure('Units', 'centimeters', 'Position', [1, 1, 12.5, 6]);
+  hold on
+  axis off
+  % first frame point
+  fa = [0, 0]; % [fa_x, fa_y]
+  
+  % lines and text
+  x_line_coor = fa(1) + margin + x_line_length;
+  for n = 1:nNames
+    y_coor = -2*n*yDiff;
+    line([fa(1) + margin, x_line_coor], y_coor*[1,1], ...
+         'Color', colors(n, :), 'LineWidth', lineWidth)
+    text(x_line_coor + margin, y_coor, names{n})
+  end
+  
+  % second frame point
+  fb = [1, -2*(nNames+1)*yDiff]; % [fb_x, fb_y]
+  line([fa(1), fb(1)], [fa(2), fa(2)], 'Color', 'k') %  _
+  line([fa(1), fa(1)], [fa(2), fb(2)], 'Color', 'k') % |
+  line([fb(1), fb(1)], [fa(2), fb(2)], 'Color', 'k') %  _|
+  line([fa(1), fb(1)], [fb(2), fb(2)], 'Color', 'k') %  
+  
+  hold off
 end
