@@ -4,7 +4,7 @@ function handle = relativeFValuesPlot(data, varargin)
 % evaluations / dimension for individual functions.
 %
 % Input:
-%   data      - cell array of data
+%   data     - cell array of data
 %   settings - pairs of property (string) and value or struct with 
 %              properties as fields:
 %
@@ -19,7 +19,12 @@ function handle = relativeFValuesPlot(data, varargin)
 %                       @median)
 %     'MinValue'      - minimal possible function value
 %     'OneFigure'     - plot in one figure | boolean
-%     'SplitLegend'   - legend splitted in first two graphs | boolean 
+%     'LegendOption'  - legend settings:
+%                         'show'  - show legend
+%                         'hide'  - do not show legend
+%                         'split' - legend splitted in first two graphs
+%                         'out'   - legend is out of the last graph
+%     'OmitYLabel'    - omit y-label in even plots | boolean
 %
 % Output:
 %   handle - handles of resulting figures
@@ -41,24 +46,31 @@ function handle = relativeFValuesPlot(data, varargin)
     varargin(vararCellId) = {varargin(vararCellId)};
     settings = struct(varargin{:});
   end
-  % TODO: rewrite to settings structure which can be given as an argument
-  % to other functions
+  
+  % parse settings
   numOfData = length(data);
-  datanames = defopts(settings, 'DataNames', ...
+  plotSet.datanames = defopts(settings, 'DataNames', ...
     arrayfun(@(x) ['ALG', num2str(x)], 1:numOfData, 'UniformOutput', false));
+  assert(length(plotSet.datanames) == numOfData, 'Number of data and number of DataNames are not the same')
   defaultDims = [2, 3, 5, 10, 20, 40];
   funcSet.dims   = defopts(settings, 'DataDims', defaultDims(1:size(data{1}, 2)));
   funcSet.BBfunc = defopts(settings, 'DataFuns', 1:size(data{1}, 1));
-  dims    = defopts(settings, 'PlotDims', funcSet.dims);
-  BBfunc  = defopts(settings, 'PlotFuns', funcSet.BBfunc);
+  plotSet.dims    = defopts(settings, 'PlotDims', funcSet.dims);
+  plotSet.BBfunc  = defopts(settings, 'PlotFuns', funcSet.BBfunc);
   colors  = defopts(settings, 'Colors', rand(numOfData, 3));
-  aggDims = defopts(settings, 'AggregateDims', false);
-  aggFuns = defopts(settings, 'AggregateFuns', false);
-  minValue = defopts(settings, 'MinValue', 1e-8);
-  maxEval = defopts(settings, 'MaxEval', 100);
+  if max(colors) > 1
+    colors = colors / 255;
+  end
+  plotSet.colors = colors;
+  plotSet.aggDims = defopts(settings, 'AggregateDims', false);
+  plotSet.aggFuns = defopts(settings, 'AggregateFuns', false);
+  plotSet.minValue = defopts(settings, 'MinValue', 1e-8);
+  plotSet.maxEval = defopts(settings, 'MaxEval', 250);
   statistic = defopts(settings, 'Statistic', @mean);
-  oneFigure = defopts(settings, 'OneFigure', false);
-  splitLegend = defopts(settings, 'SplitLegend', false);
+  plotSet.oneFigure = defopts(settings, 'OneFigure', false);
+  plotSet.legendOption = defopts(settings, 'LegendOption', 'show');
+%   plotSet.splitLegend = defopts(settings, 'SplitLegend', false);
+  plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
       statistic = @(x, dim) quantile(x, [0.25, 0.5, 0.75], dim);
@@ -69,9 +81,9 @@ function handle = relativeFValuesPlot(data, varargin)
 
   % get function and dimension IDs
   dimInvIds = inverseIndex(funcSet.dims);
-  dimIds = dimInvIds(dims);
+  dimIds = dimInvIds(plotSet.dims);
   funcInvIds = inverseIndex(funcSet.BBfunc);
-  funcIds = funcInvIds(BBfunc);
+  funcIds = funcInvIds(plotSet.BBfunc);
 
   if ~all(dimIds)
     fprintf('Wrong dimesion request!\n')
@@ -93,35 +105,44 @@ function handle = relativeFValuesPlot(data, varargin)
   for D = 1:numOfData
     for f = 1:length(funcIds)
       for d = 1:length(dimIds)
-        data_stats{D}{f,d}(data_stats{D}{f,d} < minValue) = minValue;
+        data_stats{D}{f,d}(data_stats{D}{f,d} < plotSet.minValue) = plotSet.minValue;
       end
     end
   end
   
   % draw plot
-  handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval, oneFigure, splitLegend);
+  handle = relativePlot(data_stats, plotSet);
 
 end
 
-function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggDims, aggFuns, maxEval, oneFigure, splitLegend)
+function handle = relativePlot(data_stats, settings)
 % Plots scaled graph of different algorithms in all defined functions and 
 % one all dimensions
 
   numOfData = length(data_stats);
-  numOfFuncIds = length(BBfunc);
-  evaldim = 1:min(length(data_stats{1}{1}), maxEval);
+  numOfFuncIds = length(settings.BBfunc);
   minGraph = -8;
   maxGraph =  0;
+  dispLegend = true;
+  splitLegend = false;
+  if strcmp(settings.legendOption, 'split')
+    splitLegend = true;
+  end
+  if strcmp(settings.legendOption, 'hide')
+    dispLegend = false;
+  end
+  settings.legendLocation = 'NorthEast';
+
   
   for f = 1:numOfFuncIds
     % find useful data and plot 
-    for d = 1:length(dims)
+    for d = 1:length(settings.dims)
       % find available data
       notEmptyData = true(1, numOfData);
       for dat = 1:numOfData
         notEmptyData(dat) = ~isempty(data_stats{dat}{f,d});
         if ~notEmptyData(dat)
-          warning('%s is missing in function %d and dimension %d.', datanames{dat}, BBfunc(f), dims(d))
+          warning('%s is missing in function %d and dimension %d.', settings.datanames{dat}, settings.BBfunc(f), settings.dims(d))
           relativeData{dat}{f, d} = [];
         end
       end
@@ -130,7 +151,7 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
         nUsefulData = sum(notEmptyData);
         % count f-values ratio
         actualData = cell2mat(arrayfun(@(D) data_stats{nEmptyId(D)}{f,d}, 1:nUsefulData, 'UniformOutput', false));
-        nData = min(maxEval, size(actualData, 1));
+        nData = min(settings.maxEval, size(actualData, 1));
         actualData = log10( actualData(1:nData, :) );
         actualMin = min(min(actualData));
         actualMax = max(max(actualData));
@@ -145,7 +166,8 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
     end
   end
   
-  if aggDims
+  % aggregate accross dimensions
+  if settings.aggDims
     nDimsToPlot = 1;
     for D = 1:numOfData
       for f = 1:numOfFuncIds
@@ -155,28 +177,32 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
       relativeData{D} = relativeData{D}(:, 1);
     end
   else
-    nDimsToPlot = length(dims);
+    nDimsToPlot = length(settings.dims);
   end
   
-  if aggFuns
+  % aggregate accross functions
+  if settings.aggFuns
     nFunsToPlot = 1;
     for D = 1:numOfData
-      for d = 1:length(dims)
+      for d = 1:length(settings.dims)
         nFuns = size(relativeData{D}, 1);
         relativeData{D}{1, d} = mean(cell2mat(arrayfun(@(x) relativeData{D}{x,d}, 1:nFuns, 'UniformOutput', false)'), 1);
       end
       relativeData{D} = relativeData{D}(1, :);
     end
   else
-    nFunsToPlot = length(BBfunc);
+    nFunsToPlot = length(settings.BBfunc);
   end
   
-  if oneFigure && (nFunsToPlot*nDimsToPlot > 1)
-    nRows = ceil(nFunsToPlot*nDimsToPlot/2);
+  nPlots = nFunsToPlot*nDimsToPlot;
+  
+  % all plots one figure
+  if settings.oneFigure && (nPlots > 1)
+    nRows = ceil(nPlots/2);
     handle = figure('Units', 'centimeters', 'Position', [1 1 20 6*nRows]);
+    % first plot
     subplot(nRows, 2, 1)
-    onePlot(relativeData, 1, 1, evaldim, maxEval, colors, ...
-            datanames, aggFuns, aggDims, BBfunc, dims, true, ...
+    onePlot(relativeData, 1, 1, settings, dispLegend, ...
             1*splitLegend, false);
     if nDimsToPlot > 1
       f = 1;
@@ -185,12 +211,12 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
       f = 2;
       d = 1;
     end
+    % second plot
     subplot(nRows, 2, 2)
-    onePlot(relativeData, f, d, evaldim, maxEval, colors, ...
-            datanames, aggFuns, aggDims, BBfunc, dims, splitLegend, ...
-            2*splitLegend, true);
-    
-    if (nFunsToPlot*nDimsToPlot > 2)
+    onePlot(relativeData, f, d, settings, splitLegend, ...
+            2*splitLegend, settings.omitYLabel);
+    % the rest of plots
+    if (nPlots > 2)
       if nDimsToPlot > 2
         fStart = 1;
         dStart = 3;
@@ -202,37 +228,65 @@ function handle = relativePlot(data_stats, dims, BBfunc, datanames, colors, aggD
       for f = fStart:nFunsToPlot
         for d = dStart:nDimsToPlot
           plotId = (d-1) * nFunsToPlot + f;
-          omitYLabel = ~logical(mod(plotId, 2));
+          omitYLabelStatus = ~logical(mod(plotId, 2));
           subplot(nRows, 2, plotId)
-          onePlot(relativeData, f, d, evaldim, maxEval, colors, ...
-            datanames, aggFuns, aggDims, BBfunc, dims, false, ...
-            0, omitYLabel);
+          onePlot(relativeData, f, d, settings, false, ...
+            0, settings.omitYLabel && omitYLabelStatus);
         end
       end
     end
+    
+  % one plot one figure
   else
-    handle = zeros(1, nDimsToPlot*nFunsToPlot);
+    
+    % legend settings
+    if strcmp(settings.legendOption, 'out')
+      handle = zeros(1, nPlots + 1);
+      legendFigNum = nPlots + 1;
+      settings.legendLocation = 'EastOutside';
+    else
+      handle = zeros(1, nPlots);
+      legendFigNum = 1;
+    end
+    
+    % plot all functions and dimensions
+    plottedInAny = false(1, numOfData);
     for f = 1:nFunsToPlot
       for d = 1:nDimsToPlot
-        handle((d-1) * nFunsToPlot + f) = figure('Units', 'centimeters', 'Position', [1 1 12.5 6]);
-        onePlot(relativeData, f, d, evaldim, maxEval, colors, ...
-                datanames, aggFuns, aggDims, BBfunc, dims, ~splitLegend || (f == 1 && d == 1), ...
+        handle((d-1) * nFunsToPlot + f) = ...
+          figure('Units', 'centimeters', 'Position', [1, 1, 12.5, 6]);
+        plottedInAny = plottedInAny | ...
+          onePlot(relativeData, f, d, settings, dispLegend && (strcmp(settings.legendOption, 'show') || (f*d == legendFigNum)), ...
                 0, false);
       end
+    end
+    if strcmp(settings.legendOption, 'out')
+      handle(legendFigNum) = soloLegend(settings.colors(plottedInAny, :), settings.datanames(plottedInAny), 2);
     end
   end
   
 end
 
-function onePlot(relativeData, fId, dId, evaldim, maxEval, colors, ...
-                 datanames, aggFuns, aggDims, BBfunc, dims, dispLegend, ...
-                 splitLegendOption, omitYLabel)
+function notEmptyData = onePlot(relativeData, fId, dId, ...
+                 settings, dispLegend, splitLegendStatus, omitYLabel)
 % Plots one scaled graph 
 %
-% Note: Omitting y-label is currently unabled. To change this status
+% Note: Omitting y-label is currently enabled. To change this status
 % uncomment rows at the end of onePlot function.
 
+  % parsing settings
+  maxEval = settings.maxEval;
+  colors = settings.colors;
+  datanames = settings.datanames;
+  aggFuns = settings.aggFuns;
+  aggDims = settings.aggDims;
+  BBfunc = settings.BBfunc;
+  dims = settings.dims;
+
+  % default value
   medianLineWidth = 2;
+  
+  evaldim = 1:min(length(relativeData{1}{1}), settings.maxEval);
 
   for dat = 1:length(relativeData)
     notEmptyData(dat) = ~isempty(relativeData{dat}{fId, dId});
@@ -254,7 +308,7 @@ function onePlot(relativeData, fId, dId, evaldim, maxEval, colors, ...
       ftitle{dat} = datanames{nEmptyId(dat)};
     end
     if dispLegend
-      switch splitLegendOption
+      switch splitLegendStatus
         case 0
           legIds = true(1, nUsefulData);
         case 1
@@ -262,7 +316,7 @@ function onePlot(relativeData, fId, dId, evaldim, maxEval, colors, ...
         case 2
           legIds = [false(1, floor(nUsefulData/2)), true(1, nUsefulData - floor(nUsefulData/2))];
       end
-      legend(h(legIds), ftitle(legIds), 'Location', 'NorthEast')
+      legend(h(legIds), ftitle(legIds), 'Location', settings.legendLocation)
     end
   else
     warning('Function %d dimension %d has no data available', BBfunc(fId), dims(dId))
@@ -277,9 +331,43 @@ function onePlot(relativeData, fId, dId, evaldim, maxEval, colors, ...
   end
   title(titleString)
   xlabel('Number of evaluations / D')
-%   if ~omitYLabel
+  if ~omitYLabel
     ylabel('\Delta_f^{log}')
-%   end
+  end
+  
   hold off
 
+end
+
+function h = soloLegend(colors, names, lineWidth)
+% plots legend in solo figure
+
+  nNames = length(names);
+  yDiff = 1/(2*nNames);
+  margin = yDiff;
+  x_line_length = 2*margin;
+  
+  h = figure('Units', 'centimeters', 'Position', [1, 1, 12.5, 6]);
+  hold on
+  axis off
+  % first frame point
+  fa = [0, 0]; % [fa_x, fa_y]
+  
+  % lines and text
+  x_line_coor = fa(1) + margin + x_line_length;
+  for n = 1:nNames
+    y_coor = -2*n*yDiff;
+    line([fa(1) + margin, x_line_coor], y_coor*[1,1], ...
+         'Color', colors(n, :), 'LineWidth', lineWidth)
+    text(x_line_coor + margin, y_coor, names{n})
+  end
+  
+  % second frame point
+  fb = [1, -2*(nNames+1)*yDiff]; % [fb_x, fb_y]
+  line([fa(1), fb(1)], [fa(2), fa(2)], 'Color', 'k') %  _
+  line([fa(1), fa(1)], [fa(2), fb(2)], 'Color', 'k') % |
+  line([fb(1), fb(1)], [fa(2), fb(2)], 'Color', 'k') %  _|
+  line([fa(1), fb(1)], [fb(2), fb(2)], 'Color', 'k') %  
+  
+  hold off
 end

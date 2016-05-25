@@ -6,7 +6,7 @@ classdef ECFactory
           obj = IndividualEC();
         case 'generation'
           obj = GenerationEC(surrogateOpts);
-        case {'doubletrained', 'restricted'}
+        case {'doubletrained', 'doublytrained', 'restricted'}
           obj = DoubleTrainedEC(surrogateOpts);
         case 'maes'
           obj = ModelAssistedEC();

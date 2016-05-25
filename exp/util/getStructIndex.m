@@ -1,5 +1,6 @@
 function index = getStructIndex(origStruct, searchStruct)
-% Returns indices of searched substructure in cell array of structures.
+% getStructIndex(origStruct, searchStruct) returns indices of searched 
+% substructure in cell array of structures.
 %
 % Input:
 %   origStruct   - cell array of structures for search
@@ -9,6 +10,10 @@ function index = getStructIndex(origStruct, searchStruct)
 %   index - vector of indices of searched substructure in 'origStruct'
 
   index = [];
+  if nargin < 2
+    help getStructIndex
+    return
+  end
   searchedFields = findFields(searchStruct);
   nFields = length(searchedFields);
   searchedValues = cell(1, nFields);

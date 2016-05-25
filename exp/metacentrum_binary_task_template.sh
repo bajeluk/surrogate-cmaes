@@ -69,6 +69,12 @@ echo "====================="
 #
 $MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" $ID
 #
+# # this is for debug purposes: disable exit on error and direct call matlab
+#
+# module add matlab
+# sed -i 's/^  try/  % try/;s/^  catch err/  return;\n  % catch err/;/ catch err/,/^end/s/^  end/  % end/' exp/bbob_test_01.m 
+# matlab -nodisplay -r "dbstop if error; metacentrum_task_matlab('$EXPID','"$EXPPATH_SHORT"', $ID)";
+#
 ########################
 
 if [ $? -eq 0 ]; then

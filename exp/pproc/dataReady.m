@@ -1,7 +1,7 @@
 function [data, settings] = dataReady(datapath, funcSet)
 % Prepares data for further processing.
-% Returns cell array 'data' functions x dimensions x settings and 
-% appropriate 'settings'.
+% [data, settings] = dataReady(datapath, funcSet) returns cell array 'data'
+% of size functions x dimensions x settings and appropriate 'settings'.
 %
 % Input:
 %   datapath      - path to data | string
@@ -13,6 +13,9 @@ function [data, settings] = dataReady(datapath, funcSet)
 %   data     - aggregated data of size functions x dimensions x settings 
 %              | cell array
 %   settings - appropriate settings to 'data' | structure
+%
+% See Also:
+%   catEvalSet
 
   BBfunc = funcSet.BBfunc;
   dims = funcSet.dims;

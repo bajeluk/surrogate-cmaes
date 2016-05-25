@@ -12,6 +12,7 @@ variablescmaes.mat
 exp/experiments/*/
 exp/pproc/scripts/html/
 exp/pproc/scripts/tmp/
+exp/pproc/compAlgMat.mat*
 *.aux
 *.bbl
 *.blg

@@ -45,7 +45,7 @@ function expInit(exp_id)
 
   % save the definition of the experiment into 'scmaes_params.mat'
   save([experimentPath filesep 'scmaes_params.mat'], ...
-    'bbParamDef', 'sgParamDef', 'cmParamDef', 'exp_id', 'exppath_short', 'logDir');
+    'bbParamDef', 'sgParamDef', 'cmParamDef', 'exp_id', 'exppath_short', 'exp_description', 'logDir');
 
   % prepare other directories and files in the 'experimentPath'
   [s,mess,messid] = mkdir([experimentPath filesep 'cmaes_results']);
