@@ -6,6 +6,16 @@ function colors = getAlgColors(n)
 %      returning values far enough from each other (and from reference
 %      algorithms colors)
   
-  hue = rand(n, 1);
-  colors = hsv2rgb([hue, ones(n,1), ones(n,1)]);
+  hue_start = 3;
+  hue = hue_start./(hue_start+1 : n+hue_start);
+  hue = mod(cumsum(hue'), 1);
+%   hue = rand(n, 1);
+  
+  sat_base = [1; 1; 0.5];
+  val_base = [1; 0.5; 1];
+  sat = repmat(sat_base, ceil(n/length(sat_base)), 1);
+  val = repmat(val_base, ceil(n/length(val_base)), 1);
+  sat = sat(1:n);
+  val = val(1:n);
+  colors = 255*hsv2rgb([hue, sat, val]);
 end

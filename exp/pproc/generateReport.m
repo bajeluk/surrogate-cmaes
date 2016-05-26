@@ -78,7 +78,7 @@ function generateReport(expFolder)
   fprintf(FID, '%% \n');
   fprintf(FID, '%% Created on %s', datestr(now));
   if nParamFiles == 1
-    fprintf(FID, 'in folder %s', ppFolder{1});
+    fprintf(FID, ' in folder %s', ppFolder{1});
   end
   fprintf(FID, '.\n');
   fprintf(FID, '\n');
