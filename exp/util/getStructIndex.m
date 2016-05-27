@@ -17,19 +17,22 @@ function index = getStructIndex(origStruct, searchStruct)
   searchedFields = findFields(searchStruct);
   nFields = length(searchedFields);
   searchedValues = cell(1, nFields);
-  for j = 1:nFields % find all field values
+  % find all field values
+  for j = 1:nFields 
     searchedValues{j} = eval(['searchStruct.', searchedFields{j}]);
   end
   for i = 1:length(origStruct)
     if ~isempty(origStruct{i})
       correctFields = true;
-      for j = 1:nFields % compare all needed fields
+      % compare all needed fields
+      for j = 1:nFields 
         try
           correctFields = correctFields && ...
                           all(isequal(eval(['origStruct{i}.', searchedFields{j}]), searchedValues{j}));
         catch err
           if strcmp(err.identifier, 'MATLAB:nonExistentField')
-            warning('Reference to non-existent field ''%s''.', searchedFields{j})
+            % warning('Reference to non-existent field ''%s''.', searchedFields{j})
+            fprintf(2, 'Reference to non-existent field ''%s''.\n', searchedFields{j});
             correctFields = false;
           else
             throw(err)

@@ -6,6 +6,12 @@ function colors = getAlgColors(n)
 %      returning values far enough from each other (and from reference
 %      algorithms colors)
   
+  colors = [];
+  if nargin < 1
+    help getAlgColors
+    return
+  end
+  
   hue_start = 3;
   hue = hue_start./(hue_start+1 : n+hue_start);
   hue = mod(cumsum(hue'), 1);
