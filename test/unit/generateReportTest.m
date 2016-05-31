@@ -8,11 +8,11 @@ function testGetAlgColors(testCase)
   % size of output should be n x 3
   for i = 0:2
     n = 10^i;
-    verifySize(testCase, getAlgColors(n), [n, 3]);
+    verifySize(testCase, getAlgColors(1:n), [n, 3]);
   end
   % colors should be in range 0-255
-  verifyGreaterThanOrEqual(testCase, getAlgColors(n), 0);
-  verifyLessThanOrEqual(testCase, getAlgColors(n), 255);
+  verifyGreaterThanOrEqual(testCase, getAlgColors(1:n), 0);
+  verifyLessThanOrEqual(testCase, getAlgColors(1:n), 255);
 end
 
 function testCatEvalSet(testCase)

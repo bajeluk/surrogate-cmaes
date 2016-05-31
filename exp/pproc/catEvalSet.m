@@ -36,10 +36,22 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   for s = 1:length(folders)
     [exp_evals{s}, settings{s}] = dataReady(folders{s}, funcSet);
   end
+  % remove empty settings and appropriate exp_evals
+  notEmptySet = ~cellfun(@isempty, settings);
+  settings = settings(notEmptySet);
+  exp_evals = exp_evals(notEmptySet);
   % remove field 'experimentPath' because it is different for each
   % experiment
   settings = cellfun(@(x) rmfield(x, 'experimentPath'), [settings{:}], 'UniformOutput', false);
   % find unique settings
+  %TODO: efective finding of unique settings and ID's. Sth like:
+  % help_settings = settings;
+  % notEmptySet = ~cellfun(@isempty, help_settings);
+  % while any(notEmptySet)
+  %   settingsID(getStructIndex(settings, settings{find(notEmptySet, 1, 'first')})) = s;
+  %   help_settings(settingsID == s) = {};
+  %   notEmptySet = ~cellfun(@isempty, help_settings);
+  % end
   for s = length(settings):-1:1
     settingsID(getStructIndex(settings, settings{s})) = s;
   end
