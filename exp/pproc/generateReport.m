@@ -17,7 +17,7 @@ function generateReport(expFolder)
   end
   
   isFolder = cellfun(@isdir, expFolder);
-  assert(any(isFolder), 'No input is a folder')
+  assert(any(isFolder), 'generateReport:err:nofolder','No input is a folder')
   % TODO: warning which input folders were not found
   paramFile = cellfun(@(x) fullfile(x, 'scmaes_params.mat'), expFolder(isFolder), 'UniformOutput', false);
   existParFile = cellfun(@(x) logical(exist(x, 'file')), paramFile);
@@ -34,7 +34,12 @@ function generateReport(expFolder)
   % load data
   for s = 1 : nParamFiles
     settings{s} = load(paramFile{s});
-    expName{s} = settings{s}.exp_id;
+    if isfield(settings{s}, 'exp_id')
+      expName{s} = settings{s}.exp_id;
+    else
+      fNameParts = strsplit(paramFile{s}, '/');
+      expName{s} = fNameParts{end-1};
+    end
     settings{s} = getSettings(settings{s});
     BBfunc{s} = cell2mat(settings{s}.bbParamDef.functions);
     dims{s}   = cell2mat(settings{s}.bbParamDef.dimensions);
@@ -43,7 +48,7 @@ function generateReport(expFolder)
   dims = unique([dims{:}]);
   
   % open report file
-  ppFolder = cellfun(@(x) fullfile(x(1:end - length('/scmaes_params.mat')), 'pproc'), paramFile, 'UniformOutput', false);
+  ppFolder = cellfun(@(x) fullfile(x(1:end - length([filesep, 'scmaes_params.mat'])), 'pproc'), paramFile, 'UniformOutput', false);
   if ~isdir(ppFolder{1})
     mkdir(ppFolder{1})
   end
@@ -78,7 +83,7 @@ function generateReport(expFolder)
   fprintf(FID, '%% \n');
   fprintf(FID, '%% Created on %s', datestr(now));
   if nParamFiles == 1
-    fprintf(FID, 'in folder %s', ppFolder{1});
+    fprintf(FID, ' in folder %s', ppFolder{1});
   end
   fprintf(FID, '.\n');
   fprintf(FID, '\n');
@@ -229,8 +234,15 @@ function settings = getSettings(params)
   for i = 1:length(paramFields)
     if isstruct(params.(paramFields{i})) && all(isfield(params.(paramFields{i}), {'name', 'values'}))
       for f = 1:length(params.(paramFields{i}))
-        settings.(paramFields{i}).(params.(paramFields{i})(f).name) = ...
-          params.(paramFields{i})(f).values;
+        nnParam = 0;
+        if isempty(params.(paramFields{i})(f).name)
+          nnParam = nnParam + 1;
+          settings.(paramFields{i}).(['NONAMEPARAM', num2str(nnParam)]) = ...
+            params.(paramFields{i})(f).values;
+        else        
+          settings.(paramFields{i}).(params.(paramFields{i})(f).name) = ...
+            params.(paramFields{i})(f).values;
+        end
       end
     else
       settings.(paramFields{i}) = params.(paramFields{i});

@@ -22,8 +22,6 @@ function [data, settings] = dataReady(datapath, funcSet)
   BBfuncInv = inverseIndex(BBfunc);
   dimsInv = inverseIndex(dims);
   
-  data = cell(length(BBfunc), length(dims));
-  
   % load and complete results
 
   % data divided between multiple folders
@@ -39,9 +37,14 @@ function [data, settings] = dataReady(datapath, funcSet)
     datalist = gainDataList(datapath);
     errPathList = datapath;
   end
-  assert(~isempty(datalist), 'Useful data not found in folder %s.', errPathList)
-
+  
   settings = {};
+  data = cell(length(BBfunc), length(dims));
+  if isempty(datalist)
+    warning('Useful data not found in folder %s.', errPathList)
+    return
+  end
+  
   % load data
   for i = 1:length(datalist)
     warning('off', 'MATLAB:load:variableNotFound')
