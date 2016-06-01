@@ -39,7 +39,7 @@ function testCatEvalSet(testCase)
   assumeGreaterThanOrEqual(testCase, nExp, 2, 'Cannot test generating report of multiple experiment. There is only one folder containing experiment.');
   [evals, settings] = catEvalSet(expFolderList, funcSet);
   % verify eval size
-  verifySize(testCase, evals, [length(funcSet.BBfunc), length(dims), length(settings)]);
+  verifySize(testCase, evals, [length(funcSet.BBfunc), length(funcSet.dims), length(settings)]);
 end
 
 function testGenerateReport(testCase)
@@ -77,6 +77,12 @@ function testGenerateReport(testCase)
   end
   % same report in all folders
   verifyTrue(testCase, any(all(containReport)));
+  
+  %TODO: publish generated report
+  % problem - wrong paths due to unit test
+  ppDir = fullfile(expFolderList{1}, 'pproc');
+  addpath(ppDir)
+%   publish(fullfile(ppDir, uniqueReports{find(all(containReport), 1, 'first')}))
 end
 
 function [folderList, expFolderList, expNameList] = expList()

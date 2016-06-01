@@ -81,6 +81,9 @@ function [data, settings] = dataReady(datapath, funcSet)
       end
     end
   end
+  
+  % fill remainder of data with empty sets
+  data{length(BBfunc), length(dims), length(settings)} = [];
     
   data = divSmooth(data, funcSet);
   
