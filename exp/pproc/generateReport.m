@@ -1,16 +1,23 @@
-function generateReport(expFolder)
-% generateReport(expFolder) generates report of experiments in expFolder.
+function generateReport(expFolder, publishOption)
+% generateReport(expFolder, publishOption) generates report of experiments 
+% in expFolder.
 %
 % Input:
 %   expFolder - folder or folders containing experiments (i.e. containing
 %               scmaes_params.mat file) | string or cell-array of strings
+%   publishOption - resulting format of published report similar to 
+%                   function publish (see help publish) | string
+%                 - to disable publishing set option to 'off' (default)
 %
 % See Also:
-%   relativeFValuesPlot
+%   relativeFValuesPlot, publish
  
   if nargin < 1
     help generateReport
     return
+  end
+  if nargin < 2
+    publishOption = 'off';
   end
   if ~iscell(expFolder)
     expFolder = {expFolder};
@@ -110,7 +117,7 @@ function generateReport(expFolder)
   fprintf(FID, 'expAlgNames = arrayfun(@(x) [''ALG'', num2str(x)], 1:nSettings, ''UniformOutput'', false);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% color settings\n');
-  fprintf(FID, 'expCol = getAlgColors(nSettings);\n');
+  fprintf(FID, 'expCol = getAlgColors(1:nSettings);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% load algorithms for comparison\n');
   fprintf(FID, 'algMat = fullfile(''exp'', ''pproc'', ''compAlgMat.mat'');\n');
@@ -224,6 +231,14 @@ function generateReport(expFolder)
       end
       copyfile(reportFile, fullfile(ppFolder{f}, reportName));
     end
+  end
+
+  % publish report file
+  if ~strcmpi(publishOption, 'off')
+    fprintf('Publishing %s\nThis may take a few minutes...\n', reportFile)
+    addpath(ppFolder{1})
+    publishedReport = publish(reportFile, publishOption);
+    fprintf('Report published to %s\n', publishedReport)
   end
 
 end
