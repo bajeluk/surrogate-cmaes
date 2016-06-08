@@ -355,11 +355,12 @@ function h = soloLegend(colors, names, lineWidth)
   
   % lines and text
   x_line_coor = fa(1) + margin + x_line_length;
+  font = min(10, 125/nNames);
   for n = 1:nNames
     y_coor = -2*n*yDiff;
     line([fa(1) + margin, x_line_coor], y_coor*[1,1], ...
          'Color', colors(n, :), 'LineWidth', lineWidth)
-    text(x_line_coor + margin, y_coor, names{n})
+    text(x_line_coor + margin, y_coor, names{n}, 'FontSize', font)
   end
   
   % second frame point
