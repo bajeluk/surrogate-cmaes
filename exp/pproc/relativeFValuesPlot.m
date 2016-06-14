@@ -284,7 +284,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   dims = settings.dims;
 
   % default value
-  medianLineWidth = 2;
+  medianLineWidth = 1;
   
   evaldim = 1:min(length(relativeData{1}{1}), settings.maxEval);
 

@@ -43,7 +43,7 @@ ei_poi_lcb_path20D = fullfile(exppath, 'exp_doubleEC_01_ei_poi_lcb_20D');
 gen_path = fullfile(exppath, 'exp_geneEC_10');
 gen_path20D = fullfile(exppath, 'exp_geneEC_10_20D');
 
-cmaespath = fullfile(ei_poi_lcb_path, 'cmaes_results');
+cmaespath = fullfile(exp_geneEC_10, 'cmaes_results');
 cmaespath20D = fullfile(ei_poi_lcb_path20D, 'cmaes_results');
 
 saacmes_path = {fullfile(exppath, 'BIPOP-saACM-k', 'saACMESlambdaRevMinIter3v2_23510Dnew0', 'ActiveOptACMd'), ...
