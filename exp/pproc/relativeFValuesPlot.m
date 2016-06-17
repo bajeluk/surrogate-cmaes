@@ -38,14 +38,16 @@ function handle = relativeFValuesPlot(data, varargin)
     help relativeFValuesPlot
     return
   end
-  if isstruct(varargin)
-    settings = varargin;
-  else
-    % keep cells as cells due to struct command
-    vararCellId = cellfun(@iscell, varargin);
-    varargin(vararCellId) = {varargin(vararCellId)};
-    settings = struct(varargin{:});
-  end
+%   if isstruct(varargin)
+%     settings = varargin;
+%   else
+%     % keep cells as cells due to struct command
+%     vararCellId = cellfun(@iscell, varargin);
+%     varargin(vararCellId) = {varargin(vararCellId)};
+%     settings = struct(varargin{:});
+%   end
+  settings = settings2struct(varargin);
+  
   
   % parse settings
   numOfData = length(data);
@@ -69,7 +71,12 @@ function handle = relativeFValuesPlot(data, varargin)
   statistic = defopts(settings, 'Statistic', @mean);
   plotSet.oneFigure = defopts(settings, 'OneFigure', false);
   plotSet.legendOption = defopts(settings, 'LegendOption', 'show');
-%   plotSet.splitLegend = defopts(settings, 'SplitLegend', false);
+  defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
+  plotSet.lineSpec = defopts(settings, 'LineSpecification', defaultLine);
+  if length(plotSet.lineSpec) ~= numOfData
+    warning('Number of line specification strings and number of data are different. Setting default values.')
+    plotSet.lineSpec = defaultLine;
+  end
   plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
@@ -282,6 +289,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   aggDims = settings.aggDims;
   BBfunc = settings.BBfunc;
   dims = settings.dims;
+  lineSpec = settings.lineSpec;
 
   % default value
   medianLineWidth = 1;
@@ -298,13 +306,13 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     ftitle = cell(1, nUsefulData);
     % mean
     h(1) = plot(evaldim, relativeData{nEmptyId(1)}{fId, dId}(1:maxEval), ...
-      'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(1), :));
+      lineSpec{1}, 'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(1), :));
     ftitle{1} = datanames{nEmptyId(1)};
     hold on
     grid on
     for dat = 2:nUsefulData
       h(dat) = plot(evaldim, relativeData{nEmptyId(dat)}{fId, dId}(1:maxEval), ...
-        'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(dat), :));
+        lineSpec{dat}, 'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(dat), :));
       ftitle{dat} = datanames{nEmptyId(dat)};
     end
     if dispLegend
