@@ -98,6 +98,7 @@ function generateReport(expFolder, publishOption)
   % data loading
   fprintf(FID, '%%%% Load data\n');
   fprintf(FID, '\n');
+  fprintf(FID, 'expFolder = {};\n');
   for s = 1:nParamFiles
     fprintf(FID, 'expFolder{%d} = ''%s'';\n', s, expFolder{s});
   end

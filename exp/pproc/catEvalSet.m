@@ -61,7 +61,6 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   for s = length(settings):-1:1
     settingsID(getStructIndex(settings, settings{s})) = s;
   end
-  settings = settings(unique(settingsID));
   
   % concatenate evaluations from different experiments and with the same
   % settings
@@ -75,5 +74,9 @@ function [evals, settings] = catEvalSet(folders, funcSet)
       end
     end
   end
+  
+  % return unique settings and its evaluations
+  settings = settings(unique(settingsID));
+  evals = evals(:,:,ismember(1:nSettings, unique(settingsID)));
 
 end

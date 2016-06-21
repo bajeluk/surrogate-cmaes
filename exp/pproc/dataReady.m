@@ -21,6 +21,8 @@ function [data, settings] = dataReady(datapath, funcSet)
   dims = funcSet.dims;
   BBfuncInv = inverseIndex(BBfunc);
   dimsInv = inverseIndex(dims);
+  nFunc = length(BBfunc);
+  nDim  = length(dims);
   
   % load and complete results
 
@@ -39,7 +41,7 @@ function [data, settings] = dataReady(datapath, funcSet)
   end
   
   settings = {};
-  data = cell(length(BBfunc), length(dims));
+  data = cell(nFunc, nDim);
   if isempty(datalist)
     warning('Useful data not found in folder %s.', errPathList)
     return
@@ -83,8 +85,8 @@ function [data, settings] = dataReady(datapath, funcSet)
   end
   
   % fill remainder of data with empty sets
-  if ~isempty(settings)
-    data{length(BBfunc), length(dims), length(settings)} = [];
+  if ~isempty(settings) && numel(data) < nFunc*nDim*length(settings)
+    data{nFunc, nDim, length(settings)} = [];
   end
     
   data = divSmooth(data, funcSet);
@@ -98,12 +100,8 @@ function datalist = gainDataList(datapath)
   list = dir(fullfile(datapath, '*.mat'));
   % ids of usable .mat files
   matId = true(1, length(list));
-  if strfind([list.name], 'scmaes_params')
-    matId(end) = false;
-  end
-  if strfind([list.name], 'metajob')
-    matId(1) = false;
-  end    
+  matId = matId & ~cellfun(@(x) strcmp(x, 'scmaes_params.mat'), {list.name});
+  matId = matId & cellfun(@(x) isempty(strfind(x, 'metajob.mat')), {list.name});
   % get rid of scmaes_params.mat or metajob.mat
   datalist = cellfun(@(x) fullfile(datapath, x), {list(matId).name}, 'UniformOutput', false);  
 
