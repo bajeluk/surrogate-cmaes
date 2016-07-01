@@ -3,6 +3,7 @@ classdef DoubleTrainedEC < EvolutionControl
     model
     
     origRatioUpdater
+    useDoubleTraining
   end
   
   methods 
@@ -13,6 +14,7 @@ classdef DoubleTrainedEC < EvolutionControl
       surrogateOpts.updaterType = defopts(surrogateOpts, 'updaterType', 'none');
       surrogateOpts.updaterParams = defopts(surrogateOpts, 'updaterParams', {});
       obj.origRatioUpdater = OrigRatioUpdaterFactory.createUpdater(surrogateOpts);
+      obj.useDoubleTraining = defopts(surrogateOpts, 'evoControlUseDoubleTraining', true);
     end
     
     function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
@@ -107,12 +109,12 @@ classdef DoubleTrainedEC < EvolutionControl
         yTrain = [yTrain; yNew'];
         % train the model again
         retrainedModel = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
-        if (retrainedModel.isTrained())
+        if (obj.useDoubleTraining && retrainedModel.isTrained())
           yNewRestricted = retrainedModel.predict((xExtend(:, ~reevalID))');
           surrogateStats = getModelStatistics(retrainedModel, cmaesState, surrogateOpts, sampleOpts, counteval);
         else
           % use values estimated by the old model
-          fprintf('DoubleTrained: The new model could not be trained, using the not-retrained model.\n');
+          fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
           yNewRestricted = fvalExtend(~reevalID);
           surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval);
         end
