@@ -1,24 +1,34 @@
-function generateReport(expFolder, publishOption)
-% generateReport(expFolder, publishOption) generates report of experiments 
+function generateReport(expFolder, varargin)
+% generateReport(expFolder, settings) generates report of experiments 
 % in expFolder.
 %
 % Input:
 %   expFolder - folder or folders containing experiments (i.e. containing
 %               scmaes_params.mat file) | string or cell-array of strings
-%   publishOption - resulting format of published report similar to 
-%                   function publish (see help publish) | string
-%                 - to disable publishing set option to 'off' (default)
+%   settings - pairs of property (string) and value, or struct with 
+%              properties as fields:
+%
+%     'Description' - description of the report | string
+%     'Publish'     - resulting format of published report similar to 
+%                     function publish (see help publish) | string
+%                   - to disable publishing set option to 'off' (default)
 %
 % See Also:
 %   relativeFValuesPlot, publish
+
+%TODO:
+%  - generate report for chosen algorithms
+%  - rank table
  
   if nargin < 1
     help generateReport
     return
   end
-  if nargin < 2
-    publishOption = 'off';
-  end
+  
+  % parse input
+  reportSettings = settings2struct(varargin);
+  publishOption = defopts(reportSettings, 'Publish', 'off');
+  reportDescription = defopts(reportSettings, 'Description', []);
   if ~iscell(expFolder)
     expFolder = {expFolder};
   end
@@ -72,7 +82,11 @@ function generateReport(expFolder, publishOption)
   % introduction
   allExpName = [cellfun(@(x) [x, ', '], expName(1:end-1)', 'UniformOutput', false), expName(end)];
   fprintf(FID, '%%%% %s report\n', [allExpName{:}]);
-  fprintf(FID, '%% Script for making graphs comparing the dependences of minimal function\n');
+  if ~isempty(reportDescription)
+    fprintf(FID, '%% %s\n', reportDescription);
+    fprintf(FID, '%% \n');
+  end
+  fprintf(FID, '%% Report compares the dependences of minimal function\n');
   fprintf(FID, '%% values on the number of function values of different algorithm settings\n');
   fprintf(FID, '%% tested in experiments %s.\n', [allExpName{:}]);
   fprintf(FID, '%% Moreover, algorithm settings are compared\n');
