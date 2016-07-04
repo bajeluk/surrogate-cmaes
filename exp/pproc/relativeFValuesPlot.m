@@ -293,28 +293,32 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
 
   % default value
   medianLineWidth = 1;
-  
-  evaldim = 1:min(length(relativeData{1}{1}), settings.maxEval);
 
+  % find not empty data
   for dat = 1:length(relativeData)
     notEmptyData(dat) = ~isempty(relativeData{dat}{fId, dId});
   end
+  
   if any(notEmptyData)
     nEmptyId = inverseIndex(notEmptyData);
     nUsefulData = sum(notEmptyData);
+    % find minimal number of function evaluations to plot
+    evaldim = 1:min([arrayfun(@(x) length(relativeData{nEmptyId(x)}{fId, dId}), 1:nUsefulData), maxEval]);
     h = zeros(1, nUsefulData);
     ftitle = cell(1, nUsefulData);
-    % mean
-    h(1) = plot(evaldim, relativeData{nEmptyId(1)}{fId, dId}(1:maxEval), ...
+    % plot first line 
+    h(1) = plot(evaldim, relativeData{nEmptyId(1)}{fId, dId}(evaldim), ...
       lineSpec{1}, 'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(1), :));
     ftitle{1} = datanames{nEmptyId(1)};
     hold on
     grid on
+    % plot rest of lines
     for dat = 2:nUsefulData
-      h(dat) = plot(evaldim, relativeData{nEmptyId(dat)}{fId, dId}(1:maxEval), ...
+      h(dat) = plot(evaldim, relativeData{nEmptyId(dat)}{fId, dId}(evaldim), ...
         lineSpec{dat}, 'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(dat), :));
       ftitle{dat} = datanames{nEmptyId(dat)};
     end
+    % legend settings
     if dispLegend
       switch splitLegendStatus
         case 0
@@ -330,6 +334,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     warning('Function %d dimension %d has no data available', BBfunc(fId), dims(dId))
   end
 
+  % make title
   titleString = '';
   if ~aggFuns
     titleString = ['f', num2str(BBfunc(fId))];
