@@ -1,17 +1,34 @@
-function generateReport(expFolder)
-% generateReport(expFolder) generates report of experiments in expFolder.
+function generateReport(expFolder, varargin)
+% generateReport(expFolder, settings) generates report of experiments 
+% in expFolder.
 %
 % Input:
 %   expFolder - folder or folders containing experiments (i.e. containing
 %               scmaes_params.mat file) | string or cell-array of strings
+%   settings - pairs of property (string) and value, or struct with 
+%              properties as fields:
+%
+%     'Description' - description of the report | string
+%     'Publish'     - resulting format of published report similar to 
+%                     function publish (see help publish) | string
+%                   - to disable publishing set option to 'off' (default)
 %
 % See Also:
-%   relativeFValuesPlot
+%   relativeFValuesPlot, publish
+
+%TODO:
+%  - generate report for chosen algorithms
+%  - rank table
  
   if nargin < 1
     help generateReport
     return
   end
+  
+  % parse input
+  reportSettings = settings2struct(varargin);
+  publishOption = defopts(reportSettings, 'Publish', 'off');
+  reportDescription = defopts(reportSettings, 'Description', []);
   if ~iscell(expFolder)
     expFolder = {expFolder};
   end
@@ -65,7 +82,11 @@ function generateReport(expFolder)
   % introduction
   allExpName = [cellfun(@(x) [x, ', '], expName(1:end-1)', 'UniformOutput', false), expName(end)];
   fprintf(FID, '%%%% %s report\n', [allExpName{:}]);
-  fprintf(FID, '%% Script for making graphs comparing the dependences of minimal function\n');
+  if ~isempty(reportDescription)
+    fprintf(FID, '%% %s\n', reportDescription);
+    fprintf(FID, '%% \n');
+  end
+  fprintf(FID, '%% Report compares the dependences of minimal function\n');
   fprintf(FID, '%% values on the number of function values of different algorithm settings\n');
   fprintf(FID, '%% tested in experiments %s.\n', [allExpName{:}]);
   fprintf(FID, '%% Moreover, algorithm settings are compared\n');
@@ -91,6 +112,7 @@ function generateReport(expFolder)
   % data loading
   fprintf(FID, '%%%% Load data\n');
   fprintf(FID, '\n');
+  fprintf(FID, 'expFolder = {};\n');
   for s = 1:nParamFiles
     fprintf(FID, 'expFolder{%d} = ''%s'';\n', s, expFolder{s});
   end
@@ -110,7 +132,7 @@ function generateReport(expFolder)
   fprintf(FID, 'expAlgNames = arrayfun(@(x) [''ALG'', num2str(x)], 1:nSettings, ''UniformOutput'', false);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% color settings\n');
-  fprintf(FID, 'expCol = getAlgColors(nSettings);\n');
+  fprintf(FID, 'expCol = getAlgColors(1:nSettings);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% load algorithms for comparison\n');
   fprintf(FID, 'algMat = fullfile(''exp'', ''pproc'', ''compAlgMat.mat'');\n');
@@ -224,6 +246,14 @@ function generateReport(expFolder)
       end
       copyfile(reportFile, fullfile(ppFolder{f}, reportName));
     end
+  end
+
+  % publish report file
+  if ~strcmpi(publishOption, 'off')
+    fprintf('Publishing %s\nThis may take a few minutes...\n', reportFile)
+    addpath(ppFolder{1})
+    publishedReport = publish(reportFile, publishOption);
+    fprintf('Report published to %s\n', publishedReport)
   end
 
 end

@@ -38,14 +38,16 @@ function handle = relativeFValuesPlot(data, varargin)
     help relativeFValuesPlot
     return
   end
-  if isstruct(varargin)
-    settings = varargin;
-  else
-    % keep cells as cells due to struct command
-    vararCellId = cellfun(@iscell, varargin);
-    varargin(vararCellId) = {varargin(vararCellId)};
-    settings = struct(varargin{:});
-  end
+%   if isstruct(varargin)
+%     settings = varargin;
+%   else
+%     % keep cells as cells due to struct command
+%     vararCellId = cellfun(@iscell, varargin);
+%     varargin(vararCellId) = {varargin(vararCellId)};
+%     settings = struct(varargin{:});
+%   end
+  settings = settings2struct(varargin);
+  
   
   % parse settings
   numOfData = length(data);
@@ -69,7 +71,12 @@ function handle = relativeFValuesPlot(data, varargin)
   statistic = defopts(settings, 'Statistic', @mean);
   plotSet.oneFigure = defopts(settings, 'OneFigure', false);
   plotSet.legendOption = defopts(settings, 'LegendOption', 'show');
-%   plotSet.splitLegend = defopts(settings, 'SplitLegend', false);
+  defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
+  plotSet.lineSpec = defopts(settings, 'LineSpecification', defaultLine);
+  if length(plotSet.lineSpec) ~= numOfData
+    warning('Number of line specification strings and number of data are different. Setting default values.')
+    plotSet.lineSpec = defaultLine;
+  end
   plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
@@ -282,31 +289,36 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   aggDims = settings.aggDims;
   BBfunc = settings.BBfunc;
   dims = settings.dims;
+  lineSpec = settings.lineSpec;
 
   % default value
-  medianLineWidth = 2;
-  
-  evaldim = 1:min(length(relativeData{1}{1}), settings.maxEval);
+  medianLineWidth = 1;
 
+  % find not empty data
   for dat = 1:length(relativeData)
     notEmptyData(dat) = ~isempty(relativeData{dat}{fId, dId});
   end
+  
   if any(notEmptyData)
     nEmptyId = inverseIndex(notEmptyData);
     nUsefulData = sum(notEmptyData);
+    % find minimal number of function evaluations to plot
+    evaldim = 1:min([arrayfun(@(x) length(relativeData{nEmptyId(x)}{fId, dId}), 1:nUsefulData), maxEval]);
     h = zeros(1, nUsefulData);
     ftitle = cell(1, nUsefulData);
-    % mean
-    h(1) = plot(evaldim, relativeData{nEmptyId(1)}{fId, dId}(1:maxEval), ...
-      'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(1), :));
+    % plot first line 
+    h(1) = plot(evaldim, relativeData{nEmptyId(1)}{fId, dId}(evaldim), ...
+      lineSpec{1}, 'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(1), :));
     ftitle{1} = datanames{nEmptyId(1)};
     hold on
     grid on
+    % plot rest of lines
     for dat = 2:nUsefulData
-      h(dat) = plot(evaldim, relativeData{nEmptyId(dat)}{fId, dId}(1:maxEval), ...
-        'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(dat), :));
+      h(dat) = plot(evaldim, relativeData{nEmptyId(dat)}{fId, dId}(evaldim), ...
+        lineSpec{dat}, 'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(dat), :));
       ftitle{dat} = datanames{nEmptyId(dat)};
     end
+    % legend settings
     if dispLegend
       switch splitLegendStatus
         case 0
@@ -322,6 +334,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     warning('Function %d dimension %d has no data available', BBfunc(fId), dims(dId))
   end
 
+  % make title
   titleString = '';
   if ~aggFuns
     titleString = ['f', num2str(BBfunc(fId))];
@@ -355,11 +368,12 @@ function h = soloLegend(colors, names, lineWidth)
   
   % lines and text
   x_line_coor = fa(1) + margin + x_line_length;
+  font = min(10, 125/nNames);
   for n = 1:nNames
     y_coor = -2*n*yDiff;
     line([fa(1) + margin, x_line_coor], y_coor*[1,1], ...
          'Color', colors(n, :), 'LineWidth', lineWidth)
-    text(x_line_coor + margin, y_coor, names{n})
+    text(x_line_coor + margin, y_coor, names{n}, 'FontSize', font)
   end
   
   % second frame point

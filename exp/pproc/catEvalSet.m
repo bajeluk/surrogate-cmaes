@@ -38,11 +38,17 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   end
   % remove empty settings and appropriate exp_evals
   notEmptySet = ~cellfun(@isempty, settings);
+  if ~any(notEmptySet)
+    evals = exp_evals;
+    return
+  end
   settings = settings(notEmptySet);
   exp_evals = exp_evals(notEmptySet);
   % remove field 'experimentPath' because it is different for each
   % experiment
-  settings = cellfun(@(x) rmfield(x, 'experimentPath'), [settings{:}], 'UniformOutput', false);
+  allSettings = [settings{:}];
+  expPathFieldID = cellfun(@(x) isfield(x, 'experimentPath'), allSettings);
+  settings = cellfun(@(x) rmfield(x, 'experimentPath'), allSettings(expPathFieldID), 'UniformOutput', false);
   % find unique settings
   %TODO: efective finding of unique settings and ID's. Sth like:
   % help_settings = settings;
@@ -55,7 +61,6 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   for s = length(settings):-1:1
     settingsID(getStructIndex(settings, settings{s})) = s;
   end
-  settings = settings(unique(settingsID));
   
   % concatenate evaluations from different experiments and with the same
   % settings
@@ -69,5 +74,9 @@ function [evals, settings] = catEvalSet(folders, funcSet)
       end
     end
   end
+  
+  % return unique settings and its evaluations
+  settings = settings(unique(settingsID));
+  evals = evals(:,:,ismember(1:nSettings, unique(settingsID)));
 
 end
