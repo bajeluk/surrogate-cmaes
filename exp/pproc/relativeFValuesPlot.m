@@ -50,7 +50,9 @@ function handle = relativeFValuesPlot(data, varargin)
 
   % initialization
   if nargin < 1 || isempty(data)
-    handle = [];
+    if nargout > 0
+      handle = [];
+    end
     help relativeFValuesPlot
     return
   end

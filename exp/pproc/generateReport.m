@@ -34,7 +34,7 @@ function generateReport(expFolder, varargin)
   end
   
   isFolder = cellfun(@isdir, expFolder);
-  assert(any(isFolder), 'generateReport:err:nofolder','No input is a folder')
+  assert(any(isFolder), 'generateReport:err:nofolder', 'No input is a folder')
   % TODO: warning which input folders were not found
   paramFile = cellfun(@(x) fullfile(x, 'scmaes_params.mat'), expFolder(isFolder), 'UniformOutput', false);
   existParFile = cellfun(@(x) logical(exist(x, 'file')), paramFile);
