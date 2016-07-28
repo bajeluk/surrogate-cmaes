@@ -18,7 +18,7 @@ function generateReport(expFolder, varargin)
 
 %TODO:
 %  - generate report for chosen algorithms
-%  - rank table
+%  - finish rank table - commented in code
  
   if nargin < 1
     help generateReport
@@ -134,6 +134,9 @@ function generateReport(expFolder, varargin)
   fprintf(FID, '%% color settings\n');
   fprintf(FID, 'expCol = getAlgColors(1:nSettings);\n');
   fprintf(FID, '\n');
+  fprintf(FID, '%% evaluation settings\n');
+  fprintf(FID, 'showEval = [25, 50, 100, 200];\n');
+  fprintf(FID, '\n');
   fprintf(FID, '%% load algorithms for comparison\n');
   fprintf(FID, 'algMat = fullfile(''exp'', ''pproc'', ''compAlgMat.mat'');\n');
   fprintf(FID, 'if ~exist(algMat, ''file'')\n');
@@ -183,6 +186,13 @@ function generateReport(expFolder, varargin)
   % tested algorithms comparison
   fprintf(FID, '%%%% Tested algorithms comparison\n');
   fprintf(FID, '\n');
+%   fprintf(FID, 'close all\n');
+%   fprintf(FID, 'rankTable = rankingTable(expData, ''Format'', ''figure'', ...\n');
+%   fprintf(FID, '                                  ''DataDims'', funcSet.dims, ...\n');
+%   fprintf(FID, '                                  ''DataFuns'', funcSet.BBfunc, ...\n');
+%   fprintf(FID, '                                  ''DataNames'', expAlgNames, ...\n');
+%   fprintf(FID, '                                  ''Evaluations'', showEval);\n');
+  fprintf(FID, '\n');
   fprintf(FID, 'for f = funcSet.BBfunc\n');
   fprintf(FID, '  %%%% \n');
   fprintf(FID, '  close all\n');
@@ -208,7 +218,14 @@ function generateReport(expFolder, varargin)
   fprintf(FID, '  data = [expData, {algorithms.data}];\n');
   fprintf(FID, '  datanames = [expAlgNames, {algorithms.name}];\n');
   fprintf(FID, '  colors = [expCol; cell2mat({algorithms.color}'')];\n');
-  fprintf(FID, '  \n');
+%   fprintf(FID, '  \n');
+%   fprintf(FID, '  close all\n');
+%   fprintf(FID, '  rankTable = rankingTable(data, ''Format'', ''figure'', ...\n');
+%   fprintf(FID, '                                 ''DataDims'', funcSet.dims, ...\n');
+%   fprintf(FID, '                                 ''DataFuns'', funcSet.BBfunc, ...\n');
+%   fprintf(FID, '                                 ''DataNames'', datanames, ...\n');
+%   fprintf(FID, '                                 ''Evaluations'', showEval);\n');
+  fprintf(FID, '\n');
   fprintf(FID, '  for f = funcSet.BBfunc\n');
   fprintf(FID, '    %%%% \n');
   fprintf(FID, '    close all\n');
@@ -252,7 +269,8 @@ function generateReport(expFolder, varargin)
   if ~strcmpi(publishOption, 'off')
     fprintf('Publishing %s\nThis may take a few minutes...\n', reportFile)
     addpath(ppFolder{1})
-    publishedReport = publish(reportFile, publishOption);
+    publishedReport = publish(reportFile, 'format', publishOption, ...
+                                          'showCode', false);
     fprintf('Report published to %s\n', publishedReport)
   end
 
