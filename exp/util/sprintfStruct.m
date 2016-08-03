@@ -12,6 +12,8 @@ function output = sprintfStruct(s, varargin)
       else
         str = 'false';
       end
+    elseif (isstruct(s.(fname{1})))
+      str = sprintfStruct(s.(fname{1}), 'escape');
     end
     if (~isempty(str))
       if (nargin > 1 && strcmpi(varargin{1}, 'escape'))
