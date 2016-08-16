@@ -19,6 +19,9 @@ function data = divSmooth(data, funcSet, maxFE)
   if nargin < 3
     if nargin < 1
       help divSmooth
+      if nargout > 0
+        data = [];
+      end
       return
     end
     maxFE = 250;
@@ -28,13 +31,16 @@ function data = divSmooth(data, funcSet, maxFE)
   for s = 1:nSettings
     for d = 1:dims
       for f = 1:func
-        fInstant = [];
-        for i = 1:length(data{f,d,s})
-          data{f,d,s}{i}(:,2) = ceil(data{f,d,s}{i}(:,2)/funcSet.dims(d));
-          % use only first two columns - fitness, evaluations
-          fInstant(:, end+1) = smoothYEvals(data{f,d,s}{i}(:, 1:2), maxFE);
+        if ~isempty(data{f,d,s})
+          fInstant = [];
+          instances = find(~cellfun(@isempty, data{f,d,s}));
+          for i = 1:length(instances)
+            data{f,d,s}{instances(i)}(:,2) = ceil(data{f,d,s}{instances(i)}(:,2)/funcSet.dims(d));
+            % use only first two columns - fitness, evaluations
+            fInstant(:, end+1) = smoothYEvals(data{f,d,s}{instances(i)}(:, 1:2), maxFE);
+          end
+          data{f,d,s} = fInstant;
         end
-        data{f,d,s} = fInstant;
       end
     end
   end

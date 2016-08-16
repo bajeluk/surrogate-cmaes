@@ -48,6 +48,7 @@ function generateReport(expFolder, varargin)
   expName  = cell(nParamFiles, 1);
   BBfunc   = cell(nParamFiles, 1);
   dims     = cell(nParamFiles, 1);
+  showEval = [25, 50, 100, 200];
   % load data
   for s = 1 : nParamFiles
     settings{s} = load(paramFile{s});
@@ -110,7 +111,9 @@ function generateReport(expFolder, varargin)
   fprintf(FID, '\n');
   
   % data loading
-  fprintf(FID, '%%%% Load data\n');
+  fprintf(FID, '%%%%\n');
+  fprintf(FID, '\n');
+  fprintf(FID, '%% Load data\n');
   fprintf(FID, '\n');
   fprintf(FID, 'expFolder = {};\n');
   for s = 1:nParamFiles
@@ -135,7 +138,7 @@ function generateReport(expFolder, varargin)
   fprintf(FID, 'expCol = getAlgColors(1:nSettings);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% evaluation settings\n');
-  fprintf(FID, 'showEval = [25, 50, 100, 200];\n');
+  fprintf(FID, 'showEval = %s;\n', printStructure(showEval, FID, 'Format', 'value'));
   fprintf(FID, '\n');
   fprintf(FID, '%% load algorithms for comparison\n');
   fprintf(FID, 'algMat = fullfile(''exp'', ''pproc'', ''compAlgMat.mat'');\n');
@@ -186,12 +189,22 @@ function generateReport(expFolder, varargin)
   % tested algorithms comparison
   fprintf(FID, '%%%% Tested algorithms comparison\n');
   fprintf(FID, '\n');
-%   fprintf(FID, 'close all\n');
-%   fprintf(FID, 'rankTable = rankingTable(expData, ''Format'', ''figure'', ...\n');
-%   fprintf(FID, '                                  ''DataDims'', funcSet.dims, ...\n');
-%   fprintf(FID, '                                  ''DataFuns'', funcSet.BBfunc, ...\n');
-%   fprintf(FID, '                                  ''DataNames'', expAlgNames, ...\n');
-%   fprintf(FID, '                                  ''Evaluations'', showEval);\n');
+  fprintf(FID, 'close all\n');
+  fprintf(FID, 'rankTable = rankingTable(expData, ''Format'', ''figure'', ...\n');
+  fprintf(FID, '                                  ''DataDims'', funcSet.dims, ...\n');
+  fprintf(FID, '                                  ''DataFuns'', funcSet.BBfunc, ...\n');
+  fprintf(FID, '                                  ''DataNames'', expAlgNames, ...\n');
+  fprintf(FID, '                                  ''Evaluations'', showEval);\n');
+  fprintf(FID, '\n');
+  fprintf(FID, '%%%%\n');
+  fprintf(FID, '%%\n');
+  fprintf(FID, '%% *Table 1:* Counts of the 1st ranks of all tested algorithms \n');
+  fprintf(FID, '%% from %d benchmark functions \n', length(BBfunc));
+  fprintf(FID, '%% according to the lowest achieved ${\\Delta_f}^\\textrm{med}$ for different \n');
+  fprintf(FID, '%% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
+  fprintf(FID, '%% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
+  fprintf(FID, '%% Ties of the 1st ranks are counted for all respective algorithms. \n');
+  fprintf(FID, '%% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
   fprintf(FID, '\n');
   fprintf(FID, 'for f = funcSet.BBfunc\n');
   fprintf(FID, '  %%%% \n');
@@ -218,14 +231,24 @@ function generateReport(expFolder, varargin)
   fprintf(FID, '  data = [expData, {algorithms.data}];\n');
   fprintf(FID, '  datanames = [expAlgNames, {algorithms.name}];\n');
   fprintf(FID, '  colors = [expCol; cell2mat({algorithms.color}'')];\n');
-%   fprintf(FID, '  \n');
-%   fprintf(FID, '  close all\n');
-%   fprintf(FID, '  rankTable = rankingTable(data, ''Format'', ''figure'', ...\n');
-%   fprintf(FID, '                                 ''DataDims'', funcSet.dims, ...\n');
-%   fprintf(FID, '                                 ''DataFuns'', funcSet.BBfunc, ...\n');
-%   fprintf(FID, '                                 ''DataNames'', datanames, ...\n');
-%   fprintf(FID, '                                 ''Evaluations'', showEval);\n');
-  fprintf(FID, '\n');
+  fprintf(FID, '  \n');
+  fprintf(FID, '  close all\n');
+  fprintf(FID, '  rankTable = rankingTable(data, ''Format'', ''figure'', ...\n');
+  fprintf(FID, '                                 ''DataDims'', funcSet.dims, ...\n');
+  fprintf(FID, '                                 ''DataFuns'', funcSet.BBfunc, ...\n');
+  fprintf(FID, '                                 ''DataNames'', datanames, ...\n');
+  fprintf(FID, '                                 ''Evaluations'', showEval);\n');
+  fprintf(FID, '  \n');
+  fprintf(FID, '  %%%%\n');
+  fprintf(FID, '  %%\n');
+  fprintf(FID, '  %% *Table 2:* Counts of the 1st ranks of all compared algorithms \n');
+  fprintf(FID, '  %% from %d benchmark functions \n', length(BBfunc));
+  fprintf(FID, '  %% according to the lowest achieved ${\\Delta_f}^\\textrm{med}$ for different \n');
+  fprintf(FID, '  %% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
+  fprintf(FID, '  %% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
+  fprintf(FID, '  %% Ties of the 1st ranks are counted for all respective algorithms. \n');
+  fprintf(FID, '  %% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
+  fprintf(FID, '  \n');
   fprintf(FID, '  for f = funcSet.BBfunc\n');
   fprintf(FID, '    %%%% \n');
   fprintf(FID, '    close all\n');
@@ -248,7 +271,9 @@ function generateReport(expFolder, varargin)
   
   % finalize
   fprintf(FID, '\n');
-  fprintf(FID, '%%%% Final clearing\n');
+  fprintf(FID, '%%%%\n');
+  fprintf(FID, '\n');
+  fprintf(FID, '%% Final clearing\n');
   fprintf(FID, 'close all\n');
   fprintf(FID, 'clear s f\n');
   

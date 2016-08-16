@@ -75,6 +75,8 @@ function [rankTable, ranks] = createRankingTable(data, varargin)
   ranks = cell(nFunc, nDims);
   for f = 1:nFunc
     for d = 1:nDims
+      % init
+      ranks{f,d} = zeros(nEvals, numOfData);
       notEmptyData = inverseIndex(arrayfun(@(x) ~isempty(data_stats{x}{f,d}), 1:numOfData));
       for e = 1:nEvals
         thisData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}(evaluations(e)), notEmptyData, 'UniformOutput', false));

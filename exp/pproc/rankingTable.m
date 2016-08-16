@@ -60,7 +60,8 @@ function [table, ranks] = rankingTable(data, varargin)
     case 'figure'
       nEvals = length(evaluations);
       nDims = length(dims);
-      tableSize = [nEvals*(nDims+1)*40 + 60, 20*(numOfData+2)];
+      maxLengthData = max(cellfun(@length, datanames));
+      tableSize = [11*(2+maxLengthData) + nEvals*(nDims+1)*40, 20*(numOfData+2)];
       
       evalRow = repmat(evaluations, [1, length(dims)+1]);
       publicTable = [evalRow; table];

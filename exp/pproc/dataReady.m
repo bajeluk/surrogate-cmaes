@@ -4,10 +4,9 @@ function [data, settings] = dataReady(datapath, funcSet)
 % of size functions x dimensions x settings and appropriate 'settings'.
 %
 % Input:
-%   datapath      - path to data | string
-%   funcSet       - structure with fields 'BBfunc' (numbers of BBOB
-%                   functions) and 'dims' (numbers of dimensions) 
-%                   | structure
+%   datapath - path to data | string
+%   funcSet  - structure with fields 'BBfunc' (numbers of BBOB functions) 
+%              and 'dims' (numbers of dimensions) | structure
 %
 % Output:
 %   data     - aggregated data of size functions x dimensions x settings 
@@ -15,7 +14,7 @@ function [data, settings] = dataReady(datapath, funcSet)
 %   settings - appropriate settings to 'data' | structure
 %
 % See Also:
-%   catEvalSet
+%   bbobDataReady, catEvalSet
 
   BBfunc = funcSet.BBfunc;
   dims = funcSet.dims;
@@ -43,7 +42,8 @@ function [data, settings] = dataReady(datapath, funcSet)
   settings = {};
   data = cell(nFunc, nDim);
   if isempty(datalist)
-    warning('Useful data not found in folder %s.', errPathList)
+    warning('No mat-files found in folder %s. \nRunning bbobDataReady', errPathList)
+    data = bbobDataReady(datapath, funcSet);
     return
   end
   
@@ -98,6 +98,10 @@ function datalist = gainDataList(datapath)
 % and 'metajob.mat'
 
   list = dir(fullfile(datapath, '*.mat'));
+  if isempty(list)
+    datalist = {};
+    return
+  end
   % ids of usable .mat files
   matId = true(1, length(list));
   matId = matId & ~cellfun(@(x) strcmp(x, 'scmaes_params.mat'), {list.name});
