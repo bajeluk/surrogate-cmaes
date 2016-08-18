@@ -41,14 +41,31 @@ function data = bbobDataReady(datapath, funcSet)
     infoList = [infoList; searchFile(datapath{dat}, '*.info')];
   end
   
+  % load data from each info file
   for fil = 1:length(infoList)
     actualInfo = importdata(infoList{fil});
+    % incomplete data
+    if isstruct(actualInfo)
+      actualInfo = actualInfo.textdata;    
+    end
     infoFileSplit = strsplit(infoList{fil}, filesep);
-    dataRowID = find(cellfun(@(x) ~isempty(strfind(x, '.dat')), actualInfo));
+    if isempty(infoFileSplit{1})
+      infoFileSplit{1} = filesep;
+    end
+
+    dataRowID = find(cellfun(@(x) ~isempty(strfind(x, '.dat')), actualInfo(:, 1)));
+    % load .dat files
     for r = 1:length(dataRowID)
-      rowSplit = strsplit(actualInfo{dataRowID(r)}, ', ');
+      % complete row
+      if all(cellfun(@isempty, actualInfo(dataRowID(r), 2:end)))
+        rowSplit = strsplit(actualInfo{dataRowID(r)}, ', ');
+      % incomplete row
+      else
+        rowSplit = actualInfo(dataRowID(r), :);
+      end
       % name of data file
-      datFile = fullfile(infoFileSplit{1:end-1}, rowSplit{1});
+      datName = strrep(strrep(rowSplit{1}, '\', filesep), '/', filesep);
+      datFile = fullfile(infoFileSplit{1:end-1}, datName);
       % extract function and dimension number
       datSplit = strsplit(rowSplit{1}, '_');
       f = str2double(datSplit{end-1}(2:end));
@@ -71,6 +88,7 @@ function data = bbobDataReady(datapath, funcSet)
     end
   end
     
+  % smooth data
   data = divSmooth(data, funcSet);
   
 end

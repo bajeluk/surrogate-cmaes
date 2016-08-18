@@ -18,7 +18,7 @@ function generateReport(expFolder, varargin)
 
 %TODO:
 %  - generate report for chosen algorithms
-%  - finish rank table - commented in code
+%  - generate report using BBOB data
  
   if nargin < 1
     help generateReport

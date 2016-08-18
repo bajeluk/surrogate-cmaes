@@ -5,14 +5,16 @@ function colors = getAlgColors(colId)
 % Example:
 %   colors = getAlgColors(1:4)
 %
-%  colors =
+%   colors =
 %
-%     255   225     0
-%     248    86     6
-%     255     0     0
-%      97   143   163
+%      255   225     0
+%      175   248     6
+%       12   240   248
+%      248    86     6
   
-  colors = [];
+  if nargout > 1
+    colors = [];
+  end
   if nargin < 1
     help getAlgColors
     return
