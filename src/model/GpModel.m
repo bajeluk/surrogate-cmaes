@@ -213,10 +213,6 @@ classdef GpModel < Model
       end
     end
 
-    function trained = isTrained(obj)
-      % check whether the model is already trained
-      trained = (obj.trainGeneration >= 0);
-    end
   end
 
   methods (Access = private)
