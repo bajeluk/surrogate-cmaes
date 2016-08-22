@@ -227,7 +227,7 @@ where
 - **expFolder** is the name of the folder (string) containing the experiment results,
 - **settings** are pairs of property (string) and value, or struct with properties as fields: 
     - **Description** is description of the report (string),
-    - **Publish** is the format of the resulting file similar to function `publish`, i.e. `htlm`, `pdf`; set to `off` to disable publishing (string).
+    - **Publish** is the format of the resulting file similar to function `publish`, i.e. `html`, `pdf`; set to `off` to disable publishing (string).
 
 The function generates Matlab script `[expFolder]/pproc/[exp_id]_report.m` which will be published using Matlab function `publish` according to **Publish** option in **settings**. Published file can be found in `[expFolder]/pproc/html` folder.
 
