@@ -26,7 +26,7 @@ function generateReport(expFolder, varargin)
   end
   
   % parse input
-  reportSettings = settings2struct(varargin);
+  reportSettings = settings2struct(varargin{:});
   publishOption = defopts(reportSettings, 'Publish', 'off');
   reportDescription = defopts(reportSettings, 'Description', []);
   if ~iscell(expFolder)
