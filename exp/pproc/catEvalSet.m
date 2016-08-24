@@ -36,19 +36,18 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   for s = 1:length(folders)
     [exp_evals{s}, settings{s}] = dataReady(folders{s}, funcSet);
   end
-  % remove empty settings and appropriate exp_evals
+  
+  % not empty settings
   notEmptySet = ~cellfun(@isempty, settings);
-  if ~any(notEmptySet)
-    evals = exp_evals;
-    return
-  end
-  settings = settings(notEmptySet);
-  exp_evals = exp_evals(notEmptySet);
+  notEmptyID = find(notEmptySet);
+  settings_ne = settings(notEmptySet);
+  % not empty evaluations
+  exp_evals_ne = exp_evals(notEmptySet);
   % remove field 'experimentPath' because it is different for each
   % experiment
-  allSettings = [settings{:}];
+  allSettings = [settings_ne{:}];
   expPathFieldID = cellfun(@(x) isfield(x, 'experimentPath'), allSettings);
-  settings = cellfun(@(x) rmfield(x, 'experimentPath'), allSettings(expPathFieldID), 'UniformOutput', false);
+  settings_ne = cellfun(@(x) rmfield(x, 'experimentPath'), allSettings(expPathFieldID), 'UniformOutput', false);
   % find unique settings
   %TODO: efective finding of unique settings and ID's. Sth like:
   % help_settings = settings;
@@ -58,25 +57,30 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   %   help_settings(settingsID == s) = {};
   %   notEmptySet = ~cellfun(@isempty, help_settings);
   % end
-  for s = length(settings):-1:1
-    settingsID(getStructIndex(settings, settings{s})) = s;
+  for s = length(settings_ne):-1:1
+    settingsID(getStructIndex(settings_ne, settings_ne{s})) = s;
   end
   
   % concatenate evaluations from different experiments and with the same
   % settings
-  exp_evals = cat(3, exp_evals{:});
+  exp_evals_ne = cat(3, exp_evals_ne{:});
   nSettings = length(settings);
   evals = cell(length(funcSet.BBfunc), length(funcSet.dims), nSettings);
-  for s = 1 : nSettings
+  for s = 1 : nSettings    
     for f = 1 : length(funcSet.BBfunc)
       for d = 1 : length(funcSet.dims)
-        evals{f, d, s} = [exp_evals{f, d, settingsID == s}];
+        if notEmptySet(s)
+          evals{f, d, s} = [exp_evals_ne{f, d, settingsID == s}];
+        else
+          evals{f, d, s} = exp_evals{s}{f, d};
+        end
       end
     end
   end
   
   % return unique settings and its evaluations
-  settings = settings(unique(settingsID));
-  evals = evals(:,:,ismember(1:nSettings, unique(settingsID)));
+  % [folders with settings, folders without settings]
+  settings = [settings_ne(unique(settingsID)), folders(~notEmptySet)];
+  evals = cat(3, evals(:,:,ismember(1:nSettings, unique(settingsID))), evals(:, :, ~notEmptySet));
 
 end
