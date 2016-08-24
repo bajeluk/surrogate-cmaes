@@ -2,7 +2,7 @@ function err = errRankMu(x, mu)
 %ERRRANKMU Ranking error between the vector x and [1:length(x)] counting the (mu+1)st to the last elements more loosely
 %
 % err = ERRRANKMU(x, mu)
-%       returns Kendall's correlation between the vector x and 
+%       returns the number of ordering errors between the vector x and 
 %       the vector [1:length(x)], but the ordering among elements
 %       (mu+1),(mu+2)...(length(x)) is not considered as being error
 %       and positioning them among the first mu positions is calculated
