@@ -11,7 +11,8 @@ function [data, settings] = dataReady(datapath, funcSet)
 % Output:
 %   data     - aggregated data of size functions x dimensions x settings 
 %              | cell array
-%   settings - appropriate settings to 'data' | structure
+%   settings - appropriate settings to 'data', empty if 'datapath' does not
+%              contain mat-files with results | structure
 %
 % See Also:
 %   bbobDataReady, catEvalSet
@@ -42,7 +43,6 @@ function [data, settings] = dataReady(datapath, funcSet)
   settings = {};
   data = cell(nFunc, nDim);
   if isempty(datalist)
-    warning('No mat-files found in folder %s. \nRunning bbobDataReady', errPathList)
     data = bbobDataReady(datapath, funcSet);
     return
   end

@@ -18,7 +18,6 @@ function generateReport(expFolder, varargin)
 
 %TODO:
 %  - generate report for chosen algorithms
-%  - generate report using BBOB data
  
   if nargin < 1
     help generateReport
@@ -36,78 +35,94 @@ function generateReport(expFolder, varargin)
   isFolder = cellfun(@isdir, expFolder);
   assert(any(isFolder), 'generateReport:err:nofolder', 'No input is a folder')
   % TODO: warning which input folders were not found
-  paramFile = cellfun(@(x) fullfile(x, 'scmaes_params.mat'), expFolder(isFolder), 'UniformOutput', false);
+  % remove non-existing folders
+  expFolder = expFolder(isFolder);
+  paramFile = cellfun(@(x) fullfile(x, 'scmaes_params.mat'), expFolder, 'UniformOutput', false);
   existParFile = cellfun(@(x) logical(exist(x, 'file')), paramFile);
-  assert(any(existParFile), 'No input folder contain scmaes_params.mat')
-  paramFile = paramFile(existParFile);
-  % TODO: warning in which input folders was not found scmaes_params.mat
   
   % initialize key variables
-  nParamFiles = length(paramFile);
-  settings = cell(nParamFiles, 1);
-  expName  = cell(nParamFiles, 1);
-  BBfunc   = cell(nParamFiles, 1);
-  dims     = cell(nParamFiles, 1);
+  nFolders = sum(isFolder);
+  settings = cell(nFolders, 1);
+  expName  = cell(nFolders, 1);
+  BBfunc   = cell(nFolders, 1);
+  dims     = cell(nFolders, 1);
   showEval = [25, 50, 100, 200];
   % load data
-  for s = 1 : nParamFiles
-    settings{s} = load(paramFile{s});
-    if isfield(settings{s}, 'exp_id')
-      expName{s} = settings{s}.exp_id;
+  for f = 1 : nFolders
+    % parametrized experiment
+    if existParFile(f)
+      settings{f} = load(paramFile{f});
+      if isfield(settings{f}, 'exp_id')
+        expName{f} = settings{f}.exp_id;
+      else
+        fNameParts = strsplit(paramFile{f}, filesep);
+        expName{f} = fNameParts{end-1};
+      end
+      settings{f} = getSettings(settings{f});
+      BBfunc{f} = cell2mat(settings{f}.bbParamDef.functions);
+      dims{f}   = cell2mat(settings{f}.bbParamDef.dimensions);
+    % raw data
     else
-      fNameParts = strsplit(paramFile{s}, '/');
-      expName{s} = fNameParts{end-1};
+      folderSplit = strsplit(expFolder{f}, filesep);
+      expName{f} = folderSplit{end};
+      % extract function and dimension number
+      % TODO: speed up this
+      tdatFiles = searchFile(expFolder{f}, '*.tdat');
+      tdatSplit = strfind(tdatFiles, '_');
+      BBfunc{f} = arrayfun(@(x) str2double(tdatFiles{x}(1, tdatSplit{x}(end-1)+2:tdatSplit{x}(end)-1)), ...
+        1:length(tdatSplit)); % function numbers
+      dims{f} = arrayfun(@(x) str2double(tdatFiles{x}(1, tdatSplit{x}(end)+4:end-5)), ...
+        1:length(tdatSplit)); % function numbers
     end
-    settings{s} = getSettings(settings{s});
-    BBfunc{s} = cell2mat(settings{s}.bbParamDef.functions);
-    dims{s}   = cell2mat(settings{s}.bbParamDef.dimensions);
   end
   BBfunc = unique([BBfunc{:}]);
   dims = unique([dims{:}]);
   
-  % open report file
-  ppFolder = cellfun(@(x) fullfile(x(1:end - length([filesep, 'scmaes_params.mat'])), 'pproc'), paramFile, 'UniformOutput', false);
-  if ~isdir(ppFolder{1})
-    mkdir(ppFolder{1})
-  end
-  if nParamFiles > 1
-    reportName = ['exp_', num2str(nParamFiles), 'report_', num2str(hashGen(expName)), '.m'];
+  % create report name
+  if nFolders > 1
+    reportName = ['exp_', num2str(nFolders), 'report_', num2str(hashGen(expName)), '.m'];
   else
     reportName = [expName{1}, '_report.m'];
   end
-  reportFile = fullfile(ppFolder{1}, reportName);
+  % report folder for all generated scripts
+  defPpFolder = fullfile('exp', 'pproc', 'generated scripts');
+  if ~isdir(defPpFolder)
+    mkdir(defPpFolder)
+  end
+  % report folder for recent script
+  mainPpFolder = fullfile(defPpFolder, reportName(1:end-2));
+  if ~isdir(mainPpFolder)
+    mkdir(mainPpFolder)
+  end
+  % open report file
+  reportFile = fullfile(mainPpFolder, reportName);
   FID = fopen(reportFile, 'w');
   
   % print report
   
   % introduction
-  allExpName = [cellfun(@(x) [x, ', '], expName(1:end-1)', 'UniformOutput', false), expName(end)];
-  fprintf(FID, '%%%% %s report\n', [allExpName{:}]);
+  fprintf(FID, '%%%% %s report\n', strjoin(expName, ', '));
   if ~isempty(reportDescription)
     fprintf(FID, '%% %s\n', reportDescription);
     fprintf(FID, '%% \n');
   end
   fprintf(FID, '%% Report compares the dependences of minimal function\n');
   fprintf(FID, '%% values on the number of function values of different algorithm settings\n');
-  fprintf(FID, '%% tested in experiments %s.\n', [allExpName{:}]);
+  fprintf(FID, '%% tested in experiments %s.\n', strjoin(expName, ', '));
   fprintf(FID, '%% Moreover, algorithm settings are compared\n');
   fprintf(FID, '%% to important algorithms in continuous black-box optimization field \n');
   fprintf(FID, '%% (CMA-ES, BIPOP-s*ACM-ES, SMAC, S-CMA-ES, and DTS-CMA-ES).\n');
   fprintf(FID, '%% \n');
-  for s = 1:nParamFiles
-    fprintf(FID, '%% *%s:*\n', expName{s});
-    if isfield(settings{s}, 'exp_description')
-      fprintf(FID, '%% %s\n', settings{s}.exp_description);
+  if any(cellfun(@(x) isfield(x, 'exp_description'), expName))
+    for f = 1:nFolders
+      fprintf(FID, '%% *%s:*\n', expName{f});
+      if isfield(settings{f}, 'exp_description')
+        fprintf(FID, '%% %s\n', settings{f}.exp_description);
+      end
+      fprintf(FID, '%% \n');
     end
-    fprintf(FID, '%% \n');
   end
-  fprintf(FID, '%% To gain results publish this script.\n');
-  fprintf(FID, '%% \n');
-  fprintf(FID, '%% Created on %s', datestr(now));
-  if nParamFiles == 1
-    fprintf(FID, ' in folder %s', ppFolder{1});
-  end
-  fprintf(FID, '.\n');
+  fprintf(FID, '%% Created on %s.\n', datestr(now));
   fprintf(FID, '\n');
   
   % data loading
@@ -116,10 +131,16 @@ function generateReport(expFolder, varargin)
   fprintf(FID, '%% Load data\n');
   fprintf(FID, '\n');
   fprintf(FID, 'expFolder = {};\n');
-  for s = 1:nParamFiles
-    fprintf(FID, 'expFolder{%d} = ''%s'';\n', s, expFolder{s});
+  for f = 1:nFolders
+    fprintf(FID, 'expFolder{%d} = ''%s'';\n', f, expFolder{f});
   end
-  fprintf(FID, 'resFolder = fullfile(expFolder{1}, ''pproc'');\n');
+  fprintf(FID, 'reportLocation = fileparts(which(mfilename));\n');
+  fprintf(FID, 'expFolID = strcmp(expFolder, reportLocation);\n');
+  fprintf(FID, 'if any(expFolID)\n');
+  fprintf(FID, '  resFolder = fullfile(reportLocation, ''pproc'');\n');
+  fprintf(FID, 'else\n');
+  fprintf(FID, '  resFolder = reportLocation;\n');
+  fprintf(FID, 'end\n');
   fprintf(FID, 'if ~isdir(resFolder)\n');
   fprintf(FID, '  mkdir(resFolder)\n');
   fprintf(FID, 'end\n');
@@ -131,8 +152,12 @@ function generateReport(expFolder, varargin)
   fprintf(FID, 'nSettings = length(expSettings);\n');
   fprintf(FID, 'expData = arrayfun(@(x) expData(:,:,x), 1:nSettings, ''UniformOutput'', false);\n');
   fprintf(FID, '\n');
-  fprintf(FID, '%% create algorithm names\n');
-  fprintf(FID, 'expAlgNames = arrayfun(@(x) [''ALG'', num2str(x)], 1:nSettings, ''UniformOutput'', false);\n');
+  fprintf(FID, '%% create or gain algorithm names\n');
+  fprintf(FID, 'anonymAlg = cellfun(@isstruct, expSettings);\n');
+  fprintf(FID, 'expAlgNames = arrayfun(@(x) [''ALG'', num2str(x)], 1:sum(anonymAlg), ''UniformOutput'', false);\n');
+  fprintf(FID, 'algNames = cellfun(@(x) strsplit(x, filesep), expSettings(~anonymAlg), ''UniformOutput'', false);\n');
+  fprintf(FID, 'algNames = arrayfun(@(x) algNames{x}{end}, 1:length(algNames), ''UniformOutput'', false);\n');
+  fprintf(FID, 'expAlgNames = [expAlgNames, algNames];\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% color settings\n');
   fprintf(FID, 'expCol = getAlgColors(1:nSettings);\n');
@@ -160,27 +185,34 @@ function generateReport(expFolder, varargin)
   % experiment settings
   fprintf(FID, '%%%% Experiment settings\n');
   fprintf(FID, '%% \n');
-  for s = 1:nParamFiles
-    fprintf(FID, '%% * *%s*:\n', expName{s});
+  for f = 1:nFolders
+    fprintf(FID, '%% * *%s*:\n', expName{f});
     fprintf(FID, '%% \n');
-    % keep only parameter fields
-    fieldsToRemove = {'exp_id', 'exppath_short', 'exp_description', 'logDir'};
-    parSettings = rmfield(settings{s}, fieldsToRemove(isfield(settings{s}, fieldsToRemove)));
-    printStructure(parSettings, FID, 'StructName', '%%  ')
-    fprintf(FID, '%% \n');
+    % parametrized algorithm
+    if existParFile(f)
+      % keep only parameter fields
+      fieldsToRemove = {'exp_id', 'exppath_short', 'exp_description', 'logDir'};
+      parSettings = rmfield(settings{f}, fieldsToRemove(isfield(settings{f}, fieldsToRemove)));
+      printStructure(parSettings, FID, 'StructName', '%%  ')
+      fprintf(FID, '%% \n');
+    end
   end
   fprintf(FID, '\n');
   % print algorithms differences
   fprintf(FID, '%% print algorithms differences\n');
-  fprintf(FID, 'fprintf(''Algorithm settings differences:\\n\\n'')\n');
-  fprintf(FID, '[dFields, dValues] = difField(expSettings);\n');
-  fprintf(FID, 'if ~isempty(dFields)\n');
-  fprintf(FID, '  for s = 1:nSettings\n');
-  fprintf(FID, '    fprintf(''  %%s:\\n'', expAlgNames{s})\n');
-  fprintf(FID, '    for f = 1:length(dFields)\n');
-  fprintf(FID, '      fprintf(''    %%s = %%s;\\n'', dFields{f}, printStructure(dValues{f, s}, 1, ''Format'', ''value''))\n');
+  fprintf(FID, 'if sum(anonymAlg) > 1\n');
+  fprintf(FID, '  fprintf(''Algorithm settings differences:\\n\\n'')\n');
+  fprintf(FID, '  [dFields, dValues] = difField(expSettings(anonymAlg));\n');
+  fprintf(FID, '  if ~isempty(dFields)\n');
+  fprintf(FID, '    for s = 1:nSettings\n');
+  fprintf(FID, '      fprintf(''  %%s:\\n'', expAlgNames{s})\n');
+  fprintf(FID, '      if anonymAlg(s)\n');
+  fprintf(FID, '        for f = 1:length(dFields)\n');
+  fprintf(FID, '          fprintf(''    %%s = %%s;\\n'', dFields{f}, printStructure(dValues{f, s}, 1, ''Format'', ''value''))\n');
+  fprintf(FID, '        end\n');
+  fprintf(FID, '        fprintf(''\\n'')\n');
+  fprintf(FID, '      end\n');
   fprintf(FID, '    end\n');
-  fprintf(FID, '    fprintf(''\\n'')\n');
   fprintf(FID, '  end\n');
   fprintf(FID, 'end\n');
   fprintf(FID, '\n');
@@ -280,20 +312,20 @@ function generateReport(expFolder, varargin)
   % close report file
   fclose(FID);
   
-  % copy report file to all pproc folders
-  if nParamFiles > 1
-    for f = 2 : nParamFiles
-      if ~isdir(ppFolder{f})
-        mkdir(ppFolder{f})
-      end
-      copyfile(reportFile, fullfile(ppFolder{f}, reportName));
+  % copy report file to all folders of parametrized algorithms
+  parFolders = expFolder(existParFile);
+  for f = 1 : sum(existParFile)
+    ppFolder = fullfile(parFolders{f}, 'pproc');
+    if ~isdir(ppFolder)
+      mkdir(ppFolder)
     end
+    copyfile(reportFile, fullfile(ppFolder, reportName));
   end
 
   % publish report file
   if ~strcmpi(publishOption, 'off')
     fprintf('Publishing %s\nThis may take a few minutes...\n', reportFile)
-    addpath(ppFolder{1})
+    addpath(mainPpFolder)
     publishedReport = publish(reportFile, 'format', publishOption, ...
                                           'showCode', false);
     fprintf('Report published to %s\n', publishedReport)
