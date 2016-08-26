@@ -55,7 +55,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   instances = bbParams.instances;
   maxfunevals = bbParams.maxfunevals;
 
-  % try
+  try
 
   for dim = bbParams.dimensions            % small dimensions first, for CPU reasons
     % for ifun = benchmarks('FunctionIndices')  % or benchmarksnoisy(...)
@@ -138,8 +138,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
     fprintf('---- dimension %d-D done ----\n', dim);
   end
 
-  return
-  % catch err
+  catch err
     save([resultsFile '_ERROR.mat']);
     fprintf('#########################################################\n');
     fprintf('#########################################################\n');
@@ -158,9 +157,9 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
     fprintf('#########################################################\n');
     % comment the following "exit(1)" when debugging -- it shutdowns the
     % whole Matlab if an error occures
-    % exit(1);
+    exit(1);
     throw(err);
-  % end
+  end
 end
 
 function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_function, id, exp_settings, datapath, opt, maxrestarts, maxfunevals, minfunevals, t0, exppath, localDatapath)

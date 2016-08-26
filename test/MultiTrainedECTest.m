@@ -14,7 +14,7 @@ classdef MultiTrainedECTest < matlab.unittest.TestCase
     function setupRandStream(testCase)
       % Setup reproducible results
       s = RandStream('mt19937ar', 'Seed', 3);
-      RandStream.setGlobalStream(s);      
+      RandStream.setGlobalStream(s);
     end
   end  
   

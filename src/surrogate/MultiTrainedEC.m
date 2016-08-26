@@ -62,7 +62,6 @@ classdef MultiTrainedEC < EvolutionControl
       % sample lambda new points and evaluate them with the model
       [xExtend, xExtendValid, zExtend] = ...
           sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
-      [modelOutput, fvalExtend] = obj.model.getModelOutput(xExtend');
       [yModel1, sd2Model1] = obj.model.predict(xExtend');
       
       % find the ordering of the points with highest expected ranking
@@ -118,7 +117,7 @@ classdef MultiTrainedEC < EvolutionControl
         [yNew, xNew, xNewValid, zNew, counteval] = ...
             sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, 1, counteval, cmaesState, sampleOpts, varargin{:});
         fprintf('counteval: %d\n', counteval)
-        yFinal(reevalID) = yNew;
+        yFinal(pointID) = yNew;
         origEvals = sum(reevalID);
         % update the Archive
         archive = archive.save(xNewValid', yNew', countiter);
@@ -244,19 +243,18 @@ classdef MultiTrainedEC < EvolutionControl
       % return the final permutation of the points from the highest expected error
       % to the lowest (according to (-1)*expectedError sorted according to
       % inverse sort defined by yInd, which is eqal to ranking(yPredict)
-      r = ranking(yPredict);
-      [~, perm] = sort(-expectedError(r));
-      fprintf('Final ranking of errors: %s\n', num2str(ranking(-expectedError)));
+      % yRnk = ranking(yPredict);
+      % eRnk = ranking(-expectedError);
       
-      % return the final ranking of the points from the highest expected error
-      % to the lowest (according to (-1)*expectedError sorted according to
-      % inverse sort defined by yInd, which is eqal to ranking(yPredict)
-      % r = ranking(yPredict);
-      % rank = ranking(-expectedError(r));
+      [~, eInd] = sort(-expectedError);
+      % the final order of points to reevaluate is following
+      perm = yInd(eInd);
+      fprintf('Ranking of errors: %s\n', num2str(ranking(-expectedError)));
+      % fprintf('Final permutation of original points: %s\n', num2str(perm'));
     end
-    
+
   end
-  
+
 end
 
 function res=myeval(s)
