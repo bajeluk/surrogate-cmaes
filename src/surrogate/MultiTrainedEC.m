@@ -31,6 +31,7 @@ classdef MultiTrainedEC < EvolutionControl
       lambda = cmaesState.lambda;
       BD = cmaesState.BD;
       dim = cmaesState.dim;
+      mu = cmaesState.mu;
       countiter = cmaesState.countiter;
 
       yFinal = NaN(1,lambda);
@@ -43,8 +44,14 @@ classdef MultiTrainedEC < EvolutionControl
       end
       
       nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
+      minTrainSize = obj.model.getNTrainData();
       [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
           xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
+      if (size(yTrain, 1) < minTrainSize)
+        % We don't have enough data for model training
+        return;
+      end
+
       % train the model 
       obj.model = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
       if (~obj.model.isTrained())
@@ -94,6 +101,7 @@ classdef MultiTrainedEC < EvolutionControl
       [~, sort1] = sort(yModel1);
       ranking2   = ranking(yModel2);
       err = errRankMu(ranking2(sort1), mu);
+      fprintf('Ranking error: %f\n', err);
       
       % while there is some non-trivial change in ranking, re-evaluate new poits
       while ((origEvals < lambda) && (err > obj.rankErrorThresh))
@@ -229,12 +237,22 @@ classdef MultiTrainedEC < EvolutionControl
         % save the probabilities into the final probability matrix
         probMatrix(i,:) = probs;
 
-        fprintf('Expected error of [%d] is %f.\n', i, expectedError(i));
+        % Debug:
+        % fprintf('Expected error of [%d] is %f.\n', i, expectedError(i));
       end
       
-      % return the final ordering of the points from the highest expected error
-      % to the lowest
-      [~, perm] = sort(expectedError, 'descend');
+      % return the final permutation of the points from the highest expected error
+      % to the lowest (according to (-1)*expectedError sorted according to
+      % inverse sort defined by yInd, which is eqal to ranking(yPredict)
+      r = ranking(yPredict);
+      [~, perm] = sort(-expectedError(r));
+      fprintf('Final ranking of errors: %s\n', num2str(ranking(-expectedError)));
+      
+      % return the final ranking of the points from the highest expected error
+      % to the lowest (according to (-1)*expectedError sorted according to
+      % inverse sort defined by yInd, which is eqal to ranking(yPredict)
+      % r = ranking(yPredict);
+      % rank = ranking(-expectedError(r));
     end
     
   end
