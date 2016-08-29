@@ -4,6 +4,9 @@ classdef MultiTrainedEC < EvolutionControl
     nOrigInit
     rankFunc
     rankErrorThresh
+    lastModel
+    nTrainErrors
+    maxTrainErrors
   end
 
   methods 
@@ -13,6 +16,9 @@ classdef MultiTrainedEC < EvolutionControl
       obj.nOrigInit = defopts(surrogateOpts, 'evoControlNOrigInit', 1);
       obj.rankFunc = defopts(surrogateOpts, 'evoControlRankFunc', @errRankMu);
       obj.rankErrorThresh = defopts(surrogateOpts, 'evoControlRankErrorThresh', 0.1);
+      obj.lastModel = [];
+      obj.nTrainErrors = 0;
+      obj.maxTrainErrors = defopts(surrogateOpts, 'evoControlMaxTrainErros', 2);
     end
 
     function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
@@ -60,10 +66,8 @@ classdef MultiTrainedEC < EvolutionControl
       end
 
       % train the model 
-      obj.model = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
-      if (~obj.model.isTrained())
-        fprintf('Model cannot be trained after %d evaluations.\n', nOrigEvaled);
-        return
+      if (~obj.trainModelOrUseLast())
+        return;
       end
 
       [yModel1, sd2Model1] = obj.model.predict(xPopValid');
@@ -94,10 +98,8 @@ classdef MultiTrainedEC < EvolutionControl
       %     xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
       [xTrain, yTrain] = archive.getClosestDataFromPoints(nArchivePoints, xPopValid(:,~origEvaled)', sigma, BD);
 
-      obj.model = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
-      if (~obj.model.isTrained())
-        fprintf('Model cannot be trained after %d evaluations.\n', nOrigEvaled);
-        return
+      if (~obj.trainModelOrUseLast())
+        return;
       end
 
       % predict with the retrained model and calculate 
@@ -137,11 +139,9 @@ classdef MultiTrainedEC < EvolutionControl
         % [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
         %     xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
         [xTrain, yTrain] = archive.getClosestDataFromPoints(nArchivePoints, xPopValid(:,~origEvaled)', sigma, BD);
-        obj.model = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
-        if (~obj.model.isTrained())
-          fprintf('Model cannot be trained after %d evaluations.\n', nOrigEvaled);
-          obj.nInit = min(lambda, obj.nInit + n_b);
-          return
+        if (~obj.trainModelOrUseLast())
+          obj.nOrigInit = min(lambda, obj.nOrigInit + n_b);
+          return;
         end
 
         % predict with the retrained model and calculate 
@@ -300,6 +300,28 @@ classdef MultiTrainedEC < EvolutionControl
       nInit = floor(obj.nOrigInit) + plus;
     end
 
+    function succ = trainModelOrUseLast(obj)
+      succ = false;
+      m = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
+      if (~m.isTrained())
+        % Failure in training
+        fprintf('Model cannot be trained. Trying last model...\n', nOrigEvaled);
+        if (~isempty(obj.lastModel) && obj.lastModel.isTrained && obj.nTrainErrors < obj.maxTrainErrors)
+          fprintf('Last model seems OK. Using it.');
+          obj.model = obj.lastModel;
+          obj.nTrainErrors = obj.nTrainErrors + 1;
+          succ = true;
+        else
+          fprintf('Last model cannot be used.');
+        end
+      else
+        % Successful training
+        obj.nTrainErrors = 0;
+        obj.lastModel = obj.model;
+        obj.model = m;
+        succ = true;
+      end
+    end
   end
 
 end
