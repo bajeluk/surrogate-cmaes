@@ -22,8 +22,8 @@ classdef MultiTrainedEC < EvolutionControl
       arx = [];
       arxvalid = [];
       arz = [];
-      surrogateStats = NaN(1, 2);
-      origEvals = 0;
+      surrogateStats = NaN(1, 3);
+      nOrigEvaled = 0;
       
       % extract cmaes state variables
       xmean = cmaesState.xmean;
@@ -42,11 +42,17 @@ classdef MultiTrainedEC < EvolutionControl
         % model could not be created :( use the standard CMA-ES
         return;
       end
-      
+
+      % sample lambda new points and evaluate them with the model
+      [xPop, xPopValid, zPop] = ...
+          sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
+      origEvaled = false(1,lambda);
+              
       nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
       minTrainSize = obj.model.getNTrainData();
-      [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
-          xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
+      % [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
+      %     xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
+      [xTrain, yTrain] = archive.getClosestDataFromPoints(nArchivePoints, xPopValid', sigma, BD);
       if (size(yTrain, 1) < minTrainSize)
         % We don't have enough data for model training
         return;
@@ -55,14 +61,11 @@ classdef MultiTrainedEC < EvolutionControl
       % train the model 
       obj.model = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
       if (~obj.model.isTrained())
-        fprintf('Model cannot be trained after %d evaluations.\n', origEvals);
+        fprintf('Model cannot be trained after %d evaluations.\n', nOrigEvaled);
         return
       end
       
-      % sample lambda new points and evaluate them with the model
-      [xExtend, xExtendValid, zExtend] = ...
-          sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
-      [yModel1, sd2Model1] = obj.model.predict(xExtend');
+      [yModel1, sd2Model1] = obj.model.predict(xPopValid');
       
       % find the ordering of the points with highest expected ranking
       % error
@@ -70,73 +73,81 @@ classdef MultiTrainedEC < EvolutionControl
       
       reevalID = false(1, lambda);
       reevalID(perm(1:obj.nOrigInit)) = true;
-      xToReeval = xExtend(:, reevalID);
-      xToReevalValid = xExtendValid(:, reevalID);
-      zToReeval = zExtend(:, reevalID);
+      xToReeval = xPop(:, reevalID);
+      xToReevalValid = xPopValid(:, reevalID);
+      zToReeval = zPop(:, reevalID);
 
       % original-evaluate the chosen points
       [yNew, xNew, xNewValid, zNew, counteval] = ...
           sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, obj.nOrigInit, counteval, cmaesState, sampleOpts, varargin{:});
       fprintf('counteval: %d\n', counteval)
       yFinal(reevalID) = yNew;
-      origEvals = sum(reevalID);
+      origEvaled(reevalID) = true; nOrigEvaled = sum(origEvaled);
       % update the Archive
       archive = archive.save(xNewValid', yNew', countiter);
       % the obj.models' dataset will be supplemented with this
       % new points during the next training using all the xTrain
 
       % retrain model
-      [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
-          xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
+      % [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
+      %     xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
+      [xTrain, yTrain] = archive.getClosestDataFromPoints(nArchivePoints, xPopValid(:,~origEvaled)', sigma, BD);
+
       obj.model = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
       if (~obj.model.isTrained())
-        fprintf('Model cannot be trained after %d evaluations.\n', origEvals);
+        fprintf('Model cannot be trained after %d evaluations.\n', nOrigEvaled);
         return
       end
 
       % predict with the retrained model and calculate 
       % change in ranking (estimate model error)
-      [yModel2, sd2Model2] = obj.model.predict(xExtend');
+      [yModel2, sd2Model2] = obj.model.predict(xPopValid');
       [~, sort1] = sort(yModel1);
       ranking2   = ranking(yModel2);
       err = errRankMu(ranking2(sort1), mu);
+      % Debug:
       fprintf('Ranking error: %f\n', err);
       
+      nReevaled = 0;
       % while there is some non-trivial change in ranking, re-evaluate new poits
-      while ((origEvals < lambda) && (err > obj.rankErrorThresh))
+      while ((nOrigEvaled < lambda) && (err > obj.rankErrorThresh))
+        reevalID = false(1, lambda);
         % find the ordering of the points with highest expected ranking error
         perm = obj.mostProbableRankDiff(yModel2, sd2Model2, cmaesState.mu);
         % do not re-evaluate what has already been evaluated
-        perm(reevalID) = [];
-        pointID = perm(1);
+        perm(origEvaled) = [];
+        % take the most interesting point
         reevalID(perm(1)) = true;
-        xToReeval = xExtend(:, pointID);
-        xToReevalValid = xExtendValid(:, pointID);
-        zToReeval = zExtend(:, pointID);
+        xToReeval = xPop(:, reevalID);
+        xToReevalValid = xPopValid(:, reevalID);
+        zToReeval = zPop(:, reevalID);
         % original-evaluate the chosen one point
         [yNew, xNew, xNewValid, zNew, counteval] = ...
             sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, 1, counteval, cmaesState, sampleOpts, varargin{:});
         fprintf('counteval: %d\n', counteval)
-        yFinal(pointID) = yNew;
-        origEvals = sum(reevalID);
+        yFinal(reevalID) = yNew;
+        origEvaled(reevalID) = true; nOrigEvaled = sum(origEvaled);
         % update the Archive
         archive = archive.save(xNewValid', yNew', countiter);
 
         % retrain model
-        [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
-            xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
+        % [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
+        %     xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
+        [xTrain, yTrain] = archive.getClosestDataFromPoints(nArchivePoints, xPopValid(:,~origEvaled)', sigma, BD);
         obj.model = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
         if (~obj.model.isTrained())
-          fprintf('Model cannot be trained after %d evaluations.\n', origEvals);
+          fprintf('Model cannot be trained after %d evaluations.\n', nOrigEvaled);
           return
         end
 
         % predict with the retrained model and calculate 
         % change in ranking (estimate model error)
-        [yModel3, sd2Model3] = obj.model.predict(xExtend');
+        [yModel3, sd2Model3] = obj.model.predict(xPopValid');
         [~, sort2] = sort(yModel2);
         ranking3   = ranking(yModel3);
         err = errRankMu(ranking3(sort2), mu);
+        % Debug:
+        fprintf('Ranking error (while cycle): %f\n', err);
         yModel2 = yModel3;
         sd2Model2 = sd2Model3;
       end
@@ -148,13 +159,16 @@ classdef MultiTrainedEC < EvolutionControl
       surrogateStats = [rmse, kendallErr];
       %}
 
-      if ~all(reevalID)
-        yModel = obj.model.predict((xExtend(:, ~reevalID))');
+      if ~all(origEvaled)
+        yModel = obj.model.predict((xPopValid(:, ~origEvaled))');
         surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval);
-        yFinal(~reevalID) = yModel;
-        xNew = [xNew, xExtend(:, ~reevalID)];
-        xNewValid = [xNewValid, xExtendValid(:, ~reevalID)];
-        zNew = [zNew, zExtend(:, ~reevalID)];
+        % save also the last measured errRankMu
+        surrogateStats(end+1) = err;
+        
+        yFinal(~origEvaled) = yModel';
+        xNew = [xNew, xPop(:, ~origEvaled)];
+        xNewValid = [xNewValid, xPopValid(:, ~origEvaled)];
+        zNew = [zNew, zPop(:, ~origEvaled)];
 
         % shift the f-values:
         %   if the model predictions are better than the best original value
@@ -171,9 +185,9 @@ classdef MultiTrainedEC < EvolutionControl
               
       % save the resulting re-evaluated population as the returning parameters
       fitness_raw = yFinal;
-      arx = xExtend;
-      arxvalid = xExtendValid;
-      arz = zExtend;
+      arx = xPop;
+      arxvalid = xPopValid;
+      arz = zPop;
       
     end
 
@@ -240,6 +254,10 @@ classdef MultiTrainedEC < EvolutionControl
         % fprintf('Expected error of [%d] is %f.\n', i, expectedError(i));
       end
       
+      % Debug:
+      fprintf('Ranking of errors of sorted points: %s\n', num2str(ranking(-expectedError)));
+      % fprintf('Final permutation of original points: %s\n', num2str(perm'));
+      
       % return the final permutation of the points from the highest expected error
       % to the lowest (according to (-1)*expectedError sorted according to
       % inverse sort defined by yInd, which is eqal to ranking(yPredict)
@@ -249,8 +267,10 @@ classdef MultiTrainedEC < EvolutionControl
       [~, eInd] = sort(-expectedError);
       % the final order of points to reevaluate is following
       perm = yInd(eInd);
-      fprintf('Ranking of errors: %s\n', num2str(ranking(-expectedError)));
-      % fprintf('Final permutation of original points: %s\n', num2str(perm'));
+      
+      % Debug:
+      yRnk = ranking(yPredict);
+      assert(all(yRnk(perm)' == eInd), 'Ranking of ''perm'' and ''expectedError'' is not same!');
     end
 
   end

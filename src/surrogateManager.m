@@ -44,7 +44,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
   sDefaults.modelType = '';                         % gp | rf
   sDefaults.modelOpts = [];                         % model specific options
 
-  surrogateStats = NaN(1, 2);
+  surrogateStats = NaN(1, 3);
 
   % copy the defaults settings...
   surrogateOpts = sDefaults;
