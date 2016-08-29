@@ -85,7 +85,7 @@ function generateReport(expFolder, varargin)
     reportName = [expName{1}, '_report.m'];
   end
   % report folder for all generated scripts
-  defPpFolder = fullfile('exp', 'pproc', 'generated scripts');
+  defPpFolder = fullfile('exp', 'pproc', 'generated_scripts');
   if ~isdir(defPpFolder)
     mkdir(defPpFolder)
   end

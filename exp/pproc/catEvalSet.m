@@ -64,12 +64,12 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   % concatenate evaluations from different experiments and with the same
   % settings
   exp_evals_ne = cat(3, exp_evals_ne{:});
-  nSettings = length(settings);
+  nSettings = length(settings_ne);
   evals = cell(length(funcSet.BBfunc), length(funcSet.dims), nSettings);
-  for s = 1 : nSettings    
+  for s = 1 : nSettings
     for f = 1 : length(funcSet.BBfunc)
       for d = 1 : length(funcSet.dims)
-        if notEmptySet(s)
+        if ~isempty(settings_ne{s})
           evals{f, d, s} = [exp_evals_ne{f, d, settingsID == s}];
         else
           evals{f, d, s} = exp_evals{s}{f, d};
