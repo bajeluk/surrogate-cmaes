@@ -5,7 +5,7 @@ classdef MultiTrainedEC < EvolutionControl
     rankFunc
     rankErrorThresh
   end
-  
+
   methods 
     function obj = MultiTrainedEC(surrogateOpts)
     % constructor
@@ -14,17 +14,18 @@ classdef MultiTrainedEC < EvolutionControl
       obj.rankFunc = defopts(surrogateOpts, 'evoControlRankFunc', @errRankMu);
       obj.rankErrorThresh = defopts(surrogateOpts, 'evoControlRankErrorThresh', 0.1);
     end
-    
+
     function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
     % Run one generation of multi-trained evolution control
-      
+
       fitness_raw = [];
       arx = [];
       arxvalid = [];
       arz = [];
       surrogateStats = NaN(1, 3);
+      nInit = obj.getProbNOrigInit();
       nOrigEvaled = 0;
-      
+
       % extract cmaes state variables
       xmean = cmaesState.xmean;
       sigma = cmaesState.sigma;
@@ -35,7 +36,7 @@ classdef MultiTrainedEC < EvolutionControl
       countiter = cmaesState.countiter;
 
       yFinal = NaN(1,lambda);
-      
+
       obj.model = ModelFactory.createModel(surrogateOpts.modelType, surrogateOpts.modelOpts, xmean');
 
       if (isempty(obj.model))
@@ -47,7 +48,7 @@ classdef MultiTrainedEC < EvolutionControl
       [xPop, xPopValid, zPop] = ...
           sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
       origEvaled = false(1,lambda);
-              
+
       nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
       minTrainSize = obj.model.getNTrainData();
       % [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
@@ -64,22 +65,22 @@ classdef MultiTrainedEC < EvolutionControl
         fprintf('Model cannot be trained after %d evaluations.\n', nOrigEvaled);
         return
       end
-      
+
       [yModel1, sd2Model1] = obj.model.predict(xPopValid');
-      
+
       % find the ordering of the points with highest expected ranking
       % error
       perm = obj.mostProbableRankDiff(yModel1, sd2Model1, cmaesState.mu);
-      
+
       reevalID = false(1, lambda);
-      reevalID(perm(1:obj.nOrigInit)) = true;
+      reevalID(perm(1:nInit)) = true;
       xToReeval = xPop(:, reevalID);
       xToReevalValid = xPopValid(:, reevalID);
       zToReeval = zPop(:, reevalID);
 
       % original-evaluate the chosen points
       [yNew, xNew, xNewValid, zNew, counteval] = ...
-          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, obj.nOrigInit, counteval, cmaesState, sampleOpts, varargin{:});
+          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, nInit, counteval, cmaesState, sampleOpts, varargin{:});
       fprintf('counteval: %d\n', counteval)
       yFinal(reevalID) = yNew;
       origEvaled(reevalID) = true; nOrigEvaled = sum(origEvaled);
@@ -107,11 +108,13 @@ classdef MultiTrainedEC < EvolutionControl
       err = errRankMu(ranking2(sort1), mu);
       % Debug:
       fprintf('Ranking error: %f\n', err);
-      
-      nReevaled = 0;
+
+      iters = 0;
+      n_b = 1;
       % while there is some non-trivial change in ranking, re-evaluate new poits
       while ((nOrigEvaled < lambda) && (err > obj.rankErrorThresh))
         reevalID = false(1, lambda);
+        iters = iters + 1;
         % find the ordering of the points with highest expected ranking error
         perm = obj.mostProbableRankDiff(yModel2, sd2Model2, cmaesState.mu);
         % do not re-evaluate what has already been evaluated
@@ -137,6 +140,7 @@ classdef MultiTrainedEC < EvolutionControl
         obj.model = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
         if (~obj.model.isTrained())
           fprintf('Model cannot be trained after %d evaluations.\n', nOrigEvaled);
+          obj.nInit = min(lambda, obj.nInit + n_b);
           return
         end
 
@@ -152,6 +156,18 @@ classdef MultiTrainedEC < EvolutionControl
         sd2Model2 = sd2Model3;
       end
 
+      if iters > 1
+        % Debug:
+        fprintf('nOrigInit = %.2f (was: %.2f)\n', min(lambda, obj.nOrigInit + 2*n_b), obj.nOrigInit);
+
+        obj.nOrigInit = min(lambda, obj.nOrigInit + 2*n_b);
+      elseif iters < 1
+        % Debug:
+        fprintf('nOrigInit = %.2f (was: %.2f)\n', max(0.33, obj.nOrigInit - n_b), obj.nOrigInit);
+
+        obj.nOrigInit = max(0.33, obj.nOrigInit - n_b);
+      end
+
       %{
       kendallErr = kendall(yPredict, yNew', 'type', 'Kendall');
       rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
@@ -159,12 +175,13 @@ classdef MultiTrainedEC < EvolutionControl
       surrogateStats = [rmse, kendallErr];
       %}
 
+      surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval);
+
       if ~all(origEvaled)
         yModel = obj.model.predict((xPopValid(:, ~origEvaled))');
-        surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval);
         % save also the last measured errRankMu
         surrogateStats(end+1) = err;
-        
+
         yFinal(~origEvaled) = yModel';
         xNew = [xNew, xPop(:, ~origEvaled)];
         xNewValid = [xNewValid, xPopValid(:, ~origEvaled)];
@@ -182,13 +199,13 @@ classdef MultiTrainedEC < EvolutionControl
         diff = max(fminDataset - fminModel, 0);
         yFinal = yFinal + 1.000001*diff;
       end
-              
+
       % save the resulting re-evaluated population as the returning parameters
       fitness_raw = yFinal;
       arx = xPop;
       arxvalid = xPopValid;
       arz = zPop;
-      
+
     end
 
     function perm = mostProbableRankDiff(obj, yPredict, sd2Predict, mu)
@@ -226,7 +243,7 @@ classdef MultiTrainedEC < EvolutionControl
         probs(1) = 1-probY(1);
         % probY from the last iteration of the next cycle
         lastProb = probY(1);
-        
+
         % probabilities of other positions
         position = 1;
         for j = 1:n
@@ -253,24 +270,34 @@ classdef MultiTrainedEC < EvolutionControl
         % Debug:
         % fprintf('Expected error of [%d] is %f.\n', i, expectedError(i));
       end
-      
+
       % Debug:
       fprintf('Ranking of errors of sorted points: %s\n', num2str(ranking(-expectedError)));
       % fprintf('Final permutation of original points: %s\n', num2str(perm'));
-      
+
       % return the final permutation of the points from the highest expected error
       % to the lowest (according to (-1)*expectedError sorted according to
       % inverse sort defined by yInd, which is eqal to ranking(yPredict)
       % yRnk = ranking(yPredict);
       % eRnk = ranking(-expectedError);
-      
+
       [~, eInd] = sort(-expectedError);
       % the final order of points to reevaluate is following
       perm = yInd(eInd);
-      
+
       % Debug:
       yRnk = ranking(yPredict);
       assert(all(yRnk(perm)' == eInd), 'Ranking of ''perm'' and ''expectedError'' is not same!');
+    end
+
+
+    function nInit = getProbNOrigInit(obj)
+      fracN = obj.nOrigInit - floor(obj.nOrigInit);
+      plus = 0;
+      if (fracN > 0)
+        plus = (rand() < fracN);
+      end
+      nInit = floor(obj.nOrigInit) + plus;
     end
 
   end
