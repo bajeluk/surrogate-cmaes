@@ -18,7 +18,7 @@ classdef MultiTrainedEC < EvolutionControl
       obj.rankErrorThresh = defopts(surrogateOpts, 'evoControlRankErrorThresh', 0.1);
       obj.lastModel = [];
       obj.nTrainErrors = 0;
-      obj.maxTrainErrors = defopts(surrogateOpts, 'evoControlMaxTrainErros', 2);
+      obj.maxTrainErrors = defopts(surrogateOpts, 'evoControlMaxTrainErrors', 2);
     end
 
     function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
@@ -175,10 +175,9 @@ classdef MultiTrainedEC < EvolutionControl
       surrogateStats = [rmse, kendallErr];
       %}
 
-      surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval);
-
       if ~all(origEvaled)
         yModel = obj.model.predict((xPopValid(:, ~origEvaled))');
+        surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval);
         % save also the last measured errRankMu
         surrogateStats(end+1) = err;
 
