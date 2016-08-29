@@ -66,7 +66,7 @@ classdef MultiTrainedEC < EvolutionControl
       end
 
       % train the model 
-      if (~obj.trainModelOrUseLast())
+      if (~obj.trainModelOrUseLast(xTrain, yTrain, cmaesState, sampleOpts))
         return;
       end
 
@@ -98,7 +98,7 @@ classdef MultiTrainedEC < EvolutionControl
       %     xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
       [xTrain, yTrain] = archive.getClosestDataFromPoints(nArchivePoints, xPopValid(:,~origEvaled)', sigma, BD);
 
-      if (~obj.trainModelOrUseLast())
+      if (~obj.trainModelOrUseLast(xTrain, yTrain, cmaesState, sampleOpts))
         return;
       end
 
@@ -139,7 +139,7 @@ classdef MultiTrainedEC < EvolutionControl
         % [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
         %     xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
         [xTrain, yTrain] = archive.getClosestDataFromPoints(nArchivePoints, xPopValid(:,~origEvaled)', sigma, BD);
-        if (~obj.trainModelOrUseLast())
+        if (~obj.trainModelOrUseLast(xTrain, yTrain, cmaesState, sampleOpts))
           obj.nOrigInit = min(lambda, obj.nOrigInit + n_b);
           return;
         end
@@ -300,26 +300,31 @@ classdef MultiTrainedEC < EvolutionControl
       nInit = floor(obj.nOrigInit) + plus;
     end
 
-    function succ = trainModelOrUseLast(obj)
+    function succ = trainModelOrUseLast(obj, xTrain, yTrain, cmaesState, sampleOpts)
       succ = false;
       m = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
       if (~m.isTrained())
         % Failure in training
-        fprintf('Model cannot be trained. Trying last model...\n', nOrigEvaled);
-        if (~isempty(obj.lastModel) && obj.lastModel.isTrained && obj.nTrainErrors < obj.maxTrainErrors)
-          fprintf('Last model seems OK. Using it.');
+        fprintf('Model cannot be trained. Trying last model...\n');
+        if (~isempty(obj.lastModel) && obj.lastModel.isTrained() && obj.nTrainErrors < obj.maxTrainErrors)
+          fprintf('Last model seems OK. Using it.\n');
           obj.model = obj.lastModel;
           obj.nTrainErrors = obj.nTrainErrors + 1;
           succ = true;
+          return;
         else
-          fprintf('Last model cannot be used.');
+          fprintf('Error. Last model cannot be used. Re-setting to normal CMA-ES.\n');
+          return;
         end
       else
         % Successful training
         obj.nTrainErrors = 0;
-        obj.lastModel = obj.model;
+        if (~isempty(obj.model) && obj.model.isTrained())
+          obj.lastModel = obj.model;
+        end
         obj.model = m;
         succ = true;
+        return;
       end
     end
   end
