@@ -14,7 +14,7 @@ classdef MultiTrainedEC < EvolutionControl
     % constructor
       obj.model = [];
       obj.nOrigInit = defopts(surrogateOpts, 'evoControlNOrigInit', 1);
-      obj.rankFunc = defopts(surrogateOpts, 'evoControlRankFunc', @errRankMu);
+      obj.rankFunc = defopts(surrogateOpts, 'evoControlRankFunc', @errRankMuOnly);
       obj.rankErrorThresh = defopts(surrogateOpts, 'evoControlRankErrorThresh', 0.1);
       obj.lastModel = [];
       obj.nTrainErrors = 0;
@@ -28,7 +28,7 @@ classdef MultiTrainedEC < EvolutionControl
       arx = [];
       arxvalid = [];
       arz = [];
-      surrogateStats = NaN(1, 3);
+      surrogateStats = NaN(1, 7);
       nInit = obj.getProbNOrigInit();
       nOrigEvaled = 0;
 
@@ -50,15 +50,14 @@ classdef MultiTrainedEC < EvolutionControl
         return;
       end
 
-      % sample lambda new points and evaluate them with the model
+      % sample lambda new points
       [xPop, xPopValid, zPop] = ...
           sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
       origEvaled = false(1,lambda);
 
+      % get the training data from 'archive'
       nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
       minTrainSize = obj.model.getNTrainData();
-      % [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
-      %     xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
       [xTrain, yTrain] = archive.getClosestDataFromPoints(nArchivePoints, xPopValid', sigma, BD);
       if (size(yTrain, 1) < minTrainSize)
         % We don't have enough data for model training
@@ -107,14 +106,15 @@ classdef MultiTrainedEC < EvolutionControl
       [yModel2, sd2Model2] = obj.model.predict(xPopValid');
       [~, sort1] = sort(yModel1);
       ranking2   = ranking(yModel2);
-      err = errRankMu(ranking2(sort1), mu);
+      err = obj.rankFunc(ranking2(sort1), mu);
+      lastErr = err;
       % Debug:
       fprintf('Ranking error: %f\n', err);
 
       iters = 0;
       n_b = 1;
       % while there is some non-trivial change in ranking, re-evaluate new poits
-      while ((nOrigEvaled < lambda) && (err > obj.rankErrorThresh))
+      while ((nOrigEvaled < lambda) && (err >= obj.rankErrorThresh))
         reevalID = false(1, lambda);
         iters = iters + 1;
         % find the ordering of the points with highest expected ranking error
@@ -136,10 +136,9 @@ classdef MultiTrainedEC < EvolutionControl
         archive = archive.save(xNewValid', yNew', countiter);
 
         % retrain model
-        % [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
-        %     xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
         [xTrain, yTrain] = archive.getClosestDataFromPoints(nArchivePoints, xPopValid(:,~origEvaled)', sigma, BD);
         if (~obj.trainModelOrUseLast(xTrain, yTrain, cmaesState, sampleOpts))
+          % training unsuccessful, raising nOrigInit
           obj.nOrigInit = min(lambda, obj.nOrigInit + n_b);
           return;
         end
@@ -149,7 +148,8 @@ classdef MultiTrainedEC < EvolutionControl
         [yModel3, sd2Model3] = obj.model.predict(xPopValid');
         [~, sort2] = sort(yModel2);
         ranking3   = ranking(yModel3);
-        err = errRankMu(ranking3(sort2), mu);
+        lastErr = err;
+        err = obj.rankFunc(ranking3(sort2), mu);
         % Debug:
         fprintf('Ranking error (while cycle): %f\n', err);
         yModel2 = yModel3;
@@ -177,9 +177,8 @@ classdef MultiTrainedEC < EvolutionControl
 
       if ~all(origEvaled)
         yModel = obj.model.predict((xPopValid(:, ~origEvaled))');
-        surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval);
         % save also the last measured errRankMu
-        surrogateStats(end+1) = err;
+        surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval, lastErr);
 
         yFinal(~origEvaled) = yModel';
         xNew = [xNew, xPop(:, ~origEvaled)];

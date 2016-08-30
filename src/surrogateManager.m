@@ -44,7 +44,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
   sDefaults.modelType = '';                         % gp | rf
   sDefaults.modelOpts = [];                         % model specific options
 
-  surrogateStats = NaN(1, 3);
+  surrogateStats = NaN(1, 7);
 
   % copy the defaults settings...
   surrogateOpts = sDefaults;
@@ -76,9 +76,10 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
   end
   
   % run one generation according to evolution control
-  [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = ...
+  [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats_] = ...
     ec.runGeneration(cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin{:});
-  
+  surrogateStats(1:length(surrogateStats_)) = surrogateStats_;
+
   if (size(fitness_raw, 2) < lambda)
     % the model was in fact not trained
     disp('surrogateManager(): the model was not successfully trained.');
