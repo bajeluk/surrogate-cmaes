@@ -22,6 +22,9 @@ function settings = settings2struct(varargin)
   if isstruct(varargin{1})
     settings = varargin{1};
     return
+  elseif (iscell(varargin{1}) && isstruct(varargin{1}{1}))
+    settings = varargin{1}{1};
+    return
   end
   % multiple cell input
   if all(cellfun(@iscell, varargin))

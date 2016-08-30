@@ -25,7 +25,7 @@ function generateReport(expFolder, varargin)
   end
   
   % parse input
-  reportSettings = settings2struct(varargin);
+  reportSettings = settings2struct(varargin{:});
   publishOption = defopts(reportSettings, 'Publish', 'off');
   reportDescription = defopts(reportSettings, 'Description', []);
   if ~iscell(expFolder)
@@ -72,7 +72,7 @@ function generateReport(expFolder, varargin)
       BBfunc{f} = arrayfun(@(x) str2double(tdatFiles{x}(1, tdatSplit{x}(end-1)+2:tdatSplit{x}(end)-1)), ...
         1:length(tdatSplit)); % function numbers
       dims{f} = arrayfun(@(x) str2double(tdatFiles{x}(1, tdatSplit{x}(end)+4:end-5)), ...
-        1:length(tdatSplit)); % function numbers
+        1:length(tdatSplit)); % dimension numbers
     end
   end
   BBfunc = unique([BBfunc{:}]);
@@ -83,9 +83,10 @@ function generateReport(expFolder, varargin)
     reportName = ['exp_', num2str(nFolders), 'report_', num2str(hashGen(expName)), '.m'];
   else
     reportName = [expName{1}, '_report.m'];
+    reportName = repForbiddenChar(reportName, '_');
   end
   % report folder for all generated scripts
-  defPpFolder = fullfile('exp', 'pproc', 'generated scripts');
+  defPpFolder = fullfile('exp', 'pproc', 'generated_scripts');
   if ~isdir(defPpFolder)
     mkdir(defPpFolder)
   end
@@ -153,10 +154,9 @@ function generateReport(expFolder, varargin)
   fprintf(FID, 'expData = arrayfun(@(x) expData(:,:,x), 1:nSettings, ''UniformOutput'', false);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% create or gain algorithm names\n');
-  fprintf(FID, 'anonymAlg = cellfun(@isstruct, expSettings);\n');
+  fprintf(FID, 'anonymAlg = ~cellfun(@(x) isfield(x, ''algName''), expSettings);\n');
   fprintf(FID, 'expAlgNames = arrayfun(@(x) [''ALG'', num2str(x)], 1:sum(anonymAlg), ''UniformOutput'', false);\n');
-  fprintf(FID, 'algNames = cellfun(@(x) strsplit(x, filesep), expSettings(~anonymAlg), ''UniformOutput'', false);\n');
-  fprintf(FID, 'algNames = arrayfun(@(x) algNames{x}{end}, 1:length(algNames), ''UniformOutput'', false);\n');
+  fprintf(FID, 'algNames = cellfun(@(x) x.algName, expSettings(~anonymAlg), ''UniformOutput'', false);\n');
   fprintf(FID, 'expAlgNames = [expAlgNames, algNames];\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% color settings\n');
@@ -368,4 +368,12 @@ end
 function fileNum = hashGen(folders)
 % generates hash for result file
  fileNum = num2hex(sum(cellfun(@(x) sum(single(x).*(1:length(x))), folders)));
+end
+
+function str = repForbiddenChar(str, newChar)
+% replace forbidden characters by new character
+  forbidden = {'-', ' '};
+  for f = 1:length(forbidden)
+    str = strrep(str, forbidden{f}, newChar);
+  end
 end

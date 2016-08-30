@@ -32,7 +32,7 @@ function index = getStructIndex(origStruct, searchStruct)
         catch err
           if strcmp(err.identifier, 'MATLAB:nonExistentField')
             % warning('Reference to non-existent field ''%s''.', searchedFields{j})
-            fprintf(2, 'Reference to non-existent field ''%s''.\n', searchedFields{j});
+            % fprintf(2, 'Reference to non-existent field ''%s''.\n', searchedFields{j});
             correctFields = false;
           else
             throw(err)
