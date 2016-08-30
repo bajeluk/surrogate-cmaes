@@ -29,6 +29,7 @@ classdef DoubleTrainedEC < EvolutionControl
       lambda = cmaesState.lambda;
       BD = cmaesState.BD;
       dim = cmaesState.dim;
+      mu = cmaesState.mu;
       countiter = cmaesState.countiter;
       
       obj.model = ModelFactory.createModel(surrogateOpts.modelType, surrogateOpts.modelOpts, xmean');
@@ -64,7 +65,7 @@ classdef DoubleTrainedEC < EvolutionControl
       % sample new points
       [xExtend, xExtendValid, zExtend] = ...
           sampleCmaesNoFitness(sigma, nLambdaRest, cmaesState, sampleOpts);
-      [modelOutput, fvalExtend] = obj.model.getModelOutput(xExtend');
+      [modelOutput, fvalExtend] = obj.model.getModelOutput(xExtendValid');
       % choose rho points with low confidence to reevaluate
       if any(strcmpi(obj.model.predictionType, {'sd2', 'poi', 'ei'}))
         % higher criterion is better (sd2, poi, ei)
@@ -80,6 +81,9 @@ classdef DoubleTrainedEC < EvolutionControl
       xToReeval = xExtend(:, reevalID);
       xToReevalValid = xExtendValid(:, reevalID);
       zToReeval = zExtend(:, reevalID);
+
+      % Debug -- for the correlation info into surrogateStats
+      [yModel1, sd2Model1] = obj.model.predict(xExtendValid');
 
       % original-evaluate the chosen points
       [yNew, xNew, xNewValid, zNew, counteval] = ...
@@ -111,8 +115,16 @@ classdef DoubleTrainedEC < EvolutionControl
         % train the model again
         retrainedModel = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
         if (obj.useDoubleTraining && retrainedModel.isTrained())
-          yNewRestricted = retrainedModel.predict((xExtend(:, ~reevalID))');
-          surrogateStats = getModelStatistics(retrainedModel, cmaesState, surrogateOpts, sampleOpts, counteval);
+          yNewRestricted = retrainedModel.predict((xExtendValid(:, ~reevalID))');
+
+          % Debug -- for the correlation info into surrogateStats
+          [yModel2, sd2Model2] = retrainedModel.predict(xExtendValid');
+          [~, sort1] = sort(yModel1);
+          ranking2   = ranking(yModel2);
+          err = errRankMuOnly(ranking2(sort1), mu);
+          fprintf('Rank error: %f\n', err);
+
+          surrogateStats = getModelStatistics(retrainedModel, cmaesState, surrogateOpts, sampleOpts, counteval, err);
         else
           % use values estimated by the old model
           fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
