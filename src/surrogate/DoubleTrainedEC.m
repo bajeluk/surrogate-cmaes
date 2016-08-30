@@ -21,7 +21,7 @@ classdef DoubleTrainedEC < EvolutionControl
       arx = [];
       arxvalid = [];
       arz = [];
-      surrogateStats = NaN(1, 2);
+      surrogateStats = NaN(1, 10);
       
       % extract cmaes state variables
       xmean = cmaesState.xmean;
@@ -84,6 +84,9 @@ classdef DoubleTrainedEC < EvolutionControl
 
       % Debug -- for the correlation info into surrogateStats
       [yModel1, sd2Model1] = obj.model.predict(xExtendValid');
+      nTrainPoints = length(yTrain);
+      xReevalTrans = ( (sigma * BD) \ xToReevalValid);
+      xDist = mean( sqrt(sum( xReevalTrans.^2 )) );
 
       % original-evaluate the chosen points
       [yNew, xNew, xNewValid, zNew, counteval] = ...
@@ -98,7 +101,7 @@ classdef DoubleTrainedEC < EvolutionControl
       kendall = corr(yPredict, yNew', 'type', 'Kendall');
       rmse = sqrt(sum((yPredict' - yNew).^2))/length(yNew);
       fprintf('  model-gener.: %d preSamples, reevaluated %d pts, test RMSE = %f, Kendl. corr = %f.\n', nPresampledPoints, nReeval, rmse, kendall);
-      surrogateStats = [rmse, kendall];
+      surrogateStats(1:2) = [rmse, kendall];
 
       % TODO: restrictedParam adaptivity
 %       alpha = surrogateOpts.evoControlAdaptivity;
@@ -124,12 +127,14 @@ classdef DoubleTrainedEC < EvolutionControl
           err = errRankMuOnly(ranking2(sort1), mu);
           fprintf('Rank error: %f\n', err);
 
-          surrogateStats = getModelStatistics(retrainedModel, cmaesState, surrogateOpts, sampleOpts, counteval, err);
+          surrogateStats_ = getModelStatistics(retrainedModel, cmaesState, surrogateOpts, sampleOpts, counteval, err, nTrainPoints, xDist);
+          surrogateStats(1:length(surrogateStats_)) = surrogateStats_;
         else
           % use values estimated by the old model
           fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
           yNewRestricted = fvalExtend(~reevalID);
-          surrogateStats = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval);
+          surrogateStats_ = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval);
+          surrogateStats(1:length(surrogateStats_)) = surrogateStats_;
         end
         yNew = [yNew, yNewRestricted'];
         xNew = [xNew, xExtend(:, ~reevalID)];

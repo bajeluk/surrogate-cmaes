@@ -18,7 +18,7 @@ function surrogateStats = getModelStatistics(model, cmaesState, surrogateOpts, s
 
   [~, xValidTest, ~] = ...
       sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
-  surrogateStats = NaN(1,6);
+  surrogateStats = NaN(1,7);
   if (isfield(surrogateOpts.modelOpts, 'bbob_func'))
     preciseModel = ModelFactory.createModel('bbob', surrogateOpts.modelOpts, xmean');
     yTest = preciseModel.predict(xValidTest');
@@ -44,13 +44,17 @@ function surrogateStats = getModelStatistics(model, cmaesState, surrogateOpts, s
     end
     fprintf('%s\n', stars);
 
+    % Get actual errRankMuOnly()
+    [~, sort1] = sort(yTest);
+    ranking2   = ranking(yPredict);
+    errRank = errRankMuOnly(ranking2(sort1), cmaesState.mu);
+
     [minstd minstdidx] = min(cmaesState.sigma*sqrt(cmaesState.diagC));
     [maxstd maxstdidx] = max(cmaesState.sigma*sqrt(cmaesState.diagC));
     surrogateStats = [rmse, kendall, cmaesState.sigma, ...
-        max(cmaesState.diagD)/min(cmaesState.diagD), minstd, maxstd];
-    if (~isempty(varargin))
-      surrogateStats(end+1) = varargin{1};
-    end
+        max(cmaesState.diagD)/min(cmaesState.diagD), minstd, maxstd, errRank];
+    varParams = cell2mat(varargin);
+    surrogateStats((end+1):(end+length(varParams))) = varParams;
     
     % experimental
     % coef = sqrt(sum(((yPredict - yTest)/norm(yTest)).^2))/length(yPredict);

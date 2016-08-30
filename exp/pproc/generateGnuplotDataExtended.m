@@ -3,7 +3,7 @@ function generateGnuplotDataExtended(gnuplotFile, exp_results, exp_cmaes_results
   [mBestf, q1Bestf, q3Bestf] = statisticsFromYEvals(exp_results.y_evals, maxfunevals, 1);
   [mRMSE, q1RMSE, q3RMSE] = statisticsFromYEvals(exp_results.y_evals, maxfunevals, 3);
   [mCorr, q1Corr, q3Corr] = statisticsFromYEvals(exp_results.y_evals, maxfunevals, 4);
-  names = {'sigma', 'diagRatio', 'minstd', 'maxstd', 'rangeErr'};
+  names = {'sigma', 'diagRatio', 'minstd', 'maxstd', 'testRangeErr', 'popRangeErr', 'nTrainPoints', 'reevalPointsDist'};
   stats = [];
   colNames = '';
   nCols = 0
