@@ -18,11 +18,9 @@ classdef DoubleTrainedEC < EvolutionControl
     % Run one generation of double trained evolution control
       
       fitness_raw = [];
-      arx = [];
       arxvalid = [];
-      arz = [];
       surrogateStats = NaN(1, 10);
-      
+
       % extract cmaes state variables
       xmean = cmaesState.xmean;
       sigma = cmaesState.sigma;
@@ -31,6 +29,9 @@ classdef DoubleTrainedEC < EvolutionControl
       dim = cmaesState.dim;
       mu = cmaesState.mu;
       countiter = cmaesState.countiter;
+      
+      % prepare the final population to be returned to CMA-ES
+      finalPop = FinalPopulation(lambda, dim);
       
       obj.model = ModelFactory.createModel(surrogateOpts.modelType, surrogateOpts.modelOpts, xmean');
 
@@ -52,6 +53,7 @@ classdef DoubleTrainedEC < EvolutionControl
       if (nPresampledPoints == lambda)
         return
       end
+      finalPop = finalPop.addPoints(arxvalid, fitness_raw, arx, arz, nPresampledPoints);
 
       % train the model 
       obj.model = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
@@ -65,7 +67,7 @@ classdef DoubleTrainedEC < EvolutionControl
       % sample new points
       [xExtend, xExtendValid, zExtend] = ...
           sampleCmaesNoFitness(sigma, nLambdaRest, cmaesState, sampleOpts);
-      [modelOutput, fvalExtend] = obj.model.getModelOutput(xExtendValid');
+      modelOutput = obj.model.getModelOutput(xExtendValid');
       % choose rho points with low confidence to reevaluate
       if any(strcmpi(obj.model.predictionType, {'sd2', 'poi', 'ei'}))
         % higher criterion is better (sd2, poi, ei)
@@ -92,6 +94,9 @@ classdef DoubleTrainedEC < EvolutionControl
       [yNew, xNew, xNewValid, zNew, counteval] = ...
           sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, nReeval, counteval, cmaesState, sampleOpts, varargin{:});
       fprintf('counteval: %d\n', counteval)
+
+      finalPop = finalPop.addPoints(xNewValid, yNew, xNew, zNew, nReeval);
+
       % update the Archive
       archive = archive.save(xNewValid', yNew', countiter);
       % the obj.models' dataset will be supplemented with this
@@ -132,35 +137,42 @@ classdef DoubleTrainedEC < EvolutionControl
         else
           % use values estimated by the old model
           fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
-          yNewRestricted = fvalExtend(~reevalID);
+          yNewRestricted = yPredict(~reevalID);
           surrogateStats_ = getModelStatistics(obj.model, cmaesState, surrogateOpts, sampleOpts, counteval);
           surrogateStats(1:length(surrogateStats_)) = surrogateStats_;
         end
+
+        finalPop = finalPop.addPoints(xExtendValid(:, ~reevalID), yNewRestricted, xExtend(:, ~reevalID), zExtend(:, ~reevalID), 0);
+
         yNew = [yNew, yNewRestricted'];
         xNew = [xNew, xExtend(:, ~reevalID)];
         xNewValid = [xNewValid, xExtendValid(:, ~reevalID)];
         zNew = [zNew, zExtend(:, ~reevalID)];
-
-        % shift the f-values:
-        %   if the model predictions are better than the best original value
-        %   in the model's dataset, shift ALL (!) function values
-        %   Note: - all values have to be shifted in order to preserve predicted
-        %           ordering of values
-        %         - small constant is added because of the rounding errors
-        %           when numbers of different orders of magnitude are summed
-        fminDataset = min(obj.model.dataset.y);
-        fminModel = min(yNewRestricted);
-        diff = max(fminDataset - fminModel, 0);
-        fitness_raw = fitness_raw + 1.000001*diff;
-        yNew = yNew + 1.000001*diff;
+        
       end
               
+      assert(finalPop.nPoints == lambda, 'There are not yet all lambda points prepared, but they should be!');
+
+      % sort the returned solutions (the best to be first)
+      [finalPop, popSortInd] = finalPop.sort;
+
+      % shift the f-values:
+      %   if the model predictions are better than the best original value
+      %   in the model's dataset, shift ALL (!) function values
+      %   Note: - all values have to be shifted in order to preserve predicted
+      %           ordering of values
+      %         - small constant is added because of the rounding errors
+      %           when numbers of different orders of magnitude are summed
+      fminDataset = min(obj.model.dataset.y);
+      fminModel = finalPop.getMinModeled;
+      diff = max(fminDataset - fminModel, 0);
+      finalPop = finalPop.shiftY(1.000001*diff);
+
       % save the resulting re-evaluated population as the returning parameters
-      fitness_raw = [fitness_raw yNew];
-      arx = [arx xNew];
-      arxvalid = [arxvalid xNewValid];
-      arz = [arz zNew];
-      
+      fitness_raw = finalPop.y;
+      arx = finalPop.arx;
+      arxvalid = finalPop.x;
+      arz = finalPop.arz;
     end
     
   end
