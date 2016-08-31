@@ -20,12 +20,11 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   load([exppath filesep 'scmaes_params.mat']);
   [bbParams, surrogateParams, cmaesParams, nNonBbobValues] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
   
-  % BBOB constant parameters
-  minfunevals = 'dim + 2';  % PUT MINIMAL SENSIBLE NUMBER OF EVALUATIONS for a restart
-  maxrestarts = 1e4;        % SET to zero for an entirely deterministic algorithm
-  bbobpath = 'vendor/bbob';    % should point to fgeneric.m etc.
-  % addpath cannot be in deployed code!
-  % addpath([exppath_short filesep '..' filesep bbobpath]);
+  % BBOB parameters
+  minfunevals = 'dim + 2';      % PUT MINIMAL SENSIBLE NUMBER OF EVALUATIONS for a restart
+  bbobpath = 'vendor/bbob';     % should point to fgeneric.m etc.
+  maxrestarts = defopts(bbParams, 'maxrestarts', 1e4); % SET to zero for an entirely deterministic algorithm
+
   localDatapath = [];       % directory in the shared folder where results of each instance will be copied through the progress
   if (nargin >= 4 && ~isempty(varargin{1}))
     % datapath is typically on the computing node in   $SCRATCHDIR/job_output/bbob_output:
@@ -44,10 +43,6 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
 
   % opt.algName = exp_description;
   opt.comments = '';
-
-  % runs an experiment for benchmarking MY_OPTIMIZER
-  % on the noise-free testbed. fgeneric.m and benchmarks.m
-  % must be in the path of Matlab/Octave
 
   more off;  % in octave pagination is on by default
 
@@ -169,14 +164,14 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
   y_evals = cell(0);
   cmaes_out = cell(0);
 
-  t = tic;
-  inst_results_evals = [];
-  inst_results_restarts = [];
-  inst_results_fbests = [];
-  inst_results_f025 = [];
-  inst_results_f050 = [];
-  inst_results_f075 = [];
-  inst_results_stopflags = {};
+  exp_results.evals = [];
+  exp_results.restarts = [];
+  exp_results.fbests = [];
+  exp_results.f025 = [];
+  exp_results.f050 = [];
+  exp_results.f075 = [];
+  exp_results.stopflags = {};
+  exp_results.time = 0;
   evalsRestartCorrection = 0;
 
   tmpFile = [exppath filesep exp_settings.exp_id '_tmp_' num2str(id) '.mat'];
@@ -186,7 +181,7 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
   if (exp_settings.resume && ~isempty(localDatapath) ...
       && exist([localDatapath filesep expFileID], 'dir') ...
       && exist(tmpFile, 'file'))
-    [nCompletedInstances, y_evals] = loadInterruptedInstances(tmpFile);
+    [nCompletedInstances, y_evals, exp_results, cmaes_out] = loadInterruptedInstances(tmpFile);
     system(['cp -pR ' localDatapath '/' expFileID ' ' datapathRoot]);
   else
     nCompletedInstances = 0;
@@ -197,17 +192,18 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
 
     fgeneric('initialize', exp_settings.bbob_function, iinstance, datapath, opt); 
     yeRestarts = [];
+    cmaes_out{end+1}  = {};
+    t = tic;
+    xstart = 8 * rand(exp_settings.dim, 1) - 4;
 
     % independent restarts until maxfunevals or ftarget is reached
     for restarts = 0:maxrestarts
       if restarts > 0  % write additional restarted info
         fgeneric('restart', 'independent restart')
       end
-      [xopt, ilaunch, ye, stopflag, cmaes_out_1] = opt_function('fgeneric', exp_settings.dim, fgeneric('ftarget'), ...
-                  maxfunevals, id, exppath);
-      % we don't have this information from CMA-ES :(
-      % ye = [res.deltasY res.evaluations];
-      cmaes_out{end+1} = cmaes_out_1;
+      [xopt, ye, stopflag, cmaes_out_1] = opt_function('fgeneric', exp_settings.dim, fgeneric('ftarget'), ...
+                  maxfunevals, id, exppath, xstart);
+      cmaes_out{end}{end+1} = cmaes_out_1;
 
       if (fmin < Inf)
         ye(:,1) = min([ye(:,1) repmat(fmin,size(ye,1),1)], [], 2);
@@ -220,9 +216,13 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
       if fgeneric('fbest') < fgeneric('ftarget') || ...
         fgeneric('evaluations') + minfunevals > maxfunevals
         break;
+      else
+        % try to improve the best foud solution
+        xstart = xopt;
       end  
     end
 
+    elapsedTime = toc(t);
     y_evals = cat(1,y_evals,yeRestarts);
 
     fprintf(['  f%d in %d-D, instance %d: FEs=%d with %d restarts,' ...
@@ -233,17 +233,19 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
                 fgeneric('fbest') - fgeneric('ftarget'), ...
                 etime(clock, t0)/60/60);
 
-    inst_results_evals = [inst_results_evals fgeneric('evaluations')];
-    inst_results_restarts = [inst_results_restarts restarts];
-    inst_results_fbests = [inst_results_fbests min(y_evals{end}(:,1))];
-    inst_results_f025   = [inst_results_f025 y_evals{end}( max([1 floor(size(y_evals{end},1)/4)]) ,1)];
-    inst_results_f050   = [inst_results_f050 y_evals{end}( max([1 floor(size(y_evals{end},1)/2)]) ,1)];
-    inst_results_f075   = [inst_results_f075 y_evals{end}( max([1 floor(3*size(y_evals{end},1)/4)]) ,1)];
-    inst_results_stopflags{end+1} = stopflag;
+    exp_results.evals(end+1)  = fgeneric('evaluations');
+    exp_results.restarts(end+1) = restarts;
+    exp_results.fbests(end+1) = min(y_evals{end}(:,1));
+    exp_results.f025(end+1)   = y_evals{end}( max([1 floor(size(y_evals{end},1)/4)]) ,1);
+    exp_results.f050(end+1)   = y_evals{end}( max([1 floor(size(y_evals{end},1)/2)]) ,1);
+    exp_results.f075(end+1)   = y_evals{end}( max([1 floor(3*size(y_evals{end},1)/4)]) ,1);
+    exp_results.stopflags{end+1} = stopflag;
+    exp_results.y_evals       = y_evals;
+    exp_results.time          = exp_results.time + elapsedTime;
 
     fgeneric('finalize');
     exp_id = exp_settings.exp_id;
-    save(tmpFile, 'exp_settings', 'exp_id', 'y_evals');
+    save(tmpFile, 'exp_settings', 'exp_id', 'y_evals', 'exp_results', 'cmaes_out');
 
     % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
     if (~isempty(localDatapath) && isunix)
@@ -251,18 +253,6 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
     end
   end
   disp(['      date and time: ' num2str(clock, ' %.0f')]);
-
-  elapsedTime = toc(t);
-
-  exp_results.evals = inst_results_evals;
-  exp_results.restarts = inst_results_restarts;
-  exp_results.f025 = inst_results_f025;
-  exp_results.f050 = inst_results_f050;
-  exp_results.f075 = inst_results_f075;
-  exp_results.fbests = inst_results_fbests;
-  exp_results.stopflags = inst_results_stopflags;
-  exp_results.y_evals = y_evals;
-  exp_results.time = elapsedTime;
 end
 
 function printSettings(fid, exp_settings, exp_results, surrogateParams, cmaesParams)
@@ -274,8 +264,9 @@ function printSettings(fid, exp_settings, exp_results, surrogateParams, cmaesPar
   fprintf(fid, sprintfStruct(surrogateParams));
   fprintf(fid, '\n== CMA-ES parameters: ==\n');
   fprintf(fid, sprintfStruct(cmaesParams));
-    fprintf(fid, '\n== CMA-ES surrogate model options: ==\n');
-  fprintf(fid, sprintfStruct(surrogateParams.modelOpts));
+  fprintf(fid, '\n== CMA-ES surrogate model options: ==\n');
+  if (isfield(surrogateParams, 'modelOpts'))
+    fprintf(fid, sprintfStruct(surrogateParams.modelOpts)); end
   fprintf(fid, '\n== Numerical results: ==\n\n');
   fprintf(fid, 'fbests:\n%s\n\n', num2str(exp_results.fbests));
   fprintf(fid, 'f075:\n%s\n\n', num2str(exp_results.f075));
@@ -283,11 +274,10 @@ function printSettings(fid, exp_settings, exp_results, surrogateParams, cmaesPar
   fprintf(fid, 'f025:\n%s\n\n', num2str(exp_results.f025));
 end
 
-function [nCompletedInstances, y_evals] = loadInterruptedInstances(tmpFile)
+function [nCompletedInstances, y_evals, exp_results, cmaes_out] = loadInterruptedInstances(tmpFile)
   fprintf('Resuming previously interrupted experiment run...\n');
   fprintf('Loading results from:  %s\n', tmpFile);
-  saved = load(tmpFile);
-  nCompletedInstances = size(saved.y_evals, 1);
-  fprintf('Completed instances (%d):  %s\n', nCompletedInstances, num2str(saved.exp_settings.instances(1:nCompletedInstances)));
-  y_evals = saved.y_evals;
+  load(tmpFile);
+  nCompletedInstances = size(y_evals, 1);
+  fprintf('Completed instances (%d):  %s\n', nCompletedInstances, num2str(exp_settings.instances(1:nCompletedInstances)));
 end
