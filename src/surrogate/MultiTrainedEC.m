@@ -28,7 +28,7 @@ classdef MultiTrainedEC < EvolutionControl
       arx = [];
       arxvalid = [];
       arz = [];
-      surrogateStats = NaN(1, 7);
+      surrogateStats = NaN(1, 8);
       nInit = obj.getProbNOrigInit();
       nOrigEvaled = 0;
 
