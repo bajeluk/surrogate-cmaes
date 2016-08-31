@@ -28,15 +28,17 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   % addpath([exppath_short filesep '..' filesep bbobpath]);
   localDatapath = [];       % directory in the shared folder where results of each instance will be copied through the progress
   if (nargin >= 4 && ~isempty(varargin{1}))
+    % datapath is typically on the computing node in   $SCRATCHDIR/job_output/bbob_output:
     datapath = [varargin{1} filesep 'bbob_output'];
     if (isempty(strfind(datapath, exppath_short)))
+      % localDatapath is typically on the NFS server in
+      %   $HOME/prg/surrogate-cmaes/exp/experiments/$EXPID/bbob_output_tmp
+      % and the BBOB results are stored here after each completed instance
       localDatapath = [exppath filesep 'bbob_output_tmp'];
       [~, ~] = mkdir(localDatapath);
     end
   else
     datapath = [exppath filesep 'bbob_output'];
-    % old version:
-    % datapath = ['../log/bbob/' exp_id];  % different folder for each experiment
   end
   [~, ~] = mkdir(datapath);
 
@@ -67,6 +69,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
       exp_settings.bbob_function = ifun;
       exp_settings.exp_id = exp_id;
       exp_settings.instances = instances;
+      exp_settings.resume = defopts(bbParams, 'resume', false);
 
       expFileID = [num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
       resultsFile = [exppath filesep exp_id '_results_' expFileID];
@@ -126,7 +129,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
       disp(gnuplotScriptCommand);
       system(gnuplotScriptCommand);
       % call gnuplot
-      system(['gnuplot ' gnuplotFile '.gpi']);
+      system(['LD_LIBRARY_PATH="" gnuplot ' gnuplotFile '.gpi']);
 
       % print out settings into the text-file
       fid = fopen([resultsFile '.txt'], 'w');
@@ -176,7 +179,20 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
   inst_results_stopflags = {};
   evalsRestartCorrection = 0;
 
-  for iinstance = exp_settings.instances   % 15 function instances
+  tmpFile = [exppath filesep exp_settings.exp_id '_tmp_' num2str(id) '.mat'];
+
+  % load interrupted "_tmp" results if exp_settings.resume is set
+  [datapathRoot, expFileID] = fileparts(datapath);
+  if (exp_settings.resume && ~isempty(localDatapath) ...
+      && exist([localDatapath filesep expFileID], 'dir') ...
+      && exist(tmpFile, 'file'))
+    [nCompletedInstances, y_evals] = loadInterruptedInstances(tmpFile);
+    system(['cp -pR ' localDatapath '/' expFileID ' ' datapathRoot]);
+  else
+    nCompletedInstances = 0;
+  end
+
+  for iinstance = exp_settings.instances((nCompletedInstances+1):end)   % 15 function instances
     fmin = Inf;
 
     fgeneric('initialize', exp_settings.bbob_function, iinstance, datapath, opt); 
@@ -226,7 +242,6 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
     inst_results_stopflags{end+1} = stopflag;
 
     fgeneric('finalize');
-    tmpFile = [exppath filesep exp_settings.exp_id '_tmp_' num2str(id) '.mat'];
     exp_id = exp_settings.exp_id;
     save(tmpFile, 'exp_settings', 'exp_id', 'y_evals');
 
@@ -266,4 +281,13 @@ function printSettings(fid, exp_settings, exp_results, surrogateParams, cmaesPar
   fprintf(fid, 'f075:\n%s\n\n', num2str(exp_results.f075));
   fprintf(fid, 'f050:\n%s\n\n', num2str(exp_results.f050));
   fprintf(fid, 'f025:\n%s\n\n', num2str(exp_results.f025));
+end
+
+function [nCompletedInstances, y_evals] = loadInterruptedInstances(tmpFile)
+  fprintf('Resuming previously interrupted experiment run...\n');
+  fprintf('Loading results from:  %s\n', tmpFile);
+  saved = load(tmpFile);
+  nCompletedInstances = size(saved.y_evals, 1);
+  fprintf('Completed instances (%d):  %s\n', nCompletedInstances, num2str(saved.exp_settings.instances(1:nCompletedInstances)));
+  y_evals = saved.y_evals;
 end
