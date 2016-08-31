@@ -43,7 +43,7 @@ function handle = relativeFValuesPlot(data, varargin)
 %                       @median)
 %
 % Output:
-%   handle - handles of resulting figures
+%   handle - handles of resulting figures | cell-array
 %
 % See Also:
 %   speedUpPlot, speedUpPlotCompare, dataReady
@@ -51,7 +51,7 @@ function handle = relativeFValuesPlot(data, varargin)
   % initialization
   if nargin < 1 || isempty(data)
     if nargout > 0
-      handle = [];
+      handle = {};
     end
     help relativeFValuesPlot
     return
@@ -257,11 +257,11 @@ function handle = relativePlot(data_stats, settings)
     
     % legend settings
     if strcmp(settings.legendOption, 'out')
-      handle = zeros(1, nPlots + 1);
+      handle = cell(1, nPlots + 1);
       legendFigNum = nPlots + 1;
       settings.legendLocation = 'EastOutside';
     else
-      handle = zeros(1, nPlots);
+      handle = cell(1, nPlots);
       legendFigNum = 1;
     end
     
@@ -269,7 +269,7 @@ function handle = relativePlot(data_stats, settings)
     plottedInAny = false(1, numOfData);
     for f = 1:nFunsToPlot
       for d = 1:nDimsToPlot
-        handle((d-1) * nFunsToPlot + f) = ...
+        handle{(d-1) * nFunsToPlot + f} = ...
           figure('Units', 'centimeters', 'Position', [1, 1, 12.5, 6]);
         plottedInAny = plottedInAny | ...
           onePlot(relativeData, f, d, settings, dispLegend && (strcmp(settings.legendOption, 'show') || (f*d == legendFigNum)), ...
@@ -277,7 +277,7 @@ function handle = relativePlot(data_stats, settings)
       end
     end
     if strcmp(settings.legendOption, 'out')
-      handle(legendFigNum) = soloLegend(settings.colors(plottedInAny, :), settings.datanames(plottedInAny), 2);
+      handle{legendFigNum} = soloLegend(settings.colors(plottedInAny, :), settings.datanames(plottedInAny), 2);
     end
   end
   

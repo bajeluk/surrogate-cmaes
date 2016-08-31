@@ -839,7 +839,9 @@ while isempty(stopflag)
   out.sigmas(end+1) = sigma;
   out.means(:,end+1) = xmean;
   out.countevals(end+1) = counteval;
-  out.surrogateStats(:,end+1) = surrogateStats';
+  if (~all(isnan(surrogateStats)))
+    out.surrogateStats(:,end+1) = surrogateStats';
+  end
   
   % Set internal parameters
   if countiter == 0 || lambda ~= lambda_last
