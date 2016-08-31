@@ -1,4 +1,4 @@
-function [x, ilaunch, y_evals, stopflag, varargout] = opt_xacmes(FUN, DIM, ftarget, maxfunevals, id, varargin)
+function [x, y_evals, stopflag, varargout] = opt_xacmes(FUN, DIM, ftarget, maxfunevals, id, varargin)
 % minimizes FUN in DIM dimensions by multistarts of fminsearch.
 % ftarget and maxfunevals are additional external termination conditions,
 % where at most 2 * maxfunevals function evaluations are conducted.
@@ -25,12 +25,11 @@ cmOptions = struct( ...
 y_evals = [];
 stopflag = 0;
 
-if (nargin >= 6)
-  exppath = [varargin{1} filesep];
-else
-  exppath = '';
-end
-if (nargout == 5)
+if (nargin >= 6)  exppath = [varargin{1} filesep];  
+  else              exppath = '';  end
+if (nargin >= 7)  xstart = varargin{2};
+  else              xstart = 8 * rand(dim, 1) - 4;  end
+if (nargout >= 3)
   varargout{1} = [];
 else
   varargout = cell(0);
