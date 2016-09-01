@@ -46,8 +46,8 @@ classdef DoubleTrainedEC < EvolutionControl
 
       if (isempty(newModel))
         % model could not be created :( use the standard CMA-ES
-        [obj, fitness_raw, arx, arxvalid, arz, counteval] = ...
-            obj.fillPopWithOrigFitness(sampleOpts, counteval, varargin);
+        [obj, fitness_raw, arx, arxvalid, arz, counteval, archive] = ...
+            obj.fillPopWithOrigFitness(archive, sampleOpts, counteval, varargin);
         origEvaled = true(1, lambda);
         return;
       end
@@ -74,8 +74,8 @@ classdef DoubleTrainedEC < EvolutionControl
       newModel = newModel.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
       if (~newModel.isTrained())
         % model cannot be trained :( -- return with orig-evaluated population
-        [obj, fitness_raw, arx, arxvalid, arz, counteval] = ...
-            obj.fillPopWithOrigFitness(sampleOpts, counteval, varargin);
+        [obj, fitness_raw, arx, arxvalid, arz, counteval, archive] = ...
+            obj.fillPopWithOrigFitness(archive, sampleOpts, counteval, varargin);
         % TODO: try the old model instead just orig-evaluating all the population
         origEvaled = true(1, lambda);
         return;
@@ -191,7 +191,7 @@ classdef DoubleTrainedEC < EvolutionControl
       origEvaled = obj.pop.origEvaled;
     end
     
-    function [obj, yNew, xNew, xNewValid, zNew, counteval] = fillPopWithOrigFitness(obj, sampleOpts, counteval, varargin)
+    function [obj, yNew, xNew, xNewValid, zNew, counteval, archive] = fillPopWithOrigFitness(obj, archive, sampleOpts, counteval, varargin)
       %Fill the rest of the current population 'pop' (of class Population) with 
       % the original-evaluated individuals
       nToEval = obj.cmaesState.lambda - sum(obj.pop.origEvaled);
