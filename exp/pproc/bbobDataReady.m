@@ -66,6 +66,11 @@ function data = bbobDataReady(datapath, funcSet)
       % name of data file
       datName = strrep(strrep(rowSplit{1}, '\', filesep), '/', filesep);
       datFile = fullfile(infoFileSplit{1:end-1}, datName);
+      tdatFile = [datFile(1:end-3), 'tdat'];
+      if exist(tdatFile, 'file')
+      % uncomment for .tdat file data loading - has a bug somewhere
+%         datFile = tdatFile;
+      end
       % extract function and dimension number
       datSplit = strsplit(rowSplit{1}, '_');
       f = str2double(datSplit{end-1}(2:end));
