@@ -189,6 +189,7 @@ classdef DoubleTrainedEC < EvolutionControl
       arxvalid = obj.pop.x;
       arz = obj.pop.arz;
       origEvaled = obj.pop.origEvaled;
+      assert(all(size(origEvaled) == [1, lambda]), ['ERROR: origEvaled size and lambda differs: ' num2str(size(origEvaled))]);
     end
     
     function [obj, yNew, xNew, xNewValid, zNew, counteval, archive] = fillPopWithOrigFitness(obj, archive, sampleOpts, counteval, varargin)

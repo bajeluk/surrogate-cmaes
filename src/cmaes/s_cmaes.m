@@ -364,6 +364,7 @@ opts.SaveFilename = deblank(opts.SaveFilename); % remove trailing white spaces
 
 
 y_eval = [];  % BAJELUK BEST/COUNTEVAL RECORDING
+iGeneration = 0;
 out.generationStarts = [];
 out.arxvalids = [];
 out.fvalues = [];
@@ -374,6 +375,7 @@ out.means = [];
 out.countevals = [];
 out.surrogateStats = [];
 out.origEvaled = [];
+out.lambda_hist = [];
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
@@ -833,18 +835,22 @@ while isempty(stopflag)
   % Surrogate CMA-ES end
 
   % BAJELUK -- population, covariance matrix, sigma and fvalues logging
+  iGeneration = iGeneration + 1;
   out.generationStarts(end+1) = length(out.generations) + 1;
   out.arxvalids(:,end+(1:popsize)) = arxvalid;
   out.fvalues(1,end+(1:popsize)) = fitness.raw;
-  out.generations(1,end+(1:popsize)) = countiter + 1;
-  out.BDs{countiter + 1} = BD;
+  out.generations(1,end+(1:popsize)) = iGeneration;
+  out.BDs{1,end+1} = BD;
   out.sigmas(end+1) = sigma;
   out.means(:,end+1) = xmean;
   out.countevals(end+1) = counteval;
   if (~all(isnan(surrogateStats)))
     out.surrogateStats(:,end+1) = surrogateStats';
   end
-  out.origEvaled(:, end+1) = origEvaled';
+  out.origEvaled(:, end+(1:popsize)) = origEvaled;
+  if (countiter == 0 || lambda ~= lambda_last)
+    out.lambda_hist(:,end+1) = [iGeneration; lambda];
+  end
   
   % Set internal parameters
   if countiter == 0 || lambda ~= lambda_last
