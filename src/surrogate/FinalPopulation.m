@@ -24,6 +24,10 @@ classdef FinalPopulation
 
     function obj = addPoints(obj, xNew, yNew, arxNew, arzNew, nOrigEvaled);
       nNew = length(yNew);
+      if (nNew == 0)
+        % nothing to save
+        return;
+      end
       assert(size(xNew, 2) == nNew, 'Number of points and its y-values are not consistent!');
 
       obj.x(:, obj.nPoints + [1:nNew])   = xNew;

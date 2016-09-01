@@ -6,7 +6,7 @@ classdef (Abstract) EvolutionControl < handle
   
   methods (Abstract)
     % run one generation of evolution control
-    [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, archive, varargin)
+    [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, archive, varargin)
   end
   
 end

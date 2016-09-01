@@ -21,7 +21,7 @@ classdef MultiTrainedEC < EvolutionControl
       obj.maxTrainErrors = defopts(surrogateOpts, 'evoControlMaxTrainErrors', 2);
     end
 
-    function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
+    function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
     % Run one generation of multi-trained evolution control
 
       fitness_raw = [];

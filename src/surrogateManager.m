@@ -1,4 +1,4 @@
-function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = surrogateManager(cmaesState, inOpts, sampleOpts, counteval, varargin)
+function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled] = surrogateManager(cmaesState, inOpts, sampleOpts, counteval, varargin)
 % surrogateManager  controls sampling of new solutions and using a surrogate model
 %
 % @xmean, @sigma, @lambda, @BD, @diagD -- CMA-ES internal variables
@@ -9,6 +9,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
 %
 % returns:
 % @surrogateStats       vector of numbers with variable model/surrogate statsitics
+% @lambda               pop. size (can be changed during this run
+% @origEvaled           binary vector with true values on indices of individuals which
+%                       are evaluated by the original fitness
 
   persistent ec;
   % ec - one such instance for evolution control, persistent between
@@ -45,6 +48,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
   sDefaults.modelOpts = [];                         % model specific options
 
   surrogateStats = [];
+  origEvaled = false(1, lambda);
 
   % copy the defaults settings...
   surrogateOpts = sDefaults;
@@ -76,7 +80,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
   end
   
   % run one generation according to evolution control
-  [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = ...
+  [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = ...
     ec.runGeneration(cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin{:});
 
   if (size(fitness_raw, 2) < lambda)
@@ -90,6 +94,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
     arx = [arx xNew];
     arxvalid = [arxvalid xNewValid];
     arz = [arz zNew];
+    origEvaled((end-length(yNew)-1):end) = true;
   end
   
   assert(min(fitness_raw) >= min(archive.y), 'Assertion failed: minimal predicted fitness < min in archive by %e', min(archive.y) - min(fitness_raw));

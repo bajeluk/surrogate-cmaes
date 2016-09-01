@@ -14,12 +14,13 @@ classdef DoubleTrainedEC < EvolutionControl
       obj.useDoubleTraining = defopts(surrogateOpts, 'evoControlUseDoubleTraining', true);
     end
     
-    function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
+    function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
     % Run one generation of double trained evolution control
       
       fitness_raw = [];
       arxvalid = [];
       surrogateStats = NaN(1, 10);
+      origEvaled = false(1, cmaesState.lambda);
 
       % extract cmaes state variables
       xmean = cmaesState.xmean;
@@ -51,6 +52,7 @@ classdef DoubleTrainedEC < EvolutionControl
 
       nPresampledPoints = size(arxvalid, 2);
       if (nPresampledPoints == lambda)
+        origEvaled = true(1, lambda);
         return
       end
       finalPop = finalPop.addPoints(arxvalid, fitness_raw, arx, arz, nPresampledPoints);
@@ -173,6 +175,7 @@ classdef DoubleTrainedEC < EvolutionControl
       arx = finalPop.arx;
       arxvalid = finalPop.x;
       arz = finalPop.arz;
+      origEvaled = finalPop.origEvaled;
     end
     
   end

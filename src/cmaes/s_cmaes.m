@@ -373,6 +373,7 @@ out.sigmas = [];
 out.means = [];
 out.countevals = [];
 out.surrogateStats = [];
+out.origEvaled = [];
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
@@ -821,10 +822,11 @@ while isempty(stopflag)
     % use standard CMA-ES (no surrogate at all)
     [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
     surrogateStats = NaN(1, 2);
+    origEvaled = true(1, lambda);
   else
     % hand over the control to surrogateManager()
     surrogateOpts.sampleOpts = sampleOpts;
-    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = surrogateManager(cmaesState, surrogateOpts, sampleOpts, counteval, varargin{:});
+    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled] = surrogateManager(cmaesState, surrogateOpts, sampleOpts, counteval, varargin{:});
     popsize = lambda;
   end
   
@@ -842,6 +844,7 @@ while isempty(stopflag)
   if (~all(isnan(surrogateStats)))
     out.surrogateStats(:,end+1) = surrogateStats';
   end
+  out.origEvaled(:, end+1) = origEvaled';
   
   % Set internal parameters
   if countiter == 0 || lambda ~= lambda_last
