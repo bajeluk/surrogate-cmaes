@@ -80,12 +80,16 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   end
   
   % run one generation according to evolution control
-  [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = ...
+  [ec, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = ...
     ec.runGeneration(cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin{:});
 
   if (size(fitness_raw, 2) < lambda)
     % the model was in fact not trained
-    disp('surrogateManager(): the model was not successfully trained.');
+    % good EvolutionControl should not let come here!!!
+    disp('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+    disp('EvolutionControl came back without full population of lambda points!');
+    disp('It shouldn''t happen. Rest of points will be orig-evaluated.');
+    disp('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
     [yNew, xNew, xNewValid, zNew, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda - size(fitness_raw, 2), counteval, varargin{:});
     archive = archive.save(xNewValid', yNew', countiter);
 
@@ -94,7 +98,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     arx = [arx xNew];
     arxvalid = [arxvalid xNewValid];
     arz = [arz zNew];
-    origEvaled((end-length(yNew)-1):end) = true;
+    origEvaled((end-length(yNew)+1):end) = true;
   end
   
   assert(min(fitness_raw) >= min(archive.y), 'Assertion failed: minimal predicted fitness < min in archive by %e', min(archive.y) - min(fitness_raw));

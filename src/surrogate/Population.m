@@ -1,4 +1,9 @@
-classdef FinalPopulation
+classdef Population
+  % class Population
+  %
+  % class for carying points in the current population with their
+  % fitness values and true/false whether they were evaluated by the
+  % original or model fitness
   properties
     lambda
     dim
@@ -11,7 +16,8 @@ classdef FinalPopulation
   end
 
   methods
-    function obj = FinalPopulation(lambda_, dim_)
+    function obj = Population(lambda_, dim_)
+      % constructor
       obj.lambda = lambda_;
       obj.dim = dim_;
       obj.x = NaN(dim_, lambda_);
@@ -23,6 +29,9 @@ classdef FinalPopulation
     end
 
     function obj = addPoints(obj, xNew, yNew, arxNew, arzNew, nOrigEvaled);
+      % add new points with their f-values into the population
+      % 'nOrigEvaled' - the number of points starting from begiining (index 1)
+      %                 which have original fitness value
       nNew = length(yNew);
       if (nNew == 0)
         % nothing to save
@@ -40,6 +49,7 @@ classdef FinalPopulation
     end
 
     function [obj, sInd] = sort(obj)
+      % sort the points in population according to the f-values
       [sY, sInd] = sort(obj.y);
       obj.y = sY;
       obj.x = obj.x(:, sInd);
@@ -49,10 +59,12 @@ classdef FinalPopulation
     end
 
     function fmin = getMinModeled(obj)
+      % return the minial non-original fitness
       fmin = min(obj.y(~obj.origEvaled));
     end
 
     function obj = shiftY(obj, shift)
+      % shift the f-values by 'shift'
       obj.y = obj.y + shift;
     end
   end
