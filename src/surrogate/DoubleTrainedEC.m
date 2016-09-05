@@ -199,7 +199,6 @@ classdef DoubleTrainedEC < EvolutionControl
       [y, arx, x, arz, counteval] = sampleCmaes(obj.cmaesState, sampleOpts, ...
           nToEval, counteval, varargin{:});
       archive = archive.save(x', y', obj.cmaesState.countiter);
-      counteval = counteval + nToEval;
       obj.pop = obj.pop.addPoints(x, y, arx, arz, nToEval);
       obj.pop.sort();
       yNew = obj.pop.y;

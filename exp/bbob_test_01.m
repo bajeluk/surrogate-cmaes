@@ -45,12 +45,14 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   more off;  % in octave pagination is on by default
 
   t0 = clock;
-  rand('state', sum(100 * t0));
+  % Initialize random number generator
+  exp_settings.seed = sum(100 * t0);
+  rng(exp_settings.seed);
 
   instances = bbParams.instances;
   maxfunevals = bbParams.maxfunevals;
 
-  try
+  % try
 
   for dim = bbParams.dimensions            % small dimensions first, for CPU reasons
     % for ifun = benchmarks('FunctionIndices')  % or benchmarksnoisy(...)
@@ -131,7 +133,8 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
     fprintf('---- dimension %d-D done ----\n', dim);
   end
 
-  catch err
+  return;
+  % catch err
     save([resultsFile '_ERROR.mat']);
     fprintf('#########################################################\n');
     fprintf('#########################################################\n');
@@ -152,7 +155,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
     % whole Matlab if an error occures
     exit(1);
     throw(err);
-  end
+  % end
 end
 
 function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_function, id, exp_settings, datapath, opt, maxrestarts, maxfunevals, minfunevals, t0, exppath, localDatapath)
@@ -190,6 +193,7 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
     cmaes_out{end+1}  = {};
     t = tic;
     xstart = 8 * rand(exp_settings.dim, 1) - 4;
+    restartMaxfunevals = maxfunevals;
 
     % independent restarts until maxfunevals or ftarget is reached
     for restarts = 0:maxrestarts
@@ -197,7 +201,7 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
         fgeneric('restart', 'independent restart')
       end
       [xopt, ye, stopflag, cmaes_out_1] = opt_function('fgeneric', exp_settings.dim, fgeneric('ftarget'), ...
-                  maxfunevals, id, exppath, xstart);
+                  restartMaxfunevals, id, exppath, xstart);
       if (exp_settings.progressLog)
         cmaes_out{end}{end+1} = cmaes_out_1;
       end
@@ -211,11 +215,12 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
       evalsRestartCorrection = fgeneric('evaluations');
 
       if fgeneric('fbest') < fgeneric('ftarget') || ...
-        fgeneric('evaluations') + minfunevals > maxfunevals
+        fgeneric('evaluations') + minfunevals > restartMaxfunevals
         break;
       else
         % try to improve the best foud solution
         xstart = xopt;
+        restartMaxfunevals = restartMaxfunevals - fgeneric('evaluations');
       end  
     end
 

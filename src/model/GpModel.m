@@ -292,6 +292,7 @@ classdef GpModel < Model
       cmaesopt.LogModulo = 0;
       cmaesopt.DispModulo = 0;
       cmaesopt.DispFinal = 0;
+      cmaesopt.Seed = 'inherit';
       sigma = [0.3*(ub - lb)]';
       % sigma(end) = min(10*mean(sigma(1:end-1)), sigma(end));
       if (length(obj.hyp.cov) > 2)

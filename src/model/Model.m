@@ -242,7 +242,7 @@ classdef (Abstract) Model
       % value to regard the model as trained; otherwise, the
       % constant response is mark of a badly trained model
       % and therefor it is marked as untrained
-      MIN_RESPONSE_DIFFERENCE = 1e-8;
+      MIN_RESPONSE_DIFFERENCE = min(1e-8, 0.05 * (max(y) - min(y)));
 
       % transform input variables using Mahalanobis distance
       if obj.transformCoordinates
