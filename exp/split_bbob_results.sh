@@ -98,6 +98,24 @@ make_dir_for_each_alg()
   echo mkdir -p $OUTPUT_DIR/$REFALG${NEWDIR}
 }
 
+merge_resumed_runs()
+{
+  curdir=`pwd`
+  tmpfile=/tmp/merge_info_after_resume_$$.info
+  cd "$BBOB_RAW_DIR"
+  for d in *D_*; do
+    cd $d
+    infofile=bbob*.info
+    gawk -f "$CWD/merge_info_after_resume.awk" $infofile > $tmpfile
+    mv $tmpfile $infofile
+    cd ..
+  done
+  rm $tmpfile
+  cd "$curdir"
+}
+
+merge_resumed_runs
+
 make_dir_for_each_alg ""
 
 for fun in $FUNCTIONS; do
@@ -124,7 +142,7 @@ for fun in $FUNCTIONS; do
       # take the comprehensive info and add it to bbobexp_f#.info
       sed -n "s/'$EXPID[^']*'/'${EXPID}_${ALGDIR}'/;1,3p" ${dir}/bbobexp_f${fun}.info >> $OUTPUT_DIR/$ALGDIR/bbobexp_f${fun}.info
       # newline :)
-      echo "" >> $OUTPUT_DIR/$ALGDIR/bbobexp_f${fun}.info
+      # echo "" >> $OUTPUT_DIR/$ALGDIR/bbobexp_f${fun}.info
 
       # test whether cmaes records exist
       if [ -f "${dir}/data_f${fun}/bbobexp-01_f${fun}_DIM${dim}.dat" -a ! -f "$OUTPUT_DIR/$REFALG/data_f${fun}/bbobexp-01_f${fun}_DIM${dim}.dat" ]; then
@@ -146,7 +164,7 @@ for fun in $FUNCTIONS; do
         # strip the additional CMA-ES entries (above the first 15 entries)
         sed -n "s/'$EXPID[^']*'/'${REFALG}'/;s/\([^,]\+\)\(\(,[^,]\+\)\{15\}\),.*/\1\2/;4,6p" ${dir}/bbobexp_f${fun}.info >> $OUTPUT_DIR/$REFALG/bbobexp_f${fun}.info
         # newline :)
-        echo "" >> $OUTPUT_DIR/$REFALG/bbobexp_f${fun}.info
+        # echo "" >> $OUTPUT_DIR/$REFALG/bbobexp_f${fun}.info
       fi
     done
   done
