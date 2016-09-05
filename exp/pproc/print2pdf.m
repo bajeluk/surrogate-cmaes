@@ -2,7 +2,7 @@ function print2pdf(handle, pdfname, overwrite)
 % Print figures to pdf in format displayed on the screen.
 %
 % Input:
-%   handle    - array of handles of figures
+%   handle    - handles of figures | cell-array
 %   pdfname   - string or cell array of strings containing resulting 
 %               filenames
 %   overwrite - automatically overwrite without asking | boolean | double
@@ -17,6 +17,10 @@ function print2pdf(handle, pdfname, overwrite)
     for f = 1:nFig
       pdfname{f} = ['figure', num2str(f), '.pdf'];
     end
+  end
+  % pass handle input to cell-array
+  if ishandle(handle)
+    handle = num2cell(handle);
   end
   if ischar(pdfname)
     pdfname = {pdfname};
@@ -74,12 +78,12 @@ function print2pdf(handle, pdfname, overwrite)
   % print plot to pdf
   if overwrite
     for f = 1:nFig
-      set(handle(f),'PaperPositionMode','auto')
-      print(handle(f),'-dpdf','-r0',pdfname{f});
+      set(handle{f},'PaperPositionMode','auto')
+      print(handle{f},'-dpdf','-r0',pdfname{f});
     end
   else
     for f = 1:NexistPDF
-      set(handle(existingPDFs(f)),'PaperPositionMode','auto')
+      set(handle{existingPDFs(f)},'PaperPositionMode','auto')
       print('-dpdf','-r0',pdfname{existingPDFs(f)});
     end
   end
