@@ -35,6 +35,10 @@ classdef (Abstract) Model
       trained = (obj.trainGeneration >= 0);
     end
 
+    function n = getTrainsetSize(obj)
+      n = size(obj.dataset.y, 1);
+    end
+
     function obj = shift(obj, xMean)
     % transforms the trained model to new coordinates
     % further predictions will be made according to this shift

@@ -13,6 +13,7 @@ classdef Population
     arz
     nPoints
     origEvaled
+    phase
   end
 
   methods
@@ -26,16 +27,27 @@ classdef Population
       obj.arz = NaN(dim_, lambda_);
       obj.nPoints = 0;
       obj.origEvaled = false(1, lambda_);
+      obj.phase = zeros(1, lambda_);
     end
 
-    function obj = addPoints(obj, xNew, yNew, arxNew, arzNew, nOrigEvaled);
+    function obj = addPoints(obj, xNew, yNew, arxNew, arzNew, nOrigEvaled, varargin);
       % add new points with their f-values into the population
       % 'nOrigEvaled' - the number of points starting from begiining (index 1)
       %                 which have original fitness value
+      % 'varargin{1}' - the phase number which these points came in
+      %                 in DoubleTraineEC:
+      %                         Phase 0 -- presample
+      %                         Phase 1 -- orig. evaluation of the "best" point(s)
+      %                         Phase 2 -- model evaluations of the rest of points
       nNew = length(yNew);
       if (nNew == 0)
         % nothing to save
         return;
+      end
+      if (nargin >= 7 && ~isempty(varargin{1}))
+        thisPhase = varargin{1};
+      else
+        thisPhase = 0;
       end
       assert(size(xNew, 2) == nNew, 'Number of points and its y-values are not consistent!');
 
@@ -44,6 +56,7 @@ classdef Population
       obj.arx(:, obj.nPoints + [1:nNew]) = arxNew;
       obj.arz(:, obj.nPoints + [1:nNew]) = arzNew;
       obj.origEvaled(obj.nPoints + [1:nOrigEvaled]) = true;
+      obj.phase(obj.nPoints + [1:nNew]) = thisPhase;
 
       obj.nPoints = obj.nPoints + nNew;
     end
