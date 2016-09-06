@@ -13,7 +13,7 @@ classdef DoubleTrainedEC < EvolutionControl
     function obj = DoubleTrainedEC(surrogateOpts, varargin)
     % constructor
       obj.model = [];
-      obj.restrictedParam = surrogateOpts.evoControlRestrictedParam;
+      obj.restrictedParam = defopts(surrogateOpts, 'evoControlRestrictedParam', 0.1);
       obj.useDoubleTraining = defopts(surrogateOpts, 'evoControlUseDoubleTraining', true);
       obj.pop = [];
       obj.countiter = 0;
@@ -93,6 +93,13 @@ classdef DoubleTrainedEC < EvolutionControl
       if any(strcmpi(obj.model.predictionType, {'sd2', 'poi', 'ei'}))
         % higher criterion is better (sd2, poi, ei)
         [~, pointID] = sort(modelOutput, 'descend');
+      elseif (strcmpi(obj.model.predictionType, 'expectedrank'))
+        % TODO it should work (yExtendModel, modelOutput) instead of re-predict the points again
+        [y_m, sd2_m] = obj.model.predict(xExtend');
+        pointID = expectedRankDiff(y_m, sd2_m, mu, @errRankMuOnly);
+        % Debug:
+        % y_r = ranking(y_m);
+        % fprintf('  Expected permutation of sorted f-values: %s\n', num2str(y_r(pointID)'));
       else
         % lower criterion is better (fvalues, lcb, fpoi, fei)
         [~, pointID] = sort(modelOutput, 'ascend');

@@ -225,6 +225,9 @@ classdef (Abstract) Model
           eiMin = min(ei);
           % map the higest EI to the smallest function value and vice versa
           output = (fmax-fmin)*(eiMax-ei)/(eiMax-eiMin)+fmin;
+
+        otherwise % otherwise return sd2
+          output = sd2;
       end
 
     end
