@@ -21,7 +21,6 @@ function colors = getAlgColors(colId)
   end
 
   color_base = [...
-    255, 225,   0; ... % yellow
     175, 248,   6; ... % light green
      12, 240, 248; ... % azure (almost cyan)
     248,  86,   6; ... % dark orange
@@ -46,6 +45,7 @@ function colors = getAlgColors(colId)
     % 154, 205,  50; ... % some green   | DTS-CMA-ES
     % 178,  34,  34; ... % bloody red   | S-CMA-ES
     % 255, 155,   0; ... % light orange | SMAC
+    % 255, 225,   0; ... % yellow       | lmm-CMA-ES
     ];
   
   max_color = max(colId);

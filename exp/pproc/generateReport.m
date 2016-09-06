@@ -154,10 +154,10 @@ function generateReport(expFolder, varargin)
   fprintf(FID, 'expData = arrayfun(@(x) expData(:,:,x), 1:nSettings, ''UniformOutput'', false);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% create or gain algorithm names\n');
+  fprintf(FID, 'expAlgNames = cell(1, nSettings);\n');
   fprintf(FID, 'anonymAlg = ~cellfun(@(x) isfield(x, ''algName''), expSettings);\n');
-  fprintf(FID, 'expAlgNames = arrayfun(@(x) [''ALG'', num2str(x)], 1:sum(anonymAlg), ''UniformOutput'', false);\n');
-  fprintf(FID, 'algNames = cellfun(@(x) x.algName, expSettings(~anonymAlg), ''UniformOutput'', false);\n');
-  fprintf(FID, 'expAlgNames = [expAlgNames, algNames];\n');
+  fprintf(FID, 'expAlgNames(anonymAlg) = arrayfun(@(x) [''ALG'', num2str(x)], 1:sum(anonymAlg), ''UniformOutput'', false);\n');
+  fprintf(FID, 'expAlgNames(~anonymAlg) = cellfun(@(x) x.algName, expSettings(~anonymAlg), ''UniformOutput'', false);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% color settings\n');
   fprintf(FID, 'expCol = getAlgColors(1:nSettings);\n');
@@ -166,20 +166,7 @@ function generateReport(expFolder, varargin)
   fprintf(FID, 'showEval = %s;\n', printStructure(showEval, FID, 'Format', 'value'));
   fprintf(FID, '\n');
   fprintf(FID, '%% load algorithms for comparison\n');
-  fprintf(FID, 'algMat = fullfile(''exp'', ''pproc'', ''compAlgMat.mat'');\n');
-  fprintf(FID, 'if ~exist(algMat, ''file'')\n');
-  fprintf(FID, '  try\n');
-  fprintf(FID, '    websave(algMat, ''http://artax.karlin.mff.cuni.cz/~bajel3am/scmaes/compAlgMat.mat'');\n');
-  fprintf(FID, '  catch\n');
-  fprintf(FID, '  end\n');
-  fprintf(FID, 'end\n');
-  fprintf(FID, 'try\n');
-  fprintf(FID, '  alg = load(algMat);\n');
-  fprintf(FID, '  compOn = true;\n');
-  fprintf(FID, 'catch\n');
-  fprintf(FID, '  compOn = false;\n');
-  fprintf(FID, 'end\n');
-  fprintf(FID, 'algorithms = alg.algorithm;\n');
+  fprintf(FID, '[algData, algNames, algColors] = loadCompAlg(fullfile(''exp'', ''pproc'', ''compAlgMat.mat''), funcSet);\n');
   fprintf(FID, '\n');
   
   % experiment settings
@@ -259,10 +246,10 @@ function generateReport(expFolder, varargin)
   % all algorithms comparison
   fprintf(FID, '%%%% All algorithms comparison\n');
   fprintf(FID, '\n');
-  fprintf(FID, 'if compOn\n');
-  fprintf(FID, '  data = [expData, {algorithms.data}];\n');
-  fprintf(FID, '  datanames = [expAlgNames, {algorithms.name}];\n');
-  fprintf(FID, '  colors = [expCol; cell2mat({algorithms.color}'')];\n');
+  fprintf(FID, 'if ~isempty(algData)\n');
+  fprintf(FID, '  data = [expData, algData];\n');
+  fprintf(FID, '  datanames = [expAlgNames, algNames];\n');
+  fprintf(FID, '  colors = [expCol; algColors];\n');
   fprintf(FID, '  \n');
   fprintf(FID, '  close all\n');
   fprintf(FID, '  rankTable = rankingTable(data, ''Format'', ''figure'', ...\n');
@@ -298,7 +285,9 @@ function generateReport(expFolder, varargin)
   fprintf(FID, '                              ''Statistic'', @median);\n');
   fprintf(FID, '  end\n');
   fprintf(FID, 'else\n');
-  fprintf(FID, '  warning(''Could not load nor download %%s. Omitting comparison of all algorithms.'', algMat);\n');
+  fprintf(FID, '  warning(''Could not load %%s.\\n');
+  fprintf(FID, 'For the latest version download http://artax.karlin.mff.cuni.cz/~bajel3am/scmaes/compAlgMat.mat\\n');
+  fprintf(FID, 'Omitting comparison of all algorithms.'', algMat);\n');
   fprintf(FID, 'end\n');
   
   % finalize
