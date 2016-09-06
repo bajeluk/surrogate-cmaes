@@ -1,4 +1,4 @@
-classdef DoubleTrainedEC < EvolutionControl
+classdef DoubleTrainedEC < EvolutionControl & Observable
   properties 
     model
     pop
@@ -17,6 +17,7 @@ classdef DoubleTrainedEC < EvolutionControl
   methods 
     function obj = DoubleTrainedEC(surrogateOpts, varargin)
     % constructor
+      obj@Observable();
       obj.model = [];
       obj.restrictedParam = defopts(surrogateOpts, 'evoControlRestrictedParam', 0.1);
       obj.useDoubleTraining = defopts(surrogateOpts, 'evoControlUseDoubleTraining', true);

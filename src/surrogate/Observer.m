@@ -24,7 +24,6 @@ classdef Observer
       if (nargin > 2)
         disp(varargin{1});
       end
-      fprintf('Number of Observables'' observers: %d\n', length(observable.observers));
     end
   end
 end

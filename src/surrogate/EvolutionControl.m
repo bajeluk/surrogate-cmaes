@@ -1,4 +1,4 @@
-classdef (Abstract) EvolutionControl < handle
+classdef (Abstract) EvolutionControl
   % (handle object does not need to be returned in its own functions)
   properties (Abstract)
     model

@@ -1,4 +1,4 @@
-classdef Archive
+classdef Archive < handle
   properties
     dim  = 1;           % dimension of the input space X (determined from x_mean)
     X    = [];          % archive - input-space data
