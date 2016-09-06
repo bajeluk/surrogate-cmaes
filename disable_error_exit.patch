@@ -1,8 +1,8 @@
 diff --git a/exp/bbob_test_01.m b/exp/bbob_test_01.m
-index db029b6..2aaa376 100644
+index 5689f7a..5a3f06f 100644
 --- a/exp/bbob_test_01.m
 +++ b/exp/bbob_test_01.m
-@@ -50,7 +50,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
+@@ -52,7 +52,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
    instances = bbParams.instances;
    maxfunevals = bbParams.maxfunevals;
  
@@ -11,7 +11,7 @@ index db029b6..2aaa376 100644
  
    for dim = bbParams.dimensions            % small dimensions first, for CPU reasons
      % for ifun = benchmarks('FunctionIndices')  % or benchmarksnoisy(...)
-@@ -131,7 +131,8 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
+@@ -133,7 +133,8 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
      fprintf('---- dimension %d-D done ----\n', dim);
    end
  
@@ -21,7 +21,7 @@ index db029b6..2aaa376 100644
      save([resultsFile '_ERROR.mat']);
      fprintf('#########################################################\n');
      fprintf('#########################################################\n');
-@@ -152,7 +153,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
+@@ -154,7 +155,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
      % whole Matlab if an error occures
      exit(1);
      throw(err);
