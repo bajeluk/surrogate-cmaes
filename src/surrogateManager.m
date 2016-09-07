@@ -19,6 +19,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
 
   persistent archive;           % archive of original-evaluated individuals
 
+  persistent observers;         % observers of EvolutionControls
+
   % TODO: make an array with all the status variables from each generation
   
   % CMA-ES state variables
@@ -65,7 +67,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   if counteval > surrogateOpts.evoControlSwitchBound*dim
     surrogateOpts.evoControl = surrogateOpts.evoControlSwitchMode;
     % EC type has changed -> create new instance of EvolutionControl
+    % TODO: delete the old instances of 'ec' and 'observers'
     ec = ECFactory.createEC(surrogateOpts);
+    [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
   end
   
   % switching population size
@@ -77,6 +81,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   if (countiter == 1)
     archive = Archive(dim);
     ec = ECFactory.createEC(surrogateOpts);
+    [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
   end
   
   % run one generation according to evolution control

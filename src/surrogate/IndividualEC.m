@@ -39,12 +39,14 @@ classdef IndividualEC < EvolutionControl
       [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
           xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
       
-      [fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] = ...
+      [ok, fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] = ...
         presample(minTrainSize, cmaesState, surrogateOpts, sampleOpts, archive, counteval, xTrain, yTrain, varargin{:});
-
       nPresampledPoints = size(arxvalid, 2);
-      if (nPresampledPoints == lambda)
-        return
+
+      if (~ok)
+        [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
+        archive = archive.save(arxvalid', fitness_raw', countiter);
+        return;
       end
       
       % train the model

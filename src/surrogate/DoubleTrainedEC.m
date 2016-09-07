@@ -23,6 +23,17 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.useDoubleTraining = defopts(surrogateOpts, 'evoControlUseDoubleTraining', true);
       obj.pop = [];
       obj.surrogateOpts = surrogateOpts;
+      obj.stats = struct( ...
+          'fmin', NaN, ...              % minimal original fitness in population
+          'rmseReeval', NaN, ...        % RMSE of the re-evaluated point(s)
+          'kendallReeval', NaN, ...     % Kendall's corr. of the re-evaluated point(s)
+          'rankErrReeval', NaN, ...     % rank error of popul. with re-evaluated point(s)
+          'rankErr2Models', NaN, ...    % rank error between prediction of two models
+          'rmseValid', NaN, ...         % RMSE of the (2nd) model on the validation set
+          'kendallValid', NaN, ...      % Kendall of the (2nd) model on the validation set
+          'rankErrValid', NaN ...       % rank error between true fitness and model pred.
+          ...                           %       on the validation set
+          );
     end
 
     function [obj, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
@@ -35,6 +46,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.archive    = archive;
       obj.counteval  = counteval;
       obj.retrainedModel = [];
+      obj.stats.nDataInRange = NaN;
       
       % prepare the final population to be returned to CMA-ES
       obj.pop = Population(lambda, dim);
@@ -51,21 +63,22 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       minTrainSize = newModel.getNTrainData();
 
       nArchivePoints = myeval(obj.surrogateOpts.evoControlTrainNArchivePoints);
-      [xTrain, yTrain] = obj.archive.getDataNearPoint(nArchivePoints, ...
+      [xTrain, yTrain, nData] = obj.archive.getDataNearPoint(nArchivePoints, ...
           obj.cmaesState.xmean', obj.surrogateOpts.evoControlTrainRange, ...
           obj.cmaesState.sigma, obj.cmaesState.BD);
+      obj.stats.nDataInRange = nData;
       
       % Do pre-sample
-      [y, arx, x, arz, ~, obj.counteval, xTrain, yTrain] = ...
+      [ok, y, arx, x, arz, ~, obj.counteval, xTrain, yTrain] = ...
           presample(minTrainSize, obj.cmaesState, obj.surrogateOpts, sampleOpts, ...
           obj.archive, obj.counteval, xTrain, yTrain, varargin{:});
       obj.nPresampledPoints = size(x, 2);
-
       phase = 0;        % pre-sampled points
       obj.pop = obj.pop.addPoints(x, y, arx, arz, obj.nPresampledPoints, phase);
 
-      if (obj.nPresampledPoints == lambda)
-        % everything has been evaluated and saved, so return
+      if (~ok)
+        % not enough data for training model ==> use original pop
+        % TODO: try the old model instead just orig-evaluating all the population
         [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
             = obj.finalizeGeneration(sampleOpts, varargin);
         return;
@@ -99,7 +112,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           sampleCmaesOnlyFitness(xExtend(:, reevalID), xToReeval, zExtend(:, reevalID), ...
           obj.cmaesState.sigma, nToReeval, obj.counteval, obj.cmaesState, sampleOpts, ...
           varargin{:});
-      fprintf('counteval: %d\n', obj.counteval)
+      % Debug:
+      % fprintf('counteval: %d\n', obj.counteval)
 
       phase = 1;        % re-evaluated points
       obj.pop = obj.pop.addPoints(xNewValid, yNew, xNew, zNew, nToReeval, phase);
@@ -124,7 +138,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         if (obj.useDoubleTraining && obj.retrainedModel.isTrained())
           yReeval = obj.retrainedModel.predict((xExtendValid(:, ~reevalID))');
         else
-          fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
+          % Debug:
+          % fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
           yReeval = yExtendModel(~reevalID);
         end
 
@@ -151,17 +166,13 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       origEvaled = obj.pop.origEvaled;
 
       % calculate statistics
-      obj.stats = struct( ...
-          'fmin', NaN, ...              % minimal original fitness in population
-          'rmseReeval', NaN, ...        % RMSE of the re-evaluated point(s)
-          'kendallReeval', NaN, ...     % Kendall's corr. of the re-evaluated point(s)
-          'rankErrReeval', NaN, ...     % rank error of popul. with re-evaluated point(s)
-          'rankErr2Models', NaN, ...    % rank error between prediction of two models
-          'rmseValid', NaN, ...         % RMSE of the (2nd) model on the validation set
-          'kendallValid', NaN, ...      % Kendall of the (2nd) model on the validation set
-          'rankErrValid', NaN ...       % rank error between true fitness and model pred.
-          ...                           %       on the validation set
-          );
+      obj.stats.rmseReeval     = NaN; % RMSE of the re-evaluated point(s)
+      obj.stats.kendallReeval  = NaN; % Kendall's corr. of the re-evaluated point(s)
+      obj.stats.rankErrReeval  = NaN; % rank error of popul. with re-evaluated point(s)
+      obj.stats.rankErr2Models = NaN; % rank error between prediction of two models
+      obj.stats.rmseValid      = NaN; % RMSE of the (2nd) model on the validation set
+      obj.stats.kendallValid   = NaN; % Kendall of the (2nd) model on the validation set
+      obj.stats.rankErrValid   = NaN; % rank error between true fitness and model pred.
       obj.stats.fmin = min(obj.pop.y(1,(obj.pop.origEvaled == true)));
 
       % model-related statistics
@@ -197,6 +208,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         obj.pop = obj.pop.shiftY(1.000001*diff);
         fitness_raw = obj.pop.y;
       end
+
+      obj.notify_observers();
 
       % for backwards compatibility
       [minstd minstdidx] = min(obj.cmaesState.sigma*sqrt(obj.cmaesState.diagC));
@@ -270,8 +283,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       rankErr = errRankMuOnly(ranking2(sort1), obj.cmaesState.mu);
 
       % Debug:
-      fprintf('  model: %d pSmpls, reeval %d pts, RMSE= %.2e, Kendl= %.2f, rankErr= %.3f\n', ...
-          obj.nPresampledPoints, length(yReeval), rmse, kendall, rankErr);
+      % fprintf('  model: %d pSmpls, reeval %d pts, RMSE= %.2e, Kendl= %.2f, rankErr= %.3f\n', ...
+      %     obj.nPresampledPoints, length(yReeval), rmse, kendall, rankErr);
     end
 
 
@@ -286,7 +299,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         ranking2   = ranking(yModel2AfterPresample);
         rankErr = errRankMuOnly(ranking2(sort1), obj.cmaesState.mu);
         % Debug:
-        fprintf('  2 models rank error: %.3f                  %s\n', rankErr, decorateKendall(1-rankErr*2));
+        % fprintf('  2 models rank error: %.3f                  %s\n', rankErr, decorateKendall(1-rankErr*2));
       else
         % ranking error between two models cannot be calculated :(
         rankErr = NaN;
@@ -331,8 +344,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       errRank = errRankMuOnly(ranking2(sort1), obj.cmaesState.mu);
 
       % Debug:
-      fprintf('  test RMSE= %.2e, Kendall= %.3f, rankErr= %.3f %s\n', ...
-          rmse, kendall, errRank, decorateKendall(kendall));
+      % fprintf('  test RMSE= %.2e, Kendall= %.3f, rankErr= %.3f %s\n', ...
+      %     rmse, kendall, errRank, decorateKendall(kendall));
     end
   end
   

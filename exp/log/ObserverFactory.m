@@ -1,0 +1,33 @@
+classdef ObserverFactory
+  methods (Static)
+
+    % create observers according to the settings in
+    %   surrogateOpts.observers -- names of classes
+    %   surrogateOpts.observersParams -- struct with optional settings
+    % and register EvolutionControl 'ec' to these observers
+    function [ec, observers] = createObservers(ec, surrogateOpts)
+      observerNames  = defopts(surrogateOpts, 'observers', {});
+      observerParams = defopts(surrogateOpts, 'observersParams', {});
+      nObservers = length(observerNames);
+      observers  = cell(1, nObservers);
+
+      for i = 1:nObservers
+        observerName = lower(observerNames{i});
+        % parameters to the Observers' contructors can be a struct
+        % or an empty array
+        params = [];
+        if (~isempty(observerParams))
+          params = observerParams{i};
+        end
+
+        switch observerName
+          case 'dtscreenstatistics'
+            observers{i} = DTScreenStatistics(params);
+            ec = observers{i}.registerObservable(ec);
+        end
+      end
+
+    end
+  end
+end
+
