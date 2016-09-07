@@ -6,6 +6,7 @@ outcmaes*
 variablescmaes.mat
 *.asv
 *~
+*.swp
 *.tgz
 *.zip
 *.gz
