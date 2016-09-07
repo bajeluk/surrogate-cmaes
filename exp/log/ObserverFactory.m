@@ -24,6 +24,13 @@ classdef ObserverFactory
           case 'dtscreenstatistics'
             observers{i} = DTScreenStatistics(params);
             ec = observers{i}.registerObservable(ec);
+          case 'dtfilestatistics'
+            params.datapath  = surrogateOpts.datapath;
+            params.exp_id    = surrogateOpts.exp_id;
+            params.expFileID = surrogateOpts.expFileID;
+            params.instance  = surrogateOpts.instance;
+            observers{i} = DTFileStatistics(params);
+            ec = observers{i}.registerObservable(ec);
         end
       end
 

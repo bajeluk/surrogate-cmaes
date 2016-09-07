@@ -201,7 +201,7 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
         fgeneric('restart', 'independent restart')
       end
       [xopt, ye, stopflag, cmaes_out_1] = opt_function('fgeneric', exp_settings.dim, fgeneric('ftarget'), ...
-                  restartMaxfunevals, id, exppath, xstart);
+                  restartMaxfunevals, id, exppath, xstart, fileparts(datapath), iinstance);
       if (exp_settings.progressLog)
         cmaes_out{end}{end+1} = cmaes_out_1;
       end
