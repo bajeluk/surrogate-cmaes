@@ -26,9 +26,7 @@ cmOptions = struct( ...
 y_evals = [];
 
 if (nargin >= 6)  exppath = [varargin{1} filesep];
-  else              exppath = '';  end
-if (nargin >= 7)  xstart = varargin{2};
-  else              xstart = 8 * rand(dim, 1) - 4;  end
+  else              exppath = sgParams.experimentPath;  end
 
 load([exppath 'scmaes_params.mat'], 'bbParamDef', 'sgParamDef', 'cmParamDef');
 [bbParams, sgParams, cmParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
@@ -37,6 +35,12 @@ for fname = fieldnames(cmParams)'
   cmOptions.(fname{1}) = cmParams.(fname{1});
 end
 
+if (nargin >= 7)  xstart = varargin{2};
+  else              xstart = 8 * rand(dim, 1) - 4;  end
+if (nargin >= 8)  datapath = varargin{3};
+  else              datapath = exppath;  end
+if (nargin >= 9)  iinstance = varargin{4};
+  else              iinstance = NaN;  end
 
   % Info about tested function is for debugging purposes
   bbob_handlesF = benchmarks('handles');
@@ -44,6 +48,10 @@ end
   bbob_handlesF(100+(1:length(noisyHandles))) = noisyHandles;
   sgParams.modelOpts.bbob_func = bbob_handlesF{bbParams.functions(1)};
   sgParams.expFileID = [num2str(bbParams.functions(1)) '_' num2str(dim) 'D_' num2str(id)];
+  sgParams.instance  = iinstance;
+  sgParams.fopt      = ftarget - fDelta;
+  sgParams.datapath  = datapath;
+  [~, sgParams.exp_id] = fileparts(sgParams.experimentPath);
   % DEBUG: generate data for testing model regresssion
   % TODO: comment this line! :)
   % sgParams.saveModelTrainingData = [ 10 25 50 100 200 300 470 700 900 1200 1500 2000 2400 ];

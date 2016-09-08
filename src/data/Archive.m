@@ -1,4 +1,4 @@
-classdef Archive
+classdef Archive < handle
   properties
     dim  = 1;           % dimension of the input space X (determined from x_mean)
     X    = [];          % archive - input-space data
@@ -35,12 +35,14 @@ classdef Archive
       y = obj.y(dataIdxs);
     end
 
-    function [X, y] = getDataNearPoint(obj, n, x, rangeSigma, sigma, BD)
+    function [X, y, nData] = getDataNearPoint(obj, n, x, rangeSigma, sigma, BD)
       % returns up to 'n' data within distance of 'rangeSigma' along the point 'x'
       % using (sigma*BD)-metric
       % if more than 'n' data are closer than 'rangeSigma', k-means clustering is
       % performed
       % if (n == 0), all the available data are returned
+      % returns:
+      %   nData -- the number of all available data in the specified range
       nData = length(obj.y);
       X = []; y = [];
       
@@ -55,8 +57,9 @@ classdef Archive
       % take the points closer than *rangeSigma*
       diff = sum(xTransf.^2, 2);
       isInRange = diff < (rangeSigma ^ 2);
+      nData = sum(isInRange);
 
-      if (sum(isInRange) <= n  ||  n <= 0)
+      if (nData <= n  ||  n <= 0)
         X = obj.X(isInRange,:);
         y = obj.y(isInRange);
       else
@@ -82,8 +85,7 @@ classdef Archive
         end
       end
     end
-
-
+    
     function [X, y] = getClosestDataFromPoints(obj, n, xInput, sigma, BD)
       % returns union of 'n'-tuples of points which are closest to each 
       % of data points from the points in 'xInput'
