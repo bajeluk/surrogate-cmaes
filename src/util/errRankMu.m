@@ -1,5 +1,5 @@
 function err = errRankMu(x, mu)
-%ERRRANKMU Ranking error between the vector x and [1:length(x)] counting the (mu+1)st to the last elements more loosely
+%ERRRANKMU Difference in ranks between the vector x and [1:length(x)] counting the (lambda-mu) last elements only for 1 errorpoint
 %
 % err = ERRRANKMU(x, mu)
 %       returns the number of ordering errors between the vector x and 
@@ -22,7 +22,7 @@ function err = errRankMu(x, mu)
   % for 1 point (instead of the difference to the right ranking)
   err((err > 0) & (r > mu)) = 1;
   % do not calculate errors in the order between elements of rank
-  % higher than mu
+  % higher than mu that are actually in position higher than mu
   mu_mask = false(l,1);
   mu_mask(mu+1:end) = true;
   err((r > mu) & mu_mask) = 0;
