@@ -1,0 +1,32 @@
+diff --git a/exp/bbob_test_01.m b/exp/bbob_test_01.m
+index 0c9295d..16460bb 100644
+--- a/exp/bbob_test_01.m
++++ b/exp/bbob_test_01.m
+@@ -52,7 +52,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
+   instances = bbParams.instances;
+   maxfunevals = bbParams.maxfunevals;
+ 
+-  try
++  % try
+ 
+   for dim = bbParams.dimensions            % small dimensions first, for CPU reasons
+     % for ifun = benchmarks('FunctionIndices')  % or benchmarksnoisy(...)
+@@ -133,7 +133,8 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
+     fprintf('---- dimension %d-D done ----\n', dim);
+   end
+ 
+-  catch err
++  return;
++  % catch err
+     save([resultsFile '_ERROR.mat']);
+     fprintf('#########################################################\n');
+     fprintf('#########################################################\n');
+@@ -154,7 +155,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
+     % whole Matlab if an error occures
+     exit(1);
+     throw(err);
+-  end
++  % end
+ end
+ 
+ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_function, id, exp_settings, datapath, opt, maxrestarts, maxfunevals, minfunevals, t0, exppath, localDatapath)
