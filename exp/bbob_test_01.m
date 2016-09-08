@@ -10,9 +10,6 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   % GNUPlot script where special strings will be replaced
   gnuplotScript = 'twoAlgsPlotExtended.gpi';
 
-  % surrogateModel progress log
-  PROGRESS_LOG = 0;
-
   % GnuPlot script should be in $ALGROOT/exp/
   gnuplotScript = [exppath_short filesep '..' filesep gnuplotScript];
   % Directory for internal results of _this_ function
@@ -23,7 +20,8 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   % BBOB parameters
   minfunevals = 'dim + 2';      % PUT MINIMAL SENSIBLE NUMBER OF EVALUATIONS for a restart
   bbobpath = 'vendor/bbob';     % should point to fgeneric.m etc.
-  maxrestarts = defopts(bbParams, 'maxrestarts', 1e4); % SET to zero for an entirely deterministic algorithm
+  maxrestarts = defopts(bbParams, 'maxrestarts', 1e4); % SET to zero for an entirely deterministic algorithm 
+  % PROGRESS_LOG = defopts(bbParams, 'progressLog', false); % surrogateModel progress log
 
   localDatapath = [];       % directory in the shared folder where results of each instance will be copied through the progress
   if (nargin >= 4 && ~isempty(varargin{1}))
@@ -47,7 +45,9 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   more off;  % in octave pagination is on by default
 
   t0 = clock;
-  rand('state', sum(100 * t0));
+  % Initialize random number generator
+  exp_settings.seed = sum(100 * t0);
+  rng(exp_settings.seed);
 
   instances = bbParams.instances;
   maxfunevals = bbParams.maxfunevals;
@@ -65,6 +65,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
       exp_settings.exp_id = exp_id;
       exp_settings.instances = instances;
       exp_settings.resume = defopts(bbParams, 'resume', false);
+      exp_settings.progressLog = defopts(bbParams, 'progressLog', false);
 
       expFileID = [num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
       resultsFile = [exppath filesep exp_id '_results_' expFileID];
@@ -73,11 +74,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
       [~, ~] = mkdir(datapath);
       cmaes_out = [];
 
-      if (PROGRESS_LOG)
-        [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath, localDatapath);
-      else
-        [exp_results, tmpFile] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath, localDatapath);
-      end
+      [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath, localDatapath);
 
       y_evals = exp_results.y_evals;
 
@@ -183,6 +180,9 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
       && exist(tmpFile, 'file'))
     [nCompletedInstances, y_evals, exp_results, cmaes_out] = loadInterruptedInstances(tmpFile);
     system(['cp -pR ' localDatapath '/' expFileID ' ' datapathRoot]);
+    % copy also not-finished logs of this experiment ID
+    % TODO: test this!
+    system(['cp -pR ' localDatapath '/' exp_settings.exp_id '_log_' expFileID '.dat ' datapathRoot]);
   else
     nCompletedInstances = 0;
   end
@@ -195,6 +195,7 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
     cmaes_out{end+1}  = {};
     t = tic;
     xstart = 8 * rand(exp_settings.dim, 1) - 4;
+    restartMaxfunevals = maxfunevals;
 
     % independent restarts until maxfunevals or ftarget is reached
     for restarts = 0:maxrestarts
@@ -202,8 +203,10 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
         fgeneric('restart', 'independent restart')
       end
       [xopt, ye, stopflag, cmaes_out_1] = opt_function('fgeneric', exp_settings.dim, fgeneric('ftarget'), ...
-                  maxfunevals, id, exppath, xstart);
-      cmaes_out{end}{end+1} = cmaes_out_1;
+                  restartMaxfunevals, id, exppath, xstart, fileparts(datapath), iinstance);
+      if (exp_settings.progressLog)
+        cmaes_out{end}{end+1} = cmaes_out_1;
+      end
 
       if (fmin < Inf)
         ye(:,1) = min([ye(:,1) repmat(fmin,size(ye,1),1)], [], 2);
@@ -214,11 +217,12 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
       evalsRestartCorrection = fgeneric('evaluations');
 
       if fgeneric('fbest') < fgeneric('ftarget') || ...
-        fgeneric('evaluations') + minfunevals > maxfunevals
+        fgeneric('evaluations') + minfunevals > restartMaxfunevals
         break;
       else
         % try to improve the best foud solution
         xstart = xopt;
+        restartMaxfunevals = restartMaxfunevals - fgeneric('evaluations');
       end  
     end
 
@@ -250,6 +254,7 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
     % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
     if (~isempty(localDatapath) && isunix)
       system(['cp -pR ' datapath ' ' localDatapath '/']);
+      system(['cp -pR ' datapath '/../' exp_settings.exp_id '_log_' expFileID '.dat ' localDatapath]);
     end
   end
   disp(['      date and time: ' num2str(clock, ' %.0f')]);

@@ -1,4 +1,4 @@
-function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = surrogateManager(cmaesState, inOpts, sampleOpts, counteval, varargin)
+function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled] = surrogateManager(cmaesState, inOpts, sampleOpts, counteval, varargin)
 % surrogateManager  controls sampling of new solutions and using a surrogate model
 %
 % @xmean, @sigma, @lambda, @BD, @diagD -- CMA-ES internal variables
@@ -9,12 +9,17 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
 %
 % returns:
 % @surrogateStats       vector of numbers with variable model/surrogate statsitics
+% @lambda               pop. size (can be changed during this run
+% @origEvaled           binary vector with true values on indices of individuals which
+%                       are evaluated by the original fitness
 
   persistent ec;
   % ec - one such instance for evolution control, persistent between
   % different calls of the surrogateManager() function
 
   persistent archive;           % archive of original-evaluated individuals
+
+  persistent observers;         % observers of EvolutionControls
 
   % TODO: make an array with all the status variables from each generation
   
@@ -44,7 +49,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
   sDefaults.modelType = '';                         % gp | rf
   sDefaults.modelOpts = [];                         % model specific options
 
-  surrogateStats = NaN(1, 2);
+  surrogateStats = [];
+  origEvaled = false(1, lambda);
 
   % copy the defaults settings...
   surrogateOpts = sDefaults;
@@ -58,30 +64,40 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
   cmaesState.dim = dim;
 
   % switching evolution control
+  % TODO: consider removing this completely
   if counteval > surrogateOpts.evoControlSwitchBound*dim
     surrogateOpts.evoControl = surrogateOpts.evoControlSwitchMode;
     % EC type has changed -> create new instance of EvolutionControl
+    % TODO: delete the old instances of 'ec' and 'observers'
     ec = ECFactory.createEC(surrogateOpts);
+    [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
   end
   
   % switching population size
-  if sampleOpts.origPopSize == lambda && counteval >= surrogateOpts.evoControlSwitchPopBound*dim
+  if ((sampleOpts.origPopSize == lambda) && (counteval >= surrogateOpts.evoControlSwitchPopBound*dim))
     lambda = ceil(surrogateOpts.evoControlSwitchPopulation * lambda);
     cmaesState.lambda = lambda;
   end
 
-  if (countiter == 1)
+  % construct Archive, EvolutionControl and its Observers
+  % Note: independent restarts of the whole CMA-ES still clears the archive
+  if (countiter == 1 && (isempty(ec) || (counteval < ec.counteval)))
     archive = Archive(dim);
     ec = ECFactory.createEC(surrogateOpts);
+    [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
   end
   
   % run one generation according to evolution control
-  [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = ...
+  [ec, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = ...
     ec.runGeneration(cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin{:});
-  
+
   if (size(fitness_raw, 2) < lambda)
     % the model was in fact not trained
-    disp('surrogateManager(): the model was not successfully trained.');
+    % good EvolutionControl should not let come here!!!
+    disp('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+    disp('EvolutionControl came back without full population of lambda points!');
+    disp('It shouldn''t happen. Rest of points will be orig-evaluated.');
+    disp('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
     [yNew, xNew, xNewValid, zNew, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda - size(fitness_raw, 2), counteval, varargin{:});
     archive = archive.save(xNewValid', yNew', countiter);
 
@@ -90,6 +106,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = 
     arx = [arx xNew];
     arxvalid = [arxvalid xNewValid];
     arz = [arz zNew];
+    origEvaled((end-length(yNew)+1):end) = true;
   end
   
   assert(min(fitness_raw) >= min(archive.y), 'Assertion failed: minimal predicted fitness < min in archive by %e', min(archive.y) - min(fitness_raw));
