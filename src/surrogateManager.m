@@ -64,6 +64,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   cmaesState.dim = dim;
 
   % switching evolution control
+  % TODO: consider removing this completely
   if counteval > surrogateOpts.evoControlSwitchBound*dim
     surrogateOpts.evoControl = surrogateOpts.evoControlSwitchMode;
     % EC type has changed -> create new instance of EvolutionControl
@@ -73,12 +74,14 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   end
   
   % switching population size
-  if sampleOpts.origPopSize == lambda && counteval >= surrogateOpts.evoControlSwitchPopBound*dim
+  if ((sampleOpts.origPopSize == lambda) && (counteval >= surrogateOpts.evoControlSwitchPopBound*dim))
     lambda = ceil(surrogateOpts.evoControlSwitchPopulation * lambda);
     cmaesState.lambda = lambda;
   end
 
-  if (countiter == 1)
+  % construct Archive, EvolutionControl and its Observers
+  % Note: independent restarts of the whole CMA-ES still clears the archive
+  if (countiter == 1 && (isempty(ec) || (counteval < ec.counteval)))
     archive = Archive(dim);
     ec = ECFactory.createEC(surrogateOpts);
     [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);

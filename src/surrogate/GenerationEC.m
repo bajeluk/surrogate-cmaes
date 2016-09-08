@@ -1,8 +1,9 @@
-classdef GenerationEC < EvolutionControl
+classdef GenerationEC < EvolutionControl & Observable
   properties
-    lastModel
     model
+    counteval
     
+    lastModel
     origGenerations;
     modelGenerations;
     currentMode         = 'original';
@@ -29,13 +30,14 @@ classdef GenerationEC < EvolutionControl
       obj.currentGeneration   = 1;
       obj.lastModel = [];
       obj.model = [];
+      obj.counteval = 0;
     end
     
     function [obj, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
       % Run one generation of generation evolution control
       
-      surrogateStats = NaN(1, 2);
-      origEvaled = false(1, lambda);
+      surrogateStats = NaN(1, 7);
+      origEvaled = false(1, cmaesState.lambda);
       
       % extract cmaes state variables
       xmean = cmaesState.xmean;
@@ -44,6 +46,7 @@ classdef GenerationEC < EvolutionControl
       BD = cmaesState.BD;
       fitfun_handle = cmaesState.fitfun_handle;
       countiter = cmaesState.countiter;
+      obj.counteval = counteval;
       
       sampleSigma = surrogateOpts.evoControlSampleRange * sigma;
       
@@ -177,7 +180,7 @@ classdef GenerationEC < EvolutionControl
       
       dim = cmaesState.dim;
       
-      surrogateStats = NaN(1, 2);
+      surrogateStats = NaN(1, 7);
       % train the 'model' on the relevant data in 'archive'
       isTrained = false;
 

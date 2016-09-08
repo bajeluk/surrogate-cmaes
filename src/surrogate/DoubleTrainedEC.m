@@ -3,13 +3,13 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     model
     pop
     cmaesState
+    counteval
     
     restrictedParam
     useDoubleTraining
     retrainedModel
     stats
     archive
-    counteval
     nPresampledPoints
     surrogateOpts
   end
