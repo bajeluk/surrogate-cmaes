@@ -1,6 +1,19 @@
 classdef MultiTrainedEC < EvolutionControl
+% The strategy of change is more strict than Kern's (2006) strategy:
+% 
+% if iters > 1
+%   nInit = max(lambda, nInit + 2*n_b)
+% elseif iters < 1
+%   nInit = min(0.33, nInit - n*n_b)
+% 
+% where non-integer nInit is taken as probabilistic number between two
+% neighbouring integers -- e.g. 2.33 is taken as 2 with probability 66%
+% and 3 with probability 33%
+
   properties 
     model
+    counteval
+
     nOrigInit
     rankFunc
     rankErrorThresh
@@ -13,6 +26,7 @@ classdef MultiTrainedEC < EvolutionControl
     function obj = MultiTrainedEC(surrogateOpts)
     % constructor
       obj.model = [];
+      obj.counteval = 0;
       obj.nOrigInit = defopts(surrogateOpts, 'evoControlNOrigInit', 1);
       obj.rankFunc = defopts(surrogateOpts, 'evoControlRankFunc', @errRankMuOnly);
       obj.rankErrorThresh = defopts(surrogateOpts, 'evoControlRankErrorThresh', 0.1);
@@ -65,7 +79,8 @@ classdef MultiTrainedEC < EvolutionControl
       end
 
       % train the model 
-      if (~obj.trainModelOrUseLast(xTrain, yTrain, cmaesState, sampleOpts))
+      [obj, ok] = obj.trainModelOrUseLast(xTrain, yTrain, cmaesState, sampleOpts);
+      if (~ok)
         return;
       end
 
@@ -97,7 +112,8 @@ classdef MultiTrainedEC < EvolutionControl
       %     xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
       [xTrain, yTrain] = archive.getClosestDataFromPoints(nArchivePoints, xPopValid(:,~origEvaled)', sigma, BD);
 
-      if (~obj.trainModelOrUseLast(xTrain, yTrain, cmaesState, sampleOpts))
+      [obj, ok] = obj.trainModelOrUseLast(xTrain, yTrain, cmaesState, sampleOpts);
+      if (~ok)
         return;
       end
 
@@ -137,7 +153,8 @@ classdef MultiTrainedEC < EvolutionControl
 
         % retrain model
         [xTrain, yTrain] = archive.getClosestDataFromPoints(nArchivePoints, xPopValid(:,~origEvaled)', sigma, BD);
-        if (~obj.trainModelOrUseLast(xTrain, yTrain, cmaesState, sampleOpts))
+        [obj, ok] = obj.trainModelOrUseLast(xTrain, yTrain, cmaesState, sampleOpts);
+        if (~ok)
           % training unsuccessful, raising nOrigInit
           obj.nOrigInit = min(lambda, obj.nOrigInit + n_b);
           return;
@@ -216,7 +233,7 @@ classdef MultiTrainedEC < EvolutionControl
       nInit = floor(obj.nOrigInit) + plus;
     end
 
-    function succ = trainModelOrUseLast(obj, xTrain, yTrain, cmaesState, sampleOpts)
+    function [obj, succ] = trainModelOrUseLast(obj, xTrain, yTrain, cmaesState, sampleOpts)
       succ = false;
       m = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
       if (~m.isTrained())
