@@ -181,6 +181,9 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
       && exist(tmpFile, 'file'))
     [nCompletedInstances, y_evals, exp_results, cmaes_out] = loadInterruptedInstances(tmpFile);
     system(['cp -pR ' localDatapath '/' expFileID ' ' datapathRoot]);
+    % copy also not-finished logs of this experiment ID
+    % TODO: test this!
+    system(['cp -pR ' localDatapath '/' exp_settings.exp_id '_log_' expFileID '.dat ' datapathRoot]);
   else
     nCompletedInstances = 0;
   end
@@ -252,6 +255,7 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
     % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
     if (~isempty(localDatapath) && isunix)
       system(['cp -pR ' datapath ' ' localDatapath '/']);
+      system(['cp -pR ' datapath '/../' exp_settings.exp_id '_log_' expFileID '.dat ' localDatapath]);
     end
   end
   disp(['      date and time: ' num2str(clock, ' %.0f')]);
