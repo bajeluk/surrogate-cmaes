@@ -23,7 +23,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       surrogateOpts.updaterType = defopts(surrogateOpts, 'updaterType', 'none');
       surrogateOpts.updaterParams = defopts(surrogateOpts, 'updaterParams', {});
-      obj.origRatioUpdater = OrigRatioUpdaterFactory.createUpdater(surrogateOpts);
+      obj.origRatioUpdater = OrigRatioUpdaterFactory.createUpdater(obj, surrogateOpts);
       obj.restrictedParam = defopts(surrogateOpts, 'evoControlRestrictedParam', 0.1);
 
       obj.useDoubleTraining = defopts(surrogateOpts, 'evoControlUseDoubleTraining', true);
