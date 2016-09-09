@@ -1,6 +1,6 @@
 function [table, ranks] = rankingTable(data, varargin)
 % [table, ranks] = rankingTable(data, settings)
-% Creates table containing rankings for different evaluations.
+% Creates and prints table containing rankings for different evaluations.
 %
 % Input:
 %   data      - cell array of data
@@ -10,6 +10,7 @@ function [table, ranks] = rankingTable(data, varargin)
 %     'DataNames'   - cell array of data names (e.g. names of algorithms)
 %     'DataDims'    - dimensions of data
 %     'DataFuns'    - functions of data
+%     'Format'      - table format | ('tex', 'figure')
 %     'TableDims'   - dimensions chosen to count
 %     'TableFuns'   - functions chosen to count
 %     'Evaluations' - evaluations chosen to count
@@ -22,135 +23,73 @@ function [table, ranks] = rankingTable(data, varargin)
 %   ranks - rankings for each function and dimension
 %
 % See Also:
-%   speedUpPlot, speedUpPlotCompare, dataReady
+%   createRankingTable, speedUpPlot, speedUpPlotCompare, dataReady
 
   % initialization
   table = [];
   if nargin < 1 || isempty(data)
-    help relativeFValuesPlot
+    help rankingTable
     return
   end
-  if isstruct(varargin)
-    settings = varargin;
-  else
-    % keep cells as cells due to struct command
-    vararCellId = cellfun(@iscell, varargin);
-    varargin(vararCellId) = {varargin(vararCellId)};
-    settings = struct(varargin{:});
-  end
+  settings = settings2struct(varargin);
+
   numOfData = length(data);
   datanames = defopts(settings, 'DataNames', ...
     arrayfun(@(x) ['ALG', num2str(x)], 1:numOfData, 'UniformOutput', false));
   defaultDims = [2, 3, 5, 10, 20, 40];
   funcSet.dims   = defopts(settings, 'DataDims', defaultDims(1:size(data{1}, 2)));
   funcSet.BBfunc = defopts(settings, 'DataFuns', 1:size(data{1}, 1));
+  tableFormat = defopts(settings, 'Format', 'tex');
   dims    = defopts(settings, 'TableDims', funcSet.dims);
   BBfunc  = defopts(settings, 'TableFuns', funcSet.BBfunc);
   evaluations = defopts(settings, 'Evaluations', [20 40 80]);
-  statistic = defopts(settings, 'Statistic', @median);
   defResultFolder = fullfile('exp', 'pproc', 'tex');
   resultFile = defopts(settings, 'ResultFile', fullfile(defResultFolder, 'rankTable.tex'));
   fileID = strfind(resultFile, filesep);
   resultFolder = resultFile(1 : fileID(end) - 1);
-  if ischar(statistic)
-    if strcmp(statistic, 'quantile')
-      statistic = @(x, dim) quantile(x, [0.25, 0.5, 0.75], dim);
-    else
-      statistic = str2func(statistic);
-    end
-  end
-
-  % get function and dimension IDs
-  dimInvIds = inverseIndex(funcSet.dims);
-  dimIds = dimInvIds(dims);
-  funcInvIds = inverseIndex(funcSet.BBfunc);
-  funcIds = funcInvIds(BBfunc);
-
-  if ~all(dimIds)
-    fprintf('Wrong dimesion request!\n')
-  end
-  if ~all(funcIds)
-    fprintf('Wrong function request!\n')
-  end
-
-  % count means
-  useMaxInstances = 15;
-  data_stats = cellfun(@(D) gainStatistic(D, dimIds, funcIds, ...
-                            'MaxInstances', useMaxInstances, ...
-                            'AverageDims', false, ...
-                            'Statistic', statistic, ...
-                            'SuppWarning', true), ...
-                       data, 'UniformOutput', false);
-                     
-  % gain rankings
-  nFunc = length(funcIds);
-  nDims = length(dimIds);
-  nEvals = length(evaluations);
-  ranks = cell(nFunc, nDims);
-  for f = 1:nFunc
-    for d = 1:nDims
-      notEmptyData = inverseIndex(arrayfun(@(x) ~isempty(data_stats{x}{f,d}), 1:numOfData));
-      for e = 1:nEvals
-        thisData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}(evaluations(e)), notEmptyData, 'UniformOutput', false));
-        thisData = max(thisData, 1e-8 * ones(size(thisData)));
-        [~, ~, I] = unique(thisData);
-        ranks{f,d}(e, notEmptyData) = I';
-      end
-    end
-  end
-
-  % aggregate ranks accross functions
-  for dat = 1:numOfData
-    for d = 1:nDims
-      for ranking = 1:numOfData
-        for e = 1:nEvals
-          table{dat, d}(ranking, e) = sum(arrayfun(@(x) ranks{x,d}(e, dat) == ranking, 1:nFunc));
-        end
-      end
-    end
-  end
   
-  % create first rank table
-  rankTable = createTable(table, 1);
+  % create ranking table
+  extraFields = {'DataNames', 'ResultFile'};
+  fieldID = isfield(settings, extraFields);
+  createSettings = rmfield(settings, extraFields(fieldID));
+  [table, ranks] = createRankingTable(data, createSettings);
   
   % print table
-  if ~exist(resultFolder, 'dir')
-    mkdir(resultFolder)
-  end
-  FID = fopen(resultFile, 'w');
-  printTable(FID, rankTable, dims, evaluations, datanames, nFunc)
-  fclose(FID);
-  
-  fprintf('Table written to %s\n', resultFile);
-
-end
-
-function rankTable = createTable(table, rank)
-% Creates table of sums of rank
-  
-  [numOfData, nDims] = size(table);
-  nEvals = size(table{1,1}, 2);
-  
-  rankTable = zeros(numOfData, (nDims+1)*nEvals);
-  % data
-  for dat = 1:numOfData
-    % dimensions
-    for d = 1:nDims
-      % evaluations
-      for e = 1:nEvals
-        % gain ranks
-        rankTable(dat, (d-1)*nEvals + e) = table{dat,d}(rank, e);
+  switch tableFormat
+    % prints table to figure
+    case 'figure'
+      nEvals = length(evaluations);
+      nDims = length(dims);
+      maxLengthData = max(cellfun(@length, datanames));
+      tableSize = [11*(2+maxLengthData) + nEvals*(nDims+1)*40, 20*(numOfData+2)];
+      
+      evalRow = repmat(evaluations, [1, length(dims)+1]);
+      publicTable = [evalRow; table];
+      colBase = arrayfun(@(x) repmat({[num2str(x), 'D']}, [1, nEvals]), dims, 'UniformOutput', false);
+      colName = [[colBase{:}], repmat({'SUM'}, [1, nEvals])];
+      rowName = [{'FE/D'}, datanames];
+      f = figure('Position', [0, 0, tableSize]);
+      table = uitable(f, 'Data', publicTable, ...
+                 'ColumnName', colName, ...
+                 'RowName', rowName, ...
+                 'ColumnWidth', {40}, ...
+                 'Position', [1, 1, tableSize]);
+      
+    % prints table to latex file
+    case {'tex', 'latex'}
+      if ~exist(resultFolder, 'dir')
+        mkdir(resultFolder)
       end
-    end
-    % rank sums
-    for e = 1:nEvals
-      % print only first ranks
-      rankTable(dat, nDims*nEvals + e) = sum(arrayfun(@(x) table{dat,x}(rank, e), 1:nDims));
-    end
+      FID = fopen(resultFile, 'w');
+      printTableTex(FID, table, dims, evaluations, datanames, length(BBfunc))
+      fclose(FID);
+
+      fprintf('Table written to %s\n', resultFile);
   end
+
 end
 
-function printTable(FID, table, dims, evaluations, datanames, nFunc)
+function printTableTex(FID, table, dims, evaluations, datanames, nFunc)
 % Prints table to file FID
 
   [numOfData, nColumns] = size(table);

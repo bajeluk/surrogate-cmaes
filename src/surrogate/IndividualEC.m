@@ -1,15 +1,17 @@
-classdef IndividualEC < EvolutionControl
+classdef IndividualEC < EvolutionControl & Observable
   properties
     model
+    counteval
   end
   
   methods
     function obj = IndividualEC()
     % constructor
       obj.model = [];
+      obj.counteval = 0;
     end
     
-    function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
+    function [obj, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
       % Run one generation of individual evolution control
       
       fitness_raw = [];
@@ -17,6 +19,7 @@ classdef IndividualEC < EvolutionControl
       arxvalid = [];
       arz = [];
       surrogateStats = NaN(1, 2);
+      origEvaled = ones(1,cmaesState.lambda);
       
       % extract cmaes state variables
       xmean = cmaesState.xmean;
@@ -25,6 +28,7 @@ classdef IndividualEC < EvolutionControl
       BD = cmaesState.BD;
       dim = cmaesState.dim;
       countiter = cmaesState.countiter;
+      obj.counteval = counteval;
       
       obj.model = ModelFactory.createModel(surrogateOpts.modelType, surrogateOpts.modelOpts, xmean');
 
@@ -39,17 +43,17 @@ classdef IndividualEC < EvolutionControl
       [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
           xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
       
-      [fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] = ...
+      [ok, fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] = ...
         presample(minTrainSize, cmaesState, surrogateOpts, sampleOpts, archive, counteval, xTrain, yTrain, varargin{:});
-
       nPresampledPoints = size(arxvalid, 2);
-      if (nPresampledPoints == lambda)
-        return
+
+      if (~ok)
+        [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
+        archive = archive.save(arxvalid', fitness_raw', countiter);
+        return;
       end
       
       % train the model
-      % TODO: omit the unnecessary variables xmean, sigma and BD
-      % as they are already in cmaesState  
       obj.model = obj.model.train(xTrain, yTrain, cmaesState, sampleOpts);
 
       nLambdaRest = lambda - nPresampledPoints;

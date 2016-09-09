@@ -35,6 +35,10 @@ classdef (Abstract) Model
       trained = (obj.trainGeneration >= 0);
     end
 
+    function n = getTrainsetSize(obj)
+      n = size(obj.dataset.y, 1);
+    end
+
     function obj = shift(obj, xMean)
     % transforms the trained model to new coordinates
     % further predictions will be made according to this shift
@@ -225,6 +229,9 @@ classdef (Abstract) Model
           eiMin = min(ei);
           % map the higest EI to the smallest function value and vice versa
           output = (fmax-fmin)*(eiMax-ei)/(eiMax-eiMin)+fmin;
+
+        otherwise % otherwise return sd2
+          output = sd2;
       end
 
     end
@@ -242,7 +249,7 @@ classdef (Abstract) Model
       % value to regard the model as trained; otherwise, the
       % constant response is mark of a badly trained model
       % and therefor it is marked as untrained
-      MIN_RESPONSE_DIFFERENCE = 1e-8;
+      MIN_RESPONSE_DIFFERENCE = min(1e-8, 0.05 * (max(y) - min(y)));
 
       % transform input variables using Mahalanobis distance
       if obj.transformCoordinates

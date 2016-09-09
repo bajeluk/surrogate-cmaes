@@ -1,4 +1,4 @@
-classdef Archive
+classdef Archive < handle
   properties
     dim  = 1;           % dimension of the input space X (determined from x_mean)
     X    = [];          % archive - input-space data
@@ -35,12 +35,14 @@ classdef Archive
       y = obj.y(dataIdxs);
     end
 
-    function [X, y] = getDataNearPoint(obj, n, x, rangeSigma, sigma, BD)
+    function [X, y, nData] = getDataNearPoint(obj, n, x, rangeSigma, sigma, BD)
       % returns up to 'n' data within distance of 'rangeSigma' along the point 'x'
       % using (sigma*BD)-metric
       % if more than 'n' data are closer than 'rangeSigma', k-means clustering is
       % performed
       % if (n == 0), all the available data are returned
+      % returns:
+      %   nData -- the number of all available data in the specified range
       nData = length(obj.y);
       X = []; y = [];
       
@@ -55,8 +57,9 @@ classdef Archive
       % take the points closer than *rangeSigma*
       diff = sum(xTransf.^2, 2);
       isInRange = diff < (rangeSigma ^ 2);
+      nData = sum(isInRange);
 
-      if (sum(isInRange) <= n  ||  n <= 0)
+      if (nData <= n  ||  n <= 0)
         X = obj.X(isInRange,:);
         y = obj.y(isInRange);
       else
@@ -81,6 +84,43 @@ classdef Archive
           y = [y; closerDataY(randp(1:n))];
         end
       end
+    end
+    
+    function [X, y] = getClosestDataFromPoints(obj, n, xInput, sigma, BD)
+      % returns union of 'n'-tuples of points which are closest to each 
+      % of data points from the points in 'xInput'
+      % using (sigma*BD)-metric
+      % if (n == 0), all the available data are returned
+      nData = length(obj.y);
+      X = []; y = [];
+      
+      if (nData == 0)
+        return;
+      end
+      
+      if (nData > n)
+        % there are more data than 'n'
+        indicesToReturn = false(size(obj.y,1),1);
+
+        % compute coordinates in the (sigma*BD)-basis
+        BDinv = inv(sigma*BD);
+        % for each point from xInput:
+        for i = 1:size(xInput,1)
+          xTransf = ( BDinv * (obj.X - repmat(xInput(i,:),nData,1))' )';
+          diff = sum(xTransf.^2, 2);
+          % take up to 'n' closest points from current point xInput(i,:)
+          [~, closest] = sort(diff);
+          closest((n+1):end) = [];
+          % union these points with the previous points
+          indicesToReturn(closest) = true;
+        end
+      else
+        indicesToReturn = true(size(obj.y,1),1);
+      end
+      
+      % return the final points
+      X = obj.X(indicesToReturn,:);
+      y = obj.y(indicesToReturn);
     end
   end
 end

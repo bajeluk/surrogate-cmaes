@@ -1,8 +1,6 @@
 function data = bbobDataReady(datapath, funcSet)
-% Prepares data for further processing.
-% Returns cell array 'data' functions x dimensions x settings and 
-% appropriate 'settings'.
-% (Warning: Suppose that it does not matter how instances are ordered.)
+% data = bbobDataReady(datapath, funcSet) prepares BBOB data for further 
+% processing. Returns cell array 'data' functions x dimensions.
 %
 % Input:
 %   datapath - path to data | string
@@ -10,12 +8,16 @@ function data = bbobDataReady(datapath, funcSet)
 %              and 'dims' (numbers of dimensions) | structure
 %
 % Output:
-%   data     - aggregated data of size functions x dimensions x settings 
-%              | cell array
+%   data     - aggregated data of size functions x dimensions | cell array
+%
+% See Also:
+%   dataReady
 
   if nargin < 2
     if nargin < 1
-      data = {};
+      if nargout > 0
+        data = {};
+      end
       help bbobDataReady
       return
     end
@@ -32,43 +34,66 @@ function data = bbobDataReady(datapath, funcSet)
   funcSet.BBfuncInv = inverseIndex(funcSet.BBfunc);
   funcSet.dimsInv = inverseIndex(funcSet.dims);
   
+  infoList = [];
   % load results
   for dat = 1:nData
     assert(isdir(datapath{dat}), '%s is not a folder', datapath{dat})
+    infoList = [infoList; searchFile(datapath{dat}, '*.info')];
   end
   
-  for f = funcSet.BBfunc
-    for d = funcSet.dims
-      usefulFiles = false(1, nData);
-      filename = cell(1, nData);
-      for dat = 1:nData
-        filename{dat} = fullfile(datapath{dat}, ['data_f', num2str(f)], ['bbobexp_f', num2str(f), '_DIM', num2str(d), '.dat']);
-        if exist(filename{dat}, 'file')
-          usefulFiles(dat) = true;
-        end
+  % load data from each info file
+  for fil = 1:length(infoList)
+    actualInfo = importdata(infoList{fil});
+    % incomplete data
+    if isstruct(actualInfo)
+      actualInfo = actualInfo.textdata;    
+    end
+    infoFileSplit = strsplit(infoList{fil}, filesep);
+    if isempty(infoFileSplit{1})
+      infoFileSplit{1} = filesep;
+    end
+
+    dataRowID = find(cellfun(@(x) ~isempty(strfind(x, '.dat')), actualInfo(:, 1)));
+    % load .dat files
+    for r = 1:length(dataRowID)
+      % complete row
+      if all(cellfun(@isempty, actualInfo(dataRowID(r), 2:end)))
+        rowSplit = strsplit(actualInfo{dataRowID(r)}, ', ');
+      % incomplete row
+      else
+        rowSplit = actualInfo(dataRowID(r), :);
       end
-      if any(usefulFiles)
+      % name of data file
+      datName = strrep(strrep(rowSplit{1}, '\', filesep), '/', filesep);
+      datFile = fullfile(infoFileSplit{1:end-1}, datName);
+      tdatFile = [datFile(1:end-3), 'tdat'];
+      if exist(tdatFile, 'file')
+      % uncomment for .tdat file data loading - has a bug somewhere
+%         datFile = tdatFile;
+      end
+      % extract function and dimension number
+      datSplit = strsplit(rowSplit{1}, '_');
+      f = str2double(datSplit{end-1}(2:end));
+      d = str2double(datSplit{end}(4:end-4));
+      % numbers of instances
+      instanceNum = cellfun(@(x) str2double(x(1 : strfind(x, ':')-1)), rowSplit(2:end));
+      if exist(datFile, 'file') && any(funcSet.BBfunc == f) && any(funcSet.dims == d)
         fi = funcSet.BBfuncInv(f);
         di = funcSet.dimsInv(d);
-        % supposing that it does not matter how instances are ordered
-        for dat = inverseIndex(usefulFiles)
-          actualData = importdata(filename{dat}, ' ', 1);
-          % find individual instances
-          % TODO: find instances properly - now supposing each instance starts
-          % with 1 evaluation
-          instanceStartId = inverseIndex(actualData.data(:, 1) == 1);
-          actualLength = length(data{fi, di});
-          for i = 1 : length(instanceStartId)-1
-            data{fi, di}{actualLength + i} = actualData.data(instanceStartId(i):instanceStartId(i+1)-1, [3,1]);
-          end
-          data{fi, di}{actualLength + length(instanceStartId)} = actualData.data(instanceStartId(end):end, [3,1]);
+        actualData = importdata(datFile, ' ', 1);
+        % find individual instances
+        % TODO: find instances properly - now supposing each instance starts
+        % with 1 evaluation
+        instanceStartId = inverseIndex(actualData.data(:, 1) == 1);
+        for i = 1 : length(instanceStartId)-1
+          data{fi, di}{instanceNum(i)} = actualData.data(instanceStartId(i):instanceStartId(i+1)-1, [3,1]);
         end
-      else
-        warning('Unable to open function %d dimension %d.', f, d)
+        data{fi, di}{instanceNum(end)} = actualData.data(instanceStartId(end):end, [3,1]);
       end
     end
   end
-  
+    
+  % smooth data
   data = divSmooth(data, funcSet);
   
 end

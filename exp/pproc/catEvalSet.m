@@ -32,23 +32,27 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   nFolders = length(folders);
   exp_evals = cell(1, nFolders);
   settings = cell(1, nFolders);
+
   % load data from all folders
   for s = 1:length(folders)
     [exp_evals{s}, settings{s}] = dataReady(folders{s}, funcSet);
   end
-  % remove empty settings and appropriate exp_evals
+  
+  % not empty settings
   notEmptySet = ~cellfun(@isempty, settings);
-  if ~any(notEmptySet)
-    evals = exp_evals;
-    return
+  % add extra settings to empty ones
+  emptyID = inverseIndex(~notEmptySet);
+  for i = emptyID
+    [~, algName] = fileparts(folders{i});
+    settings{i} = {struct('algName', algName)};
   end
-  settings = settings(notEmptySet);
-  exp_evals = exp_evals(notEmptySet);
+
+  % gain all not empty settings
+  allSettings = [settings{:}];
   % remove field 'experimentPath' because it is different for each
   % experiment
-  allSettings = [settings{:}];
   expPathFieldID = cellfun(@(x) isfield(x, 'experimentPath'), allSettings);
-  settings = cellfun(@(x) rmfield(x, 'experimentPath'), allSettings(expPathFieldID), 'UniformOutput', false);
+  allSettings(expPathFieldID) = cellfun(@(x) rmfield(x, 'experimentPath'), allSettings(expPathFieldID), 'UniformOutput', false);
   % find unique settings
   %TODO: efective finding of unique settings and ID's. Sth like:
   % help_settings = settings;
@@ -58,25 +62,25 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   %   help_settings(settingsID == s) = {};
   %   notEmptySet = ~cellfun(@isempty, help_settings);
   % end
-  for s = length(settings):-1:1
-    settingsID(getStructIndex(settings, settings{s})) = s;
+  for s = length(allSettings):-1:1
+    settingsID(getStructIndex(allSettings, allSettings{s})) = s;
   end
   
   % concatenate evaluations from different experiments and with the same
   % settings
   exp_evals = cat(3, exp_evals{:});
-  nSettings = length(settings);
+  nSettings = length(allSettings);
   evals = cell(length(funcSet.BBfunc), length(funcSet.dims), nSettings);
   for s = 1 : nSettings
     for f = 1 : length(funcSet.BBfunc)
       for d = 1 : length(funcSet.dims)
-        evals{f, d, s} = [exp_evals{f, d, settingsID == s}];
+          evals{f, d, s} = [exp_evals{f, d, settingsID == s}];
       end
     end
   end
   
   % return unique settings and its evaluations
-  settings = settings(unique(settingsID));
-  evals = evals(:,:,ismember(1:nSettings, unique(settingsID)));
+  settings = allSettings(unique(settingsID));
+  evals = evals(:, :, unique(settingsID));
 
 end

@@ -364,6 +364,7 @@ opts.SaveFilename = deblank(opts.SaveFilename); % remove trailing white spaces
 
 
 y_eval = [];  % BAJELUK BEST/COUNTEVAL RECORDING
+iGeneration = 0;
 out.generationStarts = [];
 out.arxvalids = [];
 out.fvalues = [];
@@ -373,6 +374,8 @@ out.sigmas = [];
 out.means = [];
 out.countevals = [];
 out.surrogateStats = [];
+out.origEvaled = [];
+out.lambda_hist = [];
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
@@ -675,15 +678,17 @@ else % flgresume
     
   % initialize random number generator
   if ischar(opts.Seed)
-    randn('state', eval(opts.Seed));     % random number generator state
+    if (~strcmpi(opts.Seed, 'inherit'))
+      rng(eval(opts.Seed));     % random number generator state, updated by bajeluk 05/09/2016
+    end
   else
-    randn('state', opts.Seed);
+    rng(opts.Seed);
   end
   %qqq
 %  load(opts.SaveFilename, 'startseed');
 %  randn('state', startseed);
 %  disp(['SEED RELOADED FROM ' opts.SaveFilename]);
-  startseed = randn('state');         % for retrieving in saved variables
+  startseed = rng();         % for retrieving in saved variables
 
   % Initialize further constants
   chiN=N^0.5*(1-1/(4*N)+1/(21*N^2));  % expectation of 
@@ -709,7 +714,7 @@ else % flgresume
       filenames(end+1) = {'stddev'};
       filenames(end+1) = {'xmean'};
       filenames(end+1) = {'xrecentbest'};
-      str = [' (startseed=' num2str(startseed(2)) ...
+      str = [' (startseed=' num2str(startseed.Seed) ...
              ', ' num2str(clock, '%d/%02d/%d %d:%d:%2.2f') ')'];
       for namecell = filenames(:)'
         name = namecell{:};
@@ -810,7 +815,9 @@ while isempty(stopflag)
     'lambda', lambda, ...
     'BD', BD, ...
     'diagD', diagD, ...
+    'diagC', diagC, ...
     'dim', size(xmean,1), ...
+    'mu', myeval(opts.ParentNumber), ...
     'fitfun_handle', fitfun_handle, ...
     'countiter', countiter + 1);
 
@@ -819,25 +826,33 @@ while isempty(stopflag)
     % use standard CMA-ES (no surrogate at all)
     [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
     surrogateStats = NaN(1, 2);
+    origEvaled = true(1, lambda);
   else
     % hand over the control to surrogateManager()
     surrogateOpts.sampleOpts = sampleOpts;
-    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda] = surrogateManager(cmaesState, surrogateOpts, sampleOpts, counteval, varargin{:});
+    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled] = surrogateManager(cmaesState, surrogateOpts, sampleOpts, counteval, varargin{:});
     popsize = lambda;
   end
   
   % Surrogate CMA-ES end
 
   % BAJELUK -- population, covariance matrix, sigma and fvalues logging
+  iGeneration = iGeneration + 1;
   out.generationStarts(end+1) = length(out.generations) + 1;
   out.arxvalids(:,end+(1:popsize)) = arxvalid;
   out.fvalues(1,end+(1:popsize)) = fitness.raw;
-  out.generations(1,end+(1:popsize)) = countiter + 1;
-  out.BDs{countiter + 1} = BD;
+  out.generations(1,end+(1:popsize)) = iGeneration;
+  out.BDs{1,end+1} = BD;
   out.sigmas(end+1) = sigma;
   out.means(:,end+1) = xmean;
   out.countevals(end+1) = counteval;
-  out.surrogateStats(:,end+1) = surrogateStats';
+  if (~all(isnan(surrogateStats)))
+    out.surrogateStats(:,end+1) = surrogateStats';
+  end
+  out.origEvaled(:, end+(1:popsize)) = origEvaled;
+  if (countiter == 0 || lambda ~= lambda_last)
+    out.lambda_hist(:,end+1) = [iGeneration; lambda];
+  end
   
   % Set internal parameters
   if countiter == 0 || lambda ~= lambda_last

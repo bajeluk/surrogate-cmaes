@@ -215,3 +215,24 @@ During the second part of the `metacentrum_master_template.sh` run, the script `
 
 **Warning**. Especially **setting the environment variable `$MCR_CACHE_ROOT`** is essential to be set into the particular computing node's local drive (`$SCRATCHDIR` in Metacentrum) -- it is done in the `exp/bash_settings.sh` script. Otherwise, **extraordinary overuse** of the **shared NFS filesystem** will practically disallow all the particular Metacentrum storage from being used!!!
 
+### Experiment post-processing ###
+
+The results of the computed experiment can be reported using Matlab function `generateReport`
+
+```matlab
+generateReport(expFolder, settings)
+```
+where 
+
+- **expFolder** is the name of the folder (string) containing the experiment results,
+- **settings** are pairs of property (string) and value, or struct with properties as fields: 
+    - **Description** is description of the report (string),
+    - **Publish** is the format of the resulting file similar to function `publish`, i.e. `html`, `pdf`; set to `off` to disable publishing (string).
+
+The function generates Matlab script `[expFolder]/pproc/[exp_id]_report.m` which will be published using Matlab function `publish` according to **Publish** option in **settings**. Published file can be found in `[expFolder]/pproc/html` folder.
+
+To report multiple experiment results put all experiment folder names into cell-array **expFolder**. The script `exp_[n]report_[hash].m` will be generated in all `pproc` folders of experiment folders, where `n` denotes number of experiment folders and `hash` is a sequence of characters generated according to experiment folder names.
+
+Generated report contains plots of dependences of minimal function values on function evaluations divided by dimension for individual functions. First, only comparison of algorithm runs are plotted in each tested function and dimension. Second, former algorithms are compared to important algorithms in continuous black-box optimization field.
+
+**Warning**. Report generating requires a few minutes of rendering Matlab figures. This can cause some troubles with computer usability because of pop-up figure windows in older versions of Matlab. To avoid these problems run `generateReport` in remote desktop or take a break.

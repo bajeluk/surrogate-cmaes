@@ -8,46 +8,55 @@ function handle = relativeFValuesPlot(data, varargin)
 %   settings - pairs of property (string) and value or struct with 
 %              properties as fields:
 %
-%     'DataNames'     - cell array of data names (e.g. names of algorithms)
-%     'DataDims'      - dimensions of data
-%     'DataFuns'      - functions of data
-%     'PlotDims'      - dimensions chosen to plot
-%     'PlotFuns'      - functions chosen to plot
-%     'Colors'        - colors of individual algorithms
 %     'AggregateDims' - aggregate dimensions in plots | boolean
-%     'Statistic'     - statistic of data | string or handle (@mean, 
-%                       @median)
-%     'MinValue'      - minimal possible function value
-%     'OneFigure'     - plot in one figure | boolean
+%     'AggregateFuns' - aggregate functions in plots | boolean
+%     'Colors'        - vector Nx3 of (RGB) colors of individual 
+%                       algorithms, N is the number of algorithms | double 
+%                       array
+%                       (e.g. 2 algorithms: [115, 60, 215; 0, 40, 60]) 
+%     'DataNames'     - cell array of data names (e.g. names of algorithms)
+%                       | cell array of strings
+%                       (e.g. {'alg1', 'alg2', 'alg3'})
+%     'DataDims'      - dimensions of data | integer vector 
+%                       (e.g. [2, 3, 5, 10])
+%     'DataFuns'      - functions of data | integer vector
+%                       (e.g. [1, 2, 3, 4, 5, 11, 12])
 %     'LegendOption'  - legend settings:
 %                         'show'  - show legend
 %                         'hide'  - do not show legend
 %                         'split' - legend splitted in first two graphs
 %                         'out'   - legend is out of the last graph
+%     'LineSpec'      - specification of plotted lines (see help plot ->
+%                       LineSpec), to set colors use 'Colors' settings | 
+%                       cell array of string
+%                       (e.g. 3 algorithms: {'-.', '-o', '.'})
+%     'MaxEval'       - maximum of evaluations divided by dimension |
+%                       integer
+%     'MinValue'      - minimal possible function value | double
 %     'OmitYLabel'    - omit y-label in even plots | boolean
+%     'OneFigure'     - all plots in one figure | boolean
+%     'PlotDims'      - dimensions chosen to plot | integer vector
+%                       (e.g. [5, 10])
+%     'PlotFuns'      - functions chosen to plot | integer vector
+%                       (e.g. [3, 6, 10, 17])
+%     'Statistic'     - statistic of data | string or handle (@mean, 
+%                       @median)
 %
 % Output:
-%   handle - handles of resulting figures
+%   handle - handles of resulting figures | cell-array
 %
 % See Also:
 %   speedUpPlot, speedUpPlotCompare, dataReady
 
   % initialization
   if nargin < 1 || isempty(data)
-    handle = [];
+    if nargout > 0
+      handle = {};
+    end
     help relativeFValuesPlot
     return
   end
-%   if isstruct(varargin)
-%     settings = varargin;
-%   else
-%     % keep cells as cells due to struct command
-%     vararCellId = cellfun(@iscell, varargin);
-%     varargin(vararCellId) = {varargin(vararCellId)};
-%     settings = struct(varargin{:});
-%   end
   settings = settings2struct(varargin);
-  
   
   % parse settings
   numOfData = length(data);
@@ -72,7 +81,7 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.oneFigure = defopts(settings, 'OneFigure', false);
   plotSet.legendOption = defopts(settings, 'LegendOption', 'show');
   defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
-  plotSet.lineSpec = defopts(settings, 'LineSpecification', defaultLine);
+  plotSet.lineSpec = defopts(settings, 'LineSpec', defaultLine);
   if length(plotSet.lineSpec) ~= numOfData
     warning('Number of line specification strings and number of data are different. Setting default values.')
     plotSet.lineSpec = defaultLine;
@@ -248,11 +257,11 @@ function handle = relativePlot(data_stats, settings)
     
     % legend settings
     if strcmp(settings.legendOption, 'out')
-      handle = zeros(1, nPlots + 1);
+      handle = cell(1, nPlots + 1);
       legendFigNum = nPlots + 1;
       settings.legendLocation = 'EastOutside';
     else
-      handle = zeros(1, nPlots);
+      handle = cell(1, nPlots);
       legendFigNum = 1;
     end
     
@@ -260,7 +269,7 @@ function handle = relativePlot(data_stats, settings)
     plottedInAny = false(1, numOfData);
     for f = 1:nFunsToPlot
       for d = 1:nDimsToPlot
-        handle((d-1) * nFunsToPlot + f) = ...
+        handle{(d-1) * nFunsToPlot + f} = ...
           figure('Units', 'centimeters', 'Position', [1, 1, 12.5, 6]);
         plottedInAny = plottedInAny | ...
           onePlot(relativeData, f, d, settings, dispLegend && (strcmp(settings.legendOption, 'show') || (f*d == legendFigNum)), ...
@@ -268,7 +277,7 @@ function handle = relativePlot(data_stats, settings)
       end
     end
     if strcmp(settings.legendOption, 'out')
-      handle(legendFigNum) = soloLegend(settings.colors(plottedInAny, :), settings.datanames(plottedInAny), 2);
+      handle{legendFigNum} = soloLegend(settings.colors(plottedInAny, :), settings.datanames(plottedInAny), 2);
     end
   end
   
@@ -293,28 +302,32 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
 
   % default value
   medianLineWidth = 1;
-  
-  evaldim = 1:min(length(relativeData{1}{1}), settings.maxEval);
 
+  % find not empty data
   for dat = 1:length(relativeData)
     notEmptyData(dat) = ~isempty(relativeData{dat}{fId, dId});
   end
+  
   if any(notEmptyData)
     nEmptyId = inverseIndex(notEmptyData);
     nUsefulData = sum(notEmptyData);
+    % find minimal number of function evaluations to plot
+    evaldim = 1:min([arrayfun(@(x) length(relativeData{nEmptyId(x)}{fId, dId}), 1:nUsefulData), maxEval]);
     h = zeros(1, nUsefulData);
     ftitle = cell(1, nUsefulData);
-    % mean
-    h(1) = plot(evaldim, relativeData{nEmptyId(1)}{fId, dId}(1:maxEval), ...
+    % plot first line 
+    h(1) = plot(evaldim, relativeData{nEmptyId(1)}{fId, dId}(evaldim), ...
       lineSpec{1}, 'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(1), :));
     ftitle{1} = datanames{nEmptyId(1)};
     hold on
     grid on
+    % plot rest of lines
     for dat = 2:nUsefulData
-      h(dat) = plot(evaldim, relativeData{nEmptyId(dat)}{fId, dId}(1:maxEval), ...
+      h(dat) = plot(evaldim, relativeData{nEmptyId(dat)}{fId, dId}(evaldim), ...
         lineSpec{dat}, 'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(dat), :));
       ftitle{dat} = datanames{nEmptyId(dat)};
     end
+    % legend settings
     if dispLegend
       switch splitLegendStatus
         case 0
@@ -330,6 +343,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     warning('Function %d dimension %d has no data available', BBfunc(fId), dims(dId))
   end
 
+  % make title
   titleString = '';
   if ~aggFuns
     titleString = ['f', num2str(BBfunc(fId))];
