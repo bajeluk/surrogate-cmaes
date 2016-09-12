@@ -13,6 +13,8 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
     minRatio
     startRatio
     updateRate
+    lowRank
+    highRank
     weights
     ec
     
@@ -21,7 +23,6 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
     lastUpdateGeneration
     
     plotDebug = 0;
-    history = [];
     historyRatio = [];
     historyTrend = [];
     fh
@@ -47,6 +48,7 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       obj.rankDiffs((obj.lastUpdateGeneration+1):(countiter-1)) = NaN;
       obj.historyRatio((obj.lastUpdateGeneration+1):(countiter-1)) = obj.lastRatio;
       
+      rankErr = NaN;
       if (isempty(modelY) || (max(modelY) - min(modelY)) == 0 ...
           || (max(origY) - min(origY)) == 0)
         obj.rankDiffs(countiter) = NaN;
@@ -56,10 +58,16 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
         ranking2   = ranking(origY);
         rankErr = errRankMuOnly(ranking2(sort1), obj.ec.cmaesState.mu);
         obj.rankDiffs(countiter) = rankErr;
+        % Debug:
       end
       
-      ratio = obj.aggregateTrend();
-      
+      % Decide the best new ratio based on aggregated rankDiff error
+      aggRankDiff = obj.aggregateTrend();
+      value = min(max(0, aggRankDiff - obj.lowRank), obj.highRank) / (obj.highRank - obj.lowRank);
+      ratio = obj.minRatio + value * (obj.maxRatio - obj.minRatio);
+      % Debug:
+      fprintf('rankErr = %.2f ;  value = %.2f ;  ratio = %.2f\n', rankErr, value, ratio);
+
       % obj.lastRatio is initialized as 'startRatio' parameter in the
       % constructor
       % TODO: correct this for faster update!
@@ -70,8 +78,7 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       if obj.plotDebug
         fprintf('New ratio=%0.2f based on rankDiff trend=%0.2f\n', newRatio, ratio);
 
-        obj.history = [obj.history obj.rankDiffs(countiter)];
-        obj.historyTrend = [obj.historyTrend ratio];
+        obj.historyTrend(countiter) = aggRankDiff;
       end
 
       obj.historyRatio(countiter) = newRatio;
@@ -86,7 +93,7 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       obj.ec = ec;
       obj.parsedParams = struct(parameters{:});
       % maximal possible ratio returned by getValue
-      obj.maxRatio = defopts(obj.parsedParams, 'maxRatio', 1);
+      obj.maxRatio = defopts(obj.parsedParams, 'maxRatio', 0.6);
       % minimal possible ratio returned by getValue
       obj.minRatio = defopts(obj.parsedParams, 'minRatio', 0.02);
       % starting value of ratio for initial generations
@@ -98,6 +105,10 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       obj.aggregateType = defopts(obj.parsedParams, 'aggregateType', 'median');
       % weights for weighted sum
       obj.weights = defopts(obj.parsedParams, 'weights', exp([1:4]/2) / sum(exp([1:4]/2)));
+      % lowest and highest rank which affect the final ratio
+      % (ratio then saturates to 1)
+      obj.lowRank  = defopts(obj.parsedParams, 'lowRank', 0.1);
+      obj.highRank = defopts(obj.parsedParams, 'highRank', 0.5);
       
       obj.rankDiffs = [];
       obj.lastUpdateGeneration = 0;

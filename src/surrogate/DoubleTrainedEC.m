@@ -111,8 +111,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       isEvaled = false(1, nLambdaRest);
       yOrig    = NaN(1, nLambdaRest);
-      notEverythingEvaluated = true;
       yFirstModel = yExtendModel;
+      notEverythingEvaluated = true;
 
       while (notEverythingEvaluated)
 
