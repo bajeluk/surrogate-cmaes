@@ -109,47 +109,66 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           sampleCmaesNoFitness(obj.cmaesState.sigma, nLambdaRest, obj.cmaesState, sampleOpts);
       [modelOutput, yExtendModel] = obj.model.getModelOutput(xExtend');
 
-      reevalID = obj.choosePointsForReevaluation(xExtend, modelOutput, yExtendModel);
-      xToReeval = xExtendValid(:, reevalID);
-      nToReeval = sum(reevalID);
+      isEvaled = false(1, nLambdaRest);
+      yOrig    = NaN(1, nLambdaRest);
+      notEverythingEvaluated = true;
+      yFirstModel = yExtendModel;
 
-      % original-evaluate the chosen points
-      [yNew, xNew, xNewValid, zNew, obj.counteval] = ...
-          sampleCmaesOnlyFitness(xExtend(:, reevalID), xToReeval, zExtend(:, reevalID), ...
-          obj.cmaesState.sigma, nToReeval, obj.counteval, obj.cmaesState, sampleOpts, ...
-          varargin{:});
-      % Debug:
-      % fprintf('counteval: %d\n', obj.counteval)
+      while (notEverythingEvaluated)
 
-      phase = 1;        % re-evaluated points
-      obj.pop = obj.pop.addPoints(xNewValid, yNew, xNew, zNew, nToReeval, phase);
+        nPoints = ceil(nLambdaRest * obj.restrictedParam) - sum(isEvaled);
+        % TODO: make the nPoints stochastic
+        reevalID = false(1, nLambdaRest);
+        reevalID(~isEvaled) = obj.choosePointsForReevaluation(nPoints, ...
+            xExtend(:, ~isEvaled), modelOutput(~isEvaled), yExtendModel(~isEvaled));
+        xToReeval = xExtendValid(:, reevalID);
+        nToReeval = sum(reevalID);
 
-      % update the Archive
-      obj.archive.save(xNewValid', yNew', obj.cmaesState.countiter);
+        % original-evaluate the chosen points
+        [yNew, xNew, xNewValid, zNew, obj.counteval] = ...
+            sampleCmaesOnlyFitness(xExtend(:, reevalID), xToReeval, zExtend(:, reevalID), ...
+            obj.cmaesState.sigma, nToReeval, obj.counteval, obj.cmaesState, sampleOpts, ...
+            varargin{:});
+        yOrig(reevalID) = yNew;
+        isEvaled = isEvaled | reevalID;
+        % Debug:
+        % fprintf('counteval: %d\n', obj.counteval)
 
-      % origRatio adaptivity
-      obj.origRatioUpdater.update(yExtendModel, yNew', dim, lambda, obj.cmaesState.countiter);
-      % Debug:
-      % fprintf('OrigRatio: %f\n', obj.origRatioUpdater.getLastRatio(countiter));
+        phase = 1;        % re-evaluated points
+        obj.pop = obj.pop.addPoints(xNewValid, yNew, xNew, zNew, nToReeval, phase);
 
-      % re-train the model again with the new original-evaluated points
-      if ~all(reevalID)
-        xTrain = [xTrain; xNewValid'];
-        yTrain = [yTrain; yNew'];
-        obj.retrainedModel = obj.model.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
-        if (obj.useDoubleTraining && obj.retrainedModel.isTrained())
-          yReeval = obj.retrainedModel.predict((xExtendValid(:, ~reevalID))');
-        else
-          % Debug:
-          % fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
-          yReeval = yExtendModel(~reevalID);
+        % update the Archive
+        obj.archive.save(xNewValid', yNew', obj.cmaesState.countiter);
+
+        % re-train the model again with the new original-evaluated points
+        if ~all(isEvaled)
+          xTrain = [xTrain; xNewValid'];
+          yTrain = [yTrain; yNew'];
+          obj.retrainedModel = obj.model.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
+          if (obj.useDoubleTraining && obj.retrainedModel.isTrained())
+            % yReeval = obj.retrainedModel.predict((xExtendValid(:, ~isEvaled))');
+            [modelOutput, yExtendModel] = obj.retrainedModel.getModelOutput(xExtend');
+
+            % origRatio adaptivity
+            obj.restrictedParam = obj.origRatioUpdater.update(...
+                yFirstModel', yExtendModel', dim, lambda, obj.cmaesState.countiter, obj);
+            % Debug:
+            fprintf('OrigRatio: %f\n', obj.origRatioUpdater.getLastRatio(obj.cmaesState.countiter));
+          else
+            % Debug:
+            % fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
+          end
         end
-
-        phase = 2;      % model-evaluated rest of the population
-        obj.pop = obj.pop.addPoints(xExtendValid(:, ~reevalID), yReeval, ...
-            xExtend(:, ~reevalID), zExtend(:, ~reevalID), 0, phase);
+      
+        notEverythingEvaluated = (floor(lambda * obj.restrictedParam) > sum(isEvaled));
       end
-              
+
+      if (~all(isEvaled))
+        phase = 2;      % model-evaluated rest of the population
+        obj.pop = obj.pop.addPoints(xExtendValid(:, ~isEvaled), yExtendModel(~isEvaled), ...
+            xExtend(:, ~isEvaled), zExtend(:, ~isEvaled), 0, phase);
+      end
+      
       assert(obj.pop.nPoints == lambda, 'There are not yet all lambda points prepared, but they should be!');
 
       % sort the returned solutions (the best to be first)
@@ -242,7 +261,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       counteval = obj.counteval;
     end
 
-    function reevalID = choosePointsForReevaluation(obj, xExtend, modelOutput, yExtendModel)
+    function reevalID = choosePointsForReevaluation(obj, nPoints, xExtend, modelOutput, yExtendModel)
     % choose points with low confidence to reevaluate
     %
     % returns:
@@ -259,13 +278,12 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         % fprintf('  Expected permutation of sorted f-values: %s\n', num2str(y_r(pointID)'));
       else
         % lower criterion is better (fvalues, lcb, fpoi, fei)
-        [~, pointID] = sort(modelOutput, 'ascend');
+        [~, pointID] = sort(yExtendModel, 'ascend');
       end
       nLambdaRest = size(xExtend, 2);
       reevalID = false(1, nLambdaRest);
       assert(obj.origRatioUpdater.getLastRatio(obj.cmaesState.countiter) >= 0 && obj.origRatioUpdater.getLastRatio(obj.cmaesState.countiter) <= 1, 'origRatio out of bounds [0,1]');
-      nToReeval = ceil(nLambdaRest * obj.origRatioUpdater.getLastRatio(obj.cmaesState.countiter));
-      reevalID(pointID(1:nToReeval)) = true;
+      reevalID(pointID(1:nPoints)) = true;
     end
 
 
