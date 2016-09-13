@@ -27,7 +27,7 @@ classdef Population
       obj.arz = NaN(dim_, lambda_);
       obj.nPoints = 0;
       obj.origEvaled = false(1, lambda_);
-      obj.phase = zeros(1, lambda_);
+      obj.phase = (-1) * ones(1, lambda_);
     end
 
     function obj = addPoints(obj, xNew, yNew, arxNew, arzNew, nOrigEvaled, varargin);
@@ -69,6 +69,7 @@ classdef Population
       obj.arx = obj.arx(:, sInd);
       obj.arz = obj.arz(:, sInd);
       obj.origEvaled = obj.origEvaled(sInd);
+      obj.phase = obj.phase(sInd);
     end
 
     function fmin = getMinModeled(obj)

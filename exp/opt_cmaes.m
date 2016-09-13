@@ -35,6 +35,7 @@ load([exppath 'scmaes_params.mat'], 'bbParamDef', 'sgParamDef', 'cmParamDef');
 for fname = fieldnames(cmParams)'
   cmOptions.(fname{1}) = cmParams.(fname{1});
 end
+  cmOptions.PopSize = '(4 + floor(3*log(N)))';  % CMA-ES default
 
   [x, fmin, counteval, stopflag, out, bestever, y_eval] = s_cmaes(FUN, xstart, 8/3, cmOptions);
 
