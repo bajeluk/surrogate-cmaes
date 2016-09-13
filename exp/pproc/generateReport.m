@@ -238,6 +238,7 @@ function generateReport(expFolder, varargin)
   fprintf(FID, '                            ''AggregateFuns'', false, ...\n');
   fprintf(FID, '                            ''DataNames'', expAlgNames, ...\n');
   fprintf(FID, '                            ''Colors'', expCol, ...\n');
+  fprintf(FID, '                            ''FunctionNames'', true, ...\n');
   fprintf(FID, '                            ''LegendOption'', ''out'', ...\n');
   fprintf(FID, '                            ''Statistic'', @median);\n');
   fprintf(FID, 'end\n');
@@ -281,6 +282,7 @@ function generateReport(expFolder, varargin)
   fprintf(FID, '                              ''AggregateFuns'', false, ...\n');
   fprintf(FID, '                              ''DataNames'', datanames, ...\n');
   fprintf(FID, '                              ''Colors'', colors, ...\n');
+  fprintf(FID, '                              ''FunctionNames'', true, ...\n');
   fprintf(FID, '                              ''LegendOption'', ''out'', ...\n');
   fprintf(FID, '                              ''Statistic'', @median);\n');
   fprintf(FID, '  end\n');
