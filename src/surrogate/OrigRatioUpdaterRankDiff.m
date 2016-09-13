@@ -54,6 +54,7 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
         obj.rankDiffs(countiter) = NaN;
       else
         % TODO: create function errRankMuOnly for two independent f-values vectors
+
         [~, sort1] = sort(modelY);
         ranking2   = ranking(origY);
         rankErr = errRankMuOnly(ranking2(sort1), obj.ec.cmaesState.mu);
@@ -63,7 +64,7 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       
       % Decide the best new ratio based on aggregated rankDiff error
       aggRankDiff = obj.aggregateTrend();
-      value = min(max(0, aggRankDiff - obj.lowRank), obj.highRank) / (obj.highRank - obj.lowRank);
+      value = min(max(0, aggRankDiff - obj.lowRank), (obj.highRank - obj.lowRank)) / (obj.highRank - obj.lowRank);
       ratio = obj.minRatio + value * (obj.maxRatio - obj.minRatio);
       % Debug:
       fprintf('rankErr = %.2f ;  value = %.2f ;  ratio = %.2f\n', rankErr, value, ratio);
@@ -71,7 +72,11 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       % obj.lastRatio is initialized as 'startRatio' parameter in the
       % constructor
       % TODO: correct this for faster update!
-      lastGenRatio = obj.historyRatio(countiter-1);
+      if (countiter > 1)
+        lastGenRatio = obj.historyRatio(countiter-1);
+      else
+        lastGenRatio = obj.startRatio;
+      end
       newRatio = (1-obj.updateRate) * lastGenRatio + obj.updateRate * ratio;
       newRatio = min(max(newRatio, obj.minRatio), obj.maxRatio);
       
@@ -91,7 +96,10 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       obj = obj@OrigRatioUpdater(parameters);
       % parameter 'ec' is a reference to the EvolutionControl
       obj.ec = ec;
-      obj.parsedParams = struct(parameters{:});
+      if (~isstruct(parameters))
+        parameters = struct(parameters{:});
+      end
+      obj.parsedParams = parameters;
       % maximal possible ratio returned by getValue
       obj.maxRatio = defopts(obj.parsedParams, 'maxRatio', 0.6);
       % minimal possible ratio returned by getValue

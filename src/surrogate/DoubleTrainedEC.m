@@ -107,11 +107,10 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % sample new points
       [xExtend, xExtendValid, zExtend] = ...
           sampleCmaesNoFitness(obj.cmaesState.sigma, nLambdaRest, obj.cmaesState, sampleOpts);
-      [modelOutput, yExtendModel] = obj.model.getModelOutput(xExtend');
+      [modelOutput, yExtendModel] = obj.model.getModelOutput(xExtendValid');
 
       isEvaled = false(1, nLambdaRest);
       yOrig    = NaN(1, nLambdaRest);
-      yFirstModel = yExtendModel;
       notEverythingEvaluated = true;
 
       while (notEverythingEvaluated)
@@ -129,6 +128,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             sampleCmaesOnlyFitness(xExtend(:, reevalID), xToReeval, zExtend(:, reevalID), ...
             obj.cmaesState.sigma, nToReeval, obj.counteval, obj.cmaesState, sampleOpts, ...
             varargin{:});
+        xExtendValid(:, reevalID) = xNewValid;
+        xExtend(:, reevalID) = xNew;
+        zExtend(:, reevalID) = zNew;
         yOrig(reevalID) = yNew;
         isEvaled = isEvaled | reevalID;
         % Debug:
@@ -146,14 +148,18 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           yTrain = [yTrain; yNew'];
           obj.retrainedModel = obj.model.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
           if (obj.useDoubleTraining && obj.retrainedModel.isTrained())
-            % yReeval = obj.retrainedModel.predict((xExtendValid(:, ~isEvaled))');
-            [modelOutput, yExtendModel] = obj.retrainedModel.getModelOutput(xExtend');
-
             % origRatio adaptivity
+            if (~isempty(obj.origRatioUpdater.lastUpdateGeneration) ...
+                && obj.origRatioUpdater.lastUpdateGeneration > obj.cmaesState.countiter)
+              % internal CMA-ES restart, create a new origRatioUpdater
+              obj.origRatioUpdater = OrigRatioUpdaterFactory.createUpdater(obj, obj.surrogateOpts);
+            end
+            yFirstModel  = obj.model.predict(xExtendValid');
+            yExtendModel = obj.retrainedModel.predict(xExtendValid');
             obj.restrictedParam = obj.origRatioUpdater.update(...
                 yFirstModel', yExtendModel', dim, lambda, obj.cmaesState.countiter, obj);
             % Debug:
-            fprintf('OrigRatio: %f\n', obj.origRatioUpdater.getLastRatio(obj.cmaesState.countiter));
+            % fprintf('OrigRatio: %f\n', obj.origRatioUpdater.getLastRatio(obj.cmaesState.countiter));
           else
             % Debug:
             % fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
