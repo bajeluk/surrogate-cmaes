@@ -37,8 +37,12 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           'rankErr2Models', NaN, ...    % rank error between prediction of two models
           'rmseValid', NaN, ...         % RMSE of the (2nd) model on the validation set
           'kendallValid', NaN, ...      % Kendall of the (2nd) model on the validation set
-          'rankErrValid', NaN ...       % rank error between true fitness and model pred.
+          'rankErrValid', NaN, ...      % rank error between true fitness and model pred.
           ...                           %       on the validation set
+          'lastUsedOrigRatio', NaN, ... % restricted param which was used (last) in the last generation
+          'adaptRankDiff', NaN, ...     % last measured rankDiff during update()
+          'adaptGain', NaN, ...         % gain of original ratio (to be converted via min/max)
+          'adaptNewRatio', NaN ...      % new value of ratio (to be history-weighted)
           );
     end
 
@@ -116,7 +120,10 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       while (notEverythingEvaluated)
 
         nPoints = ceil(nLambdaRest * obj.restrictedParam) - sum(isEvaled);
-        % TODO: make the nPoints stochastic
+        obj.stats.lastUsedOrigRatio = obj.restrictedParam;
+        % Debug:
+        % fprintf('ratio: %.2f | nPoints: %d | iter: %d\n', obj.restrictedParam, nPoints, obj.cmaesState.countiter);
+
         reevalID = false(1, nLambdaRest);
         reevalID(~isEvaled) = obj.choosePointsForReevaluation(nPoints, ...
             xExtend(:, ~isEvaled), modelOutput(~isEvaled), yExtendModel(~isEvaled));
@@ -158,8 +165,14 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             yExtendModel = obj.retrainedModel.predict(xExtendValid');
             obj.restrictedParam = obj.origRatioUpdater.update(...
                 yFirstModel', yExtendModel', dim, lambda, obj.cmaesState.countiter, obj);
+            obj.stats.adaptRankDiff = obj.origRatioUpdater.rankDiffs(end);
+            obj.stats.adaptGain = obj.origRatioUpdater.gain;
+            obj.stats.adaptNewRatio = obj.origRatioUpdater.newRatio;
             % Debug:
             % fprintf('OrigRatio: %f\n', obj.origRatioUpdater.getLastRatio(obj.cmaesState.countiter));
+
+            % Debug:
+            % fprintf('UPDATE: ratio: %.2f | rankDiff: %.2f | iter: %d\n', obj.restrictedParam, obj.origRatioUpdater.rankDiffs(end), obj.cmaesState.countiter);
           else
             % Debug:
             % fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');

@@ -3,34 +3,38 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
 % [ ] define different updateRate for positive and negative trend
 % [ ] create function errRankMuOnly for two independent f-values vectors
 % [ ] weightedSum aggregation of historical errors
+% [ ] faster increased updates then decreased (is it really ok?)
     
   properties
     origParams
     lastRatio
     
-    parsedParams
+    surrogateOpts
+    ec
+
     maxRatio
     minRatio
     startRatio
     updateRate
     lowRank
     highRank
-    weights
-    ec
-    
-    rankDiffs
     aggregateType
+    weights
+
+    rankDiffs
     lastUpdateGeneration
-    
+    gain
+    newRatio
+
     plotDebug = 0;
-    historyRatio = [];
-    historyTrend = [];
+    historyRatios = [];
+    historyAggRankDiffs = [];
     fh
   end
   
   methods 
     % get new value of parameter
-    function newRatio = update(obj, modelY, origY, ~, ~, countiter, varargin)
+    function ratio = update(obj, modelY, origY, ~, ~, countiter, varargin)
       % ratio is updated according to the following formula
       %
       % nHistory = length(weights)
@@ -46,7 +50,7 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       
       if (nargin >= 7) obj.ec = varargin{1}; end
       obj.rankDiffs((obj.lastUpdateGeneration+1):(countiter-1)) = NaN;
-      obj.historyRatio((obj.lastUpdateGeneration+1):(countiter-1)) = obj.lastRatio;
+      obj.historyRatios((obj.lastUpdateGeneration+1):(countiter-1)) = obj.lastRatio;
       
       rankErr = NaN;
       if (isempty(modelY) || (max(modelY) - min(modelY)) == 0 ...
@@ -59,36 +63,38 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
         ranking2   = ranking(origY);
         rankErr = errRankMuOnly(ranking2(sort1), obj.ec.cmaesState.mu);
         obj.rankDiffs(countiter) = rankErr;
-        % Debug:
       end
       
       % Decide the best new ratio based on aggregated rankDiff error
-      aggRankDiff = obj.aggregateTrend();
-      value = min(max(0, aggRankDiff - obj.lowRank), (obj.highRank - obj.lowRank)) / (obj.highRank - obj.lowRank);
-      ratio = obj.minRatio + value * (obj.maxRatio - obj.minRatio);
+      aggRankDiff = obj.aggregateWithHistory();
+      if (~isnan(aggRankDiff))
+        obj.gain = min(max(0, aggRankDiff - obj.lowRank), (obj.highRank - obj.lowRank)) / (obj.highRank - obj.lowRank);
+        obj.newRatio = obj.minRatio + obj.gain * (obj.maxRatio - obj.minRatio);
+      else
+        obj.gain = NaN;
+        obj.newRatio = obj.startRatio;
+      end
       % Debug:
-      fprintf('rankErr = %.2f ;  value = %.2f ;  ratio = %.2f\n', rankErr, value, ratio);
+      % fprintf('rankErr = %.2f ;  value = %.2f ;  ratio = %.2f\n', rankErr, obj.gain, obj.newRatio);
 
-      % obj.lastRatio is initialized as 'startRatio' parameter in the
-      % constructor
-      % TODO: correct this for faster update!
+      % lastGenRatio -- the last used ratio (from the last updated generation)
       if (countiter > 1)
-        lastGenRatio = obj.historyRatio(countiter-1);
+        lastGenRatio = obj.historyRatios(countiter-1);
       else
         lastGenRatio = obj.startRatio;
       end
-      newRatio = (1-obj.updateRate) * lastGenRatio + obj.updateRate * ratio;
-      newRatio = min(max(newRatio, obj.minRatio), obj.maxRatio);
+      % final ratio is exponentially updated:   r = (1-a) * r_old  +  a * r_new
+      ratio = (1-obj.updateRate) * lastGenRatio + obj.updateRate * obj.newRatio;
+      ratio = min(max(ratio, obj.minRatio), obj.maxRatio);
       
-      if obj.plotDebug
-        fprintf('New ratio=%0.2f based on rankDiff trend=%0.2f\n', newRatio, ratio);
-
-        obj.historyTrend(countiter) = aggRankDiff;
-      end
-
-      obj.historyRatio(countiter) = newRatio;
-      obj.lastRatio = newRatio;
+      obj.historyRatios(countiter) = ratio;
+      obj.lastRatio = ratio;
       obj.lastUpdateGeneration = countiter;
+
+      if obj.plotDebug
+        fprintf('New ratio=%0.2f based on rankDiff trend=%0.2f\n', ratio, obj.newRatio);
+        obj.historyAggRankDiffs(countiter) = aggRankDiff;
+      end
     end
 
     function obj = OrigRatioUpdaterRankDiff(ec, parameters)
@@ -96,27 +102,23 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       obj = obj@OrigRatioUpdater(parameters);
       % parameter 'ec' is a reference to the EvolutionControl
       obj.ec = ec;
-      if (~isstruct(parameters))
-        parameters = struct(parameters{:});
-      end
-      obj.parsedParams = parameters;
+      obj.surrogateOpts = parameters;
       % maximal possible ratio returned by getValue
-      obj.maxRatio = defopts(obj.parsedParams, 'maxRatio', 0.6);
+      obj.maxRatio = defopts(obj.surrogateOpts, 'DTAdaptive_maxRatio', 0.9);
       % minimal possible ratio returned by getValue
-      obj.minRatio = defopts(obj.parsedParams, 'minRatio', 0.02);
+      obj.minRatio = defopts(obj.surrogateOpts, 'DTAdaptive_minRatio', 0.02);
       % starting value of ratio for initial generations
-      obj.startRatio = defopts(obj.parsedParams, 'startRatio', (obj.maxRatio - obj.minRatio)/2);
+      obj.startRatio = defopts(obj.surrogateOpts, 'DTAdaptive_startRatio', (obj.maxRatio - obj.minRatio)/2);
       obj.lastRatio  = obj.startRatio;
       % how much is the lastRatio affected by the weighted trend
-      obj.updateRate = defopts(obj.parsedParams, 'updateRate', 0.5);
+      obj.updateRate = defopts(obj.surrogateOpts, 'DTAdaptive_updateRate', 0.9);
       % type of aggregation of historical values of RankDiff errors
-      obj.aggregateType = defopts(obj.parsedParams, 'aggregateType', 'median');
+      obj.aggregateType = defopts(obj.surrogateOpts, 'DTAdaptive_aggregateType', 'weightedSum');
       % weights for weighted sum
-      obj.weights = defopts(obj.parsedParams, 'weights', exp([1:4]/2) / sum(exp([1:4]/2)));
-      % lowest and highest rank which affect the final ratio
-      % (ratio then saturates to 1)
-      obj.lowRank  = defopts(obj.parsedParams, 'lowRank', 0.1);
-      obj.highRank = defopts(obj.parsedParams, 'highRank', 0.5);
+      obj.weights = defopts(obj.surrogateOpts, 'DTAdaptive_weights', exp([1:4]/2) / sum(exp([1:4]/2)));
+      % lowest and highest rank which affect gain util it saturates to 0 or 1
+      obj.lowRank  = defopts(obj.surrogateOpts, 'DTAdaptive_lowRank', 0.1);
+      obj.highRank = defopts(obj.surrogateOpts, 'DTAdaptive_highRank', 0.5);
       
       obj.rankDiffs = [];
       obj.lastUpdateGeneration = 0;
@@ -127,19 +129,24 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       end
     end
     
-    function value = aggregateTrend(obj)
-      % aggregate last criterion values into one value expressing an increasing or
-      % decreasing trend
+    function value = aggregateWithHistory(obj)
+      % aggregate last criterion values into one value
       %
       % This implementation:
-      % - takes median of the last length(weights) values
-      % - NaN values are ignored (less values are used then)
+      % - ignores NaN values in history (less values are used then)
+      %
+      % (a) takes median of the last length(weights) values
+      %     or
+      % (b) takes weighted sum of the last length(weights) values
 
+      % take at most nHistory last values
       nHistory = min(length(obj.rankDiffs), length(obj.weights));
       values = obj.rankDiffs((end-nHistory+1):end);
+      % identify NaN's
       bValues  = ~isnan(values);
+      % return with NaN if no valid values in history
       if (~any(bValues))
-        value = obj.startRatio;
+        value = NaN;
         return;
       end
 
@@ -147,8 +154,11 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       case 'median'
         value = median(values(bValues));
       case 'weightedsum'
+        % take adequate weights and re-norm them to sum to 1
         localWeights = obj.weights((end-nHistory+1):end);
-        value = sum(localWeights(bValues) .* values(bValues));
+        localWeights = localWeights(bValues) ./ sum(localWeights(bValues));
+        % return the weighted sum
+        value = sum(localWeights .* values(bValues));
       otherwise
         error(sprintf('OrigRatioUpdaterRankDiff: aggregateType ''%s'' not implemented.', obj.aggregateType));
       end
@@ -164,8 +174,8 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       if obj.plotDebug
           scatter(1:length(obj.history), obj.history, 140, '.');
           hold on;
-          scatter(1:length(obj.historyTrend), obj.historyTrend, 140, '.');
-          scatter(1:length(obj.historyRatio), obj.historyRatio, 140, '.');
+          scatter(1:length(obj.historyAggRankDiffs), obj.historyAggRankDiffs, 140, '.');
+          scatter(1:length(obj.historyRatios), obj.historyRatios, 140, '.');
           legend('rankDiff', 'Trend', 'Ratio');
           hold off;
           pause(0.0001);    

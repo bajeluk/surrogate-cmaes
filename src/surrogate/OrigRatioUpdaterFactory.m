@@ -7,7 +7,7 @@ classdef OrigRatioUpdaterFactory
         % case 'kendall'
         %   obj = OrigRatioUpdaterKendall(surrogateOpts.updaterParams);
         case 'rankdiff'
-          obj = OrigRatioUpdaterRankDiff(ec, surrogateOpts.updaterParams);
+          obj = OrigRatioUpdaterRankDiff(ec, surrogateOpts);
         otherwise
           % including surrogateOpts.updaterType == 'constant'
           %
