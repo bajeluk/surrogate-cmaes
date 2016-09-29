@@ -1,44 +1,42 @@
-function err = errRankMu(x, mu)
-%ERRRANKMU Difference in ranks between the vector x and [1:length(x)] counting the (lambda-mu) last elements only for 1 errorpoint
+function err = errRankMu(y1, y2, mu)
+%ERRRANKMU Difference in rankings between the vectors y1 and y2, counting only the 'mu' first ranked elements (of y2)
 %
-% err = ERRRANKMU(x, mu)
-%       returns the number of ordering errors between the vector x and 
-%       the vector [1:length(x)], but the ordering among elements
-%       (mu+1),(mu+2)...(length(x)) is not considered as being error
-%       and positioning them among the first mu positions is calculated
-%       for only one error-point
+% err = ERRRANKMU(y1, y2, mu)
+%       returns the number of ordering errors between the vectors y1 and 
+%       y2, but rank-errors of only the first mu ranks (ordinals according to the second
+%       vectory y2) are calculated
 
+  [~, sort1] = sort(y1);
+  ranking2   = ranking(y2);
+  r = ranking2(sort1);
 
-  if (size(x,1) > 1 && size(x,2) > 1)
+  if (size(r,1) > 1 && size(r,2) > 1)
     error('Error in ranking can be done only for vectors');
   end
 
-  l = length(x);
-  r = ranking(x);
+  l = length(r);
   r = r(:);
   % calculate the differences to the right ranking
   err = abs(r - [1:l]');
-  % those errors which belong to ranking > mu calculate only
-  % for 1 point (instead of the difference to the right ranking)
-  err((err > 0) & (r > mu)) = 1;
-  % do not calculate errors in the order between elements of rank
-  % higher than mu that are actually in position higher than mu
-  mu_mask = false(l,1);
-  mu_mask(mu+1:end) = true;
-  err((r > mu) & mu_mask) = 0;
+  % do not calculate errors which belong to ranking > mu
+  err((err > 0) & (r > mu)) = 0;
   % return the overall number of errors
   err = sum(err);
 
-  % Try to calculate maximum number of possible errors
+  % Try to calculate maximum error value
   %
-  % but it is not totally right, at least for the case l=5, mu=4
+  % it should be situation (for nfirst = min(mu,floor((l-1)/2))  )
   %
+  % [(nfirst+1) (nfirst+2) ... (nfirst) ... 3 2 1]
+  %
+  % but it it not 100% true, it happend that 1.01 error was returned
+
   % up to mu or floor((l-1)/2)      ---- per (l-nfirst+1) points
   nfirst = min(mu,floor((l-1)/2));
-  max_err = nfirst * (l-nfirst+1);
+  max_err = nfirst * (l-nfirst);
   % (nfirst+1) th ... mu th         ---- per nfirst points
   max_err = max_err + max(0, mu-nfirst) * nfirst;
 
-  % return relative ratio of errors
+  % return (approximate) relative ratio of errors
   err = err/max_err;
 end

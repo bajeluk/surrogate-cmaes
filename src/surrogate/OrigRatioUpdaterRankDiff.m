@@ -1,7 +1,6 @@
 classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
 % TODO
 % [ ] define different updateRate for positive and negative trend
-% [ ] create function errRankMuOnly for two independent f-values vectors
 % [ ] weightedSum aggregation of historical errors
 % [ ] faster increased updates then decreased (is it really ok?)
     
@@ -57,15 +56,16 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
           || (max(origY) - min(origY)) == 0)
         obj.rankDiffs(countiter) = NaN;
       else
-        % TODO: create function errRankMuOnly for two independent f-values vectors
-
-        [~, sort1] = sort(modelY);
-        ranking2   = ranking(origY);
-        rankErr = errRankMuOnly(ranking2(sort1), obj.ec.cmaesState.mu);
+        rankErr = errRankMu(modelY, origY, obj.ec.cmaesState.mu);
         obj.rankDiffs(countiter) = rankErr;
       end
       
       % Decide the best new ratio based on aggregated rankDiff error
+      %
+      % for simplicity, set either
+      %   (a) *aggregateType* to 'weightedSum' and *updateRate* to 1.0
+      % or
+      %   (b) *aggregateType* to 'last' or 'lastValid' and *updateRate* between 0 and 1
       aggRankDiff = obj.aggregateWithHistory();
       if (~isnan(aggRankDiff))
         obj.gain = min(max(0, aggRankDiff - obj.lowRank), (obj.highRank - obj.lowRank)) / (obj.highRank - obj.lowRank);
@@ -83,7 +83,7 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       else
         lastGenRatio = obj.startRatio;
       end
-      % final ratio is exponentially updated:   r = (1-a) * r_old  +  a * r_new
+      % final ratio is exponentially weighted average:   r = (1-a) * r_old  +  a * r_new
       ratio = (1-obj.updateRate) * lastGenRatio + obj.updateRate * obj.newRatio;
       ratio = min(max(ratio, obj.minRatio), obj.maxRatio);
       
@@ -159,6 +159,13 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
         localWeights = localWeights(bValues) ./ sum(localWeights(bValues));
         % return the weighted sum
         value = sum(localWeights .* values(bValues));
+      case 'lastvalid'
+        % take the last valid (non-NaN) value
+        nonNanValues = values(bValues);
+        value = nonNanValues(end);
+      case 'last'
+        % take the last value (even if NaN)
+        value = obj.rankDiffs(end);
       otherwise
         error(sprintf('OrigRatioUpdaterRankDiff: aggregateType ''%s'' not implemented.', obj.aggregateType));
       end

@@ -150,7 +150,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         obj.archive.save(xNewValid', yNew', obj.cmaesState.countiter);
 
         % re-train the model again with the new original-evaluated points
-        if ~all(isEvaled)
+        % if ~all(isEvaled)
           xTrain = [xTrain; xNewValid'];
           yTrain = [yTrain; yNew'];
           obj.retrainedModel = obj.model.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
@@ -177,7 +177,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             % Debug:
             % fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
           end
-        end
+        % end
       
         notEverythingEvaluated = (floor(lambda * obj.restrictedParam) > sum(isEvaled));
       end
@@ -315,11 +315,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       rmse = sqrt(sum((yReevalModel' - yReeval).^2))/length(yReeval);
       kendall = corr(yReevalModel, yReeval', 'type', 'Kendall');
 
-      [~, sort1] = sort(yModel1);
       yModel2 = yModel1;
       yModel2(phase1) = yReeval;
-      ranking2   = ranking(yModel2);
-      rankErr = errRankMuOnly(ranking2(sort1), obj.cmaesState.mu);
+      rankErr = errRankMu(yModel1, yModel2, obj.cmaesState.mu);
 
       % Debug:
       % fprintf('  model: %d pSmpls, reeval %d pts, RMSE= %.2e, Kendl= %.2f, rankErr= %.3f\n', ...
@@ -334,9 +332,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         yModel1AfterPresample = yModel1(obj.pop.phase ~= 0);
         xAfterPresample = obj.pop.x(:,obj.pop.phase ~= 0);
         yModel2AfterPresample = obj.retrainedModel.predict(xAfterPresample');
-        [~, sort1] = sort(yModel1AfterPresample);
-        ranking2   = ranking(yModel2AfterPresample);
-        rankErr = errRankMuOnly(ranking2(sort1), obj.cmaesState.mu);
+        rankErr = errRankMu(yModel1AfterPresample, yModel2AfterPresample, obj.cmaesState.mu);
         % Debug:
         % fprintf('  2 models rank error: %.3f                  %s\n', rankErr, decorateKendall(1-rankErr*2));
       else
@@ -378,9 +374,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       kendall = corr(yPredict, yTest, 'type', 'Kendall');
       rmse = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
 
-      [~, sort1] = sort(yTest);
-      ranking2   = ranking(yPredict);
-      errRank = errRankMuOnly(ranking2(sort1), obj.cmaesState.mu);
+      errRank = errRankMu(yTest, yPredict, obj.cmaesState.mu);
 
       % Debug:
       % fprintf('  test RMSE= %.2e, Kendall= %.3f, rankErr= %.3f %s\n', ...
