@@ -91,13 +91,15 @@ function [efes, funs, dims, stats] = loadEFEs(path)
         stats.medians(row, i) = median(efes{i}{f,d});
         stats.uquart(row, i)   = quantile(efes{i}{f,d}, 0.75);
         stats.lquart(row, i)   = quantile(efes{i}{f,d}, 0.25);
-
-        % ranking of the medians and quartiles among algoritm settings
-        stats.median_ranks(row, :) = ranking(stats.medians(row, :));
-        stats.uquart_ranks(row, :)  = ranking(stats.uquart(row, :));
-        stats.lquart_ranks(row, :)  = ranking(stats.lquart(row, :));
       end
     end
+  end
+
+  % ranking of the medians and quartiles among algoritm settings
+  for r = 1:size(stats.medians, 1)
+    stats.median_ranks(r, :) = ranking(stats.medians(r, :));
+    stats.uquart_ranks(r, :)  = ranking(stats.uquart(r, :));
+    stats.lquart_ranks(r, :)  = ranking(stats.lquart(r, :));
   end
 
   % summarize and sort the rankings
@@ -113,6 +115,7 @@ function [efes, funs, dims, stats] = loadEFEs(path)
         stats.median_ranks(:,stats.sort_median_idx(1:10))]);
 
   disp('');
+
   disp('ID''s of the best 10 settings:');
   stats.best_ids = [];
   for i = 1:size(stats.medians,1)
