@@ -70,8 +70,8 @@ function [rankTable, ranks] = createEFETable(data, varargin)
   ranks = cell(nFunc, nDims);
   for f = 1:nFunc
     for d = 1:nDims
-      % init
-      ranks{f,d} = zeros(nQuantiles, numOfData);
+      % default value is the average rank
+      ranks{f,d} = (numOfData+1)/2 * ones(nQuantiles, numOfData);
       notEmptyData = inverseIndex(arrayfun(@(x) ~any(isnan(data_stats{x}{f,d})), 1:numOfData));
       for q = 1:nQuantiles
         thisData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}(q), notEmptyData, 'UniformOutput', false));

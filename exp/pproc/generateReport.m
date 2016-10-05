@@ -46,7 +46,9 @@ function generateReport(expFolder, varargin)
   expName  = cell(nFolders, 1);
   BBfunc   = cell(nFolders, 1);
   dims     = cell(nFolders, 1);
-  showEval = [25, 50, 100, 200];
+  % evaluations and quantiles to show
+  showEval     = [25, 50, 100, 200];
+  showQuantile = [0.25, 0.5, 0.75];
   % load data
   for f = 1 : nFolders
     % parametrized experiment
@@ -164,6 +166,8 @@ function generateReport(expFolder, varargin)
   fprintf(FID, '\n');
   fprintf(FID, '%% evaluation settings\n');
   fprintf(FID, 'showEval = %s;\n', printStructure(showEval, FID, 'Format', 'value'));
+  fprintf(FID, '%% quantile settings\n');
+  fprintf(FID, 'showQuantile = %s;\n', printStructure(showQuantile, FID, 'Format', 'value'));
   fprintf(FID, '\n');
   fprintf(FID, '%% load algorithms for comparison\n');
   fprintf(FID, '[algData, algNames, algColors] = loadCompAlg(fullfile(''exp'', ''pproc'', ''compAlgMat.mat''), funcSet);\n');
@@ -225,6 +229,30 @@ function generateReport(expFolder, varargin)
   fprintf(FID, '%% Ties of the 1st ranks are counted for all respective algorithms. \n');
   fprintf(FID, '%% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
   fprintf(FID, '\n');
+  fprintf(FID, 'efeTab = efeTable(expData, ''DataDims'', funcSet.dims, ...\n');
+  fprintf(FID, '                           ''DataFuns'', funcSet.BBfunc, ...\n');
+  fprintf(FID, '                           ''DataNames'', expAlgNames, ...\n');
+  fprintf(FID, '                           ''Quantiles'', showQuantile);\n');
+  fprintf(FID, '\n');
+  fprintf(FID, '%%%%\n');
+  fprintf(FID, '%%\n');
+  fprintf(FID, '%% *Table 2:* Sums of ranks of the expected number of function evaluations ($\\textrm{EFE}$)\n');
+  fprintf(FID, '%% of all tested algorithms from %d benchmark functions \n', length(BBfunc));
+  fprintf(FID, '%% for different quantiles q = %s \n', printStructure(showQuantile, FID, 'Format', 'value'));
+  fprintf(FID, '%% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
+  fprintf(FID, '%%\n');
+  fprintf(FID, '%% $\\textrm{EFE}$ is calculated as follows:\n');
+  fprintf(FID, '%%\n');
+  fprintf(FID, '%% $$1)\\ f_{\\textrm{min}} < \\Delta f_T \\qquad \\textrm{EFE} = \\#\\textrm{FE/D}\\,,$$\n');
+  fprintf(FID, '%%\n');
+  fprintf(FID, '%% $$2)\\ f_{\\textrm{min}} \\geq \\Delta f_T \\qquad \\textrm{EFE} = \n');
+  fprintf(FID, '%% \\textrm{FE/D}_\\textrm{max} \\cdot (1 + \\frac{1}{9}\\log \\frac{f_{\\textrm{min}}}{\\Delta f_T})\\,,$$\n');
+  fprintf(FID, '%%\n');
+  fprintf(FID, '%% where $f_{\\textrm{min}}$ is the best reached function value, $\\Delta f_T\n');
+  fprintf(FID, '%% = 10^{-8}$ is target value, $\\textrm{FE/D}$ are function evaluations\n');
+  fprintf(FID, '%% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = 250$.\n');
+  fprintf(FID, '%% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
+  fprintf(FID, '%%\n');
   fprintf(FID, 'for f = funcSet.BBfunc\n');
   fprintf(FID, '  %%%% \n');
   fprintf(FID, '  close all\n');
@@ -261,7 +289,7 @@ function generateReport(expFolder, varargin)
   fprintf(FID, '  \n');
   fprintf(FID, '  %%%%\n');
   fprintf(FID, '  %%\n');
-  fprintf(FID, '  %% *Table 2:* Counts of the 1st ranks of all compared algorithms \n');
+  fprintf(FID, '  %% *Table 3:* Counts of the 1st ranks of all compared algorithms \n');
   fprintf(FID, '  %% from %d benchmark functions \n', length(BBfunc));
   fprintf(FID, '  %% according to the lowest achieved ${\\Delta_f}^\\textrm{med}$ for different \n');
   fprintf(FID, '  %% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
@@ -269,6 +297,30 @@ function generateReport(expFolder, varargin)
   fprintf(FID, '  %% Ties of the 1st ranks are counted for all respective algorithms. \n');
   fprintf(FID, '  %% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
   fprintf(FID, '  \n');
+  fprintf(FID, '  efeTab = efeTable(data, ''DataDims'', funcSet.dims, ...\n');
+  fprintf(FID, '                          ''DataFuns'', funcSet.BBfunc, ...\n');
+  fprintf(FID, '                          ''DataNames'', datanames, ...\n');
+  fprintf(FID, '                          ''Quantiles'', showQuantile);\n');
+  fprintf(FID, '  \n');
+  fprintf(FID, '  %%%%\n');
+  fprintf(FID, '  %%\n');
+  fprintf(FID, '  %% *Table 4:* Sums of ranks of the expected number of function evaluations ($\\textrm{EFE}$)\n');
+  fprintf(FID, '  %% of all compared algorithms from %d benchmark functions \n', length(BBfunc));
+  fprintf(FID, '  %% for different quantiles q = %s \n', printStructure(showQuantile, FID, 'Format', 'value'));
+  fprintf(FID, '  %% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
+  fprintf(FID, '  %%\n');
+  fprintf(FID, '  %% $\\textrm{EFE}$ is calculated as follows:\n');
+  fprintf(FID, '  %%\n');
+  fprintf(FID, '  %% $$1)\\ f_{\\textrm{min}} < \\Delta f_T \\qquad \\textrm{EFE} = \\#\\textrm{FE/D}\\,,$$\n');
+  fprintf(FID, '  %%\n');
+  fprintf(FID, '  %% $$2)\\ f_{\\textrm{min}} \\geq \\Delta f_T \\qquad \\textrm{EFE} = \n');
+  fprintf(FID, '  %% \\textrm{FE/D}_\\textrm{max} \\cdot (1 + \\frac{1}{9}\\log \\frac{f_{\\textrm{min}}}{\\Delta f_T})\\,,$$\n');
+  fprintf(FID, '  %%\n');
+  fprintf(FID, '  %% where $f_{\\textrm{min}}$ is the best reached function value, $\\Delta f_T\n');
+  fprintf(FID, '  %% = 10^{-8}$ is target value, $\\textrm{FE/D}$ are function evaluations\n');
+  fprintf(FID, '  %% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = 250$.\n');
+  fprintf(FID, '  %% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
+  fprintf(FID, '  %%\n');
   fprintf(FID, '  for f = funcSet.BBfunc\n');
   fprintf(FID, '    %%%% \n');
   fprintf(FID, '    close all\n');

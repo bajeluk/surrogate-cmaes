@@ -52,19 +52,20 @@ function [table, ranks] = efeTable(data, varargin)
   % print table
   nEvals = length(quantiles);
   nDims = length(dims);
-  maxLengthData = max(cellfun(@length, datanames));
-  tableSize = [11*(2+maxLengthData) + nEvals*(nDims+1)*40, 20*(numOfData+2)];
+  maxLengthData = max([cellfun(@length, datanames), length('Quantile')]);
+  colWidth = 40;
+  tableSize = [11*(2+maxLengthData) + nEvals*(nDims+1)*colWidth, 20*(numOfData+2)];
 
   quantileRow = repmat(quantiles, [1, length(dims)+1]);
   publicTable = [quantileRow; table];
   colBase = arrayfun(@(x) repmat({[num2str(x), 'D']}, [1, nEvals]), dims, 'UniformOutput', false);
   colName = [[colBase{:}], repmat({'SUM'}, [1, nEvals])];
-  rowName = [{'FE/D'}, datanames];
+  rowName = [{'Quantile'}, datanames];
   f = figure('Position', [0, 0, tableSize]);
   table = uitable(f, 'Data', publicTable, ...
              'ColumnName', colName, ...
              'RowName', rowName, ...
-             'ColumnWidth', {40}, ...
+             'ColumnWidth', {colWidth}, ...
              'Position', [1, 1, tableSize]);
 
 end
