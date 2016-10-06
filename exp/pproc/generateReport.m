@@ -345,7 +345,6 @@ function generateReport(expFolder, varargin)
   fprintf(FID, '  han = relativeFValuesPlot(data, ...\n');
   fprintf(FID, '                          ''DataDims'', funcSet.dims, ...\n');
   fprintf(FID, '                          ''DataFuns'', funcSet.BBfunc, ...\n');
-  fprintf(FID, '                          ''PlotFuns'', f, ...\n');
   fprintf(FID, '                          ''AggregateDims'', false, ...\n');
   fprintf(FID, '                          ''AggregateFuns'', true, ...\n');
   fprintf(FID, '                          ''DataNames'', datanames, ...\n');
