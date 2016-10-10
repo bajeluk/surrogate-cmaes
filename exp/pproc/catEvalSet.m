@@ -53,17 +53,22 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   % experiment
   expPathFieldID = cellfun(@(x) isfield(x, 'experimentPath'), allSettings);
   allSettings(expPathFieldID) = cellfun(@(x) rmfield(x, 'experimentPath'), allSettings(expPathFieldID), 'UniformOutput', false);
+  % find equal settings
+  nAllSettings = length(allSettings);
+  equalSettings = logical(eye(nAllSettings));
+  for s = 1 : (nAllSettings - 1)
+    for t = (s + 1) : nAllSettings
+      equalSettings(s, t) = isequal(allSettings{s}, allSettings{t});
+    end
+  end
   % find unique settings
-  %TODO: efective finding of unique settings and ID's. Sth like:
-  % help_settings = settings;
-  % notEmptySet = ~cellfun(@isempty, help_settings);
-  % while any(notEmptySet)
-  %   settingsID(getStructIndex(settings, settings{find(notEmptySet, 1, 'first')})) = s;
-  %   help_settings(settingsID == s) = {};
-  %   notEmptySet = ~cellfun(@isempty, help_settings);
-  % end
-  for s = length(allSettings):-1:1
-    settingsID(getStructIndex(allSettings, allSettings{s})) = s;
+  notUsed = true(1, nAllSettings);
+  s = 0;
+  while any(notUsed)
+    s = s + 1;
+    r = find(notUsed, 1, 'first');
+    settingsID(notUsed & equalSettings(r, :)) = s;
+    notUsed = notUsed & ~equalSettings(r, :);
   end
   
   % concatenate evaluations from different experiments and with the same

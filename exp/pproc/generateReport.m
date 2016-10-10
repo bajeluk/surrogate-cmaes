@@ -394,6 +394,11 @@ function reportFile = generateReport(expFolder, varargin)
                                           'showCode', false);
     fprintf('Report published to %s\n', publishedReport)
   end
+  
+  % return report file only if needed
+  if nargout < 1
+    clear reportFile
+  end
 
 end
 
