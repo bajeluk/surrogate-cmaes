@@ -3,11 +3,11 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
 % [ ] define different updateRate for positive and negative trend
 % [ ] weightedSum aggregation of historical errors
 % [ ] faster increased updates then decreased (is it really ok?)
-    
+
   properties
     origParams
     lastRatio
-    
+
     surrogateOpts
     ec
 
@@ -30,8 +30,8 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
     historyAggRankDiffs = [];
     fh
   end
-  
-  methods 
+
+  methods
     % get new value of parameter
     function ratio = update(obj, modelY, origY, ~, ~, countiter, varargin)
       % ratio is updated according to the following formula
@@ -46,11 +46,11 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       %   constructed and reasonable modelY values should be passed here
       % - if update() is not called in any particular generation(s),
       %   it results in NaN entry for that generation(s)
-      
+
       if (nargin >= 7) obj.ec = varargin{1}; end
       obj.rankDiffs((obj.lastUpdateGeneration+1):(countiter-1)) = NaN;
       obj.historyRatios((obj.lastUpdateGeneration+1):(countiter-1)) = obj.lastRatio;
-      
+
       rankErr = NaN;
       if (isempty(modelY) || (max(modelY) - min(modelY)) == 0 ...
           || (max(origY) - min(origY)) == 0)
@@ -59,7 +59,7 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
         rankErr = errRankMu(modelY, origY, obj.ec.cmaesState.mu);
         obj.rankDiffs(countiter) = rankErr;
       end
-      
+
       % Decide the best new ratio based on aggregated rankDiff error
       %
       % for simplicity, set either
@@ -86,7 +86,7 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       % final ratio is exponentially weighted average:   r = (1-a) * r_old  +  a * r_new
       ratio = (1-obj.updateRate) * lastGenRatio + obj.updateRate * obj.newRatio;
       ratio = min(max(ratio, obj.minRatio), obj.maxRatio);
-      
+
       obj.historyRatios(countiter) = ratio;
       obj.lastRatio = ratio;
       obj.lastUpdateGeneration = countiter;
@@ -119,16 +119,16 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       % lowest and highest rank which affect gain util it saturates to 0 or 1
       obj.lowRank  = defopts(obj.surrogateOpts, 'DTAdaptive_lowRank', 0.1);
       obj.highRank = defopts(obj.surrogateOpts, 'DTAdaptive_highRank', 0.5);
-      
+
       obj.rankDiffs = [];
       obj.lastUpdateGeneration = 0;
-      
-      if obj.plotDebug 
+
+      if obj.plotDebug
         figure;
         obj.fh = axes;
       end
     end
-    
+
     function value = aggregateWithHistory(obj)
       % aggregate last criterion values into one value
       %
@@ -170,14 +170,14 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
         error(sprintf('OrigRatioUpdaterRankDiff: aggregateType ''%s'' not implemented.', obj.aggregateType));
       end
     end
-    
+
     function value = getLastRatio(obj, countiter)
       % TODO: why there is this "+ 1"?!
       if countiter > obj.lastUpdateGeneration + 1
         obj.update([], [], [], [], countiter);
       end
       value = obj.lastRatio;
-      
+
       if obj.plotDebug
           scatter(1:length(obj.history), obj.history, 140, '.');
           hold on;
@@ -185,9 +185,9 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
           scatter(1:length(obj.historyRatios), obj.historyRatios, 140, '.');
           legend('rankDiff', 'Trend', 'Ratio');
           hold off;
-          pause(0.0001);    
+          pause(0.0001);
       end
     end
-    
+
   end
 end

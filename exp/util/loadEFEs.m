@@ -75,7 +75,7 @@ function [efes, funs, dims, stats] = loadEFEs(path)
           efes{iAlg}{funId, dimId} = zeros(1, nInstances);
           efes{iAlg}{funId, dimId}(reached)  = evals(reached);
           efes{iAlg}{funId, dimId}(~reached) = maxfunevals * (1 + 1/9 * log( fbests(~reached) / TARGET ) );
-          
+
           clear('res');
 
         catch
