@@ -13,7 +13,7 @@ function settings = settings2struct(varargin)
 %       a: 1
 %       b: 2
 
-  if nargin < 1
+  if nargin < 1 || isempty(varargin) || isempty(varargin{1})
     settings = {};
     return
   end

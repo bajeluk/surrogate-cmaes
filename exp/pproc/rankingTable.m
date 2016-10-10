@@ -10,13 +10,12 @@ function [table, ranks] = rankingTable(data, varargin)
 %     'DataNames'   - cell array of data names (e.g. names of algorithms)
 %     'DataDims'    - dimensions of data
 %     'DataFuns'    - functions of data
+%     'Evaluations' - evaluations chosen to count
 %     'Format'      - table format | ('tex', 'figure')
+%     'ResultFile'  - file containing resulting table
+%     'Statistic'   - statistic of data | string or handle (@mean, @median)
 %     'TableDims'   - dimensions chosen to count
 %     'TableFuns'   - functions chosen to count
-%     'Evaluations' - evaluations chosen to count
-%     'Statistic'   - statistic of data | string or handle (@mean, 
-%                       @median)
-%     'ResultFile'  - file containing resulting table
 %
 % Output:
 %   table - table of rankings

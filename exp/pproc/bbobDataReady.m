@@ -36,6 +36,10 @@ function data = bbobDataReady(datapath, funcSet)
   
   infoList = [];
   % load results
+  [~, workdir] = fileparts(pwd());
+  if (~strcmp(workdir, 'surrogate-cmaes'))
+    cd([fileparts(mfilename('fullpath')) filesep '..' filesep '..']);
+  end
   for dat = 1:nData
     assert(isdir(datapath{dat}), '%s is not a folder', datapath{dat})
     infoList = [infoList; searchFile(datapath{dat}, '*.info')];

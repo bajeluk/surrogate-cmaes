@@ -28,7 +28,7 @@ function [algData, algNames, algColors] = loadCompAlg(path, funcSet)
   
   % update if some fields are missing
   algorithms = alg.algorithm;
-  if ~(isfield(algorithms, 'BBfunc') || isfield(algorithms, 'dims'))
+  if (~isfield(algorithms, 'BBfunc') || isfield(algorithms, 'dims'))
     updateAlg(path)
     % load again
     try

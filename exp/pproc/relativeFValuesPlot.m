@@ -21,6 +21,7 @@ function handle = relativeFValuesPlot(data, varargin)
 %                       (e.g. [2, 3, 5, 10])
 %     'DataFuns'      - functions of data | integer vector
 %                       (e.g. [1, 2, 3, 4, 5, 11, 12])
+%     'FunctionNames' - show function names in header | boolean
 %     'LegendOption'  - legend settings:
 %                         'show'  - show legend
 %                         'hide'  - do not show legend
@@ -30,6 +31,7 @@ function handle = relativeFValuesPlot(data, varargin)
 %                       LineSpec), to set colors use 'Colors' settings | 
 %                       cell array of string
 %                       (e.g. 3 algorithms: {'-.', '-o', '.'})
+%     'LineWidth'     - line width of individual lines | double
 %     'MaxEval'       - maximum of evaluations divided by dimension |
 %                       integer
 %     'MinValue'      - minimal possible function value | double
@@ -75,6 +77,7 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.colors = colors;
   plotSet.aggDims = defopts(settings, 'AggregateDims', false);
   plotSet.aggFuns = defopts(settings, 'AggregateFuns', false);
+  plotSet.funcNames = defopts(settings, 'FunctionNames', false);
   plotSet.minValue = defopts(settings, 'MinValue', 1e-8);
   plotSet.maxEval = defopts(settings, 'MaxEval', 250);
   statistic = defopts(settings, 'Statistic', @mean);
@@ -86,6 +89,7 @@ function handle = relativeFValuesPlot(data, varargin)
     warning('Number of line specification strings and number of data are different. Setting default values.')
     plotSet.lineSpec = defaultLine;
   end
+  plotSet.lineWidth = defopts(settings, 'LineWidth', 1);
   plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
@@ -296,12 +300,14 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   datanames = settings.datanames;
   aggFuns = settings.aggFuns;
   aggDims = settings.aggDims;
+  funcNames = settings.funcNames;
   BBfunc = settings.BBfunc;
   dims = settings.dims;
   lineSpec = settings.lineSpec;
-
-  % default value
-  medianLineWidth = 1;
+  medianLineWidth = settings.lineWidth;
+  if length(medianLineWidth) < length(relativeData)
+    medianLineWidth = medianLineWidth(1)*ones(1, length(relativeData));
+  end
 
   % find not empty data
   for dat = 1:length(relativeData)
@@ -311,20 +317,22 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   if any(notEmptyData)
     nEmptyId = inverseIndex(notEmptyData);
     nUsefulData = sum(notEmptyData);
+    lineSpec = lineSpec(notEmptyData);
+    medianLineWidth = medianLineWidth(notEmptyData);
     % find minimal number of function evaluations to plot
     evaldim = 1:min([arrayfun(@(x) length(relativeData{nEmptyId(x)}{fId, dId}), 1:nUsefulData), maxEval]);
     h = zeros(1, nUsefulData);
     ftitle = cell(1, nUsefulData);
     % plot first line 
     h(1) = plot(evaldim, relativeData{nEmptyId(1)}{fId, dId}(evaldim), ...
-      lineSpec{1}, 'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(1), :));
+      lineSpec{1}, 'LineWidth', medianLineWidth(1), 'Color', colors(nEmptyId(1), :));
     ftitle{1} = datanames{nEmptyId(1)};
     hold on
     grid on
     % plot rest of lines
     for dat = 2:nUsefulData
       h(dat) = plot(evaldim, relativeData{nEmptyId(dat)}{fId, dId}(evaldim), ...
-        lineSpec{dat}, 'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(dat), :));
+        lineSpec{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(nEmptyId(dat), :));
       ftitle{dat} = datanames{nEmptyId(dat)};
     end
     % legend settings
@@ -347,6 +355,9 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   titleString = '';
   if ~aggFuns
     titleString = ['f', num2str(BBfunc(fId))];
+    if funcNames
+      titleString = [titleString, ' ', functionName(BBfunc(fId))];
+    end
   end
   if ~aggDims
     titleString = [titleString, ' ', num2str(dims(dId)),'D'];
@@ -393,4 +404,69 @@ function h = soloLegend(colors, names, lineWidth)
   line([fa(1), fb(1)], [fb(2), fb(2)], 'Color', 'k') %  
   
   hold off
+end
+
+function name = functionName(fId)
+% returns name of function fId
+  switch fId
+    % separable functions
+    case 1
+      name = 'Sphere';
+    case 2
+      name = 'Ellipsoidal';
+    case 3 	
+      name = 'Rastrigin';
+    case 4
+      name = 'Büche-Rastrigin';
+    case 5
+      name = 'Linear Slope';
+      
+    % functions with low or moderate conditioning
+    case 6
+      name = 'Attractive Sector';
+    case 7
+      name = 'Step Ellipsoidal';
+    case 8
+      name = 'Rosenbrock, original';
+    case 9 
+      name = 'Rosenbrock, rotated';
+      
+    % functions with high conditioning and unimodal
+    case 10
+      name = 'Ellipsoidal, high conditioning';
+    case 11
+      name = 'Discus';
+    case 12
+      name = 'Bent Cigar';
+    case 13
+      name = 'Sharp Ridge';
+    case 14
+      name = 'Different Powers';
+      
+    % multi-modal functions with adequate global structure
+    case 15
+      name = 'Rastrigin, multi-modal';
+    case 16
+      name = 'Weierstrass';
+    case 17
+      name = 'Schaffers F7';
+    case 18
+      name = 'Schaffers F7, ill-conditioned';
+    case 19
+      name = 'Composite Griewank-Rosenbrock F8F2';
+    
+    % multi-modal functions with weak global structure
+    case 20
+      name = 'Schwefel';
+    case 21
+      name = 'Gallagher''s Gaussian 101-me Peaks';
+    case 22
+      name = 'Gallagher''s Gaussian 21-hi Peaks';
+    case 23
+      name = 'Katsuura';
+    case 24
+      name = 'Lunacek bi-Rastrigin';
+    otherwise
+      name = '';
+  end
 end
