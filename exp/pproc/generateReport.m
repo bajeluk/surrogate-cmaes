@@ -1,24 +1,30 @@
-function generateReport(expFolder, varargin)
-% generateReport(expFolder, settings) generates report of experiments 
-% in expFolder.
+function reportFile = generateReport(expFolder, varargin)
+% reportFile = generateReport(expFolder, settings) generates report of 
+% experiments in expFolder.
 %
 % Input:
 %   expFolder - folder or folders containing experiments (i.e. containing
 %               scmaes_params.mat file) | string or cell-array of strings
-%   settings - pairs of property (string) and value, or struct with 
-%              properties as fields:
+%   settings  - pairs of property (string) and value, or struct with 
+%               properties as fields:
 %
 %     'Description' - description of the report | string
 %     'Publish'     - resulting format of published report similar to 
 %                     function publish (see help publish) | string
 %                   - to disable publishing set option to 'off' (default)
 %
+% Output:
+%   reportFile - name of m-file containing report | string
+%
 % See Also:
 %   relativeFValuesPlot, publish
 
 %TODO:
 %  - generate report for chosen algorithms
- 
+  
+  if nargout > 0
+    reportFile = [];
+  end
   if nargin < 1
     help generateReport
     return
@@ -368,6 +374,7 @@ function generateReport(expFolder, varargin)
   
   % close report file
   fclose(FID);
+  fprintf('Report generated to %s\n', reportFile)
   
   % copy report file to all folders of parametrized algorithms
   parFolders = expFolder(existParFile);
@@ -381,7 +388,7 @@ function generateReport(expFolder, varargin)
 
   % publish report file
   if ~strcmpi(publishOption, 'off')
-    fprintf('Publishing %s\nThis may take a few minutes...\n', reportFile)
+    fprintf('Publishing...\nThis may take a few minutes...\n')
     addpath(mainPpFolder)
     publishedReport = publish(reportFile, 'format', publishOption, ...
                                           'showCode', false);
