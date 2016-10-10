@@ -1,11 +1,11 @@
-function err = errRankMu(y1, y2, mu)
 %ERRRANKMU Difference in rankings between the vectors y1 and y2, counting only the 'mu' first ranked elements (of y2)
 %
 % err = ERRRANKMU(y1, y2, mu)
 %       returns the number of ordering errors between the vectors y1 and 
 %       y2, but rank-errors of only the first mu ranks (ordinals according to the second
 %       vectory y2) are calculated
-
+%
+function err = errRankMu(y1, y2, mu)
   [~, sort1] = sort(y1);
   ranking2   = ranking(y2);
   r = ranking2(sort1);

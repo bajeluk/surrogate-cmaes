@@ -1,3 +1,11 @@
+%LOADEFES -- loads EFE values from results *.mat files
+%
+% [efes, funs, dims, stats] = loadEFEs(path)
+% Goes into the directory @path, loads corresponding 'scmaes_params.mat' file
+% with definition of settings. Then loads each of the results *.mat file,
+% takes the EFE values from the corresponding results and returns all such values
+% in the @efes return paramter. Different statistics are returned in @stats return
+% parameter.
 function [efes, funs, dims, stats] = loadEFEs(path)
   TARGET = 1e-8;
 
@@ -49,7 +57,10 @@ function [efes, funs, dims, stats] = loadEFEs(path)
 
         % filename of the file with results
         expFileID = [num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
-        resultsFile = [path filesep exp_id '_results_' expFileID];
+        resultsFile = [path filesep exp_id '_results_' expFileID '.mat'];
+        if (~exist(resultsFile, 'file'))
+          continue;
+        end
 
         try
           % try to load results

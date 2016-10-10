@@ -17,7 +17,7 @@ classdef ObserverFactory
         % or an empty array
         params = [];
         if (~isempty(observerParams))
-            params = observerParams{i};
+          params = observerParams{i};
         end
 
         switch observerName
