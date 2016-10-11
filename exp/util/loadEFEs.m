@@ -121,17 +121,18 @@ function [efes, funs, dims, stats] = loadEFEs(path)
   stats.sum_lquart_ranks = sum(stats.lquart_ranks, 1);
   [stats.sort_lquart_ranks, stats.sort_lquart_idx] = sort(stats.sum_lquart_ranks);
 
-  disp('The best 10 settings (ids upper, sum-ranks of f/d''s lower):');
-  disp([stats.sort_median_idx(1:10); ...
-        stats.median_ranks(:,stats.sort_median_idx(1:10))]);
+  if (length(stats.sort_median_idx) >= 10)
+    disp('The best 10 settings (ids upper, sum-ranks of f/d''s lower):');
+    disp([stats.sort_median_idx(1:10); ...
+          stats.median_ranks(:,stats.sort_median_idx(1:10))]);
+    disp('');
 
-  disp('');
-
-  disp('ID''s of the best 10 settings:');
-  stats.best_ids = [];
-  for i = 1:size(stats.medians,1)
-    stats.best_ids = [stats.best_ids (stats.sort_median_idx(1:10) + (i-1)*nAlgs)];
+    disp('ID''s of the best 10 settings:');
+    stats.best_ids = [];
+    for i = 1:size(stats.medians,1)
+      stats.best_ids = [stats.best_ids (stats.sort_median_idx(1:10) + (i-1)*nAlgs)];
+    end
+    stats.best_ids = sort(stats.best_ids);
+    disp(stats.best_ids);
   end
-  stats.best_ids = sort(stats.best_ids);
-  disp(stats.best_ids);
 end
