@@ -4,6 +4,8 @@ classdef ModelFactory
       switch lower(str)
         case 'gp'
           obj = GpModel(modelOptions, xMean);
+        case 'fitrgp'
+          obj = GprModel(modelOptions, xMean);
         case 'rf'
           obj = RfModel(modelOptions, xMean);
         case 'bbob'
