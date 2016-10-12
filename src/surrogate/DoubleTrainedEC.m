@@ -99,11 +99,13 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % train the model 
       newModel = newModel.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
       if (~newModel.isTrained())
-        % model cannot be trained :( -- return with orig-evaluated population
-        [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-            = obj.finalizeGeneration(sampleOpts, varargin);
-        % TODO: try the old model instead just orig-evaluating all the population
-        return;
+        if isempty(obj.model)
+          % model cannot be trained :( -- return with orig-evaluated population
+          [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
+              = obj.finalizeGeneration(sampleOpts, varargin);
+          % TODO: try the old model instead just orig-evaluating all the population
+          return;
+        end
       else
         obj.model = newModel;
       end
@@ -123,66 +125,67 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       while (notEverythingEvaluated)
 
         doubleTrainIteration = doubleTrainIteration + 1;
-        nPoints = ceil(nLambdaRest * obj.restrictedParam) - sum(isEvaled);
+        nPoints = getProbNumber(nLambdaRest * obj.restrictedParam) - sum(isEvaled);
         obj.stats.lastUsedOrigRatio = obj.restrictedParam;
         % Debug:
         % fprintf('ratio: %.2f | nPoints: %d | iter: %d\n', obj.restrictedParam, nPoints, obj.cmaesState.countiter);
 
-        reevalID = false(1, nLambdaRest);
-        reevalID(~isEvaled) = obj.choosePointsForReevaluation(nPoints, ...
-            xExtend(:, ~isEvaled), modelOutput(~isEvaled), yExtendModel(~isEvaled));
-        xToReeval = xExtendValid(:, reevalID);
-        nToReeval = sum(reevalID);
+        if nPoints > 0
+          reevalID = false(1, nLambdaRest);
+          reevalID(~isEvaled) = obj.choosePointsForReevaluation(nPoints, ...
+              xExtend(:, ~isEvaled), modelOutput(~isEvaled), yExtendModel(~isEvaled));
+          xToReeval = xExtendValid(:, reevalID);
+          nToReeval = sum(reevalID);
 
-        % original-evaluate the chosen points
-        [yNew, xNew, xNewValid, zNew, obj.counteval] = ...
-            sampleCmaesOnlyFitness(xExtend(:, reevalID), xToReeval, zExtend(:, reevalID), ...
-            obj.cmaesState.sigma, nToReeval, obj.counteval, obj.cmaesState, sampleOpts, ...
-            varargin{:});
-        xExtendValid(:, reevalID) = xNewValid;
-        xExtend(:, reevalID) = xNew;
-        zExtend(:, reevalID) = zNew;
-        yOrig(reevalID) = yNew;
-        isEvaled = isEvaled | reevalID;
-        % Debug:
-        % fprintf('counteval: %d\n', obj.counteval)
+          % original-evaluate the chosen points
+          [yNew, xNew, xNewValid, zNew, obj.counteval] = ...
+              sampleCmaesOnlyFitness(xExtend(:, reevalID), xToReeval, zExtend(:, reevalID), ...
+              obj.cmaesState.sigma, nToReeval, obj.counteval, obj.cmaesState, sampleOpts, ...
+              varargin{:});
+          xExtendValid(:, reevalID) = xNewValid;
+          xExtend(:, reevalID) = xNew;
+          zExtend(:, reevalID) = zNew;
+          yOrig(reevalID) = yNew;
+          isEvaled = isEvaled | reevalID;
+          % Debug:
+          % fprintf('counteval: %d\n', obj.counteval)
 
-        phase = 1;        % re-evaluated points
-        obj.pop = obj.pop.addPoints(xNewValid, yNew, xNew, zNew, nToReeval, phase);
+          phase = 1;        % re-evaluated points
+          obj.pop = obj.pop.addPoints(xNewValid, yNew, xNew, zNew, nToReeval, phase);
 
-        % update the Archive
-        obj.archive.save(xNewValid', yNew', obj.cmaesState.countiter);
+          % update the Archive
+          obj.archive.save(xNewValid', yNew', obj.cmaesState.countiter);
 
-        % re-train the model again with the new original-evaluated points
-        % if ~all(isEvaled)
-          xTrain = [xTrain; xNewValid'];
-          yTrain = [yTrain; yNew'];
-          obj.retrainedModel = obj.model.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
-          if (obj.useDoubleTraining && obj.retrainedModel.isTrained())
-            % origRatio adaptivity
-            if (~isempty(obj.origRatioUpdater.lastUpdateGeneration) ...
-                && obj.origRatioUpdater.lastUpdateGeneration > obj.cmaesState.countiter)
-              % internal CMA-ES restart, create a new origRatioUpdater
-              obj.origRatioUpdater = OrigRatioUpdaterFactory.createUpdater(obj, obj.surrogateOpts);
+          % re-train the model again with the new original-evaluated points
+          % if ~all(isEvaled)
+            xTrain = [xTrain; xNewValid'];
+            yTrain = [yTrain; yNew'];
+            obj.retrainedModel = obj.model.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
+            if (obj.useDoubleTraining && obj.retrainedModel.isTrained())
+              % origRatio adaptivity
+              if (~isempty(obj.origRatioUpdater.lastUpdateGeneration) ...
+                  && obj.origRatioUpdater.lastUpdateGeneration > obj.cmaesState.countiter)
+                % internal CMA-ES restart, create a new origRatioUpdater
+                obj.origRatioUpdater = OrigRatioUpdaterFactory.createUpdater(obj, obj.surrogateOpts);
+              end
+              yFirstModel  = obj.model.predict(xExtendValid');
+              yExtendModel = obj.retrainedModel.predict(xExtendValid');
+              obj.restrictedParam = obj.origRatioUpdater.update(...
+                  yFirstModel', yExtendModel', dim, lambda, obj.cmaesState.countiter, obj);
+              obj.stats.adaptRankDiff = obj.origRatioUpdater.rankDiffs(end);
+              obj.stats.adaptGain = obj.origRatioUpdater.gain;
+              obj.stats.adaptNewRatio = obj.origRatioUpdater.newRatio;
+              % Debug:
+              % fprintf('OrigRatio: %f\n', obj.origRatioUpdater.getLastRatio(obj.cmaesState.countiter));
+
+              % Debug:
+              % fprintf('UPDATE: ratio: %.2f | rankDiff: %.2f | iter: %d\n', obj.restrictedParam, obj.origRatioUpdater.rankDiffs(end), obj.cmaesState.countiter);
+            else
+              % Debug:
+              % fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
             end
-            yFirstModel  = obj.model.predict(xExtendValid');
-            yExtendModel = obj.retrainedModel.predict(xExtendValid');
-            obj.restrictedParam = obj.origRatioUpdater.update(...
-                yFirstModel', yExtendModel', dim, lambda, obj.cmaesState.countiter, obj);
-            obj.stats.adaptRankDiff = obj.origRatioUpdater.rankDiffs(end);
-            obj.stats.adaptGain = obj.origRatioUpdater.gain;
-            obj.stats.adaptNewRatio = obj.origRatioUpdater.newRatio;
-            % Debug:
-            % fprintf('OrigRatio: %f\n', obj.origRatioUpdater.getLastRatio(obj.cmaesState.countiter));
-
-            % Debug:
-            % fprintf('UPDATE: ratio: %.2f | rankDiff: %.2f | iter: %d\n', obj.restrictedParam, obj.origRatioUpdater.rankDiffs(end), obj.cmaesState.countiter);
-          else
-            % Debug:
-            % fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
-          end
-        % end
-      
+          % end
+        end
         notEverythingEvaluated = (doubleTrainIteration < obj.maxDoubleTrainIterations) ...
             && (floor(lambda * obj.restrictedParam) > sum(isEvaled));
       end
@@ -218,23 +221,25 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.stats.rmseValid      = NaN; % RMSE of the (2nd) model on the validation set
       obj.stats.kendallValid   = NaN; % Kendall of the (2nd) model on the validation set
       obj.stats.rankErrValid   = NaN; % rank error between true fitness and model pred.
-      obj.stats.fmin = min(obj.pop.y(1,(obj.pop.origEvaled == true)));
+      obj.stats.fmin = min(obj.pop.y(1,(origEvaled == true)));
 
       % model-related statistics
       if (~isempty(obj.model) && obj.model.isTrained() ....
-          && ~all(obj.pop.origEvaled))
+          && ~all(origEvaled))
         % predict the population by the first model
         yModel1 = obj.model.predict(obj.pop.x');
 
-        % calculate RMSE, Kendall's coeff. and ranking error
-        % between the original fitness and the first model's values
-        % of the re-evaluated point(s), i.e. (phase == 1)
-        [obj.stats.rmseReeval, obj.stats.kendallReeval, obj.stats.rankErrReeval] ...
-            = obj.reevalStatistics(yModel1);
+        if any(origEvaled)
+          % calculate RMSE, Kendall's coeff. and ranking error
+          % between the original fitness and the first model's values
+          % of the re-evaluated point(s), i.e. (phase == 1)
+          [obj.stats.rmseReeval, obj.stats.kendallReeval, obj.stats.rankErrReeval] ...
+              = obj.reevalStatistics(yModel1);
 
-        % get ranking error between the first and the second model
-        % (if the second model is trained)
-        obj.stats.rankErr2Models = obj.retrainStatistics(yModel1);
+          % get ranking error between the first and the second model
+          % (if the second model is trained)
+          obj.stats.rankErr2Models = obj.retrainStatistics(yModel1);
+        end
 
         % independent validation set statistics
         [obj.stats.rmseValid, obj.stats.kendallValid, obj.stats.rankErrValid, lastModel] ...
@@ -396,3 +401,17 @@ function res=myeval(s)
     res = s;
   end
 end
+
+function probNum = getProbNumber(exactNumber)
+% Calculates randomized natural number as follows:
+%   probNum = floor(exactNumber) + eps, 
+% where eps is 0 or 1. Probability that eps is 1 is equal to the remainder: 
+%   P[eps = 1] = exactNumber - floor(exactNumber).
+  fracN = exactNumber - floor(exactNumber);
+  plus = 0;
+  if (fracN > 0)
+    plus = (rand() < fracN);
+  end
+  probNum = floor(exactNumber) + plus;
+end
+ 
