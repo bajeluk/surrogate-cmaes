@@ -15,6 +15,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     modelArchive
     modelArchiveGenerations
     modelArchiveLength
+    acceptedModelAge            % how many generations old model is still OK (0 == only current)
+    modelAge                    % age of model in the number of generations (0 == current model)
+    oldModelAgeForStatistics    % age of model for gathering statistics of old models
   end
   
   methods 
@@ -34,12 +37,16 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           'rankErr2Models', NaN, ...    % rank error between prediction of two models
           'rmseValid', NaN, ...         % RMSE of the (2nd) model on the validation set
           'kendallValid', NaN, ...      % Kendall of the (2nd) model on the validation set
-          'rankErrValid', NaN ...       % rank error between true fitness and model pred.
-          ...                           %       on the validation set
+          'rankErrValid', NaN, ...      % rank error between true fitn. and model pred. on the validation set
+          'rmseOldModel', NaN, ...      % RMSE of old model on future orig points
+          'kendallOldModel', NaN, ...   % Kendall of old model on future orig points
+          'rankErrOldModel', NaN ...    % rank error between true fitness and model pred.
           );
       obj.modelArchiveLength = 5;
       obj.modelArchive = cell(1, obj.modelArchiveLength);
       obj.modelArchiveGenerations = (-1)*ones(1, obj.modelArchiveLength);
+      obj.acceptedModelAge = defopts(surrogateOpts, 'evoControlAcceptedModelAge', 2);
+      obj.oldModelAgeForStatistics = [3:5];
     end
 
     function [obj, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
@@ -53,6 +60,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.counteval  = counteval;
       obj.retrainedModel = [];
       obj.stats.nDataInRange = NaN;
+      obj.modelAge = 0;
       
       % prepare the final population to be returned to CMA-ES
       obj.pop = Population(lambda, dim);
@@ -60,12 +68,21 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       newModel = ModelFactory.createModel(obj.surrogateOpts.modelType, obj.surrogateOpts.modelOpts, obj.cmaesState.xmean');
 
       if (isempty(newModel))
-        % model could not be created :(. Use the standard CMA-ES.
-        [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-            = obj.finalizeGeneration(sampleOpts, varargin);
-        return;
+        oldModel = obj.getOldModel(0:obj.acceptedModelAge);
+        if (~isempty(oldModel))
+          newModel = oldModel;
+          obj.modelAge = (obj.cmaesState.countiter - oldModel.trainGeneration);
+        else
+          % model could not be created nor older is usable :(. Use the standard CMA-ES.
+          [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
+              = obj.finalizeGeneration(sampleOpts, varargin);
+          return;
+        end
       end
-      
+
+      % if a new model is used, find appropriate training set and train it:
+      if (obj.modelAge == 0)
+
       minTrainSize = newModel.getNTrainData();
 
       nArchivePoints = myeval(obj.surrogateOpts.evoControlTrainNArchivePoints);
@@ -84,23 +101,38 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       if (~ok)
         % not enough data for training model ==> use original pop
-        % TODO: try the old model instead just orig-evaluating all the population
-        [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-            = obj.finalizeGeneration(sampleOpts, varargin);
-        return;
+        oldModel = obj.getOldModel(0:obj.acceptedModelAge);
+        if (~isempty(oldModel))
+          newModel = oldModel;
+          obj.modelAge = (obj.cmaesState.countiter - oldModel.trainGeneration);
+        else
+          [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
+              = obj.finalizeGeneration(sampleOpts, varargin);
+          return;
+        end
       end
 
       % train the model 
       newModel = newModel.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
-      if (~newModel.isTrained())
-        % model cannot be trained :( -- return with orig-evaluated population
-        [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-            = obj.finalizeGeneration(sampleOpts, varargin);
-        % TODO: try the old model instead just orig-evaluating all the population
-        return;
+      if (newModel.isTrained())
+        if (obj.modelAge == 0)  obj = obj.updateModelArchive(newModel); end
       else
-        obj.model = newModel;
+        oldModel = obj.getOldModel(0:obj.acceptedModelAge);
+        if (~isempty(oldModel))
+          newModel = oldModel;
+          obj.modelAge = (obj.cmaesState.countiter - oldModel.trainGeneration);
+        else
+          % model cannot be trained :( -- return with orig-evaluated population
+          [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
+              = obj.finalizeGeneration(sampleOpts, varargin);
+          % TODO: try the old model instead just orig-evaluating all the population
+          return;
+        end
       end
+
+      end  % if (obj.modelAge == 0)
+
+      obj.model = newModel;
 
       nLambdaRest = lambda - obj.nPresampledPoints;
 
@@ -127,21 +159,13 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % update the Archive
       obj.archive.save(xNewValid', yNew', obj.cmaesState.countiter);
 
-      % TODO: restrictedParam adaptivity
-%       alpha = obj.surrogateOpts.evoControlAdaptivity;
-%       if nToReeval > 1
-%         obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*(1-kendall)/2;
-%       else
-%         obj.restrictedParam = (1-alpha)*obj.restrictedParam + alpha*rmse;
-%       end
-%       fprintf('Restricted param: %f\n', obj.restrictedParam);
-
       % re-train the model again with the new original-evaluated points
       if ~all(reevalID)
         xTrain = [xTrain; xNewValid'];
         yTrain = [yTrain; yNew'];
         obj.retrainedModel = obj.model.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
         if (obj.useDoubleTraining && obj.retrainedModel.isTrained())
+          if (obj.modelAge == 0)  obj = obj.updateModelArchive(obj.retrainedModel); end
           yReeval = obj.retrainedModel.predict((xExtendValid(:, ~reevalID))');
         else
           % Debug:
@@ -169,15 +193,53 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % update the modelArchive with the current new model
       countiter = obj.cmaesState.countiter;
 
-      if (newModel.trainGeneration == countiter && newModel.isTrained())
-        % we got an updated model
-        if (~isempty(obj.modelArchive{1}) && obj.modelArchive{1}.trainGeneration < countiter)
-          % there's an old model in the first position ==> shift old
-          % models to the history
-          obj.modelArchive(2:end) = obj.modelArchive(1:(end-1));
-        end
-        obj.modelArchive{1} = newModel;
+      if (obj.modelArchiveGenerations(1) < countiter)
+        % there's an old model in the first position ==> shift old
+        % models to the history
+        obj.modelArchive(2:end) = obj.modelArchive(1:(end-1));
+        obj.modelArchiveGenerations(2:end) = obj.modelArchiveGenerations(1:(end-1));
+        % clear the first position
+        obj.modelArchive{1} = [];
+        obj.modelArchiveGenerations(1) = -1;
       end
+
+      if (newModel.isTrained())
+        % the newModel should be usable, save it to the first position
+        obj.modelArchive{1} = newModel;
+        obj.modelArchiveGenerations(1) = countiter;
+      end
+    end
+
+
+    function oldModel = getOldModel(obj, generationDiffs)
+      % return an old model from modelArchive from the generations
+      %   countiter - [generationDiffs]
+      % Returns the first such model found, or [] if none is found
+      %
+      % Examples:
+      % m = dec.getOldModel(3:5)        % returns the youngest model 3--5 generations old
+      % m = dec.getOldModel(0)          % returns the model from current generation
+
+      countiter = obj.cmaesState.countiter;
+      modelGenerations = countiter - generationDiffs;
+      modelGenerations = modelGenerations(modelGenerations > 0);
+
+      oldModel = [];
+      if (isempty(modelGenerations))
+        % no sensible generations given, return []
+        return;
+      end
+
+      % go through modelArchive and look whether the models (in
+      % historical order) are not from the specified generations
+      for i = 1:obj.modelArchiveLength
+        ind = find(modelGenerations == obj.modelArchiveGenerations(i), 1, 'first');
+        if (ind)
+          oldModel = obj.modelArchive{i};
+          return;
+        end
+      end
+      % no model from specified generations found, return []
     end
 
 
@@ -195,6 +257,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.stats.rmseValid      = NaN; % RMSE of the (2nd) model on the validation set
       obj.stats.kendallValid   = NaN; % Kendall of the (2nd) model on the validation set
       obj.stats.rankErrValid   = NaN; % rank error between true fitness and model pred.
+      obj.stats.rmseOldModel   = NaN; % RMSE of old model on future orig points
+      obj.stats.kendallOldModel = NaN; % Kendall of old model on future orig points
+      obj.stats.rankErrOldModel = NaN; % rank error between true fitness and model pred.
       obj.stats.fmin = min(obj.pop.y(1,(obj.pop.origEvaled == true)));
 
       % model-related statistics
@@ -216,6 +281,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         % independent validation set statistics
         [obj.stats.rmseValid, obj.stats.kendallValid, obj.stats.rankErrValid, lastModel] ...
             = obj.validationStatistics(sampleOpts);
+
+        [obj.stats.rmseOldModel, obj.stats.kendallOldModel, obj.stats.rankErrOldModel] ...
+            = obj.oldModelStatistics();
 
         % shift the f-values:
         %   if the model predictions are better than the best original value
@@ -309,6 +377,26 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       %     obj.nPresampledPoints, length(yReeval), rmse, kendall, rankErr);
     end
 
+
+    function [rmse, kendall, rankErr] = oldModelStatistics(obj)
+      rmse = NaN; kendall = NaN; rankErr = NaN;
+
+      oldModel = obj.getOldModel(obj.oldModelAgeForStatistics);
+      if (~isempty(oldModel))
+        countiter = obj.cmaesState.countiter;
+        oldModelGeneration = oldModel.trainGeneration;
+        testGenerations = [(oldModel.trainGeneration+1):countiter];
+        [xOrig, yOrig] = obj.archive.getDataFromGenerations(testGenerations);
+        if (~isempty(yOrig))
+          yPredict = oldModel.predict(xOrig);
+          rmse = sqrt(sum((yPredict - yOrig).^2))/length(yPredict);
+          kendall = corr(yPredict, yOrig, 'type', 'Kendall');
+          [~, sort1] = sort(yPredict);
+          ranking2   = ranking(yOrig);
+          rankErr = errRankMuOnly(ranking2(sort1), obj.cmaesState.mu);
+        end
+      end
+    end
 
     function rankErr = retrainStatistics(obj, yModel1)
     % get ranking error between the first and the second model
