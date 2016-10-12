@@ -8,6 +8,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     origRatioUpdater
     restrictedParam
     useDoubleTraining
+    maxDoubleTrainIterations
     retrainedModel
     stats
     archive
@@ -27,6 +28,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.restrictedParam = defopts(surrogateOpts, 'evoControlRestrictedParam', 0.1);
 
       obj.useDoubleTraining = defopts(surrogateOpts, 'evoControlUseDoubleTraining', true);
+      obj.maxDoubleTrainIterations = defopts(surrogateOpts, 'evoControlMaxDoubleTrainIterations', Inf);
       obj.pop = [];
       obj.surrogateOpts = surrogateOpts;
       obj.stats = struct( ...
@@ -115,10 +117,12 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       isEvaled = false(1, nLambdaRest);
       yOrig    = NaN(1, nLambdaRest);
+      doubleTrainIteration = 0;
       notEverythingEvaluated = true;
 
       while (notEverythingEvaluated)
 
+        doubleTrainIteration = doubleTrainIteration + 1;
         nPoints = ceil(nLambdaRest * obj.restrictedParam) - sum(isEvaled);
         obj.stats.lastUsedOrigRatio = obj.restrictedParam;
         % Debug:
@@ -179,7 +183,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           end
         % end
       
-        notEverythingEvaluated = (floor(lambda * obj.restrictedParam) > sum(isEvaled));
+        notEverythingEvaluated = (doubleTrainIteration < obj.maxDoubleTrainIterations) ...
+            && (floor(lambda * obj.restrictedParam) > sum(isEvaled));
       end
 
       if (~all(isEvaled))
