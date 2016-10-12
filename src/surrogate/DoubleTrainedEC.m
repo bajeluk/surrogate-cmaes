@@ -12,6 +12,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     archive
     nPresampledPoints
     surrogateOpts
+    modelArchive
+    modelArchiveGenerations
+    modelArchiveLength
   end
   
   methods 
@@ -34,6 +37,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           'rankErrValid', NaN ...       % rank error between true fitness and model pred.
           ...                           %       on the validation set
           );
+      obj.modelArchiveLength = 5;
+      obj.modelArchive = cell(1, obj.modelArchiveLength);
+      obj.modelArchiveGenerations = (-1)*ones(1, obj.modelArchiveLength);
     end
 
     function [obj, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
@@ -156,6 +162,22 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % save the resulting re-evaluated population as the returning parameters
       [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
           = obj.finalizeGeneration(sampleOpts, varargin);
+    end
+
+
+    function obj = updateModelArchive(obj, newModel)
+      % update the modelArchive with the current new model
+      countiter = obj.cmaesState.countiter;
+
+      if (newModel.trainGeneration == countiter && newModel.isTrained())
+        % we got an updated model
+        if (~isempty(obj.modelArchive{1}) && obj.modelArchive{1}.trainGeneration < countiter)
+          % there's an old model in the first position ==> shift old
+          % models to the history
+          obj.modelArchive(2:end) = obj.modelArchive(1:(end-1));
+        end
+        obj.modelArchive{1} = newModel;
+      end
     end
 
 
