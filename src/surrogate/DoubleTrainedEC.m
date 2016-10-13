@@ -19,6 +19,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     acceptedModelAge            % how many generations old model is still OK (0 == only current)
     modelAge                    % age of model in the number of generations (0 == current model)
     oldModelAgeForStatistics    % age of model for gathering statistics of old models
+    isTrainSuccess
   end
   
   methods 
@@ -46,6 +47,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           'nDataOldModel', 0 ...        % the number of data points from archive for old model statistics
           );
       obj.modelAge = 0;
+      obj.isTrainSuccess = false;
 
       % fixed settings:
       obj.oldModelAgeForStatistics = [3:5];
@@ -69,6 +71,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.retrainedModel = [];
       obj.stats.nDataInRange = NaN;
       obj.modelAge = 0;
+      obj.isTrainSuccess = false;
       
       % prepare the final population to be returned to CMA-ES
       obj.pop = Population(lambda, dim);
@@ -199,6 +202,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         % clear the first position
         obj.modelArchive{1} = [];
         obj.modelArchiveGenerations(1) = NaN;
+        obj.isTrainSuccess = true;
       end
 
       if (newModel.isTrained())
