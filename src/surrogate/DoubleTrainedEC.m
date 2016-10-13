@@ -87,45 +87,45 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % if a new model is used, find appropriate training set and train it:
       if (obj.modelAge == 0)
 
-      minTrainSize = obj.newModel.getNTrainData();
+        minTrainSize = obj.newModel.getNTrainData();
 
-      nArchivePoints = myeval(obj.surrogateOpts.evoControlTrainNArchivePoints);
-      [xTrain, yTrain, nData] = obj.archive.getDataNearPoint(nArchivePoints, ...
-          obj.cmaesState.xmean', obj.surrogateOpts.evoControlTrainRange, ...
-          obj.cmaesState.sigma, obj.cmaesState.BD);
-      obj.stats.nDataInRange = nData;
-      
-      % Do pre-sample
-      [ok, y, arx, x, arz, ~, obj.counteval, xTrain, yTrain] = ...
-          presample(minTrainSize, obj.cmaesState, obj.surrogateOpts, sampleOpts, ...
-          obj.archive, obj.counteval, xTrain, yTrain, varargin{:});
-      obj.nPresampledPoints = size(x, 2);
-      phase = 0;        % pre-sampled points
-      obj.pop = obj.pop.addPoints(x, y, arx, arz, obj.nPresampledPoints, phase);
+        nArchivePoints = myeval(obj.surrogateOpts.evoControlTrainNArchivePoints);
+        [xTrain, yTrain, nData] = obj.archive.getDataNearPoint(nArchivePoints, ...
+            obj.cmaesState.xmean', obj.surrogateOpts.evoControlTrainRange, ...
+            obj.cmaesState.sigma, obj.cmaesState.BD);
+        obj.stats.nDataInRange = nData;
+        
+        % Do pre-sample
+        [ok, y, arx, x, arz, ~, obj.counteval, xTrain, yTrain] = ...
+            presample(minTrainSize, obj.cmaesState, obj.surrogateOpts, sampleOpts, ...
+            obj.archive, obj.counteval, xTrain, yTrain, varargin{:});
+        obj.nPresampledPoints = size(x, 2);
+        phase = 0;        % pre-sampled points
+        obj.pop = obj.pop.addPoints(x, y, arx, arz, obj.nPresampledPoints, phase);
 
-      if (~ok)
-        % not enough data for training model
-        [obj, ok] = obj.tryOldModel();
         if (~ok)
-          [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-              = obj.finalizeGeneration(sampleOpts, varargin);
-          return;
+          % not enough data for training model
+          [obj, ok] = obj.tryOldModel();
+          if (~ok)
+            [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
+                = obj.finalizeGeneration(sampleOpts, varargin);
+            return;
+          end
         end
-      end
 
-      % train the model 
-      obj.newModel = obj.newModel.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
-      if (obj.newModel.isTrained())
-        obj = obj.updateModelArchive(obj.newModel, obj.modelAge);
-      else
-        [obj, ok] = tryOldModel();
-        if (~ok)
-          % model cannot be trained :( -- return with orig-evaluated population
-          [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-              = obj.finalizeGeneration(sampleOpts, varargin);
-          return;
+        % train the model 
+        obj.newModel = obj.newModel.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
+        if (obj.newModel.isTrained())
+          obj = obj.updateModelArchive(obj.newModel, obj.modelAge);
+        else
+          [obj, ok] = tryOldModel();
+          if (~ok)
+            % model cannot be trained :( -- return with orig-evaluated population
+            [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
+                = obj.finalizeGeneration(sampleOpts, varargin);
+            return;
+          end
         end
-      end
 
       end  % if (obj.modelAge == 0)
 
