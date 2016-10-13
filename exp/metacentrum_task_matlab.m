@@ -1,4 +1,26 @@
 function metacentrum_task_matlab(exp_id, exppath_short, id, varargin)
+% metacentrum_task_matlab(exp_id, exppath_short, id, varargin) calls the
+% individual task (with the chosen task_id). 
+%
+% Important: Fuction expInit(exp_id) has to be called before the 
+%            metacentrum_task_matlab function to initialize the experiment.
+%
+% Input:
+%   exp_id        - experiment ID (exp_id) (string)
+%   exppath_short - absolute path to the directory exp/experiments (string)
+%   id            - task_id of the task to be run (integer)
+%                 - specifies parameter-values being used for particular 
+%                   run
+%   varargin      - optional argument specifying additional settings 
+%                   (structure array)
+%
+% See Also:
+%   metacentrum_master_template
+
+  if nargin < 3
+    help metacentrum_task_matlab
+    return
+  end
 
   % NFS file for logging results
   USE_FILELOG = 0;
