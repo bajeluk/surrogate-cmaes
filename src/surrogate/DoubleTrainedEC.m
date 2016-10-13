@@ -41,8 +41,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           'rankErrValid', NaN, ...      % rank error between true fitn. and model pred. on the validation set
           'rmseOldModel', NaN, ...      % RMSE of old model on future orig points
           'kendallOldModel', NaN, ...   % Kendall of old model on future orig points
-          'rankErrOldModel', NaN, ...   % rank error between true fitness and model pred.
-          'ageOldModel', -1 ...         % age of the old model which used for statistics
+          'normKendallOldModel', NaN, ... % Kendall of old model normed to [0,1]
+          'ageOldModel', NaN, ...       % age of the old model which used for statistics
+          'nDataOldModel', 0 ...        % the number of data points from archive for old model statistics
           );
       obj.modelAge = 0;
 
@@ -52,7 +53,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       % other initializations:
       obj.modelArchive = cell(1, obj.modelArchiveLength);
-      obj.modelArchiveGenerations = (-1)*ones(1, obj.modelArchiveLength);
+      obj.modelArchiveGenerations = nan(1, obj.modelArchiveLength);
       obj.acceptedModelAge = defopts(surrogateOpts, 'evoControlAcceptedModelAge', 2);
     end
 
@@ -75,7 +76,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.newModel = ModelFactory.createModel(obj.surrogateOpts.modelType, obj.surrogateOpts.modelOpts, obj.cmaesState.xmean');
 
       if (isempty(obj.newModel))
-        [obj, ok] = tryOldModel();
+        [obj, ok] = obj.tryOldModel();
         if (~ok)
           % model could not be created nor older is usable :(. Use the standard CMA-ES.
           [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
@@ -118,7 +119,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         if (obj.newModel.isTrained())
           obj = obj.updateModelArchive(obj.newModel, obj.modelAge);
         else
-          [obj, ok] = tryOldModel();
+          [obj, ok] = obj.tryOldModel();
           if (~ok)
             % model cannot be trained :( -- return with orig-evaluated population
             [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
@@ -197,7 +198,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         obj.modelArchiveGenerations(2:end) = obj.modelArchiveGenerations(1:(end-1));
         % clear the first position
         obj.modelArchive{1} = [];
-        obj.modelArchiveGenerations(1) = -1;
+        obj.modelArchiveGenerations(1) = NaN;
       end
 
       if (newModel.isTrained())
@@ -236,7 +237,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       modelGenerations = countiter - generationDiffs;
       modelGenerations = modelGenerations(modelGenerations > 0);
 
-      oldModel = []; modelAge = -1;
+      oldModel = []; modelAge = NaN;
       if (isempty(modelGenerations))
         % no sensible generations given, return []
         return;
@@ -272,9 +273,14 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.stats.rankErrValid   = NaN; % rank error between true fitness and model pred.
       obj.stats.rmseOldModel   = NaN; % RMSE of old model on future orig points
       obj.stats.kendallOldModel = NaN; % Kendall of old model on future orig points
-      obj.stats.rankErrOldModel = NaN; % rank error between true fitness and model pred.
-      obj.stats.ageOldModel    = -1;
+      obj.stats.normKendallOldModel = NaN; % Kendall transformed to [0,1] error-range
+      obj.stats.ageOldModel    = NaN;
+      obj.stats.nDataOldModel  = 0;
       obj.stats.fmin = min(obj.pop.y(1,(obj.pop.origEvaled == true)));
+
+      [obj.stats.rmseOldModel, obj.stats.kendallOldModel, ...
+          obj.stats.normKendallOldModel, obj.stats.ageOldModel, ...
+          obj.stats.nDataOldModel] = obj.oldModelStatistics();
 
       % model-related statistics
       if (~isempty(obj.model) && obj.model.isTrained() ....
@@ -295,9 +301,6 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         % independent validation set statistics
         [obj.stats.rmseValid, obj.stats.kendallValid, obj.stats.rankErrValid, lastModel] ...
             = obj.validationStatistics(sampleOpts);
-
-        [obj.stats.rmseOldModel, obj.stats.kendallOldModel, obj.stats.rankErrOldModel, obj.stats.ageOldModel] ...
-            = obj.oldModelStatistics();
 
         % shift the f-values:
         %   if the model predictions are better than the best original value
@@ -392,11 +395,11 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     end
 
 
-    function [rmse, kendall, rankErr, age] = oldModelStatistics(obj)
+    function [rmse, kCorr, normKendall, age, nData] = oldModelStatistics(obj)
       % return statistics of a several-generations-old model measured
       % on new data from following generations (generations after the
       % model was trained)
-      rmse = NaN; kendall = NaN; rankErr = NaN;
+      rmse = NaN; kCorr = NaN; normKendall = NaN; age = NaN; nData = 0;
 
       [oldModel, age] = obj.getOldModel(obj.oldModelAgeForStatistics);
       if (~isempty(oldModel))
@@ -404,13 +407,14 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         oldModelGeneration = oldModel.trainGeneration;
         testGenerations = [(oldModel.trainGeneration+1):countiter];
         [xOrig, yOrig] = obj.archive.getDataFromGenerations(testGenerations);
-        if (~isempty(yOrig))
+        nData = length(yOrig);
+        if (nData > 0)
           yPredict = oldModel.predict(xOrig);
           rmse = sqrt(sum((yPredict - yOrig).^2))/length(yPredict);
-          kendall = corr(yPredict, yOrig, 'type', 'Kendall');
-          [~, sort1] = sort(yPredict);
-          ranking2   = ranking(yOrig);
-          rankErr = errRankMuOnly(ranking2(sort1), obj.cmaesState.mu);
+          if (nData >= 2)
+            kCorr = corr(yPredict, yOrig, 'type', 'Kendall');
+            normKendall = (-kCorr + 1) / 2;
+          end
         end
       end
     end
