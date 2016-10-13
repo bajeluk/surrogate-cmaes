@@ -13,7 +13,7 @@ classdef DTScreenStatistics < Observer
     function notify(obj, ec, varargin)
       % get the interesting data and process them
       if (mod(ec.cmaesState.countiter, 10) == 1)
-        fprintf('####### iter /evals(or) | D_fopt. | rmseRee | rnkR | rnk2 | .rankErrValid. | M nData | ..sigma.\n');
+        fprintf('####### iter /evals(or) | D_fopt. | rmseRee | rnkR | rnk2 | .rankErrValid. | M nData | .sigma^2\n');
       end
       model = '.';
       nTrainData = 0;
@@ -32,7 +32,7 @@ classdef DTScreenStatistics < Observer
           ec.stats.rankErr2Models, ...
           ec.stats.rankErrValid, decorateKendall(1-2*ec.stats.rankErrValid), ...
           model, nTrainData, ec.stats.nDataInRange, ...
-          ec.cmaesState.sigma ...
+          ec.cmaesState.sigma^2 ...
           );
     end
   end
