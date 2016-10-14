@@ -1,7 +1,7 @@
 %READSCMAESTXTLOG Reads S-CMA-ES log from .txt into Matlab table
 function tab = readScmaesTxtLog(exp_id, fun, dim, id)
   cwd = fileparts(mfilename('fullpath'));
-  path = [cwd '/../experiments/' exp_id '/bbob_output/'];
+  path = [cwd '/../experiments/' exp_id '/bbob_output'];
   filename = sprintf('%s/%s_log_%d_%dD_%d.dat', path, exp_id, fun, dim, id);
   randNum = 1000+randi(1000);
   tmpFile = ['/tmp/scmaes_dat_' num2str(randNum)];
