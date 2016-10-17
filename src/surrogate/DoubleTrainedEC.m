@@ -171,33 +171,32 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
         if (nPoints > 0)
 
-        reevalID = false(1, nLambdaRest);
-        reevalID(~isEvaled) = obj.choosePointsForReevaluation(nPoints, ...
-            xExtend(:, ~isEvaled), modelOutput(~isEvaled), yExtendModel(~isEvaled));
-        xToReeval = xExtendValid(:, reevalID);
-        nToReeval = sum(reevalID);
+          reevalID = false(1, nLambdaRest);
+          reevalID(~isEvaled) = obj.choosePointsForReevaluation(nPoints, ...
+              xExtend(:, ~isEvaled), modelOutput(~isEvaled), yExtendModel(~isEvaled));
+          xToReeval = xExtendValid(:, reevalID);
+          nToReeval = sum(reevalID);
 
-        % original-evaluate the chosen points
-        [yNew, xNew, xNewValid, zNew, obj.counteval] = ...
-            sampleCmaesOnlyFitness(xExtend(:, reevalID), xToReeval, zExtend(:, reevalID), ...
-            obj.cmaesState.sigma, nToReeval, obj.counteval, obj.cmaesState, sampleOpts, ...
-            varargin{:});
-        xExtendValid(:, reevalID) = xNewValid;
-        xExtend(:, reevalID) = xNew;
-        zExtend(:, reevalID) = zNew;
-        yOrig(reevalID) = yNew;
-        isEvaled = isEvaled | reevalID;
-        % Debug:
-        % fprintf('counteval: %d\n', obj.counteval)
+          % original-evaluate the chosen points
+          [yNew, xNew, xNewValid, zNew, obj.counteval] = ...
+              sampleCmaesOnlyFitness(xExtend(:, reevalID), xToReeval, zExtend(:, reevalID), ...
+              obj.cmaesState.sigma, nToReeval, obj.counteval, obj.cmaesState, sampleOpts, ...
+              varargin{:});
+          xExtendValid(:, reevalID) = xNewValid;
+          xExtend(:, reevalID) = xNew;
+          zExtend(:, reevalID) = zNew;
+          yOrig(reevalID) = yNew;
+          isEvaled = isEvaled | reevalID;
+          % Debug:
+          % fprintf('counteval: %d\n', obj.counteval)
 
-        phase = 1;        % re-evaluated points
-        obj.pop = obj.pop.addPoints(xNewValid, yNew, xNew, zNew, nToReeval, phase);
+          phase = 1;        % re-evaluated points
+          obj.pop = obj.pop.addPoints(xNewValid, yNew, xNew, zNew, nToReeval, phase);
 
-        % update the Archive
-        obj.archive.save(xNewValid', yNew', obj.cmaesState.countiter);
+          % update the Archive
+          obj.archive.save(xNewValid', yNew', obj.cmaesState.countiter);
 
-        % re-train the model again with the new original-evaluated points
-        % if ~all(isEvaled)
+          % re-train the model again with the new original-evaluated points
           xTrain = [xTrain; xNewValid'];
           yTrain = [yTrain; yNew'];
           obj.retrainedModel = obj.model.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
@@ -225,7 +224,6 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             % Debug:
             % fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
           end
-        % end
 
         end % if (nPoints > 0)
       
@@ -352,7 +350,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         % predict the population by the first model
         yModel1 = obj.model.predict(obj.pop.x');
 
-        if any(obj.pop.origEvaled)
+        if (any(obj.pop.origEvaled))
           % calculate RMSE, Kendall's coeff. and ranking error
           % between the original fitness and the first model's values
           % of the re-evaluated point(s), i.e. (phase == 1)
@@ -550,7 +548,7 @@ function res=myeval(s)
 end
 
 function probNum = getProbNumber(exactNumber)
-% Calculates randomized natural number as follows:
+% Calculates randomized non-negative integer as follows:
 %   probNum = floor(exactNumber) + eps, 
 % where eps is 0 or 1. Probability that eps is 1 is equal to the remainder: 
 %   P[eps = 1] = exactNumber - floor(exactNumber).
@@ -561,4 +559,4 @@ function probNum = getProbNumber(exactNumber)
   end
   probNum = floor(exactNumber) + plus;
 end
- 
+
