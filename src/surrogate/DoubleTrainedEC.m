@@ -22,6 +22,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     modelAge                    % age of model in the number of generations (0 == current model)
     oldModelAgeForStatistics    % age of model for gathering statistics of old models
     isTrainSuccess
+    origPointsRoundFcn % function computing number of original-evaluated points from origRatio
   end
   
   methods 
@@ -69,6 +70,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.modelArchive = cell(1, obj.modelArchiveLength);
       obj.modelArchiveGenerations = nan(1, obj.modelArchiveLength);
       obj.acceptedModelAge = defopts(surrogateOpts, 'evoControlAcceptedModelAge', 2);
+      obj.origPointsRoundFcn = str2func(defopts(surrogateOpts, 'evoControlOrigPointsRoundFcn', 'ceil'));
     end
 
     function [obj, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
@@ -162,10 +164,12 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       while (notEverythingEvaluated)
 
         doubleTrainIteration = doubleTrainIteration + 1;
-        nPoints = ceil(nLambdaRest * obj.restrictedParam) - sum(isEvaled);
+        nPoints = obj.origPointsRoundFcn(nLambdaRest * obj.restrictedParam) - sum(isEvaled);
         obj.stats.lastUsedOrigRatio = obj.restrictedParam;
         % Debug:
         % fprintf('ratio: %.2f | nPoints: %d | iter: %d\n', obj.restrictedParam, nPoints, obj.cmaesState.countiter);
+
+        if (nPoints > 0)
 
         reevalID = false(1, nLambdaRest);
         reevalID(~isEvaled) = obj.choosePointsForReevaluation(nPoints, ...
@@ -222,6 +226,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             % fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
           end
         % end
+
+        end % if (nPoints > 0)
       
         notEverythingEvaluated = (doubleTrainIteration < obj.maxDoubleTrainIterations) ...
             && (floor(lambda * obj.restrictedParam) > sum(isEvaled));
@@ -346,15 +352,17 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         % predict the population by the first model
         yModel1 = obj.model.predict(obj.pop.x');
 
-        % calculate RMSE, Kendall's coeff. and ranking error
-        % between the original fitness and the first model's values
-        % of the re-evaluated point(s), i.e. (phase == 1)
-        [obj.stats.rmseReeval, obj.stats.kendallReeval, obj.stats.rankErrReeval] ...
-            = obj.reevalStatistics(yModel1);
+        if any(obj.pop.origEvaled)
+          % calculate RMSE, Kendall's coeff. and ranking error
+          % between the original fitness and the first model's values
+          % of the re-evaluated point(s), i.e. (phase == 1)
+          [obj.stats.rmseReeval, obj.stats.kendallReeval, obj.stats.rankErrReeval] ...
+              = obj.reevalStatistics(yModel1);
 
-        % get ranking error between the first and the second model
-        % (if the second model is trained)
-        obj.stats.rankErr2Models = obj.retrainStatistics(yModel1);
+          % get ranking error between the first and the second model
+          % (if the second model is trained)
+          obj.stats.rankErr2Models = obj.retrainStatistics(yModel1);
+        end
 
         % independent validation set statistics
         [obj.stats.rmseValid, obj.stats.kendallValid, obj.stats.rankErrValid, lastModel] ...
@@ -540,3 +548,17 @@ function res=myeval(s)
     res = s;
   end
 end
+
+function probNum = getProbNumber(exactNumber)
+% Calculates randomized natural number as follows:
+%   probNum = floor(exactNumber) + eps, 
+% where eps is 0 or 1. Probability that eps is 1 is equal to the remainder: 
+%   P[eps = 1] = exactNumber - floor(exactNumber).
+  fracN = exactNumber - floor(exactNumber);
+  plus = 0;
+  if (fracN > 0)
+    plus = (rand() < fracN);
+  end
+  probNum = floor(exactNumber) + plus;
+end
+ 
