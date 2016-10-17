@@ -14,6 +14,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     archive
     nPresampledPoints
     surrogateOpts
+    origPointsRoundFcn % function computing number of original-evaluated points from origRatio
   end
   
   methods 
@@ -46,6 +47,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           'adaptGain', NaN, ...         % gain of original ratio (to be converted via min/max)
           'adaptNewRatio', NaN ...      % new value of ratio (to be history-weighted)
           );
+      obj.origPointsRoundFcn = str2func(defopts(surrogateOpts, 'evoControlOrigPointsRoundFcn', 'ceil'));
     end
 
     function [obj, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
@@ -125,7 +127,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       while (notEverythingEvaluated)
 
         doubleTrainIteration = doubleTrainIteration + 1;
-        nPoints = getProbNumber(nLambdaRest * obj.restrictedParam) - sum(isEvaled);
+        nPoints = obj.origPointsRoundFcn(nLambdaRest * obj.restrictedParam) - sum(isEvaled);
         obj.stats.lastUsedOrigRatio = obj.restrictedParam;
         % Debug:
         % fprintf('ratio: %.2f | nPoints: %d | iter: %d\n', obj.restrictedParam, nPoints, obj.cmaesState.countiter);
