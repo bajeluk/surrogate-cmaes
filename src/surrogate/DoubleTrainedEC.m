@@ -11,6 +11,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     maxDoubleTrainIterations
     retrainedModel
     stats
+    usedUpdaterState            % Updater's state variables updated in the last generation
     archive
     nPresampledPoints
     surrogateOpts
@@ -53,11 +54,16 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           'kendallOldModel', NaN, ...   % Kendall of old model on future orig points
           'normKendallOldModel', NaN, ... % Kendall of old model normed to [0,1]
           'ageOldModel', NaN, ...       % age of the old model which used for statistics
-          'nDataOldModel', 0, ...        % the number of data points from archive for old model statistics
+          'nDataOldModel', 0, ...       % the number of data points from archive for old model statistics
           'lastUsedOrigRatio', NaN, ... % restricted param which was used (last) in the last generation
-          'adaptRankDiff', NaN, ...     % last measured rankDiff during update()
+          'adaptErr', NaN, ...     % last measured rankDiff during update()
           'adaptGain', NaN, ...         % gain of original ratio (to be converted via min/max)
-          'adaptNewRatio', NaN ...      % new value of ratio (to be history-weighted)
+          'adaptSmoothedErr', NaN ...   % smoothed error value used before fed into transfer function
+          );
+      obj.usedUpdaterState = struct( ...
+          'gain', NaN, ...
+          'err', NaN, ...
+          'smoothedErr', NaN ...
           );
       obj.modelAge = 0;
       obj.isTrainSuccess = false;
@@ -89,6 +95,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       
       % prepare the final population to be returned to CMA-ES
       obj.pop = Population(lambda, dim);
+      obj.restrictedParam = obj.origRatioUpdater.update([], [], dim, lambda, obj.cmaesState.countiter, obj);
       
       obj.newModel = ModelFactory.createModel(obj.surrogateOpts.modelType, obj.surrogateOpts.modelOpts, obj.cmaesState.xmean');
 
@@ -131,7 +138,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           end
         end
 
-        % train the model 
+        % (first) model training
         obj.newModel = obj.newModel.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
         if (obj.newModel.isTrained())
           obj = obj.updateModelArchive(obj.newModel, obj.modelAge);
@@ -161,16 +168,22 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       doubleTrainIteration = 0;
       notEverythingEvaluated = true;
 
+      % main DTS re-evaluating cycle
       while (notEverythingEvaluated)
 
+        % determine the number of points to re-evalute
         doubleTrainIteration = doubleTrainIteration + 1;
         nPoints = obj.origPointsRoundFcn(nLambdaRest * obj.restrictedParam) - sum(isEvaled);
+
+        % save statistics about these just used values
         obj.stats.lastUsedOrigRatio = obj.restrictedParam;
-        % Debug:
-        % fprintf('ratio: %.2f | nPoints: %d | iter: %d\n', obj.restrictedParam, nPoints, obj.cmaesState.countiter);
+        obj.stats.adaptGain = obj.usedUpdaterState.gain;
+        obj.stats.adaptErr = obj.usedUpdaterState.err;
+        obj.stats.adaptSmoothedErr = obj.usedUpdaterState.smoothedErr;
 
         if (nPoints > 0)
 
+          % choose point(s) for re-evaluation
           reevalID = false(1, nLambdaRest);
           reevalID(~isEvaled) = obj.choosePointsForReevaluation(nPoints, ...
               xExtend(:, ~isEvaled), modelOutput(~isEvaled), yExtendModel(~isEvaled));
@@ -200,36 +213,33 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           xTrain = [xTrain; xNewValid'];
           yTrain = [yTrain; yNew'];
           obj.retrainedModel = obj.model.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
+
           if (obj.useDoubleTraining && obj.retrainedModel.isTrained())
-            % origRatio adaptivity
+            % if internal CMA-ES restart just happend, create a new OrigRatioUpdater
             if (~isempty(obj.origRatioUpdater.lastUpdateGeneration) ...
                 && obj.origRatioUpdater.lastUpdateGeneration > obj.cmaesState.countiter)
-              % internal CMA-ES restart, create a new origRatioUpdater
               obj.origRatioUpdater = OrigRatioUpdaterFactory.createUpdater(obj, obj.surrogateOpts);
               obj = obj.updateModelArchive(obj.retrainedModel, obj.modelAge);
             end
+
+            % origRatio adaptivity (ratio will be used for the next iteration
+            % of the while cycle or for the next generation of CMA-ES)
             yFirstModel  = obj.model.predict(xExtendValid');
             yExtendModel = obj.retrainedModel.predict(xExtendValid');
             obj.restrictedParam = obj.origRatioUpdater.update(...
                 yFirstModel', yExtendModel', dim, lambda, obj.cmaesState.countiter, obj);
-            obj.stats.adaptRankDiff = obj.origRatioUpdater.rankDiffs(end);
-            obj.stats.adaptGain = obj.origRatioUpdater.gain;
-            obj.stats.adaptNewRatio = obj.origRatioUpdater.newRatio;
-            % Debug:
-            % fprintf('OrigRatio: %f\n', obj.origRatioUpdater.getLastRatio(obj.cmaesState.countiter));
 
-            % Debug:
-            % fprintf('UPDATE: ratio: %.2f | rankDiff: %.2f | iter: %d\n', obj.restrictedParam, obj.origRatioUpdater.rankDiffs(end), obj.cmaesState.countiter);
-          else
-            % Debug:
-            % fprintf('DoubleTrainedEC: The new model could (is not set to) be trained, using the not-retrained model.\n');
+            % save the statistics about the new Updater's state
+            obj.usedUpdaterState.err = obj.origRatioUpdater.historyErr(obj.cmaesState.countiter);
+            obj.usedUpdaterState.gain = obj.origRatioUpdater.gain;
+            obj.usedUpdaterState.smoothedErr = obj.origRatioUpdater.historySmoothedErr(obj.cmaesState.countiter);
           end
 
         end % if (nPoints > 0)
       
         notEverythingEvaluated = (doubleTrainIteration < obj.maxDoubleTrainIterations) ...
             && (floor(lambda * obj.restrictedParam) > sum(isEvaled));
-      end
+      end % while (notEverythingEvaluated)
 
       if (~all(isEvaled))
         phase = 2;      % model-evaluated rest of the population
@@ -432,7 +442,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       end
       nLambdaRest = size(xExtend, 2);
       reevalID = false(1, nLambdaRest);
-      assert(obj.origRatioUpdater.getLastRatio(obj.cmaesState.countiter) >= 0 && obj.origRatioUpdater.getLastRatio(obj.cmaesState.countiter) <= 1, 'origRatio out of bounds [0,1]');
+      assert(obj.origRatioUpdater.getLastRatio() >= 0 && obj.origRatioUpdater.getLastRatio() <= 1, 'origRatio out of bounds [0,1]');
       reevalID(pointID(1:nPoints)) = true;
     end
 
@@ -441,6 +451,10 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % calculate RMSE and possibly Kendall's coeff. of the re-evaluated point(s)
       % (phase == 1)
       phase1 = (obj.pop.phase == 1);
+      if (~any(phase1))
+        rmse = NaN; kendall = NaN; rankErr = NaN;
+        return;
+      end
       yReeval = obj.pop.y(1,phase1);
       yReevalModel = yModel1(phase1);
       rmse = sqrt(sum((yReevalModel' - yReeval).^2))/length(yReeval);
