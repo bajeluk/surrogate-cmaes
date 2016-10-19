@@ -21,9 +21,13 @@ classdef (Abstract) OrigRatioUpdater < handle
 % 'lowErr', 'highErr', 'minRatio' and 'maxRatio'.
 %
 % TODO
-% [ ] define different updateRate for positive and negative difference of
-%     current error and last smoothed error.
 % [ ] make also transfer function to be replacable with something different
+%
+% =======
+% = Log =
+% =======
+% 2016-10-19    - thorough documentation
+%               - negative updates possibly different via 'updateRateDown' parameter
 
   properties
     surrogateOpts       % options, for DTS Updaters are DTAdaptive_*
@@ -41,7 +45,9 @@ classdef (Abstract) OrigRatioUpdater < handle
     maxRatio            % origRatio set with high error rates
 
     % exponential weighted average/smooth definition:
-    updateRate          % update rate of the exponential smoothing
+    updateRate          % update rate of the exponential smoothing (for positive updates)
+    updateRateDown      % update rate for negative updates
+                        % (current err is lower than last smoothed)
     defaultErr          % error-value used when no smoothed history value is found
 
     % history values of error and origRatio
@@ -98,7 +104,14 @@ classdef (Abstract) OrigRatioUpdater < handle
       end
       if (~isnan(err))
         % we have got a new current error ==> use EWA smooth
-        smoothedErr = (1-obj.updateRate) * lastSmoothedErr + obj.updateRate * err;
+        if (err > lastSmoothedErr)
+          % err is higher than last smoothed
+          smoothedErr = (1-obj.updateRate) * lastSmoothedErr + obj.updateRate * err;
+        else
+          % err is lower than last smoothed
+          smoothedErr = (1-obj.updateRateDown) * lastSmoothedErr + obj.updateRateDown * err;
+        end
+
         obj.historySmoothedErr(countiter) = smoothedErr;
       else
         % we do not have a new error value, just use the last one
@@ -128,6 +141,11 @@ classdef (Abstract) OrigRatioUpdater < handle
       obj.updateRate = defopts(obj.surrogateOpts, 'DTAdaptive_updateRate', 0.40);
       obj.maxRatio   = defopts(obj.surrogateOpts, 'DTAdaptive_maxRatio',   1.00);
       obj.minRatio   = defopts(obj.surrogateOpts, 'DTAdaptive_minRatio',   0.05);
+
+      % for negative updates, use the same rate as positive rate as default;
+      % this default is used also if [] is supplied in experiment definition
+      % for 'updateRateDown'
+      obj.updateRateDown = defopts(obj.surrogateOpts, 'DTAdaptive_updateRateDown', obj.updateRate);
 
       % history initialization
       obj.historyErr = [];
