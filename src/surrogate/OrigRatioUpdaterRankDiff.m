@@ -1,8 +1,8 @@
 classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
-% TODO
-% [ ] define different updateRate for positive and negative trend
-% [ ] weightedSum aggregation of historical errors
-% [ ] faster increased updates then decreased (is it really ok?)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% WARNING: This class is deprecated! Use   OrigRatioUpdaterRankDiff2
+%          instead!
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   properties
     origParams
@@ -20,7 +20,8 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
     aggregateType
     weights
 
-    rankDiffs
+    historyErr
+    historySmoothedErr
     lastUpdateGeneration
     gain
     newRatio
@@ -37,7 +38,7 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       % ratio is updated according to the following formula
       %
       % nHistory = length(weights)
-      % newRatio = lastRatio + updateRate*(weights .* rankDiffs((end-nHistory+1):end)     (eqn. 1)
+      % newRatio = lastRatio + updateRate*(weights .* historyErr((end-nHistory+1):end)     (eqn. 1)
       % newRatio = min(max(newRatio, minRatio), maxRatio)
       %
       % Notes:
@@ -48,16 +49,16 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       %   it results in NaN entry for that generation(s)
 
       if (nargin >= 7) obj.ec = varargin{1}; end
-      obj.rankDiffs((obj.lastUpdateGeneration+1):(countiter-1)) = NaN;
+      obj.historyErr((obj.lastUpdateGeneration+1):(countiter-1)) = NaN;
       obj.historyRatios((obj.lastUpdateGeneration+1):(countiter-1)) = obj.lastRatio;
 
       rankErr = NaN;
       if (isempty(modelY) || (max(modelY) - min(modelY)) == 0 ...
           || (max(origY) - min(origY)) == 0)
-        obj.rankDiffs(countiter) = NaN;
+        obj.historyErr(countiter) = NaN;
       else
         rankErr = errRankMu(modelY, origY, obj.ec.cmaesState.mu);
-        obj.rankDiffs(countiter) = rankErr;
+        obj.historyErr(countiter) = rankErr;
       end
 
       % Decide the best new ratio based on aggregated rankDiff error
@@ -88,6 +89,7 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       ratio = min(max(ratio, obj.minRatio), obj.maxRatio);
 
       obj.historyRatios(countiter) = ratio;
+      obj.historySmoothedErr(countiter) = aggRankDiff;
       obj.lastRatio = ratio;
       obj.lastUpdateGeneration = countiter;
 
@@ -99,7 +101,7 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
 
     function obj = OrigRatioUpdaterRankDiff(ec, parameters)
       % constructor
-      obj = obj@OrigRatioUpdater(parameters);
+      obj = obj@OrigRatioUpdater();
       % parameter 'ec' is a reference to the EvolutionControl
       obj.ec = ec;
       obj.surrogateOpts = parameters;
@@ -120,7 +122,7 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       obj.lowRank  = defopts(obj.surrogateOpts, 'DTAdaptive_lowRank', 0.1);
       obj.highRank = defopts(obj.surrogateOpts, 'DTAdaptive_highRank', 0.5);
 
-      obj.rankDiffs = [];
+      obj.historyErr = [];
       obj.lastUpdateGeneration = 0;
 
       if obj.plotDebug
@@ -140,8 +142,8 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
       % (b) takes weighted sum of the last length(weights) values
 
       % take at most nHistory last values
-      nHistory = min(length(obj.rankDiffs), length(obj.weights));
-      values = obj.rankDiffs((end-nHistory+1):end);
+      nHistory = min(length(obj.historyErr), length(obj.weights));
+      values = obj.historyErr((end-nHistory+1):end);
       % identify NaN's
       bValues  = ~isnan(values);
       % return with NaN if no valid values in history
@@ -165,16 +167,16 @@ classdef OrigRatioUpdaterRankDiff < OrigRatioUpdater
         value = nonNanValues(end);
       case 'last'
         % take the last value (even if NaN)
-        value = obj.rankDiffs(end);
+        value = obj.historyErr(end);
       otherwise
         error(sprintf('OrigRatioUpdaterRankDiff: aggregateType ''%s'' not implemented.', obj.aggregateType));
       end
     end
 
-    function value = getLastRatio(obj, countiter)
+    function value = getLastRatio(obj)
       % TODO: why there is this "+ 1"?!
-      if countiter > obj.lastUpdateGeneration + 1
-        obj.update([], [], [], [], countiter);
+      if (obj.ec.cmaesState.countiter > obj.lastUpdateGeneration + 1)
+        obj.update([], [], [], [], obj.ec.cmaesState.countiter);
       end
       value = obj.lastRatio;
 

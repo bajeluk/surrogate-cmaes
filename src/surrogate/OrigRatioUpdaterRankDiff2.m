@@ -1,4 +1,4 @@
-classdef OrigRatioUpdaterRankDiff2 < OrigRatioUpdater
+classdef OrigRatioUpdaterRankDiff2 < OrigRatioUpdaterAbstractError
 % OrigRatioUpdaterRankDiff2 -- concrete subclass with RankDiff error, version 2
 %
 % Error is calculating based on rankings of model and original f-values using
@@ -17,7 +17,7 @@ classdef OrigRatioUpdaterRankDiff2 < OrigRatioUpdater
 
     function obj = OrigRatioUpdaterRankDiff2(ec, parameters)
       % just call predecessor's constructor
-      obj = obj@OrigRatioUpdater(ec, parameters);
+      obj = obj@OrigRatioUpdaterAbstractError(ec, parameters);
     end
   end
 end
