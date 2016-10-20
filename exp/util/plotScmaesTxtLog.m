@@ -2,12 +2,14 @@
 %
 % txt logfiles are located in bbob_output/*_log_*.dat
 %
+% Optional parameter--value settings:
+% 'xAxis'       'iters'  -- CMA-ES iterations on x-axis
+%               'fevals' -- original function evaluations on x-axis
+%
+% 'instance'    1,2,...  -- plot specified instance (of this order) instead 
+%                           of the first instance in the txt log file
+%
 function fig = plotScmaesTxtLog(exp_id, fun, dim, id, varargin)
-  t = readScmaesTxtLog(exp_id, fun, dim, id);
-
-  fig = figure();
-  fig.Position = [50, 50, 1200, 550];
-
   % parse optional input arguments
   if (~isempty(varargin))
     if (~isstruct(varargin))
@@ -24,6 +26,13 @@ function fig = plotScmaesTxtLog(exp_id, fun, dim, id, varargin)
   opts.xAxis = defopts(opts, 'xAxis', 'iters');
   opts.title = defopts(opts, 'title', sprintf('f%d in %dD  %s/%02d', ...
     fun, dim, strrep(exp_id, '_', '-'), id));
+  opts.instance = defopts(opts, 'instance', []);
+
+  % load data from txt log file
+  t = readScmaesTxtLog(exp_id, fun, dim, id, opts.instance);
+
+  fig = figure();
+  fig.Position = [50, 50, 1200, 550];
 
   % determine the x-axis
   if (strcmp(opts.xAxis, 'iters'))
