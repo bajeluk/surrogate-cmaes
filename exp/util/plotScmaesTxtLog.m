@@ -9,6 +9,8 @@
 % 'instance'    1,2,...  -- plot specified instance (of this order) instead 
 %                           of the first instance in the txt log file
 %
+% 'title'       [string] -- string which shall be placed into title instaed
+%                           of the default one (f, D, EXPID, ID, instance)
 function fig = plotScmaesTxtLog(exp_id, fun, dim, id, varargin)
   % parse optional input arguments
   if (~isempty(varargin))
@@ -24,9 +26,9 @@ function fig = plotScmaesTxtLog(exp_id, fun, dim, id, varargin)
     opts = struct();
   end
   opts.xAxis = defopts(opts, 'xAxis', 'iters');
-  opts.title = defopts(opts, 'title', sprintf('f%d in %dD  %s/%02d', ...
-    fun, dim, strrep(exp_id, '_', '-'), id));
-  opts.instance = defopts(opts, 'instance', []);
+  opts.instance = defopts(opts, 'instance', 1);
+  opts.title = defopts(opts, 'title', sprintf('f%d in %dD  %s  ID=%02d  inst=%d', ...
+    fun, dim, strrep(exp_id, '_', '-'), id, opts.instance));
 
   % load data from txt log file
   t = readScmaesTxtLog(exp_id, fun, dim, id, opts.instance);
