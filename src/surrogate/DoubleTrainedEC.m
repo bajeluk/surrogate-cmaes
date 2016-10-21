@@ -1,4 +1,5 @@
 classdef DoubleTrainedEC < EvolutionControl & Observable
+
   properties 
     model
     pop
@@ -24,6 +25,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     oldModelAgeForStatistics    % age of model for gathering statistics of old models
     isTrainSuccess
     origPointsRoundFcn % function computing number of original-evaluated points from origRatio
+    nBestPoints                 % the number of points with the best predicted f-value to take every generation
+    validationGenerationPeriod  % the number of generations between "validation generations" + 1, see validationPopSize
+    validationPopSize           % the minimal number of points to be orig-evaluated in validation generation
   end
   
   methods 
@@ -39,6 +43,10 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       obj.useDoubleTraining = defopts(surrogateOpts, 'evoControlUseDoubleTraining', true);
       obj.maxDoubleTrainIterations = defopts(surrogateOpts, 'evoControlMaxDoubleTrainIterations', Inf);
+      obj.nBestPoints = defopts(surrogateOpts, 'evoControlNBestPoints', 0);
+      obj.validationGenerationPeriod = defopts(surrogateOpts, 'evoControlValidationGenerationPeriod', 1);
+      obj.validationPopSize = defopts(surrogateOpts, 'evoControlValidationPopSize', 0);
+
       obj.pop = [];
       obj.surrogateOpts = surrogateOpts;
       obj.stats = struct( ...
@@ -156,15 +164,41 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       obj.model = obj.newModel;
 
+      % original-evaluate the best predicted point(s) out of 50*lambda sampled points
+      if (obj.nBestPoints >= 1)
+        [~, xBest, xBestValid, zBest] = preselect(obj.nBestPoints, obj.cmaesState, obj.model, sampleOpts);
+        [yBestOrig,  xBest, xBestValid, zBest, obj.counteval] = ...
+            sampleCmaesOnlyFitness(xBest, xBestValid, zBest, ...
+            obj.cmaesState.sigma, obj.nBestPoints, obj.counteval, obj.cmaesState, sampleOpts, ...
+            varargin{:});
+        phase = 1;        % this is the first model-evaluated point
+        obj.pop = obj.pop.addPoints(xBestValid, yBestOrig, xBest, zBest, obj.nBestPoints, phase);
+        obj.archive.save(xBestValid', yBestOrig', obj.cmaesState.countiter);
+      else
+        xBest = []; xBestValid = []; zBest = []; yBestOrig = [];
+      end
+
       nLambdaRest = lambda - obj.nPresampledPoints;
 
-      % sample new points
+      % raise the number of orig. evaluated points once in several generations
+      if (mod(obj.cmaesState.countiter, obj.validationGenerationPeriod) == 0)
+        obj.restrictedParam = max(obj.validationPopSize/nLambdaRest, obj.restrictedParam);
+      end
+
+      % sample new points -- the rest of population
       [xExtend, xExtendValid, zExtend] = ...
-          sampleCmaesNoFitness(obj.cmaesState.sigma, nLambdaRest, obj.cmaesState, sampleOpts);
+          sampleCmaesNoFitness(obj.cmaesState.sigma, nLambdaRest - obj.nBestPoints, obj.cmaesState, sampleOpts);
+
+      % merge the best point(s) with the sampled rest of population
+      xExtend      = [xBest,      xExtend];
+      xExtendValid = [xBestValid, xExtendValid];
+      zExtend      = [zBest,      zExtend];
+      isEvaled = [true(1,obj.nBestPoints), false(1, nLambdaRest-obj.nBestPoints)];
+      yOrig    = [yBestOrig, NaN(1, nLambdaRest-obj.nBestPoints)];
+
+      % get the model's prediction
       [modelOutput, yExtendModel] = obj.model.getModelOutput(xExtendValid');
 
-      isEvaled = false(1, nLambdaRest);
-      yOrig    = NaN(1, nLambdaRest);
       doubleTrainIteration = 0;
       notEverythingEvaluated = true;
 
@@ -209,6 +243,12 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           % update the Archive
           obj.archive.save(xNewValid', yNew', obj.cmaesState.countiter);
 
+        else
+          yNew = []; xNew = []; xNewValid = []; zNew = [];
+        end % if (nPoints > 0)
+
+        if (sum(isEvaled) > 0)
+
           % re-train the model again with the new original-evaluated points
           xTrain = [xTrain; xNewValid'];
           yTrain = [yTrain; yNew'];
@@ -235,7 +275,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             obj.usedUpdaterState.smoothedErr = obj.origRatioUpdater.historySmoothedErr(obj.cmaesState.countiter);
           end
 
-        end % if (nPoints > 0)
+        end % if (sum(isEvaled) > 0)
       
         notEverythingEvaluated = (doubleTrainIteration < obj.maxDoubleTrainIterations) ...
             && (floor(lambda * obj.restrictedParam) > sum(isEvaled));
