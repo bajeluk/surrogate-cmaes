@@ -27,11 +27,15 @@ function fig = plotScmaesTxtLog(exp_id, fun, dim, id, varargin)
   end
   opts.xAxis = defopts(opts, 'xAxis', 'iters');
   opts.instance = defopts(opts, 'instance', 1);
-  opts.title = defopts(opts, 'title', sprintf('f%d in %dD  %s  ID=%02d  inst=%d', ...
-    fun, dim, strrep(exp_id, '_', '-'), id, opts.instance));
+
+  % plot the plots for each instance
+  for inst = opts.instance
+
+  thisTitle = defopts(opts, 'title', sprintf('f%d in %dD  %s  ID=%02d  inst=%d', ...
+    fun, dim, strrep(exp_id, '_', '-'), id, inst));
 
   % load data from txt log file
-  t = readScmaesTxtLog(exp_id, fun, dim, id, opts.instance);
+  t = readScmaesTxtLog(exp_id, fun, dim, id, inst);
 
   fig = figure();
   fig.Position = [50, 50, 1200, 550];
@@ -96,7 +100,10 @@ function fig = plotScmaesTxtLog(exp_id, fun, dim, id, varargin)
   legend(legends{:});
   xlabel(xLabel);
   ylabel(sprintf('# orig. evals: 1.0 == %d points', max(t.orEvalsPop)));
-  title(opts.title);
+  title(thisTitle);
+
+  end % for inst = opts.instance
+
 end
 
 % correct iteration numbers after restarts (it goes wrongly down to zero)
