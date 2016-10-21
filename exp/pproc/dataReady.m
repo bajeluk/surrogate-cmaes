@@ -26,20 +26,22 @@ function [data, settings] = dataReady(datapath, funcSet)
   
   % load and complete results
 
-  % data divided between multiple folders
-  if iscell(datapath) 
-    datalist = {};
-    for i = 1:length(datapath)
-      actualDataList = gainDataList(datapath{i});
-      datalist(end+1 : end+length(actualDataList)) = actualDataList; 
-    end
-    errPathList = cell2mat(cellfun(@(x) [x, ' '], datapath, 'UniformOutput', false));
-  % data in one folder
-  else 
-    datalist = gainDataList(datapath);
-    errPathList = datapath;
+  % data are maybe divided between multiple folders
+  if (~iscell(datapath))
+    datapath = {datapath};
   end
-  
+  datalist = {};
+  for i = 1:length(datapath)
+    actualDataList = gainDataList(datapath{i});
+    % sort *.mat files according to the IDs (last number before '.mat')
+    ids = cellfun(@(x) str2num(x(regexp(x, 'D_\d+\.mat$')+2:end-4)), ...
+        actualDataList, 'UniformOutput', false);
+    [~, idsId] = sort(cell2mat(ids));
+    actualDataList = actualDataList(idsId);
+    datalist(end+1 : end+length(actualDataList)) = actualDataList;
+  end
+  errPathList = cell2mat(cellfun(@(x) [x, ' '], datapath, 'UniformOutput', false));
+
   settings = {};
   data = cell(nFunc, nDim);
   if isempty(datalist)
