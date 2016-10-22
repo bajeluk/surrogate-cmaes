@@ -1,4 +1,6 @@
 classdef OrigRatioUpdaterFactory
+% TODO
+% [ ] remove updaterParams and use DTAdaptive_* parameters instead
   methods (Static)
     function obj = createUpdater(ec, surrogateOpts)
       switch lower(surrogateOpts.updaterType)
