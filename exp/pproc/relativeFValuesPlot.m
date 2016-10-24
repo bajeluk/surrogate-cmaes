@@ -262,11 +262,9 @@ function handle = relativePlot(data_stats, settings)
     % legend settings
     if strcmp(settings.legendOption, 'out')
       handle = cell(1, nPlots + 1);
-      legendFigNum = nPlots + 1;
       settings.legendLocation = 'EastOutside';
     else
       handle = cell(1, nPlots);
-      legendFigNum = 1;
     end
     
     % plot all functions and dimensions
@@ -276,12 +274,26 @@ function handle = relativePlot(data_stats, settings)
         handle{(d-1) * nFunsToPlot + f} = ...
           figure('Units', 'centimeters', 'Position', [1, 1, 12.5, 6]);
         plottedInAny = plottedInAny | ...
-          onePlot(relativeData, f, d, settings, dispLegend && (strcmp(settings.legendOption, 'show') || (f*d == legendFigNum)), ...
+          onePlot(relativeData, f, d, settings, dispLegend && (strcmp(settings.legendOption, 'show') || (f*d == 1)), ...
                 0, false);
       end
     end
     if strcmp(settings.legendOption, 'out')
-      handle{legendFigNum} = soloLegend(settings.colors(plottedInAny, :), settings.datanames(plottedInAny), 2);
+      % maximal number of data in legend
+      maxNamesLegend = 15;
+      nToPlot = sum(plottedInAny);
+      % divide names to necessery sets
+      nLegends = ceil(nToPlot/maxNamesLegend);
+      setNumbers = floor(nToPlot/nLegends)*ones(1, nLegends);
+      remNumber = mod(nToPlot, nLegends);
+      setNumbers(1:remNumber) = setNumbers(1:remNumber) + 1;
+      % create legend id vector
+      setBounds = [0, cumsum(setNumbers)];
+      idToPlot = inverseIndex(plottedInAny);
+      for l = 1:nLegends
+        actualID = idToPlot(setBounds(l) + 1 : setBounds(l+1));
+        handle{nPlots + l} = soloLegend(settings.colors(actualID, :), settings.datanames(actualID), 2);
+      end
     end
   end
   
