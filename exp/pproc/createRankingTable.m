@@ -9,18 +9,20 @@ function [rankTable, ranks] = createRankingTable(data, varargin)
 %
 %     'DataDims'    - dimensions of data
 %     'DataFuns'    - functions of data
-%     'TableDims'   - dimensions chosen to count
-%     'TableFuns'   - functions chosen to count
 %     'Evaluations' - evaluations chosen to count
+%     'Rank'        - rank of resulting table or 'sum' to sum all ranks
 %     'Statistic'   - statistic of data | string or handle (@mean, 
 %                       @median)
+%     'TableDims'   - dimensions chosen to count
+%     'TableFuns'   - functions chosen to count
 %
 % Output:
 %   table - table of rankings
 %   ranks - rankings for each function and dimension
 %
 % See Also:
-%   rankingTable, speedUpPlot, speedUpPlotCompare, dataReady
+%   rankingTable, createEFETable, speedUpPlot, speedUpPlotCompare, 
+%   dataReady
 
   % initialization
   rankTable = [];
@@ -37,6 +39,7 @@ function [rankTable, ranks] = createRankingTable(data, varargin)
   dims    = defopts(settings, 'TableDims', funcSet.dims);
   BBfunc  = defopts(settings, 'TableFuns', funcSet.BBfunc);
   evaluations = defopts(settings, 'Evaluations', [20 40 80]);
+  tableRank = defopts(settings, 'Rank', 1);
   statistic = defopts(settings, 'Statistic', @median);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
@@ -98,32 +101,47 @@ function [rankTable, ranks] = createRankingTable(data, varargin)
     end
   end
   
-  % create first rank table
-  rankTable = createTable(rankTable, 1);
+  % create rank table
+  rankTable = createTable(rankTable, tableRank, nFunc);
 
 end
 
-function rankTable = createTable(table, rank)
+function rankTable = createTable(table, rank, nFunc)
 % Creates table of sums of rank
   
   [numOfData, nDims] = size(table);
   nEvals = size(table{1,1}, 2);
+  sumRank = strcmp(rank, 'sum');
+  avgRank = (numOfData + 1)/2;
   
   rankTable = zeros(numOfData, (nDims+1)*nEvals);
   % data
   for dat = 1:numOfData
     % dimensions
-    for d = 1:nDims
-      % evaluations
-      for e = 1:nEvals
-        % gain ranks
-        rankTable(dat, (d-1)*nEvals + e) = table{dat,d}(rank, e);
+    for d = 1:nDims      
+      % gain sum of all ranks
+      if sumRank
+        % find number of missing functions
+        missingFuns = nFunc - sum(table{dat,d});
+        % count sum of ranks and replace missing functions by the average rank
+        rankTable(dat, (d-1)*nEvals+1 : d*nEvals) = (1:numOfData)*table{dat,d} + avgRank*missingFuns;
+      % gain chosen ranks
+      else
+        % evaluations
+        for e = 1:nEvals
+          rankTable(dat, (d-1)*nEvals + e) = table{dat,d}(rank, e);
+        end
       end
     end
-    % rank sums
-    for e = 1:nEvals
-      % print only first ranks
-      rankTable(dat, nDims*nEvals + e) = sum(arrayfun(@(x) table{dat,x}(rank, e), 1:nDims));
+    % gain sum of sums of all ranks
+    if sumRank
+      rankTable(dat, nDims*nEvals + 1: end) = arrayfun(@(x) sum(rankTable(dat, x:nEvals:end)), 1:nEvals);
+    % rank sums of chosen ranks
+    else
+      for e = 1:nEvals
+        % print only chosen ranks
+        rankTable(dat, nDims*nEvals + e) = sum(arrayfun(@(x) table{dat,x}(rank, e), 1:nDims));
+      end
     end
   end
 end
