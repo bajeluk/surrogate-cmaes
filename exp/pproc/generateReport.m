@@ -219,6 +219,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%%%% Tested algorithms comparison\n');
   fprintf(FID, '\n');
   fprintf(FID, 'close all\n');
+  % first rank table
   fprintf(FID, 'rankTable = rankingTable(expData, ''Format'', ''figure'', ...\n');
   fprintf(FID, '                                  ''DataDims'', funcSet.dims, ...\n');
   fprintf(FID, '                                  ''DataFuns'', funcSet.BBfunc, ...\n');
@@ -235,6 +236,26 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%% Ties of the 1st ranks are counted for all respective algorithms. \n');
   fprintf(FID, '%% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
   fprintf(FID, '\n');
+  % sum of ranks table
+  fprintf(FID, 'sumRankTable = rankingTable(expData, ''Format'', ''figure'', ...\n');
+  fprintf(FID, '                                     ''DataDims'', funcSet.dims, ...\n');
+  fprintf(FID, '                                     ''DataFuns'', funcSet.BBfunc, ...\n');
+  fprintf(FID, '                                     ''DataNames'', expAlgNames, ...\n');
+  fprintf(FID, '                                     ''Evaluations'', showEval, ...\n');
+  fprintf(FID, '                                     ''Rank'', ''sum'');\n');
+  fprintf(FID, '\n');
+  fprintf(FID, '%%%%\n');
+  fprintf(FID, '%%\n');
+  fprintf(FID, '%% *Table 2:* Sums of ranks of all tested algorithms \n');
+  fprintf(FID, '%% from %d benchmark functions \n', length(BBfunc));
+  fprintf(FID, '%% according to the lowest achieved ${\\Delta_f}^\\textrm{med}$ for different \n');
+  fprintf(FID, '%% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
+  fprintf(FID, '%% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
+  fprintf(FID, '%% Ties of the 1st ranks are counted for all respective algorithms. \n');
+  fprintf(FID, '%% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
+  fprintf(FID, '%% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
+  fprintf(FID, '\n');
+  % EFE table
   fprintf(FID, 'efeTab = efeTable(expData, ''DataDims'', funcSet.dims, ...\n');
   fprintf(FID, '                           ''DataFuns'', funcSet.BBfunc, ...\n');
   fprintf(FID, '                           ''DataNames'', expAlgNames, ...\n');
@@ -242,7 +263,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '\n');
   fprintf(FID, '%%%%\n');
   fprintf(FID, '%%\n');
-  fprintf(FID, '%% *Table 2:* Sums of ranks of the expected number of function evaluations ($\\textrm{EFE}$)\n');
+  fprintf(FID, '%% *Table 3:* Sums of ranks of the expected number of function evaluations ($\\textrm{EFE}$)\n');
   fprintf(FID, '%% of all tested algorithms from %d benchmark functions \n', length(BBfunc));
   fprintf(FID, '%% for different quantiles q = %s \n', printStructure(showQuantile, FID, 'Format', 'value'));
   fprintf(FID, '%% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
@@ -287,6 +308,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  colors = [expCol; algColors];\n');
   fprintf(FID, '  \n');
   fprintf(FID, '  close all\n');
+  % first rank table
   fprintf(FID, '  rankTable = rankingTable(data, ''Format'', ''figure'', ...\n');
   fprintf(FID, '                                 ''DataDims'', funcSet.dims, ...\n');
   fprintf(FID, '                                 ''DataFuns'', funcSet.BBfunc, ...\n');
@@ -295,7 +317,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  \n');
   fprintf(FID, '  %%%%\n');
   fprintf(FID, '  %%\n');
-  fprintf(FID, '  %% *Table 3:* Counts of the 1st ranks of all compared algorithms \n');
+  fprintf(FID, '  %% *Table 4:* Counts of the 1st ranks of all compared algorithms \n');
   fprintf(FID, '  %% from %d benchmark functions \n', length(BBfunc));
   fprintf(FID, '  %% according to the lowest achieved ${\\Delta_f}^\\textrm{med}$ for different \n');
   fprintf(FID, '  %% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
@@ -303,6 +325,26 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  %% Ties of the 1st ranks are counted for all respective algorithms. \n');
   fprintf(FID, '  %% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
   fprintf(FID, '  \n');
+  % sum of ranks table
+  fprintf(FID, '  sumRankTable = rankingTable(data, ''Format'', ''figure'', ...\n');
+  fprintf(FID, '                                    ''DataDims'', funcSet.dims, ...\n');
+  fprintf(FID, '                                    ''DataFuns'', funcSet.BBfunc, ...\n');
+  fprintf(FID, '                                    ''DataNames'', datanames, ...\n');
+  fprintf(FID, '                                    ''Evaluations'', showEval,...\n');
+  fprintf(FID, '                                    ''Rank'', ''sum'');\n');
+  fprintf(FID, '  \n');
+  fprintf(FID, '  %%%%\n');
+  fprintf(FID, '  %%\n');
+  fprintf(FID, '  %% *Table 5:* Sums of ranks of all compared algorithms \n');
+  fprintf(FID, '  %% from %d benchmark functions \n', length(BBfunc));
+  fprintf(FID, '  %% according to the lowest achieved ${\\Delta_f}^\\textrm{med}$ for different \n');
+  fprintf(FID, '  %% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
+  fprintf(FID, '  %% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
+  fprintf(FID, '  %% Ties of the 1st ranks are counted for all respective algorithms. \n');
+  fprintf(FID, '  %% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
+  fprintf(FID, '  %% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
+  fprintf(FID, '  \n');
+  % EFE table
   fprintf(FID, '  efeTab = efeTable(data, ''DataDims'', funcSet.dims, ...\n');
   fprintf(FID, '                          ''DataFuns'', funcSet.BBfunc, ...\n');
   fprintf(FID, '                          ''DataNames'', datanames, ...\n');
@@ -310,7 +352,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  \n');
   fprintf(FID, '  %%%%\n');
   fprintf(FID, '  %%\n');
-  fprintf(FID, '  %% *Table 4:* Sums of ranks of the expected number of function evaluations ($\\textrm{EFE}$)\n');
+  fprintf(FID, '  %% *Table 6:* Sums of ranks of the expected number of function evaluations ($\\textrm{EFE}$)\n');
   fprintf(FID, '  %% of all compared algorithms from %d benchmark functions \n', length(BBfunc));
   fprintf(FID, '  %% for different quantiles q = %s \n', printStructure(showQuantile, FID, 'Format', 'value'));
   fprintf(FID, '  %% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
