@@ -46,6 +46,9 @@ while shift; do
   fi
 done
 
+echo "Following IDs will be processed:"
+echo $allIDs | tr ',' ' '
+
 cp -r ${EXP_ID}/scmaes_params.mat ${EXP_ID}/allids.txt ${EXP_ID}/cmaes_results $outputDir/
 eval cp "${EXP_ID}/${EXP_ID}_"*"D_{$allIDs}."* $outputDir/
 mkdir $outputDir/bbob_output

@@ -137,17 +137,17 @@ classdef (Abstract) OrigRatioUpdaterAbstractError < OrigRatioUpdater
       obj.surrogateOpts = parameters;
 
       % default parameter settings
-      obj.defaultErr = defopts(obj.surrogateOpts, 'DTAdaptive_defaultErr', 0.20);
       obj.lowErr     = defopts(obj.surrogateOpts, 'DTAdaptive_lowErr',     0.15);
       obj.highErr    = defopts(obj.surrogateOpts, 'DTAdaptive_highErr',    0.40);
       obj.updateRate = defopts(obj.surrogateOpts, 'DTAdaptive_updateRate', 0.40);
       obj.maxRatio   = defopts(obj.surrogateOpts, 'DTAdaptive_maxRatio',   1.00);
       obj.minRatio   = defopts(obj.surrogateOpts, 'DTAdaptive_minRatio',   0.05);
+      obj.defaultErr = myeval(defopts(obj.surrogateOpts, 'DTAdaptive_defaultErr', 0.20));
 
       % for negative updates, use the same rate as positive rate as default;
       % this default is used also if [] is supplied in experiment definition
       % for 'updateRateDown'
-      obj.updateRateDown = defopts(obj.surrogateOpts, 'DTAdaptive_updateRateDown', obj.updateRate);
+      obj.updateRateDown = myeval(defopts(obj.surrogateOpts, 'DTAdaptive_updateRateDown', obj.updateRate));
 
       % history initialization
       obj.historyErr = [];
@@ -165,5 +165,13 @@ classdef (Abstract) OrigRatioUpdaterAbstractError < OrigRatioUpdater
       value = obj.lastRatio;
     end
 
+  end
+end
+
+function res=myeval(s)
+  if ischar(s)
+    res = evalin('caller', s);
+  else
+    res = s;
   end
 end
