@@ -28,7 +28,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     modelAge                    % age of model in the number of generations (0 == current model)
     oldModelAgeForStatistics    % age of model for gathering statistics of old models
     isTrainSuccess
-    origPointsRoundFcn % function computing number of original-evaluated points from origRatio
+    origPointsRoundFcn          % function computing number of original-evaluated points from origRatio
     nBestPoints                 % the number of points with the best predicted f-value to take every generation
     usedBestPoints              % how many best-predicted points was really orig-evaluated
     validationGenerationPeriod  % the number of generations between "validation generations" + 1, see validationPopSize
