@@ -6,37 +6,52 @@
 %       vectory y2) are calculated
 %
 function err = errRankMu(y1, y2, mu)
-  [~, sort1] = sort(y1);
-  ranking2   = ranking(y2);
-  r = ranking2(sort1);
-
-  if (size(r,1) > 1 && size(r,2) > 1)
-    error('Error in ranking can be done only for vectors');
+  if ((size(y1,1) > 1 && size(y1,2) > 1) || (size(y2,1) > 1 && size(y2,2) > 1) ...
+      || any(size(y1) ~= size(y2)))
+    error('Error in ranking can be done only for two vectors of same size');
   end
 
-  l = length(r);
-  r = r(:);
-  % calculate the differences to the right ranking
-  err = abs(r - [1:l]');
-  % do not calculate errors which belong to ranking > mu
-  err((err > 0) & (r > mu)) = 0;
-  % return the overall number of errors
-  err = sum(err);
+  if (mu == 0)
+    err = 0;
+    warning('Calling errRankMu() with mu==0 does not really make sense.');
+    return;
+  end
 
-  % Try to calculate maximum error value
-  %
-  % it should be situation (for nfirst = min(mu,floor((l-1)/2))  )
-  %
-  % [(nfirst+1) (nfirst+2) ... (nfirst) ... 3 2 1]
-  %
-  % but it it not 100% true, it happend that 1.01 error was returned
+  lambda = length(y1);
+  r1 = ranking(y1);
+  r2 = ranking(y2);
+  rDiff = abs(r2 - r1);
 
-  % up to mu or floor((l-1)/2)      ---- per (l-nfirst+1) points
-  nfirst = min(mu,floor((l-1)/2));
-  max_err = nfirst * (l-nfirst);
-  % (nfirst+1) th ... mu th         ---- per nfirst points
-  max_err = max_err + max(0, mu-nfirst) * nfirst;
+  rDiff(r1 > mu) = 0;
 
-  % return (approximate) relative ratio of errors
+  err = sum(rDiff);
+
+  %
+  % Normalize the error to the range [0,1]
+  %
+  
+  % First, calculate maximal Ranking differences to the ranking 1:n
+  % for every point for two cases, i.e. when
+  % 1) going into oposite end of the not-so-far occupied part
+  going_oposite = abs(-2*[1:lambda] + lambda+1);
+  going_oposite((mu+1):end) = 0;
+  % 2) going to the left (also not further than not-yet occupied part)
+  reverting_index = ceil((lambda+2)/3) + 1;
+  going_left = min([1:lambda] - 1, reverting_index - 1);
+
+  % Maximal error for each point in the first part would be going oposite
+  max_err = going_oposite;
+  % But the second part, starting from the reverting index,
+  % is not clear: decide which option yields more error points
+  if (sum(going_oposite(reverting_index:end)) < sum(going_left(reverting_index:end)))
+    max_err(reverting_index:end) = going_left(reverting_index:end);
+  end
+
+  % again, calculate only the cases where y1 <= mu
+  max_err((mu+1):end) = 0;
+  % Sum all the errors
+  max_err = sum(max_err);
+
+  % return relative ratio of errors
   err = err/max_err;
 end
