@@ -60,10 +60,20 @@ function [table, ranks] = rankingTable(data, varargin)
       nEvals = length(evaluations);
       nDims = length(dims);
       maxLengthData = max(cellfun(@length, datanames));
-      tableSize = [11*(2+maxLengthData) + nEvals*(nDims+1)*40, 20*(numOfData+2)];
       
-      evalRow = repmat(evaluations, [1, length(dims)+1]);
-      publicTable = [evalRow; table];
+      evalRow = repmat(evaluations, [1, length(dims)+1]);      publicTable = [evalRow; table];
+      % numbers should have normalized format
+      % choose how to display them:
+      % a) transform to text
+      % publicTable = arrayfun(@(x) sprintf('%g', x), publicTable, 'UniformOutput', false);
+      % maxLengthNumber = max(max(cellfun(@length, publicTable)));
+      % b) round values
+      publicTable = round(publicTable);
+      maxLengthNumber = max(max(arrayfun(@(x) ceil(log10(x)), publicTable)));
+      % column width is number-length dependent
+      colWidth = 20 + 5*maxLengthNumber;
+      tableSize = [11*(2+maxLengthData) + nEvals*(nDims+1)*colWidth, 20*(numOfData+2)];
+      
       colBase = arrayfun(@(x) repmat({[num2str(x), 'D']}, [1, nEvals]), dims, 'UniformOutput', false);
       colName = [[colBase{:}], repmat({'SUM'}, [1, nEvals])];
       rowName = [{'FE/D'}, datanames];
@@ -71,7 +81,7 @@ function [table, ranks] = rankingTable(data, varargin)
       table = uitable(f, 'Data', publicTable, ...
                  'ColumnName', colName, ...
                  'RowName', rowName, ...
-                 'ColumnWidth', {40}, ...
+                 'ColumnWidth', {colWidth}, ...
                  'Position', [1, 1, tableSize]);
       
     % prints table to latex file

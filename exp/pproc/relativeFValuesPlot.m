@@ -23,10 +23,12 @@ function handle = relativeFValuesPlot(data, varargin)
 %                       (e.g. [1, 2, 3, 4, 5, 11, 12])
 %     'FunctionNames' - show function names in header | boolean
 %     'LegendOption'  - legend settings:
-%                         'show'  - show legend
-%                         'hide'  - do not show legend
-%                         'split' - legend splitted in first two graphs
-%                         'out'   - legend is out of the last graph
+%                         'show'    - show legend
+%                         'hide'    - do not show legend
+%                         'split'   - legend splitted in first two graphs
+%                         'out'     - legend is in one separate figure
+%                         'manyout' - legend is in multiple separated
+%                                     figures
 %     'LineSpec'      - specification of plotted lines (see help plot ->
 %                       LineSpec), to set colors use 'Colors' settings | 
 %                       cell array of string
@@ -148,7 +150,8 @@ function handle = relativePlot(data_stats, settings)
   if strcmp(settings.legendOption, 'split')
     splitLegend = true;
   end
-  if strcmp(settings.legendOption, 'hide')
+  % do not display legend inside the graph
+  if any(strcmp(settings.legendOption, {'hide', 'out', 'manyout'}))
     dispLegend = false;
   end
   settings.legendLocation = 'NorthEast';
@@ -260,7 +263,7 @@ function handle = relativePlot(data_stats, settings)
   else
     
     % legend settings
-    if strcmp(settings.legendOption, 'out')
+    if any(strcmp(settings.legendOption, {'out', 'manyout'}))
       handle = cell(1, nPlots + 1);
       settings.legendLocation = 'EastOutside';
     else
@@ -278,10 +281,15 @@ function handle = relativePlot(data_stats, settings)
                 0, false);
       end
     end
-    if strcmp(settings.legendOption, 'out')
-      % maximal number of data in legend
-      maxNamesLegend = 15;
+    if any(strcmp(settings.legendOption, {'out', 'manyout'}))
+      % how many data are plotted
       nToPlot = sum(plottedInAny);
+      % maximal number of data in one legend
+      if strcmp(settings.legendOption, 'out')
+        maxNamesLegend = nToPlot;
+      else
+        maxNamesLegend = 15;
+      end
       % divide names to necessery sets
       nLegends = ceil(nToPlot/maxNamesLegend);
       setNumbers = floor(nToPlot/nLegends)*ones(1, nLegends);
