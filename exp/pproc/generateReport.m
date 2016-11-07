@@ -8,10 +8,15 @@ function reportFile = generateReport(expFolder, varargin)
 %   settings  - pairs of property (string) and value, or struct with 
 %               properties as fields:
 %
-%     'Description' - description of the report | string
-%     'Publish'     - resulting format of published report similar to 
-%                     function publish (see help publish) | string
-%                   - to disable publishing set option to 'off' (default)
+%     'Description'  - description of the report | string
+%     'LegendOption' - legend option of plots from relativeFValues,
+%                      recommended settings for generateReport are:
+%                        'out'     - legend is in one separate figure
+%                        'manyout' - legend is in multiple separated
+%                                    figures
+%     'Publish'      - resulting format of published report similar to 
+%                      function publish (see help publish) | string
+%                    - to disable publishing set option to 'off' (default)
 %
 % Output:
 %   reportFile - name of m-file containing report | string
@@ -33,6 +38,7 @@ function reportFile = generateReport(expFolder, varargin)
   % parse input
   reportSettings = settings2struct(varargin{:});
   publishOption = defopts(reportSettings, 'Publish', 'off');
+  legendOption = defopts(reportSettings, 'LegendOption', 'out');
   reportDescription = defopts(reportSettings, 'Description', []);
   if ~iscell(expFolder)
     expFolder = {expFolder};
@@ -254,6 +260,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%% Ties of the 1st ranks are counted for all respective algorithms. \n');
   fprintf(FID, '%% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
   fprintf(FID, '%% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
+  fprintf(FID, '%% The sums of ranks are rounded to integers if necessary.\n');
   fprintf(FID, '\n');
   % EFE table
   fprintf(FID, 'efeTab = efeTable(expData, ''DataDims'', funcSet.dims, ...\n');
@@ -280,6 +287,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = 250$.\n');
   fprintf(FID, '%% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
   fprintf(FID, '%%\n');
+  % relativeFValuesPlots
   fprintf(FID, 'for f = funcSet.BBfunc\n');
   fprintf(FID, '  %%%% \n');
   fprintf(FID, '  close all\n');
@@ -294,7 +302,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                            ''DataNames'', expAlgNames, ...\n');
   fprintf(FID, '                            ''Colors'', expCol, ...\n');
   fprintf(FID, '                            ''FunctionNames'', true, ...\n');
-  fprintf(FID, '                            ''LegendOption'', ''out'', ...\n');
+  fprintf(FID, '                            ''LegendOption'', ''%s'', ...\n', legendOption);
   fprintf(FID, '                            ''Statistic'', @median);\n');
   fprintf(FID, 'end\n');
   fprintf(FID, '\n');
@@ -368,7 +376,9 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  %% = 10^{-8}$ is target value, $\\textrm{FE/D}$ are function evaluations\n');
   fprintf(FID, '  %% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = 250$.\n');
   fprintf(FID, '  %% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
+  fprintf(FID, '  %% The sums of ranks are rounded to integers if necessary.\n');
   fprintf(FID, '  %%\n');
+  % relativeFValuesPlots
   fprintf(FID, '  for f = funcSet.BBfunc\n');
   fprintf(FID, '    %%%% \n');
   fprintf(FID, '    close all\n');
@@ -383,10 +393,11 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                              ''DataNames'', datanames, ...\n');
   fprintf(FID, '                              ''Colors'', colors, ...\n');
   fprintf(FID, '                              ''FunctionNames'', true, ...\n');
-  fprintf(FID, '                              ''LegendOption'', ''out'', ...\n');
+  fprintf(FID, '                              ''LegendOption'', ''%s'', ...\n', legendOption);
   fprintf(FID, '                              ''Statistic'', @median);\n');
   fprintf(FID, '  end\n');
   fprintf(FID, '  \n');
+  % summary graphs
   fprintf(FID, '  %%%% Summary graphs\n');
   fprintf(FID, '  %% Summary graphs are averaged through all functions for individual algorithms in separate dimensionalities.\n');
   fprintf(FID, '  close all\n');
