@@ -128,7 +128,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%% to important algorithms in continuous black-box optimization field \n');
   fprintf(FID, '%% (CMA-ES, BIPOP-s*ACM-ES, SMAC, S-CMA-ES, and DTS-CMA-ES).\n');
   fprintf(FID, '%% \n');
-  if any(cellfun(@(x) isfield(x, 'exp_description'), expName))
+  if any(cellfun(@(x) isfield(x, 'exp_description'), settings))
     for f = 1:nFolders
       fprintf(FID, '%% *%s:*\n', expName{f});
       if isfield(settings{f}, 'exp_description')
@@ -351,6 +351,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  %% Ties of the 1st ranks are counted for all respective algorithms. \n');
   fprintf(FID, '  %% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
   fprintf(FID, '  %% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
+  fprintf(FID, '  %% The sums of ranks are rounded to integers if necessary.\n');
   fprintf(FID, '  \n');
   % EFE table
   fprintf(FID, '  efeTab = efeTable(data, ''DataDims'', funcSet.dims, ...\n');
@@ -376,7 +377,6 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  %% = 10^{-8}$ is target value, $\\textrm{FE/D}$ are function evaluations\n');
   fprintf(FID, '  %% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = 250$.\n');
   fprintf(FID, '  %% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
-  fprintf(FID, '  %% The sums of ranks are rounded to integers if necessary.\n');
   fprintf(FID, '  %%\n');
   % relativeFValuesPlots
   fprintf(FID, '  for f = funcSet.BBfunc\n');
@@ -409,7 +409,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                          ''DataNames'', datanames, ...\n');
   fprintf(FID, '                          ''Colors'', colors, ...\n');
   fprintf(FID, '                          ''FunctionNames'', true, ...\n');
-  fprintf(FID, '                          ''LegendOption'', ''out'', ...\n');
+  fprintf(FID, '                          ''LegendOption'', ''%s'', ...\n', legendOption);
   fprintf(FID, '                          ''Statistic'', @median);\n');
   fprintf(FID, 'else\n');
   fprintf(FID, '  warning(''Could not load %%s.\\n');
