@@ -18,11 +18,10 @@ function err = errRankMu(y1, y2, mu)
   end
 
   lambda = length(y1);
-  r1 = ranking(y1);
-  r2 = ranking(y2);
-  rDiff = abs(r2 - r1);
-
-  rDiff(r1 > mu) = 0;
+  [~, si1] = sort(y1);
+  [~, si2] = sort(y2);
+  rDiff = abs(si2 - si1);
+  rDiff((mu+1):end) = 0;
 
   err = sum(rDiff);
 
@@ -36,22 +35,25 @@ function err = errRankMu(y1, y2, mu)
   going_oposite = abs(-2*[1:lambda] + lambda+1);
   going_oposite((mu+1):end) = 0;
   % 2) going to the left (also not further than not-yet occupied part)
-  reverting_index = ceil((lambda+2)/3) + 1;
-  going_left = min([1:lambda] - 1, reverting_index - 1);
-
-  % Maximal error for each point in the first part would be going oposite
-  max_err = going_oposite;
-  % But the second part, starting from the reverting index,
-  % is not clear: decide which option yields more error points
-  if (sum(going_oposite(reverting_index:end)) < sum(going_left(reverting_index:end)))
-    max_err(reverting_index:end) = going_left(reverting_index:end);
+  riMaxErr = 0;
+  for ri = 2:lambda
+    going_left = min([1:lambda] - 1, ri - 1);
+    % Maximal error for each point in the first part would be going oposite
+    max_err = going_oposite;
+    % But the second part, starting from the reverting index,
+    % is not clear: decide which option yields more error points
+    if (sum(going_oposite(ri:end)) < sum(going_left(ri:end)))
+      max_err(ri:end) = going_left(ri:end);
+    end
+    % again, calculate only the cases where y1 <= mu
+    max_err((mu+1):end) = 0;
+    % Sum all the errors
+    sum_max_err = sum(max_err);
+    if (sum_max_err > riMaxErr)
+      riMaxErr = sum_max_err;
+    end
   end
 
-  % again, calculate only the cases where y1 <= mu
-  max_err((mu+1):end) = 0;
-  % Sum all the errors
-  max_err = sum(max_err);
-
   % return relative ratio of errors
-  err = err/max_err;
+  err = err/riMaxErr;
 end

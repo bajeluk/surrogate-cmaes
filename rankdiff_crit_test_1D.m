@@ -62,19 +62,19 @@ Kss = feval(model.covFcn{:}, model.hyp.cov, X_star', 'diag'); % self-variance
 
 % evaluate covariance matrix
 K = K__X_N__X_N;
-% evaluate mean vector
-m = feval(model.meanFcn, model.hyp.mean, X_N');
+% evaluate mean vector for X_N
+m_N = feval(model.meanFcn, model.hyp.mean, X_N');
 % noise variance of likGauss
 sn2 = exp(2*model.hyp.lik);
 % Cholesky factor of covariance with noise
 L = chol(K/sn2 + eye(N) + 0.0001*eye(N));
 % inv(K+noise) * (y_N - mean)
-alpha = solve_chol(L, y_N - m) / sn2;
+alpha = solve_chol(L, y_N - m_N) / sn2;
 
 %% Predictive mean
 
-% evaluate mean function
-ms = feval(model.meanFcn, model.hyp.mean, X_star');
+% evaluate mean function for test points X_star
+m_star = feval(model.meanFcn, model.hyp.mean, X_star');
 
 % conditional mean fs|f (shorter form)
 % Fmu = ms + K__X_star__X_N * alpha;
@@ -83,7 +83,7 @@ ms = feval(model.meanFcn, model.hyp.mean, X_star');
 K_inv = solve_chol(L, eye(N));
 
 % Predictive conditional mean fs|f
-Fmu = ms + K__X_star__X_N * K_inv * (1/sn2) * (y_N - m);
+Fmu = m_star + K__X_star__X_N * K_inv * (1/sn2) * (y_N - m_N);
 
 %% Predictive variances
 
@@ -114,8 +114,8 @@ for s = 1:lambda
   K__X_star_m__X_N_p = feval(model.covFcn{:}, model.hyp.cov, X_N_p', X_star_m')';
   K__X_N_p__X_N_p = feval(model.covFcn{:}, model.hyp.cov, X_N_p', []);
   % evaluate mean vectors
-  m_m  = feval(model.meanFcn, model.hyp.mean, X_N_p');
-  ms_m = feval(model.meanFcn, model.hyp.mean, X_star_m');
+  m_N_p  = feval(model.meanFcn, model.hyp.mean, X_N_p');
+  m_star_m = feval(model.meanFcn, model.hyp.mean, X_star_m');
   % noise variance of likGauss
   sn2 = exp(2*model.hyp.lik);
   % Cholesky factor of covariance with noise
@@ -123,48 +123,98 @@ for s = 1:lambda
   % Covariance * y_N
   Kp_inv = solve_chol(Lp, eye(N+1));
 
-  %% Sample possible values of Y_s and identify different orderings of f*
+  %% Calculate inequalitiy boudnaries
 
-  % Try different values of Y_s which has prior
-  %   Y_s ~ N(Fmu(s), Fs2(s))
+  A = K__X_star_m__X_N_p * Kp_inv * (1/sn2);
 
-  n_sample = 500;
-  lb = Fmu(s) - 10*Fs2(s);
-  ub = Fmu(s) + 10*Fs2(s);
-  y_space = linspace(lb, ub, n_sample);
-  mean_rank = ranking(Fmu(withoutS))';
-  last_rank = mean_rank;
-  y_ths   = [];
-  y_ranks = [];
-  
-  % Create structures for rankings
-  rank_diffs = [];
-  
-  % Iterate through different values of Y_s
-  for y = y_space
-    % Calculate vector f* (for this value of Y_s)
-    Fmu_m = ms_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; y] - m_m);
-    % Get the ranking of f*
-    this_rank = ranking(Fmu_m)';
-    if (~all(this_rank == last_rank))
-      % The ranking has changed from the last iteration => save it
-      y_ths = [y_ths; y];
-      y_ranks = [y_ranks; last_rank];
-      rank_diffs = [rank_diffs; errRankMu(last_rank, mean_rank, mu)];
-      last_rank = this_rank;
+  M = NaN(lambda-1,lambda-1);
+
+  for i = 1:(lambda-1)
+    for j = (i+1):(lambda-1)
+      h_k = - m_star_m(i) + A(i,1:(end-1)) * (y_N - m_N);
+      h_l = - m_star_m(j) + A(j,1:(end-1)) * (y_N - m_N);
+      M(i,j) = m_N_p(end) + (h_k - h_l) / (A(j,end) - A(i,end));
     end
   end
-  % Save also the last ranking
-  y_ranks = [y_ranks; last_rank];
-  rank_diffs = [rank_diffs; errRankMu(last_rank, mean_rank, mu)];
+  thresholds = M(:);
+  thresholds = sort(thresholds(~isnan(thresholds)));
+
+  %% Identify the rankings in the middle of the inequality boundaries
   
-  % Compute the propabilites of these rankings
+  middleThresholds = [2*thresholds(1) - thresholds(end);
+    thresholds(2:end) - thresholds(1:(end-1));
+    2*thresholds(end) - thresholds(1)];
+  
+  y_ths   = [];
+  y_ranks = [];
+  rank_diffs = [];
+  mean_rank = ranking(Fmu(withoutS))';
+  for i = 1:length(thresholds)
+    y = middleThresholds(i);
+    % Calculate vector f* (for this value of Y_s)
+    Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p);
+    % Get the ranking of f*
+    this_rank = ranking(Fmu_m)';
+    y_ranks = [y_ranks; this_rank];
+    y_ths = [y_ths; thresholds(i)];
+    rank_diffs = [rank_diffs; errRankMu(this_rank, mean_rank, mu)];
+  end
+  % Save also the last ranking
+  y = middleThresholds(end);
+  Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p);
+  y_ranks = [y_ranks; ranking(Fmu_m)'];
+  rank_diffs = [rank_diffs; errRankMu(this_rank, mean_rank, mu)];
+
+  % %% Sample possible values of Y_s and identify different orderings of f*
+  % 
+  % % Try different values of Y_s which has prior
+  % %   Y_s ~ N(Fmu(s), Fs2(s))
+  % 
+  % n_sample = 5000;
+  % sigma_factor = 20;
+  % 
+  % lb = Fmu(s) - sigma_factor*Fs2(s);
+  % ub = Fmu(s) + sigma_factor*Fs2(s);
+  % y_space = linspace(lb, ub, n_sample);
+  % mean_rank = ranking(Fmu(withoutS))';
+  % y = lb;
+  % this_rank = ranking(m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p))';
+  % last_rank = this_rank;
+  % last_y  = lb;
+  % y_ths   = [];
+  % y_ranks = [];
+  % rank_diffs = [];
+  % 
+  % % Iterate through different values of Y_s
+  % %   y_ths is the last value of the interval where y_ranks holds
+  % for y = y_space(2:end)
+  %   % Calculate vector f* (for this value of Y_s)
+  %   Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p);
+  %   % Get the ranking of f*
+  %   this_rank = ranking(Fmu_m)';
+  %   if (~all(this_rank == last_rank))
+  %     % The ranking has changed from the last iteration => save it
+  %     y_ths = [y_ths; last_y];
+  %     y_ranks = [y_ranks; last_rank];
+  %     rank_diffs = [rank_diffs; errRankMu(last_rank, mean_rank, mu)];
+  %     last_rank = this_rank;
+  %   end
+  %   last_y    = y;
+  % end
+  % % Save also the last ranking
+  % y_ranks = [y_ranks; this_rank];
+  % rank_diffs = [rank_diffs; errRankMu(this_rank, mean_rank, mu)];
+
+  %% Compute the propabilites of these rankings
   norm_cdfs = [0; normcdf(y_ths, Fmu(s), Fs2(s)); 1];
   probs = norm_cdfs(2:end) - norm_cdfs(1:(end-1));
   
   % Merge expected errors for corresponding rankings
   rankings_errs = containers.Map();
   for r = 1:length(probs)
+    if (probs(r) < 1e-10)
+      continue;
+    end
     key = sprintf('%d ', y_ranks(r,:));
     if (rankings_errs.isKey(key))
       rankings_errs(key) = rankings_errs(key) + rank_diffs(r)*probs(r);
@@ -179,15 +229,15 @@ for s = 1:lambda
   
   %% Plot the two extreme rankings for chosen s == 4
   if (s == 4)
-    y_extremes = [y_ths(1), y_ths(end)];
+    y_extremes = [y_ths(1), y_ths(end)+0.02];
     colors = ['m', 'g'];
     for yi = 1:2
       y = y_extremes(yi);
       Ks = feval(model.covFcn{:}, model.hyp.cov, X_N_p', x_surf')';
       ms_extreme = feval(model.meanFcn, model.hyp.mean, x_surf');
-      y_extreme = ms_extreme + Ks * Kp_inv * (1/sn2) * ([y_N; y] - m_m);
+      y_extreme = ms_extreme + Ks * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p);
       plot(x_surf, y_extreme, [colors(yi) '--']);
-      Fmu_m = ms_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; y] - m_m);
+      Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p);
       plot(X_star_m, Fmu_m, [colors(yi) '+'])
       plot(X_s, y, 'r*');
     end
@@ -200,24 +250,7 @@ end
 
 disp('Expected errors for the possible choices of Y_s:');
 disp(expectedErr);
-
-% %% Calculate inequalitiy boudnaries
-% 
-% A = K__X_star_m__X_N_p * Kp_inv * (1/sn2);
-% 
-% M = NaN(lambda-1,lambda-1);
-% 
-% for i = 1:(lambda-1)
-%   for j = (i+1):(lambda-1)
-%     h_k = A(i,1:(end-1)) * y_N;
-%     h_l = A(j,1:(end-1)) * y_N;
-%     M(i,j) = (h_k - h_l) / (A(i,end) - A(j,end));
-%   end  
-% end
-% 
-% thresholds = M(:);
-% thresholds = sort(thresholds(~isnan(thresholds)));
-% 
+ 
 % %% Topological sort
 % 
 % nt = size(thresholds,1);
@@ -228,6 +261,6 @@ disp(expectedErr);
 %   [S(t,:), Ok(t)] = toposort(G);
 %   
 %   Y_s = thresholds(t)+sqrt(eps);
-%   Fmu_m = ms_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * [y_N; Y_s];
+%   Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; Y_s] - m_N_p);
 %   disp([Ok(t) ranking(Fmu_m)'; NaN S(t,:)]);
 % end
