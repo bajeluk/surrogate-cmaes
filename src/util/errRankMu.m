@@ -5,25 +5,27 @@
 %       y2, but rank-errors of only the first mu ranks (ordinals according to the second
 %       vectory y2) are calculated
 %
-function err = errRankMu(y1, y2, mu)
+function [errNorm, errSum] = errRankMu(y1, y2, mu)
   if ((size(y1,1) > 1 && size(y1,2) > 1) || (size(y2,1) > 1 && size(y2,2) > 1) ...
       || any(size(y1) ~= size(y2)))
     error('Error in ranking can be done only for two vectors of same size');
   end
 
   if (mu == 0)
-    err = 0;
+    errSum = 0;
     warning('Calling errRankMu() with mu==0 does not really make sense.');
     return;
   end
 
   lambda = length(y1);
-  [~, si1] = sort(y1);
-  [~, si2] = sort(y2);
-  rDiff = abs(si2 - si1);
+  [~, sortInd1] = sort(y1);
+  inRank2       = ranking(y2);
+  r1 = 1:lambda;
+  r2 = inRank2(sortInd1);
+  rDiff = abs(r2 - r1);
   rDiff((mu+1):end) = 0;
 
-  err = sum(rDiff);
+  errSum = sum(rDiff);
 
   %
   % Normalize the error to the range [0,1]
@@ -55,5 +57,5 @@ function err = errRankMu(y1, y2, mu)
   end
 
   % return relative ratio of errors
-  err = err/riMaxErr;
+  errNorm = errSum/riMaxErr;
 end
