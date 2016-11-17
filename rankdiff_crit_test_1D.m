@@ -21,6 +21,9 @@ end
 
 %% Plot initial settings
 
+% sort the population from left to right
+X_star = sort(X_star);
+
 x_surf = -1:0.02:1;
 figure();
 plot(x_surf, f(x_surf), 'k-');
@@ -60,14 +63,12 @@ Kss = feval(model.covFcn{:}, model.hyp.cov, X_star', 'diag'); % self-variance
 
 %% Posterior
 
-% evaluate covariance matrix
-K = K__X_N__X_N;
 % evaluate mean vector for X_N
 m_N = feval(model.meanFcn, model.hyp.mean, X_N');
 % noise variance of likGauss
 sn2 = exp(2*model.hyp.lik);
 % Cholesky factor of covariance with noise
-L = chol(K/sn2 + eye(N) + 0.0001*eye(N));
+L = chol(K__X_N__X_N/sn2 + eye(N) + 0.0001*eye(N));
 % inv(K+noise) * (y_N - mean)
 alpha = solve_chol(L, y_N - m_N) / sn2;
 
@@ -102,12 +103,12 @@ Fs2 = max(fs2, 0);
 expectedErr = zeros(lambda,1);
 
 for s = 1:lambda
-  %% Calculate modified covariances and prediction as if X_s would be in the train set
+  %% Calculate modified covariances and prediction as if 'x_s' would be in the train set
   withoutS = [1:(s-1), (s+1):lambda]';
 
   X_star_m = X_star(:,withoutS);
-  X_N_p    = [X_N X_star(:,s)];
   X_s      = X_star(:,s);
+  X_N_p    = [X_N X_s];
   % plot(X_s, Fmu(s), 'b*');
 
   % covariances
@@ -150,9 +151,9 @@ for s = 1:lambda
   rank_diffs = [];
   mean_rank = ranking(Fmu(withoutS))';
   for i = 1:length(thresholds)
-    y = middleThresholds(i);
+    Y_s = middleThresholds(i);
     % Calculate vector f* (for this value of Y_s)
-    Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p);
+    Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; Y_s] - m_N_p);
     % Get the ranking of f*
     this_rank = ranking(Fmu_m)';
     y_ranks = [y_ranks; this_rank];
@@ -160,8 +161,8 @@ for s = 1:lambda
     rank_diffs = [rank_diffs; errRankMu(this_rank, mean_rank, mu)];
   end
   % Save also the last ranking
-  y = middleThresholds(end);
-  Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p);
+  Y_s = middleThresholds(end);
+  Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; Y_s] - m_N_p);
   y_ranks = [y_ranks; ranking(Fmu_m)'];
   rank_diffs = [rank_diffs; errRankMu(this_rank, mean_rank, mu)];
 
@@ -223,6 +224,7 @@ for s = 1:lambda
     end
   end
   errors = rankings_errs.values;
+  delete(rankings_errs);
   
   % Save the resulting expected error for this individual 's'
   expectedErr(s) = sum([errors{:}]);
