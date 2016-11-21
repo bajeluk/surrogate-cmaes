@@ -230,7 +230,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                                  ''DataDims'', funcSet.dims, ...\n');
   fprintf(FID, '                                  ''DataFuns'', funcSet.BBfunc, ...\n');
   fprintf(FID, '                                  ''DataNames'', expAlgNames, ...\n');
-  fprintf(FID, '                                  ''Evaluations'', showEval);\n');
+  fprintf(FID, '                                  ''Evaluations'', showEval, ...\n');
+  fprintf(FID, '                                  ''Ranking'', ''tolerant'');\n');
   fprintf(FID, '\n');
   fprintf(FID, '%%%%\n');
   fprintf(FID, '%%\n');
@@ -248,7 +249,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                                     ''DataFuns'', funcSet.BBfunc, ...\n');
   fprintf(FID, '                                     ''DataNames'', expAlgNames, ...\n');
   fprintf(FID, '                                     ''Evaluations'', showEval, ...\n');
-  fprintf(FID, '                                     ''Rank'', ''sum'');\n');
+  fprintf(FID, '                                     ''Rank'', ''sum'', ...\n');
+  fprintf(FID, '                                     ''Ranking'', ''median'');\n');
   fprintf(FID, '\n');
   fprintf(FID, '%%%%\n');
   fprintf(FID, '%%\n');
@@ -257,10 +259,10 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%% according to the lowest achieved ${\\Delta_f}^\\textrm{med}$ for different \n');
   fprintf(FID, '%% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
   fprintf(FID, '%% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
-  fprintf(FID, '%% Ties of the 1st ranks are counted for all respective algorithms. \n');
+  fprintf(FID, '%% Ties of ranks are replaced by median tied rank for all respective algorithms. \n');
   fprintf(FID, '%% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
   fprintf(FID, '%% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
-  fprintf(FID, '%% The sums of ranks are rounded to integers if necessary.\n');
+  fprintf(FID, '%% The sums of ranks are multiplied by factor 10 to show all equalities of ranks.\n');
   fprintf(FID, '\n');
   % EFE table
   fprintf(FID, 'efeTab = efeTable(expData, ''DataDims'', funcSet.dims, ...\n');
@@ -321,7 +323,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                                 ''DataDims'', funcSet.dims, ...\n');
   fprintf(FID, '                                 ''DataFuns'', funcSet.BBfunc, ...\n');
   fprintf(FID, '                                 ''DataNames'', datanames, ...\n');
-  fprintf(FID, '                                 ''Evaluations'', showEval);\n');
+  fprintf(FID, '                                 ''Evaluations'', showEval, ...\n');
+  fprintf(FID, '                                 ''Ranking'', ''tolerant'');\n');
   fprintf(FID, '  \n');
   fprintf(FID, '  %%%%\n');
   fprintf(FID, '  %%\n');
@@ -339,7 +342,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                                    ''DataFuns'', funcSet.BBfunc, ...\n');
   fprintf(FID, '                                    ''DataNames'', datanames, ...\n');
   fprintf(FID, '                                    ''Evaluations'', showEval,...\n');
-  fprintf(FID, '                                    ''Rank'', ''sum'');\n');
+  fprintf(FID, '                                    ''Rank'', ''sum'', ...\n');
+  fprintf(FID, '                                    ''Ranking'', ''median'');\n');
   fprintf(FID, '  \n');
   fprintf(FID, '  %%%%\n');
   fprintf(FID, '  %%\n');
@@ -348,10 +352,10 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  %% according to the lowest achieved ${\\Delta_f}^\\textrm{med}$ for different \n');
   fprintf(FID, '  %% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
   fprintf(FID, '  %% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
-  fprintf(FID, '  %% Ties of the 1st ranks are counted for all respective algorithms. \n');
+  fprintf(FID, '  %% Ties of ranks are replaced by median tied rank for all respective algorithms. \n');
   fprintf(FID, '  %% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
   fprintf(FID, '  %% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
-  fprintf(FID, '  %% The sums of ranks are rounded to integers if necessary.\n');
+  fprintf(FID, '  %% The sums of ranks are multiplied by factor 10 to show all equalities of ranks.\n');
   fprintf(FID, '  \n');
   % EFE table
   fprintf(FID, '  efeTab = efeTable(data, ''DataDims'', funcSet.dims, ...\n');
