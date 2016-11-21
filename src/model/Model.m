@@ -212,8 +212,8 @@ classdef (Abstract) Model
         case 'ei' % expected improvement
           output = getEI(X, y, sd2, fmin);
           
-        case 'lcb' % least confidence bound
-          output = y - 2 * sd2;
+        case 'lcb' % lower confidence bound
+          output = y - 2 * sqrt(sd2);
         
         case 'fpoi' % PoI scaled using function values
           target = fmin - 0.05 * (fmax - fmin);
