@@ -12,6 +12,11 @@ function [table, ranks] = rankingTable(data, varargin)
 %     'DataFuns'    - functions of data
 %     'Evaluations' - evaluations chosen to count
 %     'Format'      - table format | ('tex', 'figure')
+%     'Ranking'     - type of ranking (see help createRankingTable)
+%                       'tolerant' - equal rank independence
+%                       'precise'  - equal ranks shift following ranks
+%                       'median'   - equal ranks replaced by medians of
+%                                    shifted ranks (from 'precise')
 %     'ResultFile'  - file containing resulting table
 %     'Statistic'   - statistic of data | string or handle (@mean, @median)
 %     'TableDims'   - dimensions chosen to count
@@ -41,6 +46,7 @@ function [table, ranks] = rankingTable(data, varargin)
   tableFormat = defopts(settings, 'Format', 'tex');
   dims    = defopts(settings, 'TableDims', funcSet.dims);
   BBfunc  = defopts(settings, 'TableFuns', funcSet.BBfunc);
+  tableRank = defopts(settings, 'Rank', 1);
   evaluations = defopts(settings, 'Evaluations', [20 40 80]);
   defResultFolder = fullfile('exp', 'pproc', 'tex');
   resultFile = defopts(settings, 'ResultFile', fullfile(defResultFolder, 'rankTable.tex'));
@@ -61,14 +67,20 @@ function [table, ranks] = rankingTable(data, varargin)
       nDims = length(dims);
       maxLengthData = max(cellfun(@length, datanames));
       
-      evalRow = repmat(evaluations, [1, length(dims)+1]);      publicTable = [evalRow; table];
+      evalRow = repmat(evaluations, [1, length(dims)+1]);      
       % numbers should have normalized format
       % choose how to display them:
       % a) transform to text
-      % publicTable = arrayfun(@(x) sprintf('%g', x), publicTable, 'UniformOutput', false);
-      % maxLengthNumber = max(max(cellfun(@length, publicTable)));
+      % table = arrayfun(@(x) sprintf('%g', x), table, 'UniformOutput', false);
+      % maxLengthNumber = max(max(cellfun(@length, table)));
       % b) round values
-      publicTable = round(publicTable);
+      if tableRank == 1
+        table = round(table);
+      else
+      % c) multiply by ten
+        table = 10*(table);
+      end
+      publicTable = [evalRow; table];
       maxLengthNumber = max(max(arrayfun(@(x) ceil(log10(x)), publicTable)));
       % column width is number-length dependent
       colWidth = 20 + 5*maxLengthNumber;
