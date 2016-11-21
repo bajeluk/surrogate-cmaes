@@ -141,11 +141,13 @@ for s = 1:lambda
   thresholds = sort(thresholds(~isnan(thresholds)));
 
   %% Identify the rankings in the middle of the inequality boundaries
-  
+
   middleThresholds = [2*thresholds(1) - thresholds(end);
-    thresholds(2:end) - thresholds(1:(end-1));
+    (thresholds(2:end) + thresholds(1:(end-1)))/2;
     2*thresholds(end) - thresholds(1)];
-  
+
+  ieqMs = cell(1,length(thresholds)+1);
+
   y_ths   = [];
   y_ranks = [];
   rank_diffs = [];
@@ -159,12 +161,16 @@ for s = 1:lambda
     y_ranks = [y_ranks; this_rank];
     y_ths = [y_ths; thresholds(i)];
     rank_diffs = [rank_diffs; errRankMu(this_rank, mean_rank, mu)];
+
+    ieqMs{i} =  (M <= Y_s) + tril((~(M <= Y_s))',-1);
   end
   % Save also the last ranking
   Y_s = middleThresholds(end);
   Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; Y_s] - m_N_p);
   y_ranks = [y_ranks; ranking(Fmu_m)'];
   rank_diffs = [rank_diffs; errRankMu(this_rank, mean_rank, mu)];
+
+  ieqMs{end} = (M <= Y_s) + tril((M <= Y_s)',-1);
 
   % %% Sample possible values of Y_s and identify different orderings of f*
   % 
@@ -209,7 +215,7 @@ for s = 1:lambda
   %% Compute the propabilites of these rankings
   norm_cdfs = [0; normcdf(y_ths, Fmu(s), Fs2(s)); 1];
   probs = norm_cdfs(2:end) - norm_cdfs(1:(end-1));
-  
+
   % Merge expected errors for corresponding rankings
   rankings_errs = containers.Map();
   for r = 1:length(probs)
@@ -225,10 +231,10 @@ for s = 1:lambda
   end
   errors = rankings_errs.values;
   delete(rankings_errs);
-  
+
   % Save the resulting expected error for this individual 's'
   expectedErr(s) = sum([errors{:}]);
-  
+
   %% Plot the two extreme rankings for chosen s == 4
   if (s == 4)
     y_extremes = [y_ths(1), y_ths(end)+0.02];
@@ -252,7 +258,7 @@ end
 
 disp('Expected errors for the possible choices of Y_s:');
 disp(expectedErr);
- 
+
 % %% Topological sort
 % 
 % nt = size(thresholds,1);
