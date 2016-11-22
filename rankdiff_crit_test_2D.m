@@ -1,58 +1,67 @@
-%% Generate a benchmark 1D data
+%% Load benchmark 2D data
 
-if (exist('rankdiff_crit_test_1D.mat', 'file'))
-  load('rankdiff_crit_test_1D.mat', 'f', 'trainSize', 'lambda', 'mu', 'X_N', 'y_N', 'D', 'N', 'X_star');
-else
-  f = @(x) 0.25*(x+2).*sin(pi*x).^4;
+load 'exp/experiments/exp_doubleEC_11_test/bbob_output/exp_doubleEC_11_test_modellog_8_2D_1.mat'
+load 'exp/experiments/exp_doubleEC_11_test/exp_doubleEC_11_test_results_8_2D_1.mat'
 
-  trainSize = 7;
-  lambda = 6;
-  mu = 3;
+g = 60;
+last_point_idx = cmaes_out{1}{1}.generationStarts(g+1)-1;
+g_generation_idx = [cmaes_out{1}{1}.generationStarts(g):last_point_idx];
+orig_idx = logical(cmaes_out{1}{1}.origEvaled(1:last_point_idx));
 
-  X_N = -0.2 + randn(1,trainSize)*0.4;
-  y_N = f(X_N)';
-  % set some noise on the training data
-  y_N = y_N +  randn(size(y_N))*0.02;
-  [D, N] = size(X_N);
+fgeneric('initialize', 8, 1, '/tmp', struct('algName', 'Test_pure_CMAES'));
+model = models{g};
 
-  X_star = 0.2 + randn(1,lambda)*0.2;
-  lambda = size(X_star, 2);
+% Preprocess data into GP's familiar matrices
+
+% X_N = cmaes_out{1}{1}.arxvalids(:,find(orig_120));
+% y_N = cmaes_out{1}{1}.fvalues(find(orig_120));
+% y_N = y_N';
+
+% X_N = (model.trainSigma*model.trainBD) \ (model.dataset.X');
+% Trainset in the GP's space
+X_N = model.dataset.X';
+f_GPToX = @(X) (model.trainSigma*model.trainBD * X);
+f_XToGP = @(X) ( (model.trainSigma * model.trainBD) \ X);
+
+f_yToGP = @(y) (y - model.shiftY) / model.stdY;
+f_GPToY = @(y) (y * model.stdY) + model.shiftY;
+
+y_N = f_yToGP(model.dataset.y);
+[D, N] = size(X_N);
+
+X_star = f_XToGP(cmaes_out{1}{1}.arxvalids(:,g_generation_idx));
+lambda = size(X_star, 2);
+[f_star, cov_star] = model.predict(f_GPToX(X_star)');
+y_star = fgeneric(f_GPToX(X_star));
+
+mu = floor(lambda/2);
+
+%% Plotting the actual surface (preparation)
+
+landXMin = f_GPToX(min([X_N, X_star], [], 2));
+landXMax = f_GPToX(max([X_N, X_star], [], 2));
+diff = landXMax - landXMin;
+landXMin = landXMin - 0.1*diff;
+landXMax = landXMax + 0.1*diff;
+
+[landX,landY] = meshgrid(linspace(landXMin(1),landXMax(1),20), linspace(landXMin(2),landXMax(2),20));
+landX_l = landX(:); landY_l = landY(:);
+landZ_l = zeros(size(landX_l,1),1);
+for i = 1:length(landZ_l)
+  landZ_l(i) = fgeneric([landX_l(i); landY_l(i)]);
 end
+landZ = reshape(landZ_l, size(landX,1), size(landX,2));
 
-%% Plot initial settings
-
-% sort the population from left to right
-X_star = sort(X_star);
-
-x_surf = -1:0.02:1;
 figure();
-plot(x_surf, f(x_surf), 'k-');
-ax = gca;
-ax.YLim = [-0.5 1];
+surf(landX, landY, landZ);
 hold on;
-plot(X_N, y_N, 'r+');
-plot(X_star, -0.5*ones(size(X_star)), 'b*');
+X_N_real = f_GPToX(X_N);
+X_star_real = f_GPToX(X_star);
+plot3(X_N_real(1,:), X_N_real(2,:), f_GPToY(y_N), 'ro');
+plot3(X_star_real(1,:), X_star_real(2,:), y_star, 'ko');
 
-%% Construct GP model
-
-modelOpts = struct('transformCoordinates', false, 'normalizeY', false);
-model = GpModel(modelOpts, 0);
-cmState = struct('xmean', -0.2, 'countiter', 1, 'sigma', 0.3, 'lambda', lambda, 'BD', 1, 'diagD', 1);
-sampleOpts = struct('noiseReevals', 0, 'isBoundActive', 1, 'lbounds', -1, 'ubounds', 1, ...
-  'flgDiagonalOnly', false, 'noiseHandling', false, 'xintobounds', @xintobounds);
-model = model.train(X_N', y_N, cmState, sampleOpts);
-model.trainGeneration = 1;
-if (~iscell(model.likFcn))
-  model.likFcn = {model.likFcn};
-end
-y_star = f(X_star');
-[f_star, cov_star] = model.predict(X_star');
-
-%% Plot GP prediction
-
-plot(X_star, f_star, 'b+');
-y_model = model.predict(x_surf');
-plot(x_surf, y_model', 'b--');
+% Plot GP prediction
+plot3(X_star_real(1,:), X_star_real(2,:), f_star, 'bo');
 
 %% Evaluate covariance function
 
@@ -84,7 +93,12 @@ m_star = feval(model.meanFcn, model.hyp.mean, X_star');
 K_inv = solve_chol(L, eye(N));
 
 % Predictive conditional mean fs|f
-Fmu = m_star + K__X_star__X_N * K_inv * (1/sn2) * (y_N - m_N);
+% % it can be done like this
+% Fmu = m_star + K__X_star__X_N * K_inv * (1/sn2) * (y_N - m_N);
+% but it is more numerical stable to do it like
+Fmu = m_star + K__X_star__X_N * alpha;
+
+% [y_GP, std_GP] = gp(model.hyp, model.infFcn, model.meanFcn, model.covFcn, model.likFcn, X_N', y_N, X_star');
 
 %% Predictive variances
 
@@ -109,7 +123,6 @@ for s = 1:lambda
   X_star_m = X_star(:,withoutS);
   X_s      = X_star(:,s);
   X_N_p    = [X_N X_s];
-  % plot(X_s, Fmu(s), 'b*');
 
   % covariances
   K__X_star_m__X_N_p = feval(model.covFcn{:}, model.hyp.cov, X_N_p', X_star_m')';
@@ -134,7 +147,7 @@ for s = 1:lambda
     for j = (i+1):(lambda-1)
       h_k = - m_star_m(i) + A(i,1:(end-1)) * (y_N - m_N);
       h_l = - m_star_m(j) + A(j,1:(end-1)) * (y_N - m_N);
-      M(i,j) = m_N_p(end) + (h_k - h_l) / (A(j,end) - A(i,end));
+      M(i,j) = f_GPToY(m_N_p(end) + (h_k - h_l) / (A(j,end) - A(i,end)));
     end
   end
   thresholds = M(:);
@@ -148,12 +161,12 @@ for s = 1:lambda
     2*thresholds(end) - thresholds(1)];
 
   % Ranking of the most probable Y_s
-  mean_rank = ranking(Fmu(withoutS))';
+  mean_rank = ranking(f_GPToY(Fmu(withoutS)))';
   
   % Determine the ranking before the first threshold
-  Y_s = middleThresholds(1);
+  Y_s = f_yToGP(middleThresholds(1));
   Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; Y_s] - m_N_p);
-  last_rank = ranking(Fmu_m)';
+  last_rank = ranking(f_GPToY(Fmu_m))';
   y_ranks = [last_rank];
   rank_diffs = [errRankMu(last_rank, mean_rank, mu)];
   
@@ -171,64 +184,25 @@ for s = 1:lambda
     last_rank = this_rank;
 
     % Debug: just for being sure whether we set the ranking right :)
-    Y_s = middleThresholds(i+1);
+    Y_s = f_yToGP(middleThresholds(i+1));
     % Calculate vector f* (for this value of Y_s)
     Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; Y_s] - m_N_p);
     % Get the ranking of f*
-    check_rank = ranking(Fmu_m)';
+    check_rank = ranking(f_GPToY(Fmu_m))';
     assert(all(this_rank == check_rank));
   end
-  
-  % %% Sample possible values of Y_s and identify different orderings of f*
-  % 
-  % % Try different values of Y_s which has prior
-  % %   Y_s ~ N(Fmu(s), Fs2(s))
-  % 
-  % n_sample = 5000;
-  % sigma_factor = 20;
-  % 
-  % lb = Fmu(s) - sigma_factor*Fs2(s);
-  % ub = Fmu(s) + sigma_factor*Fs2(s);
-  % y_space = linspace(lb, ub, n_sample);
-  % mean_rank = ranking(Fmu(withoutS))';
-  % y = lb;
-  % this_rank = ranking(m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p))';
-  % last_rank = this_rank;
-  % last_y  = lb;
-  % y_ths   = [];
-  % y_ranks = [];
-  % rank_diffs = [];
-  % 
-  % % Iterate through different values of Y_s
-  % %   y_ths is the last value of the interval where y_ranks holds
-  % for y = y_space(2:end)
-  %   % Calculate vector f* (for this value of Y_s)
-  %   Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p);
-  %   % Get the ranking of f*
-  %   this_rank = ranking(Fmu_m)';
-  %   if (~all(this_rank == last_rank))
-  %     % The ranking has changed from the last iteration => save it
-  %     y_ths = [y_ths; last_y];
-  %     y_ranks = [y_ranks; last_rank];
-  %     rank_diffs = [rank_diffs; errRankMu(last_rank, mean_rank, mu)];
-  %     last_rank = this_rank;
-  %   end
-  %   last_y    = y;
-  % end
-  % % Save also the last ranking
-  % y_ranks = [y_ranks; this_rank];
-  % rank_diffs = [rank_diffs; errRankMu(this_rank, mean_rank, mu)];
 
   %% Compute the propabilites of these rankings
-  norm_cdfs = [0; normcdf(thresholds, Fmu(s), Fs2(s)); 1];
+  % norm_cdfs = [0; normcdf(thresholds, Fmu(s), sqrt(Fs2(s)/max(Fs2))); 1];
+  norm_cdfs = [0; normcdf(thresholds, f_GPToY(Fmu(s)), Fs2(s)*model.stdY); 1];
   probs = norm_cdfs(2:end) - norm_cdfs(1:(end-1));
 
   % Merge expected errors for corresponding rankings
   rankings_errs = containers.Map();
   for r = 1:length(probs)
-    if (probs(r) < 1e-10)
-      continue;
-    end
+    % if (probs(r) < 1e-20)
+    %   continue;
+    % end
     key = sprintf('%d ', y_ranks(r,:));
     if (rankings_errs.isKey(key))
       rankings_errs(key) = rankings_errs(key) + rank_diffs(r)*probs(r);
@@ -242,19 +216,22 @@ for s = 1:lambda
   % Save the resulting expected error for this individual 's'
   expectedErr(s) = sum([errors{:}]);
 
-  %% Plot the two extreme rankings for chosen s == 4
-  if (s == 6)
+  %% Plot the two extreme rankings for chosen s
+  X_star_m_real = f_GPToX(X_star_m);
+  X_s_real = f_GPToX(X_s);
+
+  if (s == 5)
     y_extremes = [thresholds(1)-sqrt(eps), thresholds(end)+sqrt(eps)];
     colors = ['m', 'g'];
     for yi = 1:2
       y = y_extremes(yi);
-      Ks = feval(model.covFcn{:}, model.hyp.cov, X_N_p', x_surf')';
-      ms_extreme = feval(model.meanFcn, model.hyp.mean, x_surf');
-      y_extreme = ms_extreme + Ks * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p);
-      plot(x_surf, y_extreme, [colors(yi) '--']);
+      % Ks = feval(model.covFcn{:}, model.hyp.cov, X_N_p', x_surf')';
+      % ms_extreme = feval(model.meanFcn, model.hyp.mean, x_surf');
+      % y_extreme = ms_extreme + Ks * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p);
+      % plot(x_surf, y_extreme, [colors(yi) '--']);
       Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p);
-      plot(X_star_m, Fmu_m, [colors(yi) '+'])
-      plot(X_s, y, 'r*');
+      plot3(X_star_m_real(1,:), X_star_m_real(2,:), f_GPToY(Fmu_m), [colors(yi) '+'])
+      plot3(X_s_real(1,:), X_s_real(2,:), y, 'r*');
     end
 
     legend('True function', 'GP train set of size N (with small noise)', '\lambda Sampled points (on x-axis)', ...
