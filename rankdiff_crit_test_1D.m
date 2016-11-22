@@ -142,36 +142,43 @@ for s = 1:lambda
 
   %% Identify the rankings in the middle of the inequality boundaries
 
+  % Calculate middle points between the thresholds
   middleThresholds = [2*thresholds(1) - thresholds(end);
     (thresholds(2:end) + thresholds(1:(end-1)))/2;
     2*thresholds(end) - thresholds(1)];
 
-  ieqMs = cell(1,length(thresholds)+1);
-
-  y_ths   = [];
-  y_ranks = [];
-  rank_diffs = [];
+  % Ranking of the most probable Y_s
   mean_rank = ranking(Fmu(withoutS))';
+  
+  % Determine the ranking before the first threshold
+  Y_s = middleThresholds(1);
+  Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; Y_s] - m_N_p);
+  last_rank = ranking(Fmu_m)';
+  y_ranks = [last_rank];
+  rank_diffs = [errRankMu(last_rank, mean_rank, mu)];
+  
   for i = 1:length(thresholds)
-    Y_s = middleThresholds(i);
+    % Find the coordinates of this threshold in the matrix 'M'
+    [row, col] = find(M == thresholds(i));
+    % This threshold exchanges ranking of this  row <--> col
+    this_rank = last_rank;
+    this_rank(row) = last_rank(col);
+    this_rank(col) = last_rank(row);
+    
+    % Save this new ranking and its errRankMu
+    y_ranks = [y_ranks; this_rank];
+    rank_diffs = [rank_diffs; errRankMu(this_rank, mean_rank, mu)];
+    last_rank = this_rank;
+
+    % Debug: just for being sure whether we set the ranking right :)
+    Y_s = middleThresholds(i+1);
     % Calculate vector f* (for this value of Y_s)
     Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; Y_s] - m_N_p);
     % Get the ranking of f*
-    this_rank = ranking(Fmu_m)';
-    y_ranks = [y_ranks; this_rank];
-    y_ths = [y_ths; thresholds(i)];
-    rank_diffs = [rank_diffs; errRankMu(this_rank, mean_rank, mu)];
-
-    ieqMs{i} =  (M <= Y_s) + tril((~(M <= Y_s))',-1);
+    check_rank = ranking(Fmu_m)';
+    assert(all(this_rank == check_rank));
   end
-  % Save also the last ranking
-  Y_s = middleThresholds(end);
-  Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; Y_s] - m_N_p);
-  y_ranks = [y_ranks; ranking(Fmu_m)'];
-  rank_diffs = [rank_diffs; errRankMu(this_rank, mean_rank, mu)];
-
-  ieqMs{end} = (M <= Y_s) + tril((M <= Y_s)',-1);
-
+  
   % %% Sample possible values of Y_s and identify different orderings of f*
   % 
   % % Try different values of Y_s which has prior
@@ -213,7 +220,7 @@ for s = 1:lambda
   % rank_diffs = [rank_diffs; errRankMu(this_rank, mean_rank, mu)];
 
   %% Compute the propabilites of these rankings
-  norm_cdfs = [0; normcdf(y_ths, Fmu(s), Fs2(s)); 1];
+  norm_cdfs = [0; normcdf(thresholds, Fmu(s), Fs2(s)); 1];
   probs = norm_cdfs(2:end) - norm_cdfs(1:(end-1));
 
   % Merge expected errors for corresponding rankings
@@ -237,7 +244,7 @@ for s = 1:lambda
 
   %% Plot the two extreme rankings for chosen s == 4
   if (s == 4)
-    y_extremes = [y_ths(1), y_ths(end)+0.02];
+    y_extremes = [thresholds(1)-sqrt(eps), thresholds(end)+sqrt(eps)];
     colors = ['m', 'g'];
     for yi = 1:2
       y = y_extremes(yi);
