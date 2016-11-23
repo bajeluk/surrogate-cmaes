@@ -3,13 +3,14 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 % TODO:
 % [ ] remove updaterParams and use DTAdaptive_* parameters instead
 % [ ] rename 'restrictedParam' to 'origRatio'
+% [ ] in choosePointsForReevaluation() consider lowering 'mu' according to the proportion size(xExtend,2) / obj.cmaesState.lambda
 %
   properties 
     model
     pop
     cmaesState
     counteval
-    
+
     origRatioUpdater
     restrictedParam
     useDoubleTraining
@@ -34,7 +35,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     validationGenerationPeriod  % the number of generations between "validation generations" + 1, see validationPopSize
     validationPopSize           % the minimal number of points to be orig-evaluated in validation generation
   end
-  
+
   methods 
     function obj = DoubleTrainedEC(surrogateOpts, varargin)
     % constructor
@@ -99,7 +100,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
     function [obj, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
     % Run one generation of double trained evolution control
-      
+
       % initialization
       lambda = cmaesState.lambda;       % this is needed due to myeval
       dim    = cmaesState.dim;          % this is needed due to myeval
@@ -110,11 +111,11 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.stats.nDataInRange = NaN;
       obj.modelAge = 0;
       obj.isTrainSuccess = false;
-      
+
       % prepare the final population to be returned to CMA-ES
       obj.pop = Population(lambda, dim);
       obj.restrictedParam = obj.origRatioUpdater.update([], [], dim, lambda, obj.cmaesState.countiter, obj);
-      
+
       obj.newModel = ModelFactory.createModel(obj.surrogateOpts.modelType, obj.surrogateOpts.modelOpts, obj.cmaesState.xmean');
 
       if (isempty(obj.newModel))
@@ -137,7 +138,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             obj.cmaesState.xmean', obj.surrogateOpts.evoControlTrainRange, ...
             obj.cmaesState.sigma, obj.cmaesState.BD);
         obj.stats.nDataInRange = nData;
-        
+
         % Do pre-sample
         [ok, y, arx, x, arz, ~, obj.counteval, xTrain, yTrain] = ...
             presample(minTrainSize, obj.cmaesState, obj.surrogateOpts, sampleOpts, ...
@@ -294,7 +295,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         obj.pop = obj.pop.addPoints(xExtendValid(:, ~isEvaled), yExtendModel(~isEvaled), ...
             xExtend(:, ~isEvaled), zExtend(:, ~isEvaled), 0, phase);
       end
-      
+
       assert(obj.pop.nPoints == lambda, 'There are not yet all lambda points prepared, but they should be!');
 
       % sort the returned solutions (the best to be first)
@@ -447,7 +448,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         max(obj.cmaesState.diagD)/min(obj.cmaesState.diagD), minstd, maxstd, ...
         obj.stats.rankErr2Models];
     end
-    
+
 
     function [obj, yNew, xNew, xNewValid, zNew, counteval] = fillPopWithOrigFitness(obj, sampleOpts, varargin)
       %Fill the rest of the current population 'pop' (of class Population) with 
@@ -477,17 +478,37 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       if any(strcmpi(obj.model.predictionType, {'sd2', 'poi', 'ei'}))
         % higher criterion is better (sd2, poi, ei)
         [~, pointID] = sort(modelOutput, 'descend');
+
       elseif (strcmpi(obj.model.predictionType, 'expectedrank'))
-        % TODO it should work (yExtendModel, modelOutput) instead of re-predict the points again
-        [y_m, sd2_m] = obj.model.predict(xExtend');
-        pointID = expectedRankDiff(y_m, sd2_m, obj.cmaesState.mu, @errRankMuOnly);
+        ok = true;
+        if (~isempty(obj.retrainedModel) && obj.retrainedModel.isTrained())
+          lastModel = obj.retrainedModel;
+        elseif (~isempty(obj.model) && obj.model.isTrained())
+          lastModel = obj.model;
+        else
+          warning('No valid model for calculating expectedRankDiff(). Using "sd2" criterion.');
+          ok = false;
+        end
+        % TODO: consider lowering 'mu' according to the proportion
+        %       size(xExtend,2) / obj.cmaesState.lambda
+        [pointID, errs] = expectedRankDiff(lastModel, xExtend, obj.cmaesState.mu);
+        if (~ sum(errs >= eps) > (size(xExtend,2)/2))
+          warning('exptectedRankDiff() returned more than lambda/2 points with zero expected rankDiff error. Using "sd2" criterion.');
+          ok = false;
+        end
+        if (~ok)
+          [~, sd2] = lastModel.predict(xExtend');
+          [~, pointID] = sort(sd2, 'descend');
+        end
         % Debug:
         % y_r = ranking(y_m);
         % fprintf('  Expected permutation of sorted f-values: %s\n', num2str(y_r(pointID)'));
+
       else
         % lower criterion is better (fvalues, lcb, fpoi, fei)
         [~, pointID] = sort(yExtendModel, 'ascend');
       end
+
       nLambdaRest = size(xExtend, 2);
       reevalID = false(1, nLambdaRest);
       assert(obj.origRatioUpdater.getLastRatio() >= 0 && obj.origRatioUpdater.getLastRatio() <= 1, 'origRatio out of bounds [0,1]');
@@ -634,7 +655,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       end
     end
   end
-  
+
 end
 
 function res=myeval(s)
