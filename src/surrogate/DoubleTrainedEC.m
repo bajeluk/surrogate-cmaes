@@ -3,6 +3,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 % TODO:
 % [ ] remove updaterParams and use DTAdaptive_* parameters instead
 % [ ] rename 'restrictedParam' to 'origRatio'
+% [ ] in choosePointsForReevaluation() consider lowering 'mu' according to the proportion size(xExtend,2) / obj.cmaesState.lambda
 %
   properties 
     model
@@ -488,6 +489,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           warning('No valid model for calculating expectedRankDiff(). Using "sd2" criterion.');
           ok = false;
         end
+        % TODO: consider lowering 'mu' according to the proportion
+        %       size(xExtend,2) / obj.cmaesState.lambda
         [pointID, errs] = expectedRankDiff(lastModel, xExtend, obj.cmaesState.mu);
         if (~ sum(errs >= eps) > (size(xExtend,2)/2))
           warning('exptectedRankDiff() returned more than lambda/2 points with zero expected rankDiff error. Using "sd2" criterion.');
