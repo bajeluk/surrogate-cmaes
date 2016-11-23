@@ -33,9 +33,12 @@ function [data, settings] = dataReady(datapath, funcSet)
   datalist = {};
   for i = 1:length(datapath)
     actualDataList = gainDataList(datapath{i});
-    % sort *.mat files according to the IDs (last number before '.mat')
+    % find *.mat files according to the IDs (last number before '.mat')
     ids = cellfun(@(x) str2num(x(regexp(x, 'D_\d+\.mat$')+2:end-4)), ...
         actualDataList, 'UniformOutput', false);
+    % remove not required files (error, tmp, ...)
+    actualDataList = actualDataList(~cellfun(@isempty, ids));
+    % sort files according to the IDs
     [~, idsId] = sort(cell2mat(ids));
     actualDataList = actualDataList(idsId);
     datalist(end+1 : end+length(actualDataList)) = actualDataList;
@@ -78,11 +81,9 @@ function [data, settings] = dataReady(datapath, funcSet)
       if any(func == BBfunc) && any(dim == dims)
         data{BBfuncInv(func), dimsInv(dim), settingsId} = S.y_evals;
       end
+    % necessary variables are missing
     else
-      if ~(isempty(regexp(datalist{i}, '_tmp_\d*.mat', 'once')) || ... % temporary mat-files
-          isempty(regexp(datalist{i}, '_\d*_ERROR.mat', 'once')) )    % error files
-        fprintf('Variable ''y_evals'', ''surrogateParams'', or ''cmaesParams'' not found in %s.\n', datalist{i})
-      end
+      fprintf('Variable ''y_evals'', ''surrogateParams'', or ''cmaesParams'' not found in %s.\n', datalist{i})
     end
   end
   

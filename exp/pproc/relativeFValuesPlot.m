@@ -288,7 +288,7 @@ function handle = relativePlot(data_stats, settings)
       if strcmp(settings.legendOption, 'out')
         maxNamesLegend = nToPlot;
       else
-        maxNamesLegend = 15;
+        maxNamesLegend = 16;
       end
       % divide names to necessery sets
       nLegends = ceil(nToPlot/maxNamesLegend);
@@ -486,6 +486,9 @@ function name = functionName(fId)
       name = 'Katsuura';
     case 24
       name = 'Lunacek bi-Rastrigin';
+      
+    % TODO: noisy functions
+    % other functions
     otherwise
       name = '';
   end
