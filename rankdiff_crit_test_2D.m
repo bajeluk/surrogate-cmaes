@@ -3,7 +3,7 @@
 load 'exp/experiments/exp_doubleEC_11_test/bbob_output/exp_doubleEC_11_test_modellog_8_2D_1.mat'
 load 'exp/experiments/exp_doubleEC_11_test/exp_doubleEC_11_test_results_8_2D_1.mat'
 
-g = 60;
+g = 10;
 last_point_idx = cmaes_out{1}{1}.generationStarts(g+1)-1;
 g_generation_idx = [cmaes_out{1}{1}.generationStarts(g):last_point_idx];
 orig_idx = logical(cmaes_out{1}{1}.origEvaled(1:last_point_idx));
@@ -20,8 +20,8 @@ model = models{g};
 % X_N = (model.trainSigma*model.trainBD) \ (model.dataset.X');
 % Trainset in the GP's space
 X_N = model.dataset.X';
-f_GPToX = @(X) (model.trainSigma*model.trainBD * X);
-f_XToGP = @(X) ( (model.trainSigma * model.trainBD) \ X);
+f_GPToX = @(X) ( model.trainSigma * model.trainBD  * X);
+f_XToGP = @(X) ((model.trainSigma * model.trainBD) \ X);
 
 f_yToGP = @(y) (y - model.shiftY) / model.stdY;
 f_GPToY = @(y) (y * model.stdY) + model.shiftY;
@@ -38,8 +38,8 @@ mu = floor(lambda/2);
 
 %% Plotting the actual surface (preparation)
 
-landXMin = f_GPToX(min([X_N, X_star], [], 2));
-landXMax = f_GPToX(max([X_N, X_star], [], 2));
+landXMin = min(f_GPToX([X_N, X_star]), [], 2);
+landXMax = max(f_GPToX([X_N, X_star]), [], 2);
 diff = landXMax - landXMin;
 landXMin = landXMin - 0.1*diff;
 landXMax = landXMax + 0.1*diff;
@@ -97,6 +97,10 @@ K_inv = solve_chol(L, eye(N));
 % Fmu = m_star + K__X_star__X_N * K_inv * (1/sn2) * (y_N - m_N);
 % but it is more numerical stable to do it like
 Fmu = m_star + K__X_star__X_N * alpha;
+
+% Debug
+assert(max(abs(f_GPToY(Fmu) - f_star)) < 1e-6, 'Fmu calculated differs more from model.predict by %e', max(abs(f_GPToY(Fmu) - f_star)));
+% fprintf('Fmu calculated differs from model.predict by %e.\n', max(abs(f_GPToY(Fmu) - f_star)));
 
 % [y_GP, std_GP] = gp(model.hyp, model.infFcn, model.meanFcn, model.covFcn, model.likFcn, X_N', y_N, X_star');
 
@@ -162,14 +166,14 @@ for s = 1:lambda
 
   % Ranking of the most probable Y_s
   mean_rank = ranking(f_GPToY(Fmu(withoutS)))';
-  
+
   % Determine the ranking before the first threshold
   Y_s = f_yToGP(middleThresholds(1));
   Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; Y_s] - m_N_p);
   last_rank = ranking(f_GPToY(Fmu_m))';
   y_ranks = [last_rank];
   rank_diffs = [errRankMu(last_rank, mean_rank, mu)];
-  
+
   for i = 1:length(thresholds)
     % Find the coordinates of this threshold in the matrix 'M'
     [row, col] = find(M == thresholds(i));
@@ -177,7 +181,7 @@ for s = 1:lambda
     this_rank = last_rank;
     this_rank(row) = last_rank(col);
     this_rank(col) = last_rank(row);
-    
+
     % Save this new ranking and its errRankMu
     y_ranks = [y_ranks; this_rank];
     rank_diffs = [rank_diffs; errRankMu(this_rank, mean_rank, mu)];
@@ -200,9 +204,6 @@ for s = 1:lambda
   % Merge expected errors for corresponding rankings
   rankings_errs = containers.Map();
   for r = 1:length(probs)
-    % if (probs(r) < 1e-20)
-    %   continue;
-    % end
     key = sprintf('%d ', y_ranks(r,:));
     if (rankings_errs.isKey(key))
       rankings_errs(key) = rankings_errs(key) + rank_diffs(r)*probs(r);
@@ -220,24 +221,25 @@ for s = 1:lambda
   X_star_m_real = f_GPToX(X_star_m);
   X_s_real = f_GPToX(X_s);
 
-  if (s == 5)
+  if (s == 6)
     y_extremes = [thresholds(1)-sqrt(eps), thresholds(end)+sqrt(eps)];
     colors = ['m', 'g'];
     for yi = 1:2
-      y = y_extremes(yi);
+      y = f_yToGP(y_extremes(yi));
       % Ks = feval(model.covFcn{:}, model.hyp.cov, X_N_p', x_surf')';
       % ms_extreme = feval(model.meanFcn, model.hyp.mean, x_surf');
       % y_extreme = ms_extreme + Ks * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p);
       % plot(x_surf, y_extreme, [colors(yi) '--']);
       Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; y] - m_N_p);
       plot3(X_star_m_real(1,:), X_star_m_real(2,:), f_GPToY(Fmu_m), [colors(yi) '+'])
-      plot3(X_s_real(1,:), X_s_real(2,:), y, 'r*');
+      plot3(X_s_real(1,:), X_s_real(2,:), y_extremes(yi), 'r*');
     end
 
     legend('True function', 'GP train set of size N (with small noise)', '\lambda Sampled points (on x-axis)', ...
       '\lambda Sampled points (mean predicted)', 'Mean prediction based on the N-train set', ...
       'Extreme ordering GP with (N+1)-trainset');
   end
+
 end
 
 disp('Expected errors for the possible choices of Y_s:');
