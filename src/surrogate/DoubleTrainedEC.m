@@ -477,17 +477,35 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       if any(strcmpi(obj.model.predictionType, {'sd2', 'poi', 'ei'}))
         % higher criterion is better (sd2, poi, ei)
         [~, pointID] = sort(modelOutput, 'descend');
+
       elseif (strcmpi(obj.model.predictionType, 'expectedrank'))
-        % TODO it should work (yExtendModel, modelOutput) instead of re-predict the points again
-        [y_m, sd2_m] = obj.model.predict(xExtend');
-        pointID = expectedRankDiff(y_m, sd2_m, obj.cmaesState.mu, @errRankMuOnly);
+        ok = true;
+        if (~isempty(obj.retrainedModel) && obj.retrainedModel.isTrained())
+          lastModel = obj.retrainedModel;
+        elseif (~isempty(obj.model) && obj.model.isTrained())
+          lastModel = obj.model;
+        else
+          warning('No valid model for calculating expectedRankDiff(). Using "sd2" criterion.');
+          ok = false;
+        end
+        [pointID, errs] = expectedRankDiff(lastModel, xExtend, obj.cmaesState.mu);
+        if (~ sum(errs >= eps) > (size(xExtend,2)/2))
+          warning('exptectedRankDiff() returned more than lambda/2 points with zero expected rankDiff error. Using "sd2" criterion.');
+          ok = false;
+        end
+        if (~ok)
+          [~, sd2] = lastModel.predict(xExtend');
+          [~, pointID] = sort(sd2, 'descend');
+        end
         % Debug:
         % y_r = ranking(y_m);
         % fprintf('  Expected permutation of sorted f-values: %s\n', num2str(y_r(pointID)'));
+
       else
         % lower criterion is better (fvalues, lcb, fpoi, fei)
         [~, pointID] = sort(yExtendModel, 'ascend');
       end
+
       nLambdaRest = size(xExtend, 2);
       reevalID = false(1, nLambdaRest);
       assert(obj.origRatioUpdater.getLastRatio() >= 0 && obj.origRatioUpdater.getLastRatio() <= 1, 'origRatio out of bounds [0,1]');
