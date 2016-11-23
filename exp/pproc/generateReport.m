@@ -445,6 +445,10 @@ function reportFile = generateReport(expFolder, varargin)
 
   % publish report file
   if ~strcmpi(publishOption, 'off')
+    % warn user about clearing variables
+    fprintf('Recommendation: Use ')
+    fprintf(2, '''clear all'' ');
+    fprintf('command before running generateReport to ensure that no static variables from the previous run will be used.\n')
     fprintf('Publishing...\nThis may take a few minutes...\n')
     addpath(mainPpFolder)
     publishedReport = publish(reportFile, 'format', publishOption, ...

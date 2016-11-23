@@ -236,4 +236,6 @@ To report multiple experiment results put all experiment folder names into cell-
 
 Generated report contains plots of dependences of minimal function values on function evaluations divided by dimension for individual functions. First, only comparison of algorithm runs are plotted in each tested function and dimension. Second, former algorithms are compared to important algorithms in continuous black-box optimization field.
 
+**Recommendation**. Use `clear all` command before running `generateReport` to ensure that no static variables from the previous run will be used.
+
 **Warning**. Report generating requires a few minutes of rendering Matlab figures. This can cause some troubles with computer usability because of pop-up figure windows in older versions of Matlab. To avoid these problems run `generateReport` in remote desktop or take a break.
