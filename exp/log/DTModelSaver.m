@@ -1,5 +1,5 @@
 classdef DTModelSaver < Observer
-%SCREENSTATISTICS -- log statistics from DoubleTrainEC into the file
+%DTMODELSAVER -- save models from DoubleTrainEC into the *.mat file
   properties
     datapath
     exp_id

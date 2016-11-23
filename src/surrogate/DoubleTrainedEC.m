@@ -9,7 +9,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     pop
     cmaesState
     counteval
-    
+
     origRatioUpdater
     restrictedParam
     useDoubleTraining
@@ -34,7 +34,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     validationGenerationPeriod  % the number of generations between "validation generations" + 1, see validationPopSize
     validationPopSize           % the minimal number of points to be orig-evaluated in validation generation
   end
-  
+
   methods 
     function obj = DoubleTrainedEC(surrogateOpts, varargin)
     % constructor
@@ -99,7 +99,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
     function [obj, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
     % Run one generation of double trained evolution control
-      
+
       % initialization
       lambda = cmaesState.lambda;       % this is needed due to myeval
       dim    = cmaesState.dim;          % this is needed due to myeval
@@ -110,11 +110,11 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.stats.nDataInRange = NaN;
       obj.modelAge = 0;
       obj.isTrainSuccess = false;
-      
+
       % prepare the final population to be returned to CMA-ES
       obj.pop = Population(lambda, dim);
       obj.restrictedParam = obj.origRatioUpdater.update([], [], dim, lambda, obj.cmaesState.countiter, obj);
-      
+
       obj.newModel = ModelFactory.createModel(obj.surrogateOpts.modelType, obj.surrogateOpts.modelOpts, obj.cmaesState.xmean');
 
       if (isempty(obj.newModel))
@@ -137,7 +137,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             obj.cmaesState.xmean', obj.surrogateOpts.evoControlTrainRange, ...
             obj.cmaesState.sigma, obj.cmaesState.BD);
         obj.stats.nDataInRange = nData;
-        
+
         % Do pre-sample
         [ok, y, arx, x, arz, ~, obj.counteval, xTrain, yTrain] = ...
             presample(minTrainSize, obj.cmaesState, obj.surrogateOpts, sampleOpts, ...
@@ -294,7 +294,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         obj.pop = obj.pop.addPoints(xExtendValid(:, ~isEvaled), yExtendModel(~isEvaled), ...
             xExtend(:, ~isEvaled), zExtend(:, ~isEvaled), 0, phase);
       end
-      
+
       assert(obj.pop.nPoints == lambda, 'There are not yet all lambda points prepared, but they should be!');
 
       % sort the returned solutions (the best to be first)
@@ -447,7 +447,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         max(obj.cmaesState.diagD)/min(obj.cmaesState.diagD), minstd, maxstd, ...
         obj.stats.rankErr2Models];
     end
-    
+
 
     function [obj, yNew, xNew, xNewValid, zNew, counteval] = fillPopWithOrigFitness(obj, sampleOpts, varargin)
       %Fill the rest of the current population 'pop' (of class Population) with 
@@ -652,7 +652,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       end
     end
   end
-  
+
 end
 
 function res=myeval(s)

@@ -117,6 +117,10 @@ end
 % remove numerical noise i.e. negative variances
 Fs2 = max(fs2, 0);
 
+%% Apply likelihood function
+[~, Ymu, Ys2] = feval(model.likFcn, model.hyp.lik, [], Fmu, Fs2);
+assert(abs(max(Ys2*model.stdY - cov_star)/max(cov_star)) < 1e-6, 'Ys2 calculated relatively differs from model.predict by factor %e\n', abs(max(Ys2*model.stdY - cov_star)/max(cov_star)));
+
 %% Iterate through all lambda points
 expectedErr = zeros(lambda,1);
 
@@ -165,7 +169,7 @@ for s = 1:lambda
     2*thresholds(end) - thresholds(1)];
 
   % Ranking of the most probable Y_s
-  mean_rank = ranking(f_GPToY(Fmu(withoutS)))';
+  mean_rank = ranking(f_GPToY(Ymu(withoutS)))';
 
   % Determine the ranking before the first threshold
   Y_s = f_yToGP(middleThresholds(1));
@@ -197,8 +201,8 @@ for s = 1:lambda
   end
 
   %% Compute the propabilites of these rankings
-  % norm_cdfs = [0; normcdf(thresholds, Fmu(s), sqrt(Fs2(s)/max(Fs2))); 1];
-  norm_cdfs = [0; normcdf(thresholds, f_GPToY(Fmu(s)), Fs2(s)*model.stdY); 1];
+  % norm_cdfs = [0; normcdf(thresholds, Fmu(s), sqrt(Ys2(s)/max(Ys2))); 1];
+  norm_cdfs = [0; normcdf(thresholds, f_GPToY(Ymu(s)), Ys2(s)*model.stdY); 1];
   probs = norm_cdfs(2:end) - norm_cdfs(1:(end-1));
 
   % Merge expected errors for corresponding rankings

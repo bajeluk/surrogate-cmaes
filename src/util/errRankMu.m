@@ -7,13 +7,14 @@
 %
 function [errNorm, errSum] = errRankMu(y1, y2, mu)
 
+  % for saving already computed errRankMu normalizing constants
   persistent maxErrs;
 
   % if ((size(y1,1) > 1 && size(y1,2) > 1) || (size(y2,1) > 1 && size(y2,2) > 1) ...
   %     || any(size(y1) ~= size(y2)))
   %   error('Error in ranking can be done only for two vectors of same size');
   % end
-  
+
   y1 = y1(:);
   y2 = y2(:);
   if (numel(y1) ~= numel(y2))
@@ -45,8 +46,9 @@ function [errNorm, errSum] = errRankMu(y1, y2, mu)
   %
   % Normalize the error to the range [0,1]
   %
-  
+
   if (~isempty(maxErrs) && length(maxErrs) >= lambda && maxErrs(lambda) > 0)
+    % we have the normalizing constant already computed
     riMaxErr = maxErrs(lambda);
   else
     if (isempty(maxErrs))
@@ -54,18 +56,20 @@ function [errNorm, errSum] = errRankMu(y1, y2, mu)
     end
     % First, calculate maximal Ranking differences to the ranking 1:n
     % for every point for two cases, i.e. when
-    % 1) going into oposite end of the not-so-far occupied part
-    going_oposite = abs(-2*[1:lambda] + lambda+1);
-    going_oposite((mu+1):end) = 0;
+    % 1) going into opposite end of the not-so-far occupied part
+    going_opposite = abs(-2*[1:lambda] + lambda+1);
+    going_opposite((mu+1):end) = 0;
     % 2) going to the left (also not further than not-yet occupied part)
     riMaxErr = 0;
     for ri = 2:lambda
+      % we have to iterate through possible positions of split between
+      % 'opposite' and 'left' part
       going_left = min([1:lambda] - 1, ri - 1);
-      % Maximal error for each point in the first part would be going oposite
-      max_err = going_oposite;
+      % Maximal error for each point in the first part would be going opposite
+      max_err = going_opposite;
       % But the second part, starting from the reverting index,
       % is not clear: decide which option yields more error points
-      if (sum(going_oposite(ri:end)) < sum(going_left(ri:end)))
+      if (sum(going_opposite(ri:end)) < sum(going_left(ri:end)))
         max_err(ri:end) = going_left(ri:end);
       end
       % again, calculate only the cases where y1 <= mu

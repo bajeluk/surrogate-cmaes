@@ -25,7 +25,7 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
 
   % matrix of 'training' data points (already converted to model-space)
   X_N = model.dataset.X';
-  % vector of 'training' f-values 
+  % vector of 'training' f-values
   % (model.dataset.y is not yet converted to model-space)
   y_N = f_yToGP(model.dataset.y);
   % number of 'training' datapoints
@@ -82,13 +82,13 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
   end
   % remove numerical noise i.e. negative variances
   Fs2 = max(fs2, 0);
+  % apply likelihood function
+  [~, ~, Ys2] = feval(model.likFcn, model.hyp.lik, [], Fmu, Fs2);
 
   % Debug
-  % TODO:
-  %   * this difference is rather HUGE!
-  % assert(abs(max(Fs2*model.stdY - cov_star)/max(cov_star)) < 1e-4, 'Fs2 calculated differs more from model.predict by %e \%', abs(max(Fs2*model.stdY - cov_star)/max(cov_star)));
-  if (abs(max(Fs2*model.stdY - cov_star)/max(cov_star)) > 1e-2)
-    fprintf(2, 'Fs2 calculated relatively differs from model.predict by factor %e\n', abs(max(Fs2*model.stdY - cov_star)/max(cov_star)));
+  % assert(abs(max(Ys2*model.stdY - cov_star)/max(cov_star)) < 1e-4, 'Ys2 calculated differs more from model.predict by %e \%', abs(max(Ys2*model.stdY - cov_star)/max(cov_star)));
+  if (abs(max(Ys2*model.stdY - cov_star)/max(cov_star)) > 1e-6)
+    fprintf(2, 'Ys2 calculated relatively differs from model.predict by factor %e\n', abs(max(Ys2*model.stdY - cov_star)/max(cov_star)));
   end
 
   % Iterate through all lambda points
@@ -178,8 +178,8 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
 
     % Compute the propabilites of these rankings
     %
-    % norm_cdfs = [0; normcdf(thresholds, Fmu(s), sqrt(Fs2(s)/max(Fs2))); 1];
-    norm_cdfs = [0; normcdf(thresholds, f_GPToY(Fmu(s)), Fs2(s)*model.stdY); 1];
+    % norm_cdfs = [0; normcdf(thresholds, Fmu(s), sqrt(Ys2(s)/max(Ys2))); 1];
+    norm_cdfs = [0; normcdf(thresholds, f_GPToY(Fmu(s)), Ys2(s)*model.stdY); 1];
     probs = norm_cdfs(2:end) - norm_cdfs(1:(end-1));
 
     % Save the resulting expected error for this individual 's'
@@ -191,9 +191,10 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
   % rankDiff error of points according to the descending errors
   [~, perm] = sort(-expectedErr);
   errs = expectedErr;
-  
-  [~, sd2i] = sort(-Fs2);
-  if (all(sd2i(1:3) == perm(1:3)))
-    fprintf(2, 'The first three points in "expectedRankDiff" are the same as in the "sd2" criterion.\n');
+
+  [~, sd2i] = sort(-Ys2);
+  nPoints = 2;
+  if (all(sd2i(1:nPoints) == perm(1:nPoints)))
+    fprintf(2, 'The first %d points in "expectedRankDiff" are the same as in the "sd2" criterion.\n', nPoints);
   end
 end
