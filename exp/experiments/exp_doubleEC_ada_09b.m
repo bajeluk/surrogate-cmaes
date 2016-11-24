@@ -1,5 +1,5 @@
-exp_id = 'exp_doubleEC_ada_09';
-exp_description = 'Surrogate CMA-ES in 5D, adaptive DTS, updateRate=0.3, updateRateDown=updateRate, highErr=0.35, DTIterations=2, ValidationGenerationPeriod={1, 3, 5, 10}, ValidationPopSize={0, 5, 10, 15}, OrigPointsRoundFcn={''ceil'', ''getProbNumber''}, PreSampleSize=0.75, sd2 criterion, 2pop';
+exp_id = 'exp_doubleEC_ada_09b';
+exp_description = 'Surrogate CMA-ES in 5D, adaptive DTS, updateRate=0.3, updateRateDown=updateRate, highErr=0.35, DTIterations=2, ValidationGenerationPeriod={1, 3, 5, 10}, ValidationPopSize={1, 2, 3, 4}, OrigPointsRoundFcn={''ceil'', ''getProbNumber''}, PreSampleSize=0.75, sd2 criterion, 2pop';
 
 % BBOB/COCO framework settings
 
@@ -29,7 +29,7 @@ surrogateParams = { ...
   'DTAdaptive_defaultErr',     { '(obj.highErr + obj.lowErr) / 2' }, ...
   'evoControlMaxDoubleTrainIterations',   { 2 }, ...   % use {1, 2, 3, Inf} with the best settings afterwards
   'evoControlValidationGenerationPeriod', {1, 3, 5, 10}, ...
-  'evoControlValidationPopSize',   {0, 5, 10, 15}, ...
+  'evoControlValidationPopSize',   {1, 2, 3, 4}, ...
   'evoControlPreSampleSize',       { 0.75 }, ...     % use { 0, 0.25, 0.50, 0.75 } with the best settings afterwards
   'evoControlOrigPointsRoundFcn',  { 'ceil', 'getProbNumber' }, ...  % either 'ceil', or 'getProbNumber'
   'evoControlTrainRange',          { 10 }, ...       % will be multip. by sigma
