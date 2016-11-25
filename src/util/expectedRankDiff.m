@@ -11,11 +11,15 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
 %         perm(end)
 % errs    Expected errors themselves (in the order corresponding to arxvalid)
 
-  if (nargin >= 5)
-    rankFunc = varargin{1};
-  else
-    rankFunc = @errRankMu;
-  end
+% TODO:
+% [ ] rewrite the core calculation of ranking differences into the MEX file
+
+  % if (nargin >= 5)
+  %   rankFunc = varargin{1};
+  % else
+  %   rankFunc = @errRankMu;
+  % end
+  rankFunc = @errRankMu;
 
   % conversion functions from/to space of GP model and real space
   f_GPToX = @(X) ( model.trainSigma * model.trainBD  * X);
@@ -117,7 +121,14 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
     % noise variance of likGauss
     % already calculated: sn2 = exp(2*model.hyp.lik);
     % Cholesky factor of covariance with noise
-    Lp = chol(K__X_N_p__X_N_p/sn2+eye(N+1) + 0.0001*eye(N+1));
+    % [Lp, p] = chol(K__X_N_p__X_N_p/sn2+eye(N+1) + 0.0001*eye(N+1));
+    [Lp, p] = chol(K__X_N_p__X_N_p/sn2);
+    if (p > 0)
+      expectedErr(s) = 0;
+      fprintf(2, 'expectedRankDiff(): GP''s K__X_N_p covariance matrix is not positive definite for inverse. Setting err(%d) = 0.\n', s);
+      continue;
+    end
+
     % Covariance * y_N
     Kp_inv = solve_chol(Lp, eye(N+1));
 
@@ -125,15 +136,20 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
     %
     A = K__X_star_m__X_N_p * Kp_inv * (1/sn2);
     M = NaN(lambda-1,lambda-1);
+    M2 = NaN(lambda-1,lambda-1);
+    h = - m_star_m + A(:,1:(end-1)) * (y_N - m_N);
     for i = 1:(lambda-1)
       for j = (i+1):(lambda-1)
-        h_k = - m_star_m(i) + A(i,1:(end-1)) * (y_N - m_N);
-        h_l = - m_star_m(j) + A(j,1:(end-1)) * (y_N - m_N);
-        M(i,j) = f_GPToY(m_N_p(end) + (h_k - h_l) / (A(j,end) - A(i,end)));
+        M(i,j) = m_N_p(end) + (h(i) - h(j)) / (A(j,end) - A(i,end));
       end
     end
+    M = f_GPToY(M);
     thresholds = M(:);
-    thresholds = sort(thresholds(~isnan(thresholds)));
+    [thresholds, tidx] = sort(thresholds);
+
+    nThresholds = (lambda-1)*(lambda-2)/2;
+    thresholds = thresholds(1:nThresholds);
+    tidx       = tidx(1:nThresholds);
 
     % Calculate middle points between the thresholds
     middleThresholds = [2*thresholds(1) - thresholds(end);
@@ -148,24 +164,58 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
     % Determine the first ranking, i.e. before the first threshold
     Y_s = f_yToGP(middleThresholds(1));
     Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; Y_s] - m_N_p);
-    last_rank = ranking(f_GPToY(Fmu_m))';
-    y_ranks      = zeros(length(thresholds)+1, lambda-1);
-    y_ranks(1,:) = last_rank;
-    rank_diffs    = zeros(length(thresholds)+1,1);
-    rank_diffs(1) = [rankFunc(last_rank, mean_rank, mu)];
+    this_rank = ranking(f_GPToY(Fmu_m))';
+    y_ranks      = zeros(nThresholds, lambda-1);
+    y_ranks(1,:) = this_rank;
+    rank_diffs    = zeros(nThresholds+1, 1);
+    [rank_diffs(1), ~, maxErr] = rankFunc(this_rank, mean_rank, mu);
+    % This is for reducing complexity of errRankMu error calculations
+    [~, si_this_rank] = sort(this_rank);
+    % [~, si_mean_rank] = sort(mean_rank);
+    r2 = mean_rank(si_this_rank);
+    % rows = mod(tidx, lambda-1);               % not significant speed-up
+    % cols = floor(tidx/(lambda-1)) + 1;        % not significant speed-up
 
-    for i = 1:length(thresholds)
-      % Find the coordinates of this threshold in the matrix 'M'
-      [row, col] = find(M == thresholds(i));
+    % TODO: rewrite this as a MEX function
+    %
+    % function calculateRankDiffs(lambda, mu, tidx, this_rank, mean_rank)
+    %
+    % This is the critical section -- the inner of the for-cycle
+    % is called O(lambda^3) per generation!
+    % -- for each of the point (cycle through 's') there are O(lambda^2) thresholds
+    %
+    for i = 1:nThresholds
+      % Find the coordinates of the i-th threshold in the matrix 'M'
+      row = mod(tidx(i), lambda-1);
+      col = floor(tidx(i)/(lambda-1)) + 1;
       % This threshold exchanges ranking of this  row <--> col, do it in ranking
-      this_rank = last_rank;
-      this_rank(row) = last_rank(col);
-      this_rank(col) = last_rank(row);
+      tmp = this_rank(row);
+      this_rank(row) = this_rank(col);
+      this_rank(col) = tmp;
+      % ... and also in sorting indices
+      tmp = si_this_rank(this_rank(row));
+      si_this_rank(this_rank(row)) = si_this_rank(this_rank(col));
+      si_this_rank(this_rank(col)) = tmp;
 
       % Save this new ranking and its errRankMu
       y_ranks(i+1,:)  = this_rank;
-      rank_diffs(i+1) = rankFunc(this_rank, mean_rank, mu);
-      last_rank = this_rank;
+      % Calculate the new errRankMu error
+      % This is computationally expensive -- O(lambda * log(lambda))
+      %   rank_diffs(i+1) = rankFunc(this_rank, mean_rank, mu);
+      %
+      % This is cheaper -- O(mu) -- but calling a function still costs a lot!
+      %   rank_diffs(i+1) = errRankMuLite(si_this_rank, si_mean_rank, mu, maxErr);
+      %
+      % And this is even cheaper -- O(mu) -- for lambda=35 two times faster!
+      tmp = r2(this_rank(row));       % exchange the error-ranking vector elements
+      r2(this_rank(row)) = r2(this_rank(col));
+      r2(this_rank(col)) = tmp;
+      rDiff = abs(r2(1:mu) - [1:mu]); % calculate the difference to the ranking 1:mu
+      rank_diffs(i+1) = sum(rDiff);   % normalization postponed after the for-cycle
+
+      % Debug:
+      % assert(rank_diffs(i+1)/maxErr == rankFunc(this_rank, mean_rank, mu), 'expectedRankDiff -- errRank is wrong!');
+      % assert(rank_diffs(i+1) == rankFunc(this_rank, mean_rank, mu), 'expectedRankDiff -- errRank is wrong!');
 
       % % Debug: just for being sure whether we set the ranking right :)
       % Y_s = f_yToGP(middleThresholds(i+1));
@@ -175,6 +225,7 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
       % check_rank = ranking(f_GPToY(Fmu_m))';
       % assert(all(this_rank == check_rank));
     end
+    rank_diffs(2:end) = rank_diffs(2:end) ./ maxErr;
 
     % Compute the propabilites of these rankings
     %
