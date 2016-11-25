@@ -5,7 +5,7 @@
 %       y2, but rank-errors of only the first mu ranks (ordinals according to the second
 %       vectory y2) are calculated
 %
-function [errNorm, errSum] = errRankMu(y1, y2, mu)
+function [errNorm, errSum, maxErr] = errRankMu(y1, y2, mu)
 
   % for saving already computed errRankMu normalizing constants
   persistent maxErrs;
@@ -28,16 +28,16 @@ function [errNorm, errSum] = errRankMu(y1, y2, mu)
   end
 
   lambda = length(y1);
-  [~, sortInd1] = sort(y1);
+  [~, si_y1] = sort(y1);
 
   % speedup: the following 3 lines are the same as
   %   inRank2 = ranking(y2);
-  [~, id] = sort(y2);
+  [~, si_y2] = sort(y2);
   inRank2 = zeros(lambda,1);
-  inRank2(id) = [1:lambda]';
+  inRank2(si_y2) = [1:lambda]';
 
   r1 = [1:lambda]';
-  r2 = inRank2(sortInd1);
+  r2 = inRank2(si_y1);
   rDiff = abs(r2 - r1);
   rDiff((mu+1):end) = 0;
 
@@ -49,7 +49,7 @@ function [errNorm, errSum] = errRankMu(y1, y2, mu)
 
   if (~isempty(maxErrs) && length(maxErrs) >= lambda && maxErrs(lambda) > 0)
     % we have the normalizing constant already computed
-    riMaxErr = maxErrs(lambda);
+    maxErr = maxErrs(lambda);
   else
     if (isempty(maxErrs))
       maxErrs = zeros(1,lambda);
@@ -60,7 +60,7 @@ function [errNorm, errSum] = errRankMu(y1, y2, mu)
     going_opposite = abs(-2*[1:lambda] + lambda+1);
     going_opposite((mu+1):end) = 0;
     % 2) going to the left (also not further than not-yet occupied part)
-    riMaxErr = 0;
+    maxErr = 0;
     for ri = 2:lambda
       % we have to iterate through possible positions of split between
       % 'opposite' and 'left' part
@@ -76,13 +76,13 @@ function [errNorm, errSum] = errRankMu(y1, y2, mu)
       max_err((mu+1):end) = 0;
       % Sum all the errors
       sum_max_err = sum(max_err);
-      if (sum_max_err > riMaxErr)
-        riMaxErr = sum_max_err;
+      if (sum_max_err > maxErr)
+        maxErr = sum_max_err;
       end
     end
-    maxErrs(lambda) = riMaxErr;
+    maxErrs(lambda) = maxErr;
   end
 
   % return relative ratio of errors
-  errNorm = errSum/riMaxErr;
+  errNorm = errSum/maxErr;
 end
