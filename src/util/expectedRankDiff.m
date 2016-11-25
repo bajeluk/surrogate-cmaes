@@ -71,8 +71,10 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
   % Fmu = m_star + K__X_star__X_N * K_inv * (1/sn2) * (y_N - m_N);
 
   % Debug
-  assert(abs(max(f_GPToY(Fmu) - f_star)/max(f_star)) < 1e-6, 'Fmu calculated relatively differs from model.predict by factor %e', abs(max(f_GPToY(Fmu) - f_star)/max(f_star)));
-  % fprintf('Fmu calculated differs from model.predict by %e.\n', max(abs(f_GPToY(Fmu) - f_star)));
+  % assert(abs(max(f_GPToY(Fmu) - f_star)/max(f_star)) < 1e-6, 'Fmu calculated relatively differs from model.predict by factor %e', abs(max(f_GPToY(Fmu) - f_star)/max(f_star)));
+  if (abs(max(f_GPToY(Fmu) - f_star)/max(f_star)) > 1e-6)
+    fprintf(2, 'Fmu calculated relatively differs from model.predict by factor %e', abs(max(f_GPToY(Fmu) - f_star)/max(f_star)));
+  end
 
   % Predictive variances
   %
