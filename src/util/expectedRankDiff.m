@@ -172,9 +172,7 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
     rank_diffs    = zeros(nThresholds+1, 1);
     [rank_diffs(1), ~, maxErr] = rankFunc(this_rank, mean_rank, mu);
     % This is for reducing complexity of errRankMu error calculations
-    [~, si_this_rank] = sort(this_rank);
-    % [~, si_mean_rank] = sort(mean_rank);
-    r2 = mean_rank(si_this_rank);
+    [~, si_mean_rank] = sort(mean_rank);
     % rows = mod(tidx, lambda-1);               % not significant speed-up
     % cols = floor(tidx/(lambda-1)) + 1;        % not significant speed-up
 
@@ -194,38 +192,38 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
       tmp = this_rank(row);
       this_rank(row) = this_rank(col);
       this_rank(col) = tmp;
-      % ... and also in sorting indices
-      tmp = si_this_rank(this_rank(row));
-      si_this_rank(this_rank(row)) = si_this_rank(this_rank(col));
-      si_this_rank(this_rank(col)) = tmp;
 
       % Save this new ranking and its errRankMu
       y_ranks(i+1,:)  = this_rank;
+
       % Calculate the new errRankMu error
       % This is computationally expensive -- O(lambda * log(lambda))
       %   rank_diffs(i+1) = rankFunc(this_rank, mean_rank, mu);
-      %
+
       % This is cheaper -- O(mu) -- but calling a function still costs a lot!
       %   rank_diffs(i+1) = errRankMuLite(si_this_rank, si_mean_rank, mu, maxErr);
+
+      % And this is even cheaper, without calling a function -- O(mu)
+      % -- for lambda=35 two times faster!
       %
-      % And this is even cheaper -- O(mu) -- for lambda=35 two times faster!
-      tmp = r2(this_rank(row));       % exchange the error-ranking vector elements
-      r2(this_rank(row)) = r2(this_rank(col));
-      r2(this_rank(col)) = tmp;
-      rDiff = abs(r2(1:mu) - [1:mu]); % calculate the difference to the ranking 1:mu
-      rank_diffs(i+1) = sum(rDiff);   % normalization postponed after the for-cycle
+      % take the first 'mu' elements of 'this_ranking' sorted according to
+      % the mean_rank's ranking
+      r1 = this_rank(si_mean_rank(1:mu));
+      % calculate the difference to the ranking 1:mu
+      % and leave the normalization after the for-cycle
+      rank_diffs(i+1) = sum(abs((1:mu) - r1));
 
       % Debug:
       % assert(rank_diffs(i+1)/maxErr == rankFunc(this_rank, mean_rank, mu), 'expectedRankDiff -- errRank is wrong!');
       % assert(rank_diffs(i+1) == rankFunc(this_rank, mean_rank, mu), 'expectedRankDiff -- errRank is wrong!');
 
-      % % Debug: just for being sure whether we set the ranking right :)
+      % Debug: just for being sure whether we set the ranking right :)
       % Y_s = f_yToGP(middleThresholds(i+1));
       % % Calculate vector f* (for this value of Y_s)
       % Fmu_m = m_star_m + K__X_star_m__X_N_p * Kp_inv * (1/sn2) * ([y_N; Y_s] - m_N_p);
       % % Get the ranking of f*
       % check_rank = ranking(f_GPToY(Fmu_m))';
-      % assert(all(this_rank == check_rank));
+      % assert(all(this_rank == check_rank), 'expectedRankDiff -- ranking is wrong!');
     end
     rank_diffs(2:end) = rank_diffs(2:end) ./ maxErr;
 

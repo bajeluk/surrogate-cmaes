@@ -28,20 +28,22 @@ function [errNorm, errSum, maxErr] = errRankMu(y1, y2, mu)
   end
 
   lambda = length(y1);
-  [~, si_y1] = sort(y1);
 
   % speedup: the following 3 lines are the same as
-  %   inRank2 = ranking(y2);
+  %   inRank1 = ranking(y1);
+  [~, si_y1]     = sort(y1);
+  inRank1        = zeros(lambda,1);
+  inRank1(si_y1) = (1:lambda)';
+
   [~, si_y2] = sort(y2);
-  inRank2 = zeros(lambda,1);
-  inRank2(si_y2) = [1:lambda]';
 
-  r1 = [1:lambda]';
-  r2 = inRank2(si_y1);
-  rDiff = abs(r2 - r1);
-  rDiff((mu+1):end) = 0;
-
-  errSum = sum(rDiff);
+  % take the first 'mu' elements of y1's ranking,
+  % but sorted according to the y2's ranking
+  r1 = inRank1(si_y2(1:mu));
+  % take the sum of differences to the right ranking,
+  % which is 1:mu
+  r2 = (1:mu)';
+  errSum = sum(abs(r2 - r1));
 
   %
   % Normalize the error to the range [0,1]
@@ -57,14 +59,14 @@ function [errNorm, errSum, maxErr] = errRankMu(y1, y2, mu)
     % First, calculate maximal Ranking differences to the ranking 1:n
     % for every point for two cases, i.e. when
     % 1) going into opposite end of the not-so-far occupied part
-    going_opposite = abs(-2*[1:lambda] + lambda+1);
+    going_opposite = abs(-2*(1:lambda) + lambda+1);
     going_opposite((mu+1):end) = 0;
     % 2) going to the left (also not further than not-yet occupied part)
     maxErr = 0;
     for ri = 2:lambda
       % we have to iterate through possible positions of split between
       % 'opposite' and 'left' part
-      going_left = min([1:lambda] - 1, ri - 1);
+      going_left = min((1:lambda) - 1, ri - 1);
       % Maximal error for each point in the first part would be going opposite
       max_err = going_opposite;
       % But the second part, starting from the reverting index,
