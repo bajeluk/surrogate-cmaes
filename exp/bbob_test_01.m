@@ -46,7 +46,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
 
   t0 = clock;
   % Initialize random number generator
-  exp_settings.seed = sum(100 * t0);
+  exp_settings.seed = myeval(defopts(bbParams, 'seed', 'floor(sum(100 * clock()))'));
   rng(exp_settings.seed);
 
   instances = bbParams.instances;
@@ -66,6 +66,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
       exp_settings.instances = instances;
       exp_settings.resume = defopts(bbParams, 'resume', false);
       exp_settings.progressLog = defopts(bbParams, 'progressLog', false);
+      exp_settings.initRngState = rng();
 
       expFileID = [num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
       resultsFile = [exppath filesep exp_id '_results_' expFileID];
@@ -194,6 +195,10 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
     yeRestarts = [];
     cmaes_out{end+1}  = {};
     t = tic;
+    if (~isPureCmaes && isfield(exp_results, 'rngState'));
+      fprintf('Loading saved random number generator state (%d, %d)...\n', exp_results.rngState.Seed, exp_results.rngState.State(1));
+      rng(exp_results.rngState);
+    end
     xstart = 8 * rand(exp_settings.dim, 1) - 4;
     restartMaxfunevals = maxfunevals;
 
@@ -250,6 +255,8 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
     fgeneric('finalize');
     exp_id = exp_settings.exp_id;
     if (~isPureCmaes)
+      exp_results.rngState = rng();
+      fprintf('Saving saved random number generator state (%d, %d)...\n', exp_results.rngState.Seed, exp_results.rngState.State(1));
       save(tmpFile, 'exp_settings', 'exp_id', 'y_evals', 'exp_results', 'cmaes_out');
     end
 
