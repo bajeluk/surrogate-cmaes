@@ -66,7 +66,6 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
       exp_settings.instances = instances;
       exp_settings.resume = defopts(bbParams, 'resume', false);
       exp_settings.progressLog = defopts(bbParams, 'progressLog', false);
-      exp_settings.initRngState = rng();
 
       expFileID = [num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
       resultsFile = [exppath filesep exp_id '_results_' expFileID];
@@ -256,7 +255,6 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
     exp_id = exp_settings.exp_id;
     if (~isPureCmaes)
       exp_results.rngState = rng();
-      fprintf('Saving saved random number generator state (%d, %d)...\n', exp_results.rngState.Seed, exp_results.rngState.State(1));
       save(tmpFile, 'exp_settings', 'exp_id', 'y_evals', 'exp_results', 'cmaes_out');
     end
 

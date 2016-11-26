@@ -32,7 +32,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     origPointsRoundFcn % function computing number of original-evaluated points from origRatio
     nBestPoints                 % the number of points with the best predicted f-value to take every generation
     usedBestPoints              % how many best-predicted points was really orig-evaluated
-    validationGenerationPeriod  % the number of generations between "validation generations" + 1, see validationPopSize
+    validationGenerationPeriod  % the number of generations between "validation generations" + 1, validation generation is used when 'mod(g, validationGenerationPeriod) == 0'; see validationPopSize
     validationPopSize           % the minimal number of points to be orig-evaluated in validation generation
   end
 
@@ -111,6 +111,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.stats.nDataInRange = NaN;
       obj.modelAge = 0;
       obj.isTrainSuccess = false;
+      obj.usedBestPoints = 0;
 
       % prepare the final population to be returned to CMA-ES
       obj.pop = Population(lambda, dim);
@@ -178,8 +179,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       % Validation Generation -- raise the number of orig. evaluated points
       % once in several (opts.validationGenerationPeriod) generations
-      if (mod(obj.cmaesState.countiter, obj.validationGenerationPeriod) == 0)
-        obj.restrictedParam = max(1, max(obj.validationPopSize/nLambdaRest, obj.restrictedParam));
+      if (obj.validationPopSize > 0 && mod(obj.cmaesState.countiter, obj.validationGenerationPeriod) == 0)
+        obj.restrictedParam = max(min(1, obj.validationPopSize/nLambdaRest), obj.restrictedParam);
       end
 
       % the number of points to orig-evaluate
@@ -480,6 +481,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         [~, pointID] = sort(modelOutput, 'descend');
 
       elseif (strcmpi(obj.model.predictionType, 'expectedrank'))
+        MIN_POINTS_FOR_EXPECTED_RANK = 3;
+
         ok = true;
         if (~isempty(obj.retrainedModel) && obj.retrainedModel.isTrained())
           lastModel = obj.retrainedModel;
@@ -489,12 +492,18 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           warning('No valid model for calculating expectedRankDiff(). Using "sd2" criterion.');
           ok = false;
         end
+        if (size(xExtend, 2) < MIN_POINTS_FOR_EXPECTED_RANK)
+          fprintf(2, 'expectedRankDiff(): #pop=%d < %d: using sd2 criterion\n', size(xExtend, 2), MIN_POINTS_FOR_EXPECTED_RANK);
+          ok = false;
+        end
         % TODO: consider lowering 'mu' according to the proportion
         %       size(xExtend,2) / obj.cmaesState.lambda
-        [pointID, errs] = expectedRankDiff(lastModel, xExtend, obj.cmaesState.mu);
-        if (~ sum(errs >= eps) > (size(xExtend,2)/2))
-          warning('exptectedRankDiff() returned more than lambda/2 points with zero expected rankDiff error. Using "sd2" criterion.');
-          ok = false;
+        if (ok)
+          [pointID, errs] = expectedRankDiff(lastModel, xExtend, obj.cmaesState.mu);
+          if (~ sum(errs >= eps) > (size(xExtend,2)/2))
+            warning('exptectedRankDiff() returned more than lambda/2 points with zero expected rankDiff error. Using "sd2" criterion.');
+            ok = false;
+          end
         end
         if (~ok)
           [~, sd2] = lastModel.predict(xExtend');
@@ -678,4 +687,3 @@ function probNum = getProbNumber(exactNumber)
   end
   probNum = floor(exactNumber) + plus;
 end
-
