@@ -170,6 +170,7 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
     y_ranks      = zeros(nThresholds, lambda-1);
     y_ranks(1,:) = this_rank;
     rank_diffs    = zeros(nThresholds+1, 1);
+    mu = min(mu, lambda-1);
     [rank_diffs(1), ~, maxErr] = rankFunc(this_rank, mean_rank, mu);
     % This is for reducing complexity of errRankMu error calculations
     [~, si_mean_rank] = sort(mean_rank);

@@ -17,6 +17,7 @@ function [errNorm, errSum, maxErr] = errRankMu(y1, y2, mu)
 
   y1 = y1(:);
   y2 = y2(:);
+  lambda = length(y1);
   if (numel(y1) ~= numel(y2))
     error('Error in ranking can be done only for two vectors of same size');
   end
@@ -25,9 +26,11 @@ function [errNorm, errSum, maxErr] = errRankMu(y1, y2, mu)
     errSum = 0;
     warning('Calling errRankMu() with mu==0 does not really make sense.');
     return;
+  elseif (mu > lambda)
+    warning('errRankMu(): Calling with mu=%d > lambda=%d which does not really make sense. Using mu:=lambda.', mu, lambda);
   end
 
-  lambda = length(y1);
+  mu = min(mu, lambda);
 
   % speedup: the following 3 lines are the same as
   %   inRank1 = ranking(y1);
