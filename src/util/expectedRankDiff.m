@@ -90,6 +90,10 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
   Fs2 = max(fs2, 0);
   % apply likelihood function
   [~, ~, Ys2] = feval(model.likFcn, model.hyp.lik, [], Fmu, Fs2);
+  % correct GPML's bug for the case when Fs2 == zeros(...)
+  if (size(Ys2,1) == 1)
+    Ys2 = repmat(Ys2, size(Fs2,1), 1);
+  end
 
   % Debug
   % assert(abs(max(Ys2*model.stdY - cov_star)/max(cov_star)) < 1e-4, 'Ys2 calculated differs more from model.predict by %e \%', abs(max(Ys2*model.stdY - cov_star)/max(cov_star)));
