@@ -453,6 +453,10 @@ function reportFile = generateReport(expFolder, varargin)
     addpath(mainPpFolder)
     publishedReport = publish(reportFile, 'format', publishOption, ...
                                           'showCode', false);
+    % replace importhtml tags with generated html code
+    if strcmp(publishOption, 'html')
+      htmlPostProc(publishedReport)
+    end
     fprintf('Report published to %s\n', publishedReport)
   end
   
