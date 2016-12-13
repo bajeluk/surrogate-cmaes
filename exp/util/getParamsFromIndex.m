@@ -1,4 +1,4 @@
-function [bbParams, sgParams, cmParams, nNonBbobValues] = getParamsFromIndex(id, bbAll, sgAll, cmAll)
+function [bbParams, sgParams, cmParams, nNonBbobValues, totalCombs] = getParamsFromIndex(id, bbAll, sgAll, cmAll)
 % GETPARAMSFROMINDEX Generates struct arrays with parameters accrd. to exper. ID#
   bbNValues = cell2mat(structMap(bbAll, @(x) length(x.values)));
   sgNValues = cell2mat(structMap(sgAll, @(x) length(x.values)));

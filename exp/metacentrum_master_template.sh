@@ -37,6 +37,19 @@ else
   IDS=`cat $EXPPATH_SHORT/$EXPID/allids.txt`
 fi
 
+# Ensure that 'scmaes_params.mat' exists
+#
+if [ ! -f "$EXPPATH_SHORT/$EXPID/scmaes_params.mat" ]; then
+  echo "Warning: 'scmaes_params.mat' does not exist. I will create it by calling"
+  echo ""
+  echo "matlab -nodisplay -nojvm -r \"expInit('$EXPID'); exit(0);\""
+  echo ""
+  matlab -nodisplay -nojvm -r "expInit('$EXPID'); exit(0);"
+  if [ $? != 0 ]; then
+    echo "Matlab ended with error. I'm ending, too."
+    exit 1
+  fi
+fi
 
 #
 # Packing of current sources
