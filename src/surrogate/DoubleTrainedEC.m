@@ -37,6 +37,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj@Observable();
       obj.model = [];
       obj.pop = [];
+      obj.counteval = 0;
       obj.surrogateOpts = surrogateOpts;
 
       % DTS parameters
@@ -75,7 +76,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           'normKendallOldModel', NaN, ... % Kendall of old model normed to [0,1]
           'ageOldModel', NaN, ...       % age of the old model which used for statistics
           'nDataOldModel', 0, ...       % the number of data points from archive for old model statistics
-          'lastUsedOrigRatio', NaN, ... % restricted param which was used (last) in the last generation
+          'lastUsedOrigRatio', NaN  ... % restricted param which was used (last) in the last generation
           );
     end
 
