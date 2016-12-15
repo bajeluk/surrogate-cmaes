@@ -370,7 +370,7 @@ classdef GpModel < Model
       lb_hyp.lik = log(1e-6);
       ub_hyp.lik = log(10);
       % set bounds for mean hyperparameter
-      if (~isequal(obj.meanFcn, @meanZero))
+      if (isequal(obj.meanFcn, @meanConst))
         minY = min(yTrain);
         maxY = max(yTrain);
         lb_hyp.mean = minY - 2*(maxY - minY);
