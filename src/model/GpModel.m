@@ -181,7 +181,7 @@ classdef GpModel < Model
       end
     end
 
-    function [y, dev] = modelPredict(obj, X)
+    function [y, sd2] = modelPredict(obj, X)
       % predicts the function values in new points X
       if (obj.isTrained())
         % apply the shift if the model is already shifted
@@ -189,10 +189,10 @@ classdef GpModel < Model
         % prepare the training set (if was normalized for training)
         yTrain = (obj.dataset.y - obj.shiftY) / obj.stdY;
         % calculate GP models' prediction in X
-        [y, dev] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, yTrain, XWithShift);
+        [y, gp_sd2] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, yTrain, XWithShift);
         % un-normalize in the f-space (if there is any)
         y = y * obj.stdY + obj.shiftY;
-        dev = dev * obj.stdY;
+        sd2 = gp_sd2 * (obj.stdY)^2;
 
         % % Calculate POI if it should be used
         % if (obj.options.usePOI)
@@ -208,7 +208,7 @@ classdef GpModel < Model
         %   dev = zeros(size(dev));
         % end
       else
-        y = []; dev = [];
+        y = []; sd2 = [];
         fprintf(2, 'GpModel.predict(): the model is not yet trained!\n');
       end
     end
@@ -241,7 +241,7 @@ classdef GpModel < Model
       obj.hyp = hyp_;
     end
 
-    function [obj, opt, trainErr] = trainFmincon(obj, linear_hyp, X, y, lb, ub, f);
+    function [obj, opt, trainErr] = trainFmincon(obj, linear_hyp, X, y, lb, ub, f)
       % train with Matlab's fmincon() from the Optimization toolbox
       %
       global modelTrainNErrors;
@@ -280,7 +280,7 @@ classdef GpModel < Model
       end
     end
 
-    function [obj, opt, trainErr] = trainCmaes(obj, linear_hyp, X, y, lb, ub, f);
+    function [obj, opt, trainErr] = trainCmaes(obj, linear_hyp, X, y, lb, ub, f)
       % train with CMA-ES
       %
       global modelTrainNErrors;
