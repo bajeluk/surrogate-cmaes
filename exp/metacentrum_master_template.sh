@@ -31,8 +31,16 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 EXPPATH_SHORT="$CWD/experiments"
 # SCRIPT=`basename ${BASH_SOURCE[0]}`
 if [ $# -gt 2 ]; then
-  shift; shift;
-  IDS=$*
+  if [ $3 == "-k" ]; then
+    MAXID=`cat $EXPPATH_SHORT/$EXPID/allids.txt | tr ' ' '\n' | tail -2 | head -1`
+    echo "We will try to submit not-finished and not-running jobs up to nubmer ${MAXID}..."
+    IDS=`$CWD/metacentrum_run_killed.sh $EXPID $MAXID`
+    echo "We will submit the following IDs:"
+    echo $IDS
+  else
+    shift; shift;
+    IDS=$*
+  fi
 else
   IDS=`cat $EXPPATH_SHORT/$EXPID/allids.txt`
 fi
@@ -116,7 +124,7 @@ else
     tar -xf "$DEPLOY_DIR/$DEPLOY_ARCHIVE" -C $COMPILE_DIR
     echo "Compiling..."
     cd $COMPILE_DIR
-    module add matlab
+    module add matlab-8.7
     lasthome="$HOME"
     HOME=$COMPILE_DIR
 
