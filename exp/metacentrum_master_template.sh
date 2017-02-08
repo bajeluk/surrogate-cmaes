@@ -124,7 +124,7 @@ else
     tar -xf "$DEPLOY_DIR/$DEPLOY_ARCHIVE" -C $COMPILE_DIR
     echo "Compiling..."
     cd $COMPILE_DIR
-    module add matlab-8.7
+    module add matlab
     lasthome="$HOME"
     HOME=$COMPILE_DIR
 
