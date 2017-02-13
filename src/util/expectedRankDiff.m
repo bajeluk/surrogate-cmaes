@@ -28,10 +28,10 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
   f_GPToY = @(y) (y * model.stdY) + model.shiftY;
 
   % matrix of 'training' data points (already converted to model-space)
-  X_N = model.dataset.X';
+  X_N = model.getDataset_X()';
   % vector of 'training' f-values
-  % (model.dataset.y is not yet converted to model-space)
-  y_N = f_yToGP(model.dataset.y);
+  % (model.getDataset_y() is not yet converted to model-space)
+  y_N = f_yToGP(model.getDataset_y());
   % number of 'training' datapoints
   N = size(X_N, 2);
 
@@ -96,9 +96,9 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
   end
 
   % Debug
-  % assert(abs(max(Ys2*model.stdY - cov_star)/max(cov_star)) < 1e-4, 'Ys2 calculated differs more from model.predict by %e \%', abs(max(Ys2*model.stdY - cov_star)/max(cov_star)));
-  if (abs(max(Ys2*model.stdY - cov_star)/max(cov_star)) > 1e-6)
-    fprintf(2, 'Ys2 calculated relatively differs from model.predict by factor %e\n', abs(max(Ys2*model.stdY - cov_star)/max(cov_star)));
+  % assert(abs(max(Ys2*model.stdY^2 - cov_star)/max(cov_star)) < 1e-4, 'Ys2 calculated differs more from model.predict by %e \%', abs(max(Ys2*model.stdY^2 - cov_star)/max(cov_star)));
+  if (abs(max(Ys2*(model.stdY^2) - cov_star)/max(cov_star)) > 1e-6)
+    fprintf(2, 'Ys2 calculated relatively differs from model.predict by factor %e\n', abs(max(Ys2*model.stdY^2 - cov_star)/max(cov_star)));
   end
 
   % Iterate through all lambda points
@@ -235,7 +235,7 @@ function [perm, errs] = expectedRankDiff(model, arxvalid, mu, varargin)
     % Compute the propabilites of these rankings
     %
     % norm_cdfs = [0; normcdf(thresholds, Fmu(s), sqrt(Ys2(s)/max(Ys2))); 1];
-    norm_cdfs = [0; normcdf(thresholds, f_GPToY(Fmu(s)), Ys2(s)*model.stdY); 1];
+    norm_cdfs = [0; normcdf(thresholds, f_GPToY(Fmu(s)), Ys2(s)*model.stdY^2); 1];
     probs = norm_cdfs(2:end) - norm_cdfs(1:(end-1));
 
     % Save the resulting expected error for this individual 's'

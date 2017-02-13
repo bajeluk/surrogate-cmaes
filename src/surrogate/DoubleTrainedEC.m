@@ -54,8 +54,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.validationPopSize = defopts(surrogateOpts, 'evoControlValidationPopSize', 0);
 
       % Model Archive fixed settings and initialization
-      obj.oldModelAgeForStatistics = [3:5];
-      obj.modelArchiveLength = 5;
+      obj.modelArchiveLength = defopts(surrogateOpts, 'evoControlModelArchiveLength', 5);
+      obj.oldModelAgeForStatistics = defopts(surrogateOpts, 'evoControlOldModelAgeForStatistics', ...
+          [3:min(5, obj.modelArchiveLength)]);
       obj.modelArchive = cell(1, obj.modelArchiveLength);
       obj.modelArchiveGenerations = nan(1, obj.modelArchiveLength);
       obj.modelAge = 0;
@@ -204,13 +205,13 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           % choose point(s) for re-evaluation
           reevalID = false(1, nLambdaRest);
           reevalID(~isEvaled) = obj.choosePointsForReevaluation(nPoints, ...
-              xExtend(:, ~isEvaled), modelOutput(~isEvaled), yExtendModel(~isEvaled));
+              xExtendValid(:, ~isEvaled), modelOutput(~isEvaled), yExtendModel(~isEvaled));
           xToReeval = xExtendValid(:, reevalID);
           nToReeval = sum(reevalID);
 
           % original-evaluate the chosen points
           [yNew, xNew, xNewValid, zNew, obj.counteval] = ...
-              sampleCmaesOnlyFitness(xExtend(:, reevalID), xToReeval, zExtend(:, reevalID), ...
+              sampleCmaesOnlyFitness(xExtendValid(:, reevalID), xToReeval, zExtend(:, reevalID), ...
               obj.cmaesState.sigma, nToReeval, obj.counteval, obj.cmaesState, sampleOpts, ...
               varargin{:});
           xExtendValid(:, reevalID) = xNewValid;
@@ -398,7 +399,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         %           ordering of values
         %         - small constant is added because of the rounding errors
         %           when numbers of different orders of magnitude are summed
-        fminDataset = min(lastModel.dataset.y);
+        fminDataset = min(lastModel.getDataset_y());
         fminModel = obj.pop.getMinModeled;
         diff = max(fminDataset - fminModel, 0);
         obj.pop = obj.pop.shiftY(1.000001*diff);

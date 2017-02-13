@@ -11,7 +11,8 @@ classdef (Abstract) Model
     shiftY               % shift in the f-space
     predictionType       % type of prediction (f-values, PoI, EI)
     transformCoordinates % whether use transformation in the X-space
-    % stateVariables       % variables needed for sampling new points as CMA-ES do
+    stateVariables       % variables needed for sampling new points as CMA-ES do
+    sampleOpts           % options and settings for the CMA-ES sampling
   end
 
   methods (Abstract)
@@ -36,7 +37,15 @@ classdef (Abstract) Model
     end
 
     function n = getTrainsetSize(obj)
-      n = size(obj.dataset.y, 1);
+      n = size(obj.getDataset_y(), 1);
+    end
+
+    function y = getDataset_X(obj)
+      y = obj.dataset.X;
+    end
+
+    function y = getDataset_y(obj)
+      y = obj.dataset.y;
     end
 
     function obj = shift(obj, xMean)
@@ -46,7 +55,7 @@ classdef (Abstract) Model
     %   according to overlapping regions of the new and old spaces
 
       % simulate "older" dataset and predict there y-values
-      invShiftedDataset = obj.dataset.X - (xMean - obj.trainMean);
+      invShiftedDataset = obj.getDataset_X() - (xMean - obj.trainMean);
       obj.shiftMean = zeros(size(xMean));
       invShiftedY = predict(obj, invShiftedDataset);
       % set the vector of the shift (this has to be after calling
@@ -54,7 +63,7 @@ classdef (Abstract) Model
       obj.shiftMean = xMean - obj.trainMean; 
       % estimate the shift in the new position of the model
       % it is a pair-wise comparison, TODO: is this formula ok?
-      obj.shiftY = median(obj.dataset.y - invShiftedY);
+      obj.shiftY = median(obj.getDataset_y() - invShiftedY);
     end
 
     function [obj, counteval, newX, newY, newZ] = generationUpdate(obj, xMean, xValid, zValid, nOrigEvals, fitfun_handle, varargin)
@@ -124,7 +133,8 @@ classdef (Abstract) Model
         end
         deniedIdxs = [deniedIdxs datasetIdx];
         % calculate new shiftY
-        obj.shiftY = obj.dataset.y(datasetIdx) - y;
+        dataset_y = obj.getDataset_y();
+        obj.shiftY = dataset_y(datasetIdx) - y;
         % check that the model is not flat
         yValid = obj.predict(xValid);
         ySort = sort(yValid);
@@ -195,8 +205,8 @@ classdef (Abstract) Model
     % known fvalue range.
       
       [y, sd2] = obj.predict(X);
-      fmin = min(obj.dataset.y);
-      fmax = max(obj.dataset.y);
+      fmin = min(obj.getDataset_y());
+      fmax = max(obj.getDataset_y());
       
       switch lower(obj.predictionType)
         case 'fvalues' % mean function values
@@ -244,6 +254,7 @@ classdef (Abstract) Model
       sigma = stateVariables.sigma;
       lambda = stateVariables.lambda;
       BD = stateVariables.BD;
+      obj.sampleOpts = sampleOpts;
 
       % minimal difference between minimal and maximal returned
       % value to regard the model as trained; otherwise, the
@@ -301,7 +312,7 @@ classdef (Abstract) Model
       % take a point on the line from the trainMean towards the new xMean
       middlePoint = obj.trainMean + 0.25 * (xMean - obj.trainMean);
       % take only not-denied entries in the dataset
-      isAllowed = logical(true(size(obj.dataset.y)));
+      isAllowed = logical(true(size(obj.getDataset_y())));
       isAllowed(deniedIdxs) = 0;
       if (sum(isAllowed) == 0)
         % there is no more allowed dataset entries
@@ -309,14 +320,15 @@ classdef (Abstract) Model
         return
       end
       % find the nearest poin to the middlePoint
-      sqDists = sum((obj.dataset.X(isAllowed,:) ...
-          - repmat(middlePoint, length(obj.dataset.y)-length(deniedIdxs), 1)).^2, 2);
+      dataset_X = obj.getDataset_X();
+      sqDists = sum((dataset_X(isAllowed,:) ...
+          - repmat(middlePoint, length(obj.getDataset_y())-length(deniedIdxs), 1)).^2, 2);
       [~, datasetIdx] = min(sqDists);
       % we got the index only in the "allowed" subset of the dataset
       allowedIdxs = find(isAllowed);
 
       datasetIdx = allowedIdxs(datasetIdx);
-      x = obj.dataset.X(datasetIdx, :);
+      x = dataset_X(datasetIdx, :);
     end
   end
 end

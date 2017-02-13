@@ -12,6 +12,7 @@ classdef GpRfModel < Model
     predictionType        % type of prediction (f-values, PoI, EI)
     transformCoordinates  % transform X-space
     stateVariables        % variables needed for sampling new points as CMA-ES do
+    sampleOpts            % options and settings for the CMA-ES sampling
 
     % GpRfModel specific fields
     gp                    % gaussian process model

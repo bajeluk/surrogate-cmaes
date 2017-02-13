@@ -12,6 +12,7 @@ classdef GpModel < Model
     predictionType        % type of prediction (f-values, PoI, EI)
     transformCoordinates  % transform X-space
     stateVariables        % variables needed for sampling new points as CMA-ES do
+    sampleOpts            % options and settings for the CMA-ES sampling
 
     % GpModel specific fields
     stdY                  % standard deviation of Y in training set, for normalizing output
@@ -132,7 +133,7 @@ classdef GpModel < Model
       alg = obj.options.trainAlgorithm;
 
       if (strcmpi(alg, 'minimize'))
-        [obj, fval] = obj.trainMinimize(obj.dataset.X, yTrain);
+        [obj, fval] = obj.trainMinimize(obj.getDataset_X(), yTrain);
         if (fval < Inf)
           obj.trainGeneration = generation;
         else
@@ -142,7 +143,7 @@ classdef GpModel < Model
       elseif (strcmpi(alg, 'fmincon') ...
               || strcmp(alg, 'cmaes'))
         % gp() with linearized version of the hyper-parameters
-        f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, yTrain);
+        f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain);
 
         linear_hyp = unwrap(obj.hyp)';
         l_cov = length(obj.hyp.cov);
@@ -154,7 +155,7 @@ classdef GpModel < Model
         opt = [];
 
         if (strcmpi(alg, 'fmincon'))
-          [obj, opt, trainErr] = obj.trainFmincon(linear_hyp, obj.dataset.X, yTrain, lb, ub, f);
+          [obj, opt, trainErr] = obj.trainFmincon(linear_hyp, obj.getDataset_X(), yTrain, lb, ub, f);
 
           if (trainErr)
             % fprintf('Trying CMA-ES...\n');
@@ -162,7 +163,7 @@ classdef GpModel < Model
           end
         end
         if (strcmpi(alg, 'cmaes'))
-          [obj, opt, trainErr] = obj.trainCmaes(linear_hyp, obj.dataset.X, yTrain, lb, ub, f);
+          [obj, opt, trainErr] = obj.trainCmaes(linear_hyp, obj.getDataset_X(), yTrain, lb, ub, f);
           if (trainErr)
             % DEBUG OUTPUT:
             fprintf(2, '.. model is not successfully trained, likelihood = %f\n', obj.trainLikelihood);
@@ -187,9 +188,9 @@ classdef GpModel < Model
         % apply the shift if the model is already shifted
         XWithShift = X - repmat(obj.shiftMean, size(X,1), 1);
         % prepare the training set (if was normalized for training)
-        yTrain = (obj.dataset.y - obj.shiftY) / obj.stdY;
+        yTrain = (obj.getDataset_y() - obj.shiftY) / obj.stdY;
         % calculate GP models' prediction in X
-        [y, gp_sd2] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, yTrain, XWithShift);
+        [y, gp_sd2] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, XWithShift);
         % un-normalize in the f-space (if there is any)
         y = y * obj.stdY + obj.shiftY;
         sd2 = gp_sd2 * (obj.stdY)^2;
@@ -197,14 +198,14 @@ classdef GpModel < Model
         % % Calculate POI if it should be used
         % if (obj.options.usePOI)
         %   % return -POI , because the smaller y-value (bigger probability) the better
-        %   y = - getPOI(X, y, dev, min(obj.dataset.y));
+        %   y = - getPOI(X, y, dev, min(obj.getDataset_y()));
         %   dev = zeros(size(dev));
         % end
         %
         % % Calculate EI if it should be used
         % if (obj.options.useEI)
         %   % EI should be negative in promising regions, the lower the better
-        %   y = getEI(X, y, dev, min(obj.dataset.y));
+        %   y = getEI(X, y, dev, min(obj.getDataset_y()));
         %   dev = zeros(size(dev));
         % end
       else
