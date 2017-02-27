@@ -156,16 +156,20 @@ function handle = relativePlot(data_stats, settings)
   end
   settings.legendLocation = 'NorthEast';
 
-  
+  relativeData = cell(1, numOfData);
+  % function loop
   for f = 1:numOfFuncIds
     % find useful data and plot 
     for d = 1:length(settings.dims)
       % find available data
-      notEmptyData = true(1, numOfData);
+      notEmptyData = ~arrayfun(@(dat) isempty(data_stats{dat}{f,d}), 1:numOfData);
+      if ~all(notEmptyData) && any(notEmptyData)
+        warning('%s are missing in function %d dimension %d.', ...
+          strjoin(settings.datanames(~notEmptyData), ', '), settings.BBfunc(f), settings.dims(d))
+      end
+      % assign empty set to empty data
       for dat = 1:numOfData
-        notEmptyData(dat) = ~isempty(data_stats{dat}{f,d});
         if ~notEmptyData(dat)
-          warning('%s is missing in function %d and dimension %d.', settings.datanames{dat}, settings.BBfunc(f), settings.dims(d))
           relativeData{dat}{f, d} = [];
         end
       end
@@ -368,7 +372,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
       legend(h(legIds), ftitle(legIds), 'Location', settings.legendLocation)
     end
   else
-    warning('Function %d dimension %d has no data available', BBfunc(fId), dims(dId))
+    warning('Function %d dimension %d has no data available.', BBfunc(fId), dims(dId))
   end
 
   % make title

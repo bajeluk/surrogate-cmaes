@@ -85,7 +85,8 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   end
   
   % return unique settings and its evaluations
-  settings = allSettings(unique(settingsID));
+  outputSettingsId = arrayfun(@(x) find(settingsID == x, 1, 'first'), unique(settingsID));
+  settings = allSettings(outputSettingsId);
   evals = evals(:, :, unique(settingsID));
 
 end
