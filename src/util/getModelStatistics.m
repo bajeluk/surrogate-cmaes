@@ -1,6 +1,12 @@
-function surrogateStats = getModelStatistics(model, cmaesState, surrogateOpts, sampleOpts, counteval)
-% print and save the statistics about the currently
-% trained model on testing data
+function surrogateStats = getModelStatistics(model, cmaesState, surrogateOpts, sampleOpts, counteval, varargin)
+%GETMODELSTATISTICS prints and save the statistics about the currently trained model on testing data
+% Input:
+%       model   - model to be evaluated
+%       cmaesState      - CMA-ES state variables (struct)
+%       surrogateOpts   - options from experiment definition
+%       sampleOpts      - sampling options
+%       counteval       - number of evaluations so-far used
+%       varargin{1}     - last ranking error in current population
 
   % CMA-ES state variables
   xmean = cmaesState.xmean;
@@ -12,7 +18,7 @@ function surrogateStats = getModelStatistics(model, cmaesState, surrogateOpts, s
 
   [~, xValidTest, ~] = ...
       sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
-  surrogateStats = [NaN NaN];
+  surrogateStats = NaN(1,7);
   if (isfield(surrogateOpts.modelOpts, 'bbob_func'))
     preciseModel = ModelFactory.createModel('bbob', surrogateOpts.modelOpts, xmean');
     yTest = preciseModel.predict(xValidTest');
@@ -38,7 +44,17 @@ function surrogateStats = getModelStatistics(model, cmaesState, surrogateOpts, s
     end
     fprintf('%s\n', stars);
 
-    surrogateStats = [rmse kendall];
+    % Get actual errRankMuOnly()
+    [~, sort1] = sort(yTest);
+    ranking2   = ranking(yPredict);
+    errRank = errRankMuOnly(ranking2(sort1), cmaesState.mu);
+
+    [minstd minstdidx] = min(cmaesState.sigma*sqrt(cmaesState.diagC));
+    [maxstd maxstdidx] = max(cmaesState.sigma*sqrt(cmaesState.diagC));
+    surrogateStats = [rmse, kendall, cmaesState.sigma, ...
+        max(cmaesState.diagD)/min(cmaesState.diagD), minstd, maxstd, errRank];
+    varParams = cell2mat(varargin);
+    surrogateStats((end+1):(end+length(varParams))) = varParams;
     
     % experimental
     % coef = sqrt(sum(((yPredict - yTest)/norm(yTest)).^2))/length(yPredict);

@@ -1,8 +1,9 @@
-classdef GenerationEC < EvolutionControl
+classdef GenerationEC < EvolutionControl & Observable
   properties
-    lastModel
     model
+    counteval
     
+    lastModel
     origGenerations;
     modelGenerations;
     currentMode         = 'original';
@@ -29,12 +30,14 @@ classdef GenerationEC < EvolutionControl
       obj.currentGeneration   = 1;
       obj.lastModel = [];
       obj.model = [];
+      obj.counteval = 0;
     end
     
-    function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
+    function [obj, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
       % Run one generation of generation evolution control
       
-      surrogateStats = NaN(1, 2);
+      surrogateStats = NaN(1, 7);
+      origEvaled = false(1, cmaesState.lambda);
       
       % extract cmaes state variables
       xmean = cmaesState.xmean;
@@ -43,6 +46,7 @@ classdef GenerationEC < EvolutionControl
       BD = cmaesState.BD;
       fitfun_handle = cmaesState.fitfun_handle;
       countiter = cmaesState.countiter;
+      obj.counteval = counteval;
       
       sampleSigma = surrogateOpts.evoControlSampleRange * sigma;
       
@@ -53,6 +57,7 @@ classdef GenerationEC < EvolutionControl
         % original-evaluated generation
         %
         [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
+        origEvaled(1:end) = true;
 
         archive = archive.save(arxvalid', fitness_raw', countiter);
         if (~ obj.isNextOriginal())
@@ -82,12 +87,14 @@ classdef GenerationEC < EvolutionControl
           warning('surrogateManager(): we are asked to use an EMPTY MODEL! Using CMA-ES.');
           [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
           archive = archive.save(arxvalid', fitness_raw', countiter);
+          origEvaled(1:end) = true;
           return;
         end
 
         % generate the new population (to be evaluated by the model)
         [arx, arxvalid, arz] = ...
             sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
+        origEvaled(1:end) = false;
 
         % generate validating population (for measuring error of the prediction)
         % this is with the *original* sigma
@@ -173,7 +180,7 @@ classdef GenerationEC < EvolutionControl
       
       dim = cmaesState.dim;
       
-      surrogateStats = NaN(1, 2);
+      surrogateStats = NaN(1, 7);
       % train the 'model' on the relevant data in 'archive'
       isTrained = false;
 

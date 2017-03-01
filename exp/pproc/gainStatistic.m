@@ -1,16 +1,22 @@
 function stats = gainStatistic(data, dimId, funcId, varargin)
-% Returns cell array of means accross chosen dimensions for each function
+% stats = gainStatistic(data, dimId, funcId, varargin) returns cell array 
+% of means accross chosen dimensions for each function.
 %
 % Input:
-%   data
-%   dimId
-%   funcId
-%   settings:
-%     'Statistic' - handle to statistic function | @mean, @median
-%     'AverageDims'
-%     'MaxInstances'
-%     'SuppWarning' - suppress warning if data in one function and 
-%                     dimension are missing
+%   data     - cell-array of data
+%   dimId    - identifiers of dimensions | integer
+%   funcId   - identifiers of functions | integer
+%   settings - pairs of property (string) and value or struct with 
+%              properties as fields:
+%
+%     'Statistic'    - handle to statistic function | @mean, @median
+%     'AverageDims'  - average accross dimensions | boolean
+%     'MaxInstances' - maximum number of instances to use | integer
+%     'SuppWarning'  - suppress warning if data in one function and 
+%                      dimension are missing
+%
+% Output:
+%   stats - means accross chosen dimensions for each function | cell-array
 
   stats = {};
   if nargin < 1
@@ -23,14 +29,7 @@ function stats = gainStatistic(data, dimId, funcId, varargin)
     return
   end
   
-  if isstruct(varargin)
-    settings = varargin;
-  else
-    % keep cells as cells due to struct command
-    vararCellId = cellfun(@iscell, varargin);
-    varargin(vararCellId) = {varargin(vararCellId)};
-    settings = struct(varargin{:});
-  end
+  settings = settings2struct(varargin{:});
   statistic = defopts(settings, 'Statistic', @mean);
   averageDims = defopts(settings, 'AverageDims', true);
   nInstances = defopts(settings, 'MaxInstances', 15);
@@ -53,7 +52,7 @@ function stats = gainStatistic(data, dimId, funcId, varargin)
   else
     for f = 1:funcs
       for d = 1:dims
-        if ~isempty(data{funcId(f), dimId(d)})
+        if funcId(f)<= size(data, 1) && dimId(d) <= size(data,2) && ~isempty(data{funcId(f), dimId(d)})
           actualData = data{funcId(f), dimId(d)};
           useInstances = min([nInstances, size(actualData, 2)]);
           stats{f, d} = statistic(actualData(:, 1:useInstances), 2);

@@ -5,21 +5,22 @@ function colors = getAlgColors(colId)
 % Example:
 %   colors = getAlgColors(1:4)
 %
-%  colors =
+%   colors =
 %
-%     255   225     0
-%     248    86     6
-%     255     0     0
-%      97   143   163
+%      255   225     0
+%      175   248     6
+%       12   240   248
+%      248    86     6
   
-  colors = [];
+  if nargout > 1
+    colors = [];
+  end
   if nargin < 1
     help getAlgColors
     return
   end
 
   color_base = [...
-    255, 225,   0; ... % yellow
     175, 248,   6; ... % light green
      12, 240, 248; ... % azure (almost cyan)
     248,  86,   6; ... % dark orange
@@ -44,6 +45,7 @@ function colors = getAlgColors(colId)
     % 154, 205,  50; ... % some green   | DTS-CMA-ES
     % 178,  34,  34; ... % bloody red   | S-CMA-ES
     % 255, 155,   0; ... % light orange | SMAC
+    % 255, 225,   0; ... % yellow       | lmm-CMA-ES
     ];
   
   max_color = max(colId);

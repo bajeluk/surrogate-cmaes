@@ -157,7 +157,7 @@ classdef GpModel < Model
           [obj, opt, trainErr] = obj.trainFmincon(linear_hyp, obj.dataset.X, yTrain, lb, ub, f);
 
           if (trainErr)
-            disp('Trying CMA-ES...');
+            % fprintf('Trying CMA-ES...\n');
             alg = 'cmaes';
           end
         end
@@ -165,7 +165,7 @@ classdef GpModel < Model
           [obj, opt, trainErr] = obj.trainCmaes(linear_hyp, obj.dataset.X, yTrain, lb, ub, f);
           if (trainErr)
             % DEBUG OUTPUT:
-            fprintf('.. model is not successfully trained, likelihood = %f\n', obj.trainLikelihood);
+            fprintf(2, '.. model is not successfully trained, likelihood = %f\n', obj.trainLikelihood);
             return;
           end
         end
@@ -174,14 +174,14 @@ classdef GpModel < Model
         obj.hyp = rewrap(obj.hyp, opt);
 
         % DEBUG OUTPUT:
-        fprintf('.. model-training likelihood = %f\n', obj.trainLikelihood);
+        % fprintf('.. model-training likelihood = %f\n', obj.trainLikelihood);
         % disp(obj.hyp);
       else
         error('GpModel.train(): train algorithm "%s" is not known.\n', alg);
       end
     end
 
-    function [y, dev] = modelPredict(obj, X)
+    function [y, sd2] = modelPredict(obj, X)
       % predicts the function values in new points X
       if (obj.isTrained())
         % apply the shift if the model is already shifted
@@ -189,10 +189,10 @@ classdef GpModel < Model
         % prepare the training set (if was normalized for training)
         yTrain = (obj.dataset.y - obj.shiftY) / obj.stdY;
         % calculate GP models' prediction in X
-        [y, dev] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, yTrain, XWithShift);
+        [y, gp_sd2] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.dataset.X, yTrain, XWithShift);
         % un-normalize in the f-space (if there is any)
         y = y * obj.stdY + obj.shiftY;
-        dev = dev * obj.stdY;
+        sd2 = gp_sd2 * (obj.stdY)^2;
 
         % % Calculate POI if it should be used
         % if (obj.options.usePOI)
@@ -208,15 +208,11 @@ classdef GpModel < Model
         %   dev = zeros(size(dev));
         % end
       else
-        y = []; dev = [];
+        y = []; sd2 = [];
         fprintf(2, 'GpModel.predict(): the model is not yet trained!\n');
       end
     end
 
-    function trained = isTrained(obj)
-      % check whether the model is already trained
-      trained = (obj.trainGeneration >= 0);
-    end
   end
 
   methods (Access = private)
@@ -237,7 +233,7 @@ classdef GpModel < Model
         return;
       end
       % DEBUG OUTPUT:
-      fprintf('  ... minimize() %f --> %f in %d iterations.\n', fval(1), fval(end), iters);
+      % fprintf('  ... minimize() %f --> %f in %d iterations.\n', fval(1), fval(end), iters);
       warning('on');
 
       obj.nErrors = modelTrainNErrors;
@@ -245,7 +241,7 @@ classdef GpModel < Model
       obj.hyp = hyp_;
     end
 
-    function [obj, opt, trainErr] = trainFmincon(obj, linear_hyp, X, y, lb, ub, f);
+    function [obj, opt, trainErr] = trainFmincon(obj, linear_hyp, X, y, lb, ub, f)
       % train with Matlab's fmincon() from the Optimization toolbox
       %
       global modelTrainNErrors;
@@ -260,11 +256,11 @@ classdef GpModel < Model
       end
       if isnan(initial)
         % the initial point is not valid
-        disp('  GpModel.train(): fmincon -- initial point is not valid.');
+        % fprintf('  GpModel.train(): fmincon -- initial point is not valid.\n');
         trainErr = true;
       else
         % training itself
-        disp(['Model training (fmincon), init fval = ' num2str(initial)]);
+        % fprintf('Model training (fmincon), init fval = %f\n', num2str(initial));
         try
           modelTrainNErrors = 0;
           [opt, fval] = fmincon(f, linear_hyp', [], [], [], [], lb, ub, nonlnc, fminconOpts);
@@ -284,7 +280,7 @@ classdef GpModel < Model
       end
     end
 
-    function [obj, opt, trainErr] = trainCmaes(obj, linear_hyp, X, y, lb, ub, f);
+    function [obj, opt, trainErr] = trainCmaes(obj, linear_hyp, X, y, lb, ub, f)
       % train with CMA-ES
       %
       global modelTrainNErrors;
@@ -296,6 +292,7 @@ classdef GpModel < Model
       cmaesopt.LogModulo = 0;
       cmaesopt.DispModulo = 0;
       cmaesopt.DispFinal = 0;
+      cmaesopt.Seed = 'inherit';
       sigma = [0.3*(ub - lb)]';
       % sigma(end) = min(10*mean(sigma(1:end-1)), sigma(end));
       if (length(obj.hyp.cov) > 2)
@@ -373,7 +370,7 @@ classdef GpModel < Model
       lb_hyp.lik = log(1e-6);
       ub_hyp.lik = log(10);
       % set bounds for mean hyperparameter
-      if (~isequal(obj.meanFcn, @meanZero))
+      if (isequal(obj.meanFcn, @meanConst))
         minY = min(yTrain);
         maxY = max(yTrain);
         lb_hyp.mean = minY - 2*(maxY - minY);

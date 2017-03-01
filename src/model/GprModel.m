@@ -143,10 +143,13 @@ classdef GprModel < Model
             'Standardize', obj.options.normalizeX ...
           );
         end
+
+        obj.trainGeneration = generation;
       catch err
         disp(getReport(err));
         obj.nErrors = obj.nErrors + 1;
         obj.fitErr = 1;
+        obj.trainGeneration = -1;
       end
 
       if (obj.logModel)

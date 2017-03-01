@@ -9,7 +9,7 @@ classdef NoneEC < EvolutionControl
       obj.model = [];
     end
     
-    function [fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
+    function [obj, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
     % Run one generation of double trained evolution control
     
       lambda = cmaesState.lambda;
@@ -18,6 +18,7 @@ classdef NoneEC < EvolutionControl
       archive = archive.save(arxvalid', fitness_raw', countiter);
 
       surrogateStats = NaN(1, 2);
+      origEvaled = false(1, lambda);
     end
     
   end

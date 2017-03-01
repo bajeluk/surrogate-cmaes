@@ -1,4 +1,4 @@
-function [fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] = presample(minTrainSize, cmaesState, surrogateOpts, sampleOpts, archive, counteval, xTrain, yTrain, varargin)
+function [ok, fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] = presample(minTrainSize, cmaesState, surrogateOpts, sampleOpts, archive, counteval, xTrain, yTrain, varargin)
 
   xmean = cmaesState.xmean;
   sigma = cmaesState.sigma;
@@ -16,10 +16,11 @@ function [fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrain] =
 
   if (missingTrainSize > maxPresampleSize)
     % TODO: shouldn't we use an old model?
-    disp('surrogateManager(): not enough data for training model.');
-    [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
-    archive = archive.save(arxvalid', fitness_raw', countiter);
+    fprintf(2, '  Not enough data for training model.\n');
+    ok = false;
     return;
+  else
+    ok = true;
   end
 
   if (missingTrainSize > 0)

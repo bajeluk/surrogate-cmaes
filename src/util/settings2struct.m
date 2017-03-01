@@ -13,7 +13,7 @@ function settings = settings2struct(varargin)
 %       a: 1
 %       b: 2
 
-  if nargin < 1
+  if nargin < 1 || isempty(varargin) || isempty(varargin{1})
     settings = {};
     return
   end
@@ -21,6 +21,9 @@ function settings = settings2struct(varargin)
   % struct input is immediately returned
   if isstruct(varargin{1})
     settings = varargin{1};
+    return
+  elseif (iscell(varargin{1}) && isstruct(varargin{1}{1}))
+    settings = varargin{1}{1};
     return
   end
   % multiple cell input

@@ -4,18 +4,18 @@ function [data, settings] = dataReady(datapath, funcSet)
 % of size functions x dimensions x settings and appropriate 'settings'.
 %
 % Input:
-%   datapath      - path to data | string
-%   funcSet       - structure with fields 'BBfunc' (numbers of BBOB
-%                   functions) and 'dims' (numbers of dimensions) 
-%                   | structure
+%   datapath - path to data | string
+%   funcSet  - structure with fields 'BBfunc' (numbers of BBOB functions) 
+%              and 'dims' (numbers of dimensions) | structure
 %
 % Output:
 %   data     - aggregated data of size functions x dimensions x settings 
 %              | cell array
-%   settings - appropriate settings to 'data' | structure
+%   settings - appropriate settings to 'data', empty if 'datapath' does not
+%              contain mat-files with results | structure
 %
 % See Also:
-%   catEvalSet
+%   bbobDataReady, catEvalSet
 
   BBfunc = funcSet.BBfunc;
   dims = funcSet.dims;
@@ -26,24 +26,29 @@ function [data, settings] = dataReady(datapath, funcSet)
   
   % load and complete results
 
-  % data divided between multiple folders
-  if iscell(datapath) 
-    datalist = {};
-    for i = 1:length(datapath)
-      actualDataList = gainDataList(datapath{i});
-      datalist(end+1 : end+length(actualDataList)) = actualDataList; 
-    end
-    errPathList = cell2mat(cellfun(@(x) [x, ' '], datapath, 'UniformOutput', false));
-  % data in one folder
-  else 
-    datalist = gainDataList(datapath);
-    errPathList = datapath;
+  % data are maybe divided between multiple folders
+  if (~iscell(datapath))
+    datapath = {datapath};
   end
-  
+  datalist = {};
+  for i = 1:length(datapath)
+    actualDataList = gainDataList(datapath{i});
+    % find *.mat files according to the IDs (last number before '.mat')
+    ids = cellfun(@(x) str2num(x(regexp(x, 'D_\d+\.mat$')+2:end-4)), ...
+        actualDataList, 'UniformOutput', false);
+    % remove not required files (error, tmp, ...)
+    actualDataList = actualDataList(~cellfun(@isempty, ids));
+    % sort files according to the IDs
+    [~, idsId] = sort(cell2mat(ids));
+    actualDataList = actualDataList(idsId);
+    datalist(end+1 : end+length(actualDataList)) = actualDataList;
+  end
+  errPathList = cell2mat(cellfun(@(x) [x, ' '], datapath, 'UniformOutput', false));
+
   settings = {};
   data = cell(nFunc, nDim);
   if isempty(datalist)
-    warning('Useful data not found in folder %s.', errPathList)
+    data = bbobDataReady(datapath, funcSet);
     return
   end
   
@@ -76,11 +81,9 @@ function [data, settings] = dataReady(datapath, funcSet)
       if any(func == BBfunc) && any(dim == dims)
         data{BBfuncInv(func), dimsInv(dim), settingsId} = S.y_evals;
       end
+    % necessary variables are missing
     else
-      if ~(isempty(regexp(datalist{i}, '_tmp_\d*.mat', 'once')) || ... % temporary mat-files
-          isempty(regexp(datalist{i}, '_\d*_ERROR.mat', 'once')) )    % error files
-        fprintf('Variable ''y_evals'', ''surrogateParams'', or ''cmaesParams'' not found in %s.\n', datalist{i})
-      end
+      fprintf('Variable ''y_evals'', ''surrogateParams'', or ''cmaesParams'' not found in %s.\n', datalist{i})
     end
   end
   
@@ -98,6 +101,10 @@ function datalist = gainDataList(datapath)
 % and 'metajob.mat'
 
   list = dir(fullfile(datapath, '*.mat'));
+  if isempty(list)
+    datalist = {};
+    return
+  end
   % ids of usable .mat files
   matId = true(1, length(list));
   matId = matId & ~cellfun(@(x) strcmp(x, 'scmaes_params.mat'), {list.name});

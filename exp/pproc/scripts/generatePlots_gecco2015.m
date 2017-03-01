@@ -27,7 +27,6 @@ funcSet.dims = [2, 5, 10];
 % loading data
 [trans_evals, trans_settings] = dataReady(transPath10D, funcSet);
 [rf_evals, rf_settings] = dataReady(rfpath, funcSet);
-%%
 [gp_evals, gp_settings] = dataReady(gppath, funcSet);
 cmaes_evals = dataReady(cmaespath, funcSet);
 

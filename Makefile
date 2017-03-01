@@ -11,9 +11,9 @@ DESTDIR = exp
 
 MATLAB_COMPILER = mcc
 MC_FLAGS= -R -singleCompThread -R -nojvm -R -nodisplay
-MC_INCLUDE= -a exp/opt_cmaes.m -a exp/opt_s_cmaes.m -a exp/util -a exp/vendor/bbob -a src
+MC_INCLUDE= -a exp/opt_cmaes.m -a exp/opt_s_cmaes.m -a exp/util -a exp/vendor/bbob -a src -a exp/log
 SRC = exp/$(FNAME).m
-OTHERS = exp/*.m exp/pproc/generateGnuplot*.m src/ src/cmaes/* src/data/* src/model/* src/sample/* src/surrogate/* src/util/* src/surrogateManager.m
+OTHERS = exp/*.m exp/pproc/*.m exp/log/*.m src/ src/cmaes/* src/data/* src/model/* src/sample/* src/surrogate/* src/util/* src/surrogateManager.m
 OUT = $(DESTDIR)/$(FNAME)
 
 $(OUT):	$(SRC) $(OTHERS)

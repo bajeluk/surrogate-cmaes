@@ -8,46 +8,59 @@ function handle = relativeFValuesPlot(data, varargin)
 %   settings - pairs of property (string) and value or struct with 
 %              properties as fields:
 %
-%     'DataNames'     - cell array of data names (e.g. names of algorithms)
-%     'DataDims'      - dimensions of data
-%     'DataFuns'      - functions of data
-%     'PlotDims'      - dimensions chosen to plot
-%     'PlotFuns'      - functions chosen to plot
-%     'Colors'        - colors of individual algorithms
 %     'AggregateDims' - aggregate dimensions in plots | boolean
+%     'AggregateFuns' - aggregate functions in plots | boolean
+%     'Colors'        - vector Nx3 of (RGB) colors of individual 
+%                       algorithms, N is the number of algorithms | double 
+%                       array
+%                       (e.g. 2 algorithms: [115, 60, 215; 0, 40, 60]) 
+%     'DataNames'     - cell array of data names (e.g. names of algorithms)
+%                       | cell array of strings
+%                       (e.g. {'alg1', 'alg2', 'alg3'})
+%     'DataDims'      - dimensions of data | integer vector 
+%                       (e.g. [2, 3, 5, 10])
+%     'DataFuns'      - functions of data | integer vector
+%                       (e.g. [1, 2, 3, 4, 5, 11, 12])
+%     'FunctionNames' - show function names in header | boolean
+%     'LegendOption'  - legend settings:
+%                         'show'    - show legend
+%                         'hide'    - do not show legend
+%                         'split'   - legend splitted in first two graphs
+%                         'out'     - legend is in one separate figure
+%                         'manyout' - legend is in multiple separated
+%                                     figures
+%     'LineSpec'      - specification of plotted lines (see help plot ->
+%                       LineSpec), to set colors use 'Colors' settings | 
+%                       cell array of string
+%                       (e.g. 3 algorithms: {'-.', '-o', '.'})
+%     'LineWidth'     - line width of individual lines | double
+%     'MaxEval'       - maximum of evaluations divided by dimension |
+%                       integer
+%     'MinValue'      - minimal possible function value | double
+%     'OmitYLabel'    - omit y-label in even plots | boolean
+%     'OneFigure'     - all plots in one figure | boolean
+%     'PlotDims'      - dimensions chosen to plot | integer vector
+%                       (e.g. [5, 10])
+%     'PlotFuns'      - functions chosen to plot | integer vector
+%                       (e.g. [3, 6, 10, 17])
 %     'Statistic'     - statistic of data | string or handle (@mean, 
 %                       @median)
-%     'MinValue'      - minimal possible function value
-%     'OneFigure'     - plot in one figure | boolean
-%     'LegendOption'  - legend settings:
-%                         'show'  - show legend
-%                         'hide'  - do not show legend
-%                         'split' - legend splitted in first two graphs
-%                         'out'   - legend is out of the last graph
-%     'OmitYLabel'    - omit y-label in even plots | boolean
 %
 % Output:
-%   handle - handles of resulting figures
+%   handle - handles of resulting figures | cell-array
 %
 % See Also:
 %   speedUpPlot, speedUpPlotCompare, dataReady
 
   % initialization
   if nargin < 1 || isempty(data)
-    handle = [];
+    if nargout > 0
+      handle = {};
+    end
     help relativeFValuesPlot
     return
   end
-%   if isstruct(varargin)
-%     settings = varargin;
-%   else
-%     % keep cells as cells due to struct command
-%     vararCellId = cellfun(@iscell, varargin);
-%     varargin(vararCellId) = {varargin(vararCellId)};
-%     settings = struct(varargin{:});
-%   end
   settings = settings2struct(varargin);
-  
   
   % parse settings
   numOfData = length(data);
@@ -66,17 +79,19 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.colors = colors;
   plotSet.aggDims = defopts(settings, 'AggregateDims', false);
   plotSet.aggFuns = defopts(settings, 'AggregateFuns', false);
+  plotSet.funcNames = defopts(settings, 'FunctionNames', false);
   plotSet.minValue = defopts(settings, 'MinValue', 1e-8);
   plotSet.maxEval = defopts(settings, 'MaxEval', 250);
   statistic = defopts(settings, 'Statistic', @mean);
   plotSet.oneFigure = defopts(settings, 'OneFigure', false);
-  plotSet.legendOption = defopts(settings, 'LegendOption', 'show');
+  plotSet.legendOption = lower(defopts(settings, 'LegendOption', 'show'));
   defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
-  plotSet.lineSpec = defopts(settings, 'LineSpecification', defaultLine);
+  plotSet.lineSpec = defopts(settings, 'LineSpec', defaultLine);
   if length(plotSet.lineSpec) ~= numOfData
     warning('Number of line specification strings and number of data are different. Setting default values.')
     plotSet.lineSpec = defaultLine;
   end
+  plotSet.lineWidth = defopts(settings, 'LineWidth', 1);
   plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
@@ -135,7 +150,8 @@ function handle = relativePlot(data_stats, settings)
   if strcmp(settings.legendOption, 'split')
     splitLegend = true;
   end
-  if strcmp(settings.legendOption, 'hide')
+  % do not display legend inside the graph
+  if any(strcmp(settings.legendOption, {'hide', 'out', 'manyout'}))
     dispLegend = false;
   end
   settings.legendLocation = 'NorthEast';
@@ -247,28 +263,45 @@ function handle = relativePlot(data_stats, settings)
   else
     
     % legend settings
-    if strcmp(settings.legendOption, 'out')
-      handle = zeros(1, nPlots + 1);
-      legendFigNum = nPlots + 1;
+    if any(strcmp(settings.legendOption, {'out', 'manyout'}))
+      handle = cell(1, nPlots + 1);
       settings.legendLocation = 'EastOutside';
     else
-      handle = zeros(1, nPlots);
-      legendFigNum = 1;
+      handle = cell(1, nPlots);
     end
     
     % plot all functions and dimensions
     plottedInAny = false(1, numOfData);
     for f = 1:nFunsToPlot
       for d = 1:nDimsToPlot
-        handle((d-1) * nFunsToPlot + f) = ...
+        handle{(d-1) * nFunsToPlot + f} = ...
           figure('Units', 'centimeters', 'Position', [1, 1, 12.5, 6]);
         plottedInAny = plottedInAny | ...
-          onePlot(relativeData, f, d, settings, dispLegend && (strcmp(settings.legendOption, 'show') || (f*d == legendFigNum)), ...
+          onePlot(relativeData, f, d, settings, dispLegend && (strcmp(settings.legendOption, 'show') || (f*d == 1)), ...
                 0, false);
       end
     end
-    if strcmp(settings.legendOption, 'out')
-      handle(legendFigNum) = soloLegend(settings.colors(plottedInAny, :), settings.datanames(plottedInAny), 2);
+    if any(strcmp(settings.legendOption, {'out', 'manyout'}))
+      % how many data are plotted
+      nToPlot = sum(plottedInAny);
+      % maximal number of data in one legend
+      if strcmp(settings.legendOption, 'out')
+        maxNamesLegend = nToPlot;
+      else
+        maxNamesLegend = 16;
+      end
+      % divide names to necessery sets
+      nLegends = ceil(nToPlot/maxNamesLegend);
+      setNumbers = floor(nToPlot/nLegends)*ones(1, nLegends);
+      remNumber = mod(nToPlot, nLegends);
+      setNumbers(1:remNumber) = setNumbers(1:remNumber) + 1;
+      % create legend id vector
+      setBounds = [0, cumsum(setNumbers)];
+      idToPlot = inverseIndex(plottedInAny);
+      for l = 1:nLegends
+        actualID = idToPlot(setBounds(l) + 1 : setBounds(l+1));
+        handle{nPlots + l} = soloLegend(settings.colors(actualID, :), settings.datanames(actualID), 2);
+      end
     end
   end
   
@@ -287,12 +320,14 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   datanames = settings.datanames;
   aggFuns = settings.aggFuns;
   aggDims = settings.aggDims;
+  funcNames = settings.funcNames;
   BBfunc = settings.BBfunc;
   dims = settings.dims;
   lineSpec = settings.lineSpec;
-
-  % default value
-  medianLineWidth = 1;
+  medianLineWidth = settings.lineWidth;
+  if length(medianLineWidth) < length(relativeData)
+    medianLineWidth = medianLineWidth(1)*ones(1, length(relativeData));
+  end
 
   % find not empty data
   for dat = 1:length(relativeData)
@@ -302,20 +337,22 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   if any(notEmptyData)
     nEmptyId = inverseIndex(notEmptyData);
     nUsefulData = sum(notEmptyData);
+    lineSpec = lineSpec(notEmptyData);
+    medianLineWidth = medianLineWidth(notEmptyData);
     % find minimal number of function evaluations to plot
     evaldim = 1:min([arrayfun(@(x) length(relativeData{nEmptyId(x)}{fId, dId}), 1:nUsefulData), maxEval]);
     h = zeros(1, nUsefulData);
     ftitle = cell(1, nUsefulData);
     % plot first line 
     h(1) = plot(evaldim, relativeData{nEmptyId(1)}{fId, dId}(evaldim), ...
-      lineSpec{1}, 'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(1), :));
+      lineSpec{1}, 'LineWidth', medianLineWidth(1), 'Color', colors(nEmptyId(1), :));
     ftitle{1} = datanames{nEmptyId(1)};
     hold on
     grid on
     % plot rest of lines
     for dat = 2:nUsefulData
       h(dat) = plot(evaldim, relativeData{nEmptyId(dat)}{fId, dId}(evaldim), ...
-        lineSpec{dat}, 'LineWidth', medianLineWidth, 'Color', colors(nEmptyId(dat), :));
+        lineSpec{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(nEmptyId(dat), :));
       ftitle{dat} = datanames{nEmptyId(dat)};
     end
     % legend settings
@@ -338,6 +375,9 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   titleString = '';
   if ~aggFuns
     titleString = ['f', num2str(BBfunc(fId))];
+    if funcNames
+      titleString = [titleString, ' ', functionName(BBfunc(fId))];
+    end
   end
   if ~aggDims
     titleString = [titleString, ' ', num2str(dims(dId)),'D'];
@@ -384,4 +424,72 @@ function h = soloLegend(colors, names, lineWidth)
   line([fa(1), fb(1)], [fb(2), fb(2)], 'Color', 'k') %  
   
   hold off
+end
+
+function name = functionName(fId)
+% returns name of function fId
+  switch fId
+    % separable functions
+    case 1
+      name = 'Sphere';
+    case 2
+      name = 'Ellipsoidal';
+    case 3 	
+      name = 'Rastrigin';
+    case 4
+      name = 'Büche-Rastrigin';
+    case 5
+      name = 'Linear Slope';
+      
+    % functions with low or moderate conditioning
+    case 6
+      name = 'Attractive Sector';
+    case 7
+      name = 'Step Ellipsoidal';
+    case 8
+      name = 'Rosenbrock, original';
+    case 9 
+      name = 'Rosenbrock, rotated';
+      
+    % functions with high conditioning and unimodal
+    case 10
+      name = 'Ellipsoidal, high conditioning';
+    case 11
+      name = 'Discus';
+    case 12
+      name = 'Bent Cigar';
+    case 13
+      name = 'Sharp Ridge';
+    case 14
+      name = 'Different Powers';
+      
+    % multi-modal functions with adequate global structure
+    case 15
+      name = 'Rastrigin, multi-modal';
+    case 16
+      name = 'Weierstrass';
+    case 17
+      name = 'Schaffers F7';
+    case 18
+      name = 'Schaffers F7, ill-conditioned';
+    case 19
+      name = 'Composite Griewank-Rosenbrock F8F2';
+    
+    % multi-modal functions with weak global structure
+    case 20
+      name = 'Schwefel';
+    case 21
+      name = 'Gallagher''s Gaussian 101-me Peaks';
+    case 22
+      name = 'Gallagher''s Gaussian 21-hi Peaks';
+    case 23
+      name = 'Katsuura';
+    case 24
+      name = 'Lunacek bi-Rastrigin';
+      
+    % TODO: noisy functions
+    % other functions
+    otherwise
+      name = '';
+  end
 end
