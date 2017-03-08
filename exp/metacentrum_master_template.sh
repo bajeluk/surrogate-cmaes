@@ -31,12 +31,33 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 EXPPATH_SHORT="$CWD/experiments"
 # SCRIPT=`basename ${BASH_SOURCE[0]}`
 if [ $# -gt 2 ]; then
-  shift; shift;
-  IDS=$*
+  if [ $3 == "-k" ]; then
+    MAXID=`cat $EXPPATH_SHORT/$EXPID/allids.txt | tr ' ' '\n' | tail -2 | head -1`
+    echo "We will try to submit not-finished and not-running jobs up to nubmer ${MAXID}..."
+    IDS=`$CWD/metacentrum_run_killed.sh $EXPID $MAXID`
+    echo "We will submit the following IDs:"
+    echo $IDS
+  else
+    shift; shift;
+    IDS=$*
+  fi
 else
   IDS=`cat $EXPPATH_SHORT/$EXPID/allids.txt`
 fi
 
+# Ensure that 'scmaes_params.mat' exists
+#
+if [ ! -f "$EXPPATH_SHORT/$EXPID/scmaes_params.mat" ]; then
+  echo "Warning: 'scmaes_params.mat' does not exist. I will create it by calling"
+  echo ""
+  echo "matlab -nodisplay -nojvm -r \"expInit('$EXPID'); exit(0);\""
+  echo ""
+  matlab -nodisplay -nojvm -r "expInit('$EXPID'); exit(0);"
+  if [ $? != 0 ]; then
+    echo "Matlab ended with error. I'm ending, too."
+    exit 1
+  fi
+fi
 
 #
 # Packing of current sources

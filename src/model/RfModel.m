@@ -10,12 +10,14 @@ classdef RfModel < Model
     shiftMean             % vector of the shift in the X-space
     shiftY = 0;           % shift in the f-space
     stateVariables        % variables needed for sampling new points as CMA-ES do
+    sampleOpts            % options and settings for the CMA-ES sampling
     options
 
     nTrees                % number of regression trees
     nBestPoints           % number of n best training points ordered correctly by prediction of each tree
     minLeaf               % minimum of points in each leaf
     inputFraction         % fraction of points used in training
+    nVarToSample          % number of variables to test during training in each decision split
     forest                % ensemble of regression trees
     ordinalRegression     % indicates usage of ordinal regression
     predictionType        % type of prediction (f-values, PoI, EI)
@@ -42,6 +44,7 @@ classdef RfModel < Model
       obj.nTrees = defopts(modelOptions, 'nTrees', 100);
       obj.minLeaf = defopts(modelOptions, 'minLeaf', 2);
       obj.inputFraction = defopts(modelOptions, 'inputFraction', 1);
+      obj.nVarToSample = defopts(modelOptions, 'nVarToSample', ceil(obj.dim/3));
       obj.nBestPoints = defopts(modelOptions, 'nBestPoints', 1);
       obj.ordinalRegression = defopts(modelOptions, 'ordinalRegression', false);
       
@@ -78,15 +81,16 @@ classdef RfModel < Model
           % train new trees until you have not enough good ones
           while ((sumGoodTrees < obj.nTrees) && allTrees < maxTrees)
               iter = iter + 1;
-              newForestSize = max([2,min([ceil((obj.nTrees-actualGoodTrees)*allTrees/actualGoodTrees),...
-                  obj.nTrees*2^(iter-1),maxTrees-allTrees])]);
+              newForestSize = max([2, min([ceil((obj.nTrees-actualGoodTrees)*allTrees/actualGoodTrees),...
+                  obj.nTrees*2^(iter-1), maxTrees-allTrees])]);
               allTrees = allTrees + newForestSize;
-              goodTrees = false(1,newForestSize);
+              goodTrees = false(1, newForestSize);
               
               % train forest
-              trForest = TreeBagger(newForestSize,X,yTrain,'method','regression',...
-                'MinLeaf',obj.minLeaf,...
-                'FBoot',obj.inputFraction);
+              trForest = TreeBagger(newForestSize, X, yTrain, 'method', 'regression', ...
+                'MinLeaf', obj.minLeaf, ...
+                'FBoot', obj.inputFraction, ...
+                'NVarToSample', obj.nVarToSample);
               Trees = trForest.Trees;
             
               if (nBest > 0)
@@ -128,7 +132,8 @@ classdef RfModel < Model
       else
           trForest = TreeBagger(obj.nTrees, X, yTrain, 'method', 'regression',...
                 'MinLeaf', obj.minLeaf,...
-                'FBoot', obj.inputFraction);
+                'FBoot', obj.inputFraction, ...
+                'NVarToSample', obj.nVarToSample);
           obj.forest = trForest.Trees;
       end
         

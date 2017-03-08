@@ -11,7 +11,7 @@
 # 
 
 # MATLAB Runtime environment
-export LD_LIBRARY_PATH=/storage/plzen1/home/bajeluk/bin/mcr_2016a/v901/runtime/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr_2016a/v901/bin/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr_2016a/v901/sys/os/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr/v90/runtime/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr/v90/bin/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr/v90/sys/os/glnxa64:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/storage/plzen1/home/bajeluk/bin/mcr_2016b/v91/runtime/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr_2016b/v91/bin/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr_2016b/v91/sys/os/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr_2016a/v901/runtime/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr_2016a/v901/bin/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr_2016a/v901/sys/os/glnxa64:$LD_LIBRARY_PATH
 
 # Load global settings and variables
 . $EXPPATH_SHORT/../bash_settings.sh

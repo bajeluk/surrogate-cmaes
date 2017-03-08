@@ -78,8 +78,18 @@ function [data, settings] = dataReady(datapath, funcSet)
       idx = strfind(datalist{i},'_');
       func = str2double(datalist{i}(1,idx(end-2)+1:idx(end-1)-1)); % function number
       dim  = str2double(datalist{i}(1,idx(end-1)+1:idx(end)-2));   % dimension number
+      % if we found function and dimension we require, save it to data
       if any(func == BBfunc) && any(dim == dims)
-        data{BBfuncInv(func), dimsInv(dim), settingsId} = S.y_evals;
+        % if the settings has not yet been loaded for this function and
+        % dimension
+        if size(data, 3) < settingsId || ...
+           isempty(data{BBfuncInv(func), dimsInv(dim), settingsId})
+          data{BBfuncInv(func), dimsInv(dim), settingsId} = S.y_evals;
+        % else add the result to already existing instances
+        else
+          data{BBfuncInv(func), dimsInv(dim), settingsId} = ...
+            [data{BBfuncInv(func), dimsInv(dim), settingsId}; S.y_evals];
+        end
       end
     % necessary variables are missing
     else
