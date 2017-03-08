@@ -142,7 +142,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
     fprintf('%s\n', err.identifier);
     fprintf('%s\n', err.message);
     fprintf('---------------------------------------------------------\n');
-    getReport(err);
+    getReport(err)
     fprintf('---------------------------------------------------------\n');
     if (exist('exp_results', 'var'))
       fprintf('---------------------------------------------------------\n');
