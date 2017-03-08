@@ -12,7 +12,7 @@ function output = sprintfStruct(s, varargin)
       else
         str = 'false';
       end
-    elseif (isstruct(s.(fname{1})))
+    elseif (isstruct(s.(fname{1})) && ~strcmpi(fname{1}, 'parameterSets'))
       str = sprintfStruct(s.(fname{1}), 'escape');
     end
     if (~isempty(str))

@@ -312,8 +312,10 @@ classdef GpModel < Model
           return;
         end
         cov_median = median(opt(1:obj.dim));
-        ub(1:obj.dim) = cov_median + MAX_DIFF;
-        lb(1:obj.dim) = cov_median - MAX_DIFF;
+        % ub(1:obj.dim) = cov_median + MAX_DIFF;
+        ub(1:obj.dim) = min(max(opt(1:obj.dim)', linear_hyp(1:obj.dim)) + MAX_DIFF, ub(1:obj.dim));
+        % lb(1:obj.dim) = cov_median - MAX_DIFF;
+        lb(1:obj.dim) = max(min(opt(1:obj.dim)', linear_hyp(1:obj.dim)) - MAX_DIFF, lb(1:obj.dim));
         cmaesopt.LBounds = lb';
         cmaesopt.UBounds = ub';
         sigma(1:obj.dim) = [0.3*(ub(1:obj.dim) - lb(1:obj.dim))]';

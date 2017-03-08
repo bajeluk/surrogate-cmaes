@@ -47,7 +47,9 @@ function [bbParams, sgParams, cmParams, nNonBbobValues, totalCombs] = getParamsF
         if (length(f_name_splitted) > 1)
           if (~ismember(f_name_splitted{1}, level1_structs))
             level1_structs{end+1} = f_name_splitted{1};
-            modelOpts_struct.(f_name_splitted{1}) = struct();
+            if (~isfield(modelOpts_struct, f_name_splitted{1}))
+              modelOpts_struct.(f_name_splitted{1}) = struct();
+            end
           end
           modelOpts_struct.(f_name_splitted{1}).(f_name_splitted{2}) = ...
               modelOpts_struct.(mo_f_name);
