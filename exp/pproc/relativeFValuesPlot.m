@@ -37,6 +37,7 @@ function handle = relativeFValuesPlot(data, varargin)
 %     'MaxEval'       - maximum of evaluations divided by dimension |
 %                       integer
 %     'MinValue'      - minimal possible function value | double
+%     'OmitEmpty'     - omit plots with no data available| boolean
 %     'OmitYLabel'    - omit y-label in even plots | boolean
 %     'OneFigure'     - all plots in one figure | boolean
 %     'PlotDims'      - dimensions chosen to plot | integer vector
@@ -92,6 +93,7 @@ function handle = relativeFValuesPlot(data, varargin)
     plotSet.lineSpec = defaultLine;
   end
   plotSet.lineWidth = defopts(settings, 'LineWidth', 1);
+  plotSet.omitEmptyPlots = defopts(settings, 'OmitEmpty', false);
   plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
@@ -276,16 +278,32 @@ function handle = relativePlot(data_stats, settings)
     
     % plot all functions and dimensions
     plottedInAny = false(1, numOfData);
+    handleId = 1;
     for f = 1:nFunsToPlot
       for d = 1:nDimsToPlot
-        handle{(d-1) * nFunsToPlot + f} = ...
+        % increase handleId if empty plots are not omitted
+        if ~settings.omitEmptyPlots
+          handleId = (d-1) * nFunsToPlot + f;
+        end
+        handle{handleId} = ...
           figure('Units', 'centimeters', 'Position', [1, 1, 12.5, 6]);
-        plottedInAny = plottedInAny | ...
-          onePlot(relativeData, f, d, settings, dispLegend && (strcmp(settings.legendOption, 'show') || (f*d == 1)), ...
-                0, false);
+        % plot results
+        notEmptyData = onePlot(relativeData, f, d, settings, ...
+          dispLegend && (strcmp(settings.legendOption, 'show') || (f*d == 1)), ...
+          0, false);
+        % check if any and which data were plotted in at least one function
+        % and dimension
+        plottedInAny = plottedInAny | notEmptyData;
+        % increase handleId if empty plots are omitted
+        if settings.omitEmptyPlots && any(notEmptyData)
+          handleId = handleId + 1;
+        % otherwise delete existing figure
+        elseif settings.omitEmptyPlots && ~any(notEmptyData)
+          close(handle{handleId})
+        end
       end
     end
-    if any(strcmp(settings.legendOption, {'out', 'manyout'}))
+    if any(strcmp(settings.legendOption, {'out', 'manyout'})) && any(plottedInAny)
       % how many data are plotted
       nToPlot = sum(plottedInAny);
       % maximal number of data in one legend
@@ -318,6 +336,8 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
 % Note: Omitting y-label is currently enabled. To change this status
 % uncomment rows at the end of onePlot function.
 
+  nRelativeData = length(relativeData);
+
   % parsing settings
   maxEval = settings.maxEval;
   colors = settings.colors;
@@ -329,12 +349,13 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   dims = settings.dims;
   lineSpec = settings.lineSpec;
   medianLineWidth = settings.lineWidth;
-  if length(medianLineWidth) < length(relativeData)
-    medianLineWidth = medianLineWidth(1)*ones(1, length(relativeData));
+  if length(medianLineWidth) < nRelativeData
+    medianLineWidth = medianLineWidth(1)*ones(1, nRelativeData);
   end
 
+  notEmptyData = false(1, nRelativeData);
   % find not empty data
-  for dat = 1:length(relativeData)
+  for dat = 1:nRelativeData
     notEmptyData(dat) = ~isempty(relativeData{dat}{fId, dId});
   end
   
@@ -380,7 +401,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   if ~aggFuns
     titleString = ['f', num2str(BBfunc(fId))];
     if funcNames
-      titleString = [titleString, ' ', functionName(BBfunc(fId))];
+      titleString = [titleString, ' ', bbobFunctionName(BBfunc(fId))];
     end
   end
   if ~aggDims
@@ -421,7 +442,14 @@ function h = soloLegend(colors, names, lineWidth)
   end
   
   % second frame point
-  fb = [1, -2*(nNames+1)*yDiff]; % [fb_x, fb_y]
+  switch nNames
+    case 1
+      fb = [3.5, -2]; % [fb_x, fb_y]
+    case 2
+      fb = [1.75, -1.5]; % [fb_x, fb_y]
+    otherwise
+      fb = [1, -2*(nNames+1)*yDiff]; % [fb_x, fb_y]
+  end
   line([fa(1), fb(1)], [fa(2), fa(2)], 'Color', 'k') %  _
   line([fa(1), fa(1)], [fa(2), fb(2)], 'Color', 'k') % |
   line([fb(1), fb(1)], [fa(2), fb(2)], 'Color', 'k') %  _|
@@ -430,7 +458,7 @@ function h = soloLegend(colors, names, lineWidth)
   hold off
 end
 
-function name = functionName(fId)
+function name = bbobFunctionName(fId)
 % returns name of function fId
   switch fId
     % separable functions
