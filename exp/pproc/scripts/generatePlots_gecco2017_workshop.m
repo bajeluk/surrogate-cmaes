@@ -34,9 +34,9 @@ exppath = fullfile('exp', 'experiments');
 
 gen_path = fullfile(exppath, 'exp_geneEC_10');
 gen_path20D = fullfile(exppath, 'exp_geneEC_10_20D');
-% TODO: replace by more recent results
+% TODO: replace DTS and MAESby more recent results
 dts_path = fullfile(exppath, 'DTS-CMA-ES_05_2pop');
-maes_path = fullfile(exppath, 'MA-ES');
+maes_path = fullfile(exppath, 'CMA-ES');
 
 cmaes_path = fullfile(exppath, 'CMA-ES');
 saacmes_path = fullfile(exppath, 'BIPOP-saACM-k');
@@ -114,7 +114,8 @@ datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', 'BIPOP-{}^{s*}ACMES-k', 'S-CMA-ES 
 
 colors = [cmaesCol; maesCol; lmmCol; saacmesCol; scmaes_gpCol; scmaes_rfCol; dtsCol]/255;
 
-plotDims = [2, 5, 10, 20];
+plotFuns = 1:3;
+plotDims = [5, 20];
 
 clear pdfNames
 pdfNames = fullfile(plotResultsFolder, 'alg2_5_10_20D');
@@ -123,11 +124,11 @@ close all
 han = relativeFValuesPlot(data, ...
                               'DataNames', datanames, 'DataDims', funcSet.dims, ...
                               'DataFuns', funcSet.BBfunc, 'Colors', colors, ...
-                              'PlotFuns', funcSet.BBfunc, 'PlotDims', plotDims, ...
+                              'PlotFuns', plotFuns, 'PlotDims', plotDims, ...
                               'AggregateDims', false, 'OneFigure', true, ...
-                              'Statistic', @median, 'AggregateFuns', true, ...
-                              'LineSpecification', {'-.', '-.', '-', '-', '-', '-'}, ...
-                              'LegendOption', 'split', 'MaxEval', 100);
+                              'Statistic', @median, 'AggregateFuns', false, ...
+                              'LineSpecification', {'-', '-', '-', '-', '-', '-'}, ...
+                              'LegendOption', 'split', 'MaxEval', maxEvals);
 
                               
                             

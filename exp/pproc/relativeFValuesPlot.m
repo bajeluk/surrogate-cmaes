@@ -63,10 +63,26 @@ function handle = relativeFValuesPlot(data, varargin)
   end
   settings = settings2struct(varargin);
   
+  % checkout data
+  emptyData = cellfun(@isempty, data);
+  if any(emptyData)
+    emptyDataString = num2str(find(emptyData), '%d, ');
+    warning(['Data cells %s are empty and will not be plotted and data-dependent ', ...
+             'properties may not be accurate, e.g. Colors, LineSpec, etc.'], ...
+             emptyDataString(1:end-1))
+    % TODO: exclude missing data from all properties
+    data = data(~emptyData);
+  elseif all(emptyData)
+    error('All data cells are empty')
+  end
+  
   % parse settings
   numOfData = length(data);
   plotSet.datanames = defopts(settings, 'DataNames', ...
     arrayfun(@(x) ['ALG', num2str(x)], 1:numOfData, 'UniformOutput', false));
+  if length(plotSet.datanames) ~= numOfData && any(emptyData)
+    plotSet.datanames = plotSet.datanames(~emptyData);
+  end
   assert(length(plotSet.datanames) == numOfData, 'Number of data and number of DataNames are not the same')
   defaultDims = [2, 3, 5, 10, 20, 40];
   funcSet.dims   = defopts(settings, 'DataDims', defaultDims(1:size(data{1}, 2)));
