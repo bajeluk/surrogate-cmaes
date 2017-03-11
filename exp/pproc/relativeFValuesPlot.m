@@ -25,6 +25,7 @@ function handle = relativeFValuesPlot(data, varargin)
 %     'LegendOption'  - legend settings:
 %                         'show'    - show legend
 %                         'hide'    - do not show legend
+%                         'first'   - ledend only in the first graph
 %                         'split'   - legend splitted in first two graphs
 %                         'out'     - legend is in one separate figure
 %                         'manyout' - legend is in multiple separated
@@ -78,39 +79,51 @@ function handle = relativeFValuesPlot(data, varargin)
   
   % parse settings
   numOfData = length(data);
+  % name settings
   plotSet.datanames = defopts(settings, 'DataNames', ...
     arrayfun(@(x) ['ALG', num2str(x)], 1:numOfData, 'UniformOutput', false));
   if length(plotSet.datanames) ~= numOfData && any(emptyData)
     plotSet.datanames = plotSet.datanames(~emptyData);
   end
   assert(length(plotSet.datanames) == numOfData, 'Number of data and number of DataNames are not the same')
+  % function and dimension settings
   defaultDims = [2, 3, 5, 10, 20, 40];
   funcSet.dims   = defopts(settings, 'DataDims', defaultDims(1:size(data{1}, 2)));
   funcSet.BBfunc = defopts(settings, 'DataFuns', 1:size(data{1}, 1));
   plotSet.dims    = defopts(settings, 'PlotDims', funcSet.dims);
   plotSet.BBfunc  = defopts(settings, 'PlotFuns', funcSet.BBfunc);
+  plotSet.aggDims = defopts(settings, 'AggregateDims', false);
+  plotSet.aggFuns = defopts(settings, 'AggregateFuns', false);
+  % color settings
   colors  = defopts(settings, 'Colors', rand(numOfData, 3));
   if max(colors) > 1
     colors = colors / 255;
   end
+  if size(colors, 1) ~= numOfData && any(emptyData)
+    colors = colors(~emptyData, :);
+  end
   plotSet.colors = colors;
-  plotSet.aggDims = defopts(settings, 'AggregateDims', false);
-  plotSet.aggFuns = defopts(settings, 'AggregateFuns', false);
+  % plot settings
   plotSet.funcNames = defopts(settings, 'FunctionNames', false);
   plotSet.minValue = defopts(settings, 'MinValue', 1e-8);
   plotSet.maxEval = defopts(settings, 'MaxEval', 250);
-  statistic = defopts(settings, 'Statistic', @mean);
   plotSet.oneFigure = defopts(settings, 'OneFigure', false);
   plotSet.legendOption = lower(defopts(settings, 'LegendOption', 'show'));
+  plotSet.omitEmptyPlots = defopts(settings, 'OmitEmpty', false);
+  plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
+  % plot-line settings
   defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
   plotSet.lineSpec = defopts(settings, 'LineSpec', defaultLine);
+  if length(plotSet.lineSpec) ~= numOfData && any(emptyData)
+    plotSet.lineSpec = plotSet.lineSpec(~emptyData);
+  end
   if length(plotSet.lineSpec) ~= numOfData
     warning('Number of line specification strings and number of data are different. Setting default values.')
     plotSet.lineSpec = defaultLine;
   end
   plotSet.lineWidth = defopts(settings, 'LineWidth', 1);
-  plotSet.omitEmptyPlots = defopts(settings, 'OmitEmpty', false);
-  plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
+  % statistic settings
+  statistic = defopts(settings, 'Statistic', @mean);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
       statistic = @(x, dim) quantile(x, [0.25, 0.5, 0.75], dim);
@@ -163,14 +176,9 @@ function handle = relativePlot(data_stats, settings)
   numOfFuncIds = length(settings.BBfunc);
   minGraph = -8;
   maxGraph =  0;
-  dispLegend = true;
   splitLegend = false;
   if strcmp(settings.legendOption, 'split')
     splitLegend = true;
-  end
-  % do not display legend inside the graph
-  if any(strcmp(settings.legendOption, {'hide', 'out', 'manyout'}))
-    dispLegend = false;
   end
   settings.legendLocation = 'NorthEast';
 
@@ -247,7 +255,8 @@ function handle = relativePlot(data_stats, settings)
     handle = figure('Units', 'centimeters', 'Position', [1 1 20 6*nRows]);
     % first plot
     subplot(nRows, 2, 1)
-    onePlot(relativeData, 1, 1, settings, dispLegend, ...
+    actualDisp = dispLegend(1, settings.legendOption);
+    onePlot(relativeData, 1, 1, settings, actualDisp, ...
             1*splitLegend, false);
     if nDimsToPlot > 1
       f = 1;
@@ -258,7 +267,8 @@ function handle = relativePlot(data_stats, settings)
     end
     % second plot
     subplot(nRows, 2, 2)
-    onePlot(relativeData, f, d, settings, splitLegend, ...
+    actualDisp = dispLegend(2, settings.legendOption);
+    onePlot(relativeData, f, d, settings, actualDisp, ...
             2*splitLegend, settings.omitYLabel);
     % the rest of plots
     if (nPlots > 2)
@@ -272,10 +282,11 @@ function handle = relativePlot(data_stats, settings)
 
       for f = fStart:nFunsToPlot
         for d = dStart:nDimsToPlot
-          plotId = (d-1) * nFunsToPlot + f;
+          plotId = (f-1) * nDimsToPlot + d;
           omitYLabelStatus = ~logical(mod(plotId, 2));
           subplot(nRows, 2, plotId)
-          onePlot(relativeData, f, d, settings, false, ...
+          actualDisp = dispLegend(plotId, settings.legendOption);
+          onePlot(relativeData, f, d, settings, actualDisp, ...
             0, settings.omitYLabel && omitYLabelStatus);
         end
       end
@@ -299,14 +310,15 @@ function handle = relativePlot(data_stats, settings)
       for d = 1:nDimsToPlot
         % increase handleId if empty plots are not omitted
         if ~settings.omitEmptyPlots
-          handleId = (d-1) * nFunsToPlot + f;
+          handleId = (f-1) * nDimsToPlot + d;
         end
         handle{handleId} = ...
           figure('Units', 'centimeters', 'Position', [1, 1, 12.5, 6]);
+        % display legend indicator 
+        actualDisp = dispLegend(handleId, settings.legendOption);
         % plot results
         notEmptyData = onePlot(relativeData, f, d, settings, ...
-          dispLegend && (strcmp(settings.legendOption, 'show') || (f*d == 1)), ...
-          0, false);
+                               actualDisp, handleId*splitLegend, false);
         % check if any and which data were plotted in at least one function
         % and dimension
         plottedInAny = plottedInAny | notEmptyData;
@@ -405,8 +417,12 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
           legIds = [true(1, floor(nUsefulData/2)), false(1, nUsefulData - floor(nUsefulData/2))];
         case 2
           legIds = [false(1, floor(nUsefulData/2)), true(1, nUsefulData - floor(nUsefulData/2))];
+        otherwise
+          legIds = false(1, nUsefulData);
       end
-      legend(h(legIds), ftitle(legIds), 'Location', settings.legendLocation)
+      if any(legIds)
+        legend(h(legIds), ftitle(legIds), 'Location', settings.legendLocation)
+      end
     end
   else
     warning('Function %d dimension %d has no data available.', BBfunc(fId), dims(dId))
@@ -472,6 +488,27 @@ function h = soloLegend(colors, names, lineWidth)
   line([fa(1), fb(1)], [fb(2), fb(2)], 'Color', 'k') %  
   
   hold off
+end
+
+function actualDisp = dispLegend(plotId, legendOption)
+% returns if the legend should be displayed
+
+  % do not display legend inside the graph in 'hide', 'out', 'manyout' 
+  % cases
+  if any(strcmp(legendOption, {'hide', 'out', 'manyout'}))
+    displayLegend = false;
+  else
+    displayLegend = true;
+  end
+  
+  % figure 1  - 'show', 'split', 'first'
+  % figure 2  - 'show', 'split'
+  % figure 3+ - 'show'
+  actualDisp = displayLegend && ...
+               ( strcmp(legendOption, 'show') || ...
+                (plotId == 1) || ...
+                (plotId == 2 && strcmp(legendOption, 'split')) ...
+               );  
 end
 
 function name = bbobFunctionName(fId)
