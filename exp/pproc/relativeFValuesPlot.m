@@ -380,6 +380,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   if length(medianLineWidth) < nRelativeData
     medianLineWidth = medianLineWidth(1)*ones(1, nRelativeData);
   end
+  fullLegend = any(strcmp(settings.legendOption, {'first', 'split'}));
 
   notEmptyData = false(1, nRelativeData);
   % find not empty data
@@ -390,38 +391,55 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   if any(notEmptyData)
     nEmptyId = inverseIndex(notEmptyData);
     nUsefulData = sum(notEmptyData);
-    lineSpec = lineSpec(notEmptyData);
-    medianLineWidth = medianLineWidth(notEmptyData);
     % find minimal number of function evaluations to plot
     evaldim = 1:min([arrayfun(@(x) length(relativeData{nEmptyId(x)}{fId, dId}), 1:nUsefulData), maxEval]);
-    h = zeros(1, nUsefulData);
-    ftitle = cell(1, nUsefulData);
+    h = zeros(1, nRelativeData);
     % plot first line 
-    h(1) = plot(evaldim, relativeData{nEmptyId(1)}{fId, dId}(evaldim), ...
-      lineSpec{1}, 'LineWidth', medianLineWidth(1), 'Color', colors(nEmptyId(1), :));
-    ftitle{1} = datanames{nEmptyId(1)};
+    if notEmptyData(1)
+      h(1) = plot(evaldim, relativeData{1}{fId, dId}(evaldim), ...
+        lineSpec{1}, 'LineWidth', medianLineWidth(1), 'Color', colors(1, :));
+    else
+      h(1) = plot(0, 0, ...
+        lineSpec{1}, 'LineWidth', medianLineWidth(1), 'Color', colors(1, :), ...
+        'Visible', 'off');
+    end
     hold on
     grid on
     % plot rest of lines
-    for dat = 2:nUsefulData
-      h(dat) = plot(evaldim, relativeData{nEmptyId(dat)}{fId, dId}(evaldim), ...
-        lineSpec{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(nEmptyId(dat), :));
-      ftitle{dat} = datanames{nEmptyId(dat)};
+    for dat = 2:nRelativeData
+      if notEmptyData(dat)
+        h(dat) = plot(evaldim, relativeData{dat}{fId, dId}(evaldim), ...
+          lineSpec{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :));
+      else
+        h(dat) = plot(0, 0, ...
+          lineSpec{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :), ...
+          'Visible', 'off');
+      end
     end
+    % if the legend should be plotted with all labels given, add artificial
+    % not visible data
+    if fullLegend && any(~notEmptyData)
+      legendData = true(1, nRelativeData);
+    else
+      legendData = notEmptyData;
+    end
+    nLegendData = sum(legendData);
     % legend settings
     if dispLegend
+      legIds = false(1, nLegendData);
       switch splitLegendStatus
+        % full legend
         case 0
-          legIds = true(1, nUsefulData);
+          legIds = legendData;
+        % first half of the legend
         case 1
-          legIds = [true(1, floor(nUsefulData/2)), false(1, nUsefulData - floor(nUsefulData/2))];
+          legIds(find(legendData, floor(nLegendData/2), 'first')) = true;
+        % second half of the legend
         case 2
-          legIds = [false(1, floor(nUsefulData/2)), true(1, nUsefulData - floor(nUsefulData/2))];
-        otherwise
-          legIds = false(1, nUsefulData);
+          legIds(find(legendData, nLegendData - floor(nLegendData/2), 'last')) = true;
       end
       if any(legIds)
-        legend(h(legIds), ftitle(legIds), 'Location', settings.legendLocation)
+        legend(h(legIds), datanames(legIds), 'Location', settings.legendLocation)
       end
     end
   else

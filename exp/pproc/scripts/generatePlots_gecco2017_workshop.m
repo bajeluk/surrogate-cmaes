@@ -35,7 +35,7 @@ exppath = fullfile('exp', 'experiments');
 gen_path = fullfile(exppath, 'exp_geneEC_10');
 gen_path20D = fullfile(exppath, 'exp_geneEC_10_20D');
 % TODO: replace DTS and MAESby more recent results
-dts_path = fullfile(exppath, 'DTS-CMA-ES_05_2pop');
+dts_path = fullfile(exppath, 'exp_doubleEC_23');
 maes_path = fullfile(exppath, 'CMA-ES');
 
 cmaes_path = fullfile(exppath, 'CMA-ES');
@@ -64,14 +64,16 @@ findSet.evoControlModelGenerations = 1;
 rf_Id = getStructIndex(settings, findSet);
 
 clear findSet
+findSet.modelOpts.predictionType = 'sd2';
+dts_Id = getStructIndex(settings, findSet);
+
+clear findSet
 findSet.algName = 'CMA-ES';
 cma_Id = getStructIndex(settings, findSet);
 findSet.algName = 'MA-ES';
 ma_Id = getStructIndex(settings, findSet);
 findSet.algName = 'BIPOP-saACM-k';
 saacm_Id = getStructIndex(settings, findSet);
-findSet.algName = 'DTS-CMA-ES_05_2pop';
-dts_Id = getStructIndex(settings, findSet);
 findSet.algName = 'lmm-CMA-ES';
 lmm_Id = getStructIndex(settings, findSet);
              
@@ -100,7 +102,7 @@ end
 end
 
 %% Algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES  
-% Scaled function values of f1-f8 in dimensions 5 and 20.
+% Scaled function values of f1-f24 in dimension 5.
 
 data = {cmaes_data, ...
         maes_data, ...
@@ -114,8 +116,8 @@ datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', 'BIPOP-{}^{s*}ACMES-k', 'S-CMA-ES 
 
 colors = [cmaesCol; maesCol; lmmCol; saacmesCol; scmaes_gpCol; scmaes_rfCol; dtsCol]/255;
 
-plotFuns = 1:8;
-plotDims = [5, 20];
+plotFuns = 1:24;
+plotDims = 5;
 
 clear pdfNames
 pdfNames = {};
@@ -141,7 +143,7 @@ han = relativeFValuesPlot(data, ...
 print2pdf(han, pdfNames, 1)
 
 %% Algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES  
-% Scaled function values of f1-f24 in dimension 5.
+% Scaled function values of f1-f24 in dimension 20.
 
 data = {cmaes_data, ...
         maes_data, ...
@@ -156,7 +158,7 @@ datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', 'BIPOP-{}^{s*}ACMES-k', 'S-CMA-ES 
 colors = [cmaesCol; maesCol; lmmCol; saacmesCol; scmaes_gpCol; scmaes_rfCol; dtsCol]/255;
 
 plotFuns = 1:24;
-plotDims = [5];
+plotDims = 20;
 
 clear pdfNames
 pdfNames = {};
