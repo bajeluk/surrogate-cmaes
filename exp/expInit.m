@@ -95,6 +95,7 @@ function prepareMetacentrumFiles(expDir, experimentPath, exp_id, nCombinations)
     end
     fprintf(fIds, '\n');
   end
+  fclose(fIds);
 
   % % OBSOLETE FILES:
   % fNameMetacentrumTaskTemplate = [expDir filesep 'metacentrum_task_template.sh'];
