@@ -228,6 +228,7 @@ where
 - **settings** are pairs of property (string) and value, or struct with properties as fields: 
     - **Description** is description of the report (string),
     - **LegendOption** is an option how legends should be organized (settings similar to function `relativeFValues`, recommended settings for `generateReport` are `out` (legend is in one separate figure) and `manyout` (legend is in multiple separated figures).
+    - **OmitEmptyPlots** is an option if plots with no data available will be omitted in report (boolean).
     - **Publish** is the format of the resulting file similar to function `publish`, i.e. `html`, `pdf`; set to `off` to disable publishing (string).
 
 The function generates Matlab script `[expFolder]/pproc/[exp_id]_report.m` which will be published using Matlab function `publish` according to **Publish** option in **settings**. Published file can be found in `[expFolder]/pproc/html` folder.
