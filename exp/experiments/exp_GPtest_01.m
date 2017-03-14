@@ -1,7 +1,8 @@
 % exp_GPtest_01 model testing experiment -- Matlab part
 
 % EXP_ID
-exp_id = 'exp_GPtest_01';
+exp_id  = 'exp_GPtest_01';
+dataset = 'DTS_005'
 
 % FUN/DIM/INST settings
 if ~exist('func', 'var')
@@ -18,9 +19,8 @@ maxEvals = 100;
 scratch = getenv('SCRATCHDIR');
 
 experimentDir   = fullfile('exp', 'experiments', exp_id);
-datasetFilename = fullfile(experimentDir, 'defData', ['defSet_', num2str(maxEvals), 'FE.mat']);
+datasetFilename = fullfile(experimentDir, 'dataset', [dataset, '.mat']);
 % defSetFile = fullfile(scratch, 'model', 'defData', ['defSet_', num2str(maxEvals), 'FE.mat']);
-defModelFolder = fullfile(experimentDir, 'defData', ['defModel_', num2str(maxEvals), 'FE']);
 
 % default model options
 defModelOptions.useShift = false;
@@ -30,19 +30,20 @@ defModelOptions.covFcn = '{@covMaterniso, 5}';
 defModelOptions.normalizeY = true;
 defModelOptions.hyp.lik = log(0.01);
 defModelOptions.hyp.cov = log([0.5; 2]);
+defModelOptions.covBounds = [ [-2;-2], [25;25] ];
+defModelOptions.likBounds = log([1e-6, 10]);
 
-% test model options
-modelSet = defModelOptions;
-% none binning
-modelSet.prediction = {'avgord'};
-modelSet.binning = 'none';
-modelOptions = combineFieldValues(modelSet);
-% the rest of settings
-modelSet.binning = {'logcluster', 'unipoints'};
-modelSet.nBins = {'mu', 'lambda', '2*lambda'};
-modelRest = combineFieldValues(modelSet);
-% add rest to model options
-modelOptions = [modelOptions; modelRest];
+models1 = defModelOptions;      % deep copy (!)
+models1.trainsetType = { 'clustering', 'allPoints', 'nearest', 'nearestToPopulation' };
+models1.trainRange   = { 0.99, 0.999 };
+models1.trainsetSizeMax = { '5*dim', '10*dim', '15*dim', '20*dim' };
+models1.meanFcn      = { 'meanConst', 'meanLinear' };
+models1.covFcn       = { '{@covSEiso}', '{@covSEard}', ...
+                         '{@covMaterniso, 5}', '{@covMaterniso, 3}' };
+
+defModel_options = combineFieldValues(defModelOptions);
+models1_options = combineFieldValues(models1);
+modelOptions = [defModel_options; models1_options];
 
 %% create testing dataset
 % modelTestSets('exp_doubleEC_21_log', func, dims, maxEvals);
@@ -51,9 +52,7 @@ modelOptions = [modelOptions; modelRest];
 % ds = ds_load;
 
 %% test chosen models
-modelFolders = testModels('ordgp', modelOptions, defSetFile, func, dims, false, experimentDir);
-% add default folder (GpModel)
-modelFolders = [defModelFolder; modelFolders];
+modelFolders = testModels('ordgp', modelOptions, datasetFilename, func, dims, false, experimentDir);
 
 %% compare results
 modelStatistics(modelFolders, func, dims)

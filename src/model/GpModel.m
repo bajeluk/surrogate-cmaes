@@ -141,9 +141,12 @@ classdef GpModel < Model
       end
 
       % set the mean hyperparameter if is needed
-      if (~isequal(obj.meanFcn, @meanZero))
+      if (isequal(obj.meanFcn, @meanConst))
         obj.hyp.mean = median(yTrain);
+      elseif (isequal(obj.meanFcn, @meanLinear))
+        obj.hyp.mean = median(yTrain) / obj.dim * ones(obj.dim,1);
       end
+      
 
       alg = obj.options.trainAlgorithm;
 
@@ -393,6 +396,18 @@ classdef GpModel < Model
         maxY = max(yTrain);
         lb_hyp.mean = minY - 2*(maxY - minY);
         ub_hyp.mean = minY + 2*(maxY - minY);
+      elseif (isequal(obj.meanFcn, @meanLinear))
+        min_y = min(yTrain);
+        max_y = max(yTrain);
+        for i=1:obj.dim
+          % max_x -- max of each dimension from dataset_X
+          dataset_X = obj.getDataset_X();
+          max_x = max(dataset_X(:,i));
+          min_x = min(dataset_X(:,i));
+          max_tg = (max_y - min_y) / (max_x - min_x);
+          lb_hyp.mean(i) = -5 * max_tg;
+          ub_hyp.mean(i) = 5 * max_tg;
+        end
       end
     end
   end

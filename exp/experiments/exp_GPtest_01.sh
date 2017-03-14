@@ -34,7 +34,7 @@ subtask() {
 QUEUE=1d
 ID=1;
 
-MATLAB_FCN="modelTesting_GpModel_01"
+MATLAB_FCN="exp_GPtest_01"
 
 DIM=5
 for i in `seq 1 24`; do

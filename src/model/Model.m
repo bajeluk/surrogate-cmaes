@@ -171,7 +171,7 @@ classdef (Abstract) Model
         end
       end
     end
-    
+
     function [y, sd2] = predict(obj, X)
     % Predicts the function values in new points X.
 
@@ -183,7 +183,7 @@ classdef (Abstract) Model
       else
         XTransf = X;
       end
-      
+
       % dimensionality reduction
       if (isprop(obj, 'dimReduction') && (obj.dimReduction ~= 1))
         cntDimension = ceil(obj.dim * obj.dimReduction);
@@ -197,34 +197,34 @@ classdef (Abstract) Model
       [y, sd2] = modelPredict(obj,XtransfReduce);
 
     end
-    
+
     function [output, y] = getModelOutput(obj,X)
     % Predicts the function values, the variance, the probability of 
     % improvement, the expected improvement or the least confidence bound
     % in new points X. Values of PoI  and EI can be transformed to last 
     % known fvalue range.
-      
+
       [y, sd2] = obj.predict(X);
       fmin = min(obj.getDataset_y());
       fmax = max(obj.getDataset_y());
-      
+
       switch lower(obj.predictionType)
         case 'fvalues' % mean function values
           output = y;
-          
+
         case 'sd2' % variance
           output = sd2;
-          
+
         case 'poi' % probability of improvement
           target = fmin - 0.05 * (fmax - fmin);
           output = getPOI(X, y, sd2, target);
-        
+
         case 'ei' % expected improvement
           output = getEI(X, y, sd2, fmin);
-          
+
         case 'lcb' % lower confidence bound
           output = y - 2 * sqrt(sd2);
-        
+
         case 'fpoi' % PoI scaled using function values
           target = fmin - 0.05 * (fmax - fmin);
           poi = getPOI(X, y, sd2, target);
@@ -232,7 +232,7 @@ classdef (Abstract) Model
           poiMin = min(poi);
           % map the higest PoI to the smallest function value and vice versa
           output = (fmax-fmin)*(poiMax - poi)/(poiMax-poiMin)+fmin;
-        
+
         case 'fei' % EI scaled using function values
           ei = getEI(X, y, sd2, fmin);
           eiMax = max(ei);
@@ -245,16 +245,26 @@ classdef (Abstract) Model
       end
 
     end
-    
-    function obj = train(obj, X, y, stateVariables, sampleOpts)
+
+    function obj = train(obj, X, y, stateVariables, sampleOpts, archive, population)
     % train the model based on the data (X,y)
-    
+    % if archive is passed and trainsetType is not 'parameters',
+    % X and y are ignored and new values for X, y are retrieved from archive 
+    % according to the model settings
+
       xMean = stateVariables.xmean';
       generation = stateVariables.countiter;
       sigma = stateVariables.sigma;
       lambda = stateVariables.lambda;
       BD = stateVariables.BD;
       obj.sampleOpts = sampleOpts;
+      obj.trainMean = xMean;
+      obj.stateVariables = stateVariables;
+
+      trainsetType = defopts(obj.options,'trainsetType','parameters');
+      if (~strcmpi(trainsetType, 'parameters') && exist('archive','var'))
+          [X, y] = obj.generateDataset(archive, population);
+      end
 
       % minimal difference between minimal and maximal returned
       % value to regard the model as trained; otherwise, the
@@ -271,8 +281,6 @@ classdef (Abstract) Model
       else
         XTransf = X;
       end
-      obj.trainMean = xMean;
-      obj.stateVariables = stateVariables;
 
       % dimensionality reduction
       if (isprop(obj, 'dimReduction') && (obj.dimReduction ~= 1))
@@ -329,6 +337,17 @@ classdef (Abstract) Model
 
       datasetIdx = allowedIdxs(datasetIdx);
       x = dataset_X(datasetIdx, :);
+    end
+
+
+    function [X,y] = generateDataset(obj, archive, population)
+        xMean = obj.stateVariables.xmean';
+        sigma = obj.stateVariables.sigma;
+        BD = obj.stateVariables.BD;
+        dim = obj.dim;
+        [X,y] = archive.getTrainsetData(obj.options.trainsetType,...
+            myeval(obj.options.trainsetSizeMax), xMean, obj.options.calculatedTrainRange,...
+            sigma, BD, population);
     end
   end
 end
