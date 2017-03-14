@@ -1,8 +1,13 @@
 % exp_GPtest_01 model testing experiment -- Matlab part
 
-% EXP_ID
-exp_id  = 'exp_GPtest_01';
-dataset = 'DTS_005'
+% Model training experiment options
+opts = struct();
+
+% model training experiment settings
+opts.exp_id  = 'exp_GPtest_01';
+opts.dataset = 'DTS_005';
+opts.model_class = 'GpModel';
+opts.exppath_short = fullfile('exp', 'experiments');
 
 % FUN/DIM/INST settings
 if ~exist('func', 'var')
@@ -13,10 +18,13 @@ if ~exist('instances', 'var')
   instances = [1:5 41:50];  end
 
 % Maximal number of function evaluation per dimension to consider
-maxEvals = 100;
+opts.maxEvals = 250;
 
 % path settings
-scratch = getenv('SCRATCHDIR');
+opts.scratch = getenv('SCRATCHDIR');
+
+% other settings
+opts.rewrite_results = false;
 
 experimentDir   = fullfile('exp', 'experiments', exp_id);
 datasetFilename = fullfile(experimentDir, 'dataset', [dataset, '.mat']);
@@ -42,8 +50,8 @@ models1.covFcn       = { '{@covSEiso}', '{@covSEard}', ...
                          '{@covMaterniso, 5}', '{@covMaterniso, 3}' };
 
 defModel_options = combineFieldValues(defModelOptions);
-models1_options = combineFieldValues(models1);
-modelOptions = [defModel_options; models1_options];
+models1_options  = combineFieldValues(models1);
+modelOptions     = [defModel_options; models1_options];
 
 %% create testing dataset
 % modelTestSets('exp_doubleEC_21_log', func, dims, maxEvals);
@@ -52,7 +60,7 @@ modelOptions = [defModel_options; models1_options];
 % ds = ds_load;
 
 %% test chosen models
-modelFolders = testModels('ordgp', modelOptions, datasetFilename, func, dims, false, experimentDir);
+modelFolders = testModels(opts.model_class, modelOptions, opts, func, dims, instances);
 
 %% compare results
 modelStatistics(modelFolders, func, dims)
