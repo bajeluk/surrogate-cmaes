@@ -433,10 +433,10 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
           legIds = legendData;
         % first half of the legend
         case 1
-          legIds(find(legendData, floor(nLegendData/2), 'first')) = true;
+          legIds(find(legendData, ceil(nLegendData/2), 'first')) = true;
         % second half of the legend
         case 2
-          legIds(find(legendData, nLegendData - floor(nLegendData/2), 'last')) = true;
+          legIds(find(legendData, nLegendData - ceil(nLegendData/2), 'last')) = true;
       end
       if any(legIds)
         legend(h(legIds), datanames(legIds), 'Location', settings.legendLocation)
@@ -540,7 +540,7 @@ function name = bbobFunctionName(fId)
     case 3 	
       name = 'Rastrigin';
     case 4
-      name = 'Büche-Rastrigin';
+      name = 'Bueche-Rastrigin';
     case 5
       name = 'Linear Slope';
       
