@@ -129,6 +129,17 @@ classdef GpModel < Model
       if (~isequal(obj.meanFcn, @meanZero))
         obj.hyp.mean = median(yTrain);
       end
+      % expand covariance lengthscale hyperparameter according to
+      % the dimension if ARD covariance specified
+      if (iscell(obj.covFcn))
+        covfcn = obj.covFcn{1};
+      else
+        covfcn = obj.covFcn;
+      end
+      if (isequal(covfcn, @covSEard) || isequal(covfcn, @covMaternard) ...
+          &&  length(obj.hyp.cov) == 2)
+        obj.hyp.cov = [obj.hyp.cov(1)*ones(obj.dim, 1); obj.hyp.cov(2)];
+      end
 
       alg = obj.options.trainAlgorithm;
 
