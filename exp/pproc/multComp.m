@@ -1,4 +1,4 @@
-function [pv] = multComp(data)
+function [pv] = multComp(data, varargin)
 %MULTCOMP Pairwise comparison of algorithms on a set of benchmarking
 %   functions. Performs Friedman test and adjusts pairwise p-values
 %   error by Bergmann-Hommel correction.
@@ -7,6 +7,7 @@ function [pv] = multComp(data)
 %   Input:
 %     data - a table with benchmarking function as rows and algorithms as
 %            variables containing best achieved fitness values
+%     test - 'Friedman' (default) | 'Quade' | 'FriedmanAlignedRanks'
 %
 %   Output:
 %     pv   - a table of corrected p-values with algorithms in columns and
@@ -17,27 +18,42 @@ function [pv] = multComp(data)
 
   Rpath = fullfile('exp', 'pproc', 'R');
   Rscript = 'multcomp.R';
-  input = [tempname, '.csv'];
-  output = [tempname, '.csv'];
+  fin = [tempname, '.in.csv'];
+  fout = [tempname, '.out.csv'];
 
-  args = sprintf(' --input %s --output %s', input, output);
+  if nargin >= 2
+    if ismember(varargin{1}, ...
+      {'Friedman', 'Quade', 'FriedmanAlignedRanks'})
+      test = varargin{1};
+    else
+      error('Unrecognized test ''%s''', varargin{1});
+    end
+  else
+    test = 'Friedman';
+  end
+
+  args = sprintf(' -i %s -o %s --posthoc_test %s', fin, fout, test);
   cmd = [fullfile(Rpath, Rscript), args];
 
-  % execute the script
+  % write the input file with floats in scientific notation
+  dlmwrite(fin, data, 'precision', '%e', 'delimiter', ',');
+
+  % execute the script and check exit code
   [status, cmdout] = system(cmd);
 
   if status ~= 0
-    delete(input, cmdout);
+    delete(fin);
+    if exist(fout, 'file'), delete(fout), end
+
     error('Script %s ended with error status %d and output:\n%s', ...
       Rscript, status, cmdout);
   end
 
-  pv = readtable(output, ...
-    'ReadVariableNames', true, ...
-    'ReadRowNames', true, ...
-    'Delimiter', ',' ...
-  );
+  % read the script's output
+  pv = dlmread(fout, ',');
 
-  delete(input, output);
+  % clean up
+  delete(fin);
+  if exist(fout, 'file'), delete(fout), end
 end
 
