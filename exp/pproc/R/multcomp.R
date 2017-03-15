@@ -15,19 +15,20 @@ suppressPackageStartupMessages(library("scmamp"))
 option_list <- list(
                     make_option(c("-i", "--input"), default="algs.csv",
                                 action="store",
-                                help="Input file [default \"%default\"]"),
+                                help="Input file (default \"%default\")"),
                     make_option(c("-o", "--output"), action="store",
-                                help="Output file [default stdout]"),
+                                help="Output file (default stdout)"),
                     make_option("--posthoc_test", action="store",
                                 default="Friedman",
-                                help=paste0("Posthoc test. One of [\"Friedman\", ",
-                                            "\"Quade\", \"FriedmanAlignedRanks\"].",
-                                            " [default \"Friedman\"]")),
+                                help=paste0("Posthoc test. One of ",
+                                            "\"Friedman\" (default), ",
+                                            "\"Quade\", ",
+                                            "\"FriedmanAlignedRanks\".")),
                     make_option("--correction", action="store",
                                 default="BergmannHommel",
-                                help=paste0("P-values correction method. One of [",
-                                            "\"BergmannHommel\", \"Shaffer\"].",
-                                            " [default \"BergmannHommel\"]"))
+                                help=paste0("P-values correction method. One ",
+                                            "of \"BergmannHommel\" (default),",
+                                            " \"Shaffer\"."))
 
                )
 
@@ -47,7 +48,8 @@ if (!is.null(opts$output)) {
   out_fname <- ""
 }
 
-stopifnot(any(opts$posthoc_test == c("Friedman", "Quade", "FriedmanAlignedRanks")))
+stopifnot(any(opts$posthoc_test == c("Friedman", "Quade",
+                                     "FriedmanAlignedRanks")))
 stopifnot(any(opts$correction == c("BergmannHommel", "Shaffer")))
 
 if (opts$posthoc_test == "Friedman") {
@@ -55,7 +57,7 @@ if (opts$posthoc_test == "Friedman") {
 } else if (opts$posthoc_test == "Quade") {
   posthoc_test_fun = "quadePost"
 } else {
-  posthoc_test_fun = "friedmanAlignedRanks"
+  posthoc_test_fun = "friedmanAlignedRanksPost"
 }
 
 adj_fun = paste0("adjust", opts$correction)
@@ -70,5 +72,5 @@ pv.matrix = do.call(posthoc_test_fun, list(fvalues))
 pv.adj = do.call(adj_fun, list(pv.matrix))
 
 # output results
-write.table(pv.matrix, out_fname, sep=",", quote=TRUE, eol="\n", row.names=TRUE,
-            col.names=TRUE)
+write.table(pv.adj, out_fname, na="NaN", sep=",", quote=FALSE,
+            eol="\n", row.names=FALSE, col.names=FALSE)
