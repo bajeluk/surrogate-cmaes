@@ -1,5 +1,5 @@
-function [rankTable, ranks] = rankingTable(data, varargin)
-% [rankTable, ranks] = rankingTable(data, settings)
+function [dTable, ranks] = duelTable(data, varargin)
+% [rankTable, ranks] = duelTable(data, settings)
 % Creates and prints table containing rankings for different evaluations.
 %
 % Input:
@@ -30,9 +30,9 @@ function [rankTable, ranks] = rankingTable(data, varargin)
 %   createRankingTable, speedUpPlot, speedUpPlotCompare, dataReady
 
   % initialization
-  rankTable = [];
+  dTable = [];
   if nargin < 1 || isempty(data)
-    help rankingTable
+    help duelTable
     return
   end
   settings = settings2struct(varargin);
@@ -47,9 +47,9 @@ function [rankTable, ranks] = rankingTable(data, varargin)
   dims    = defopts(settings, 'TableDims', funcSet.dims);
   BBfunc  = defopts(settings, 'TableFuns', funcSet.BBfunc);
   tableRank = defopts(settings, 'Rank', 1);
-  evaluations = defopts(settings, 'Evaluations', [20 40 80]);
+  evaluations = defopts(settings, 'Evaluations', [1/3 1]);
   defResultFolder = fullfile('exp', 'pproc', 'tex');
-  resultFile = defopts(settings, 'ResultFile', fullfile(defResultFolder, 'rankTable.tex'));
+  resultFile = defopts(settings, 'ResultFile', fullfile(defResultFolder, 'duelTable.tex'));
   fileID = strfind(resultFile, filesep);
   resultFolder = resultFile(1 : fileID(end) - 1);
   
@@ -58,44 +58,24 @@ function [rankTable, ranks] = rankingTable(data, varargin)
   fieldID = isfield(settings, extraFields);
   createSettings = rmfield(settings, extraFields(fieldID));
   createSettings.Mode = 'target';
-  [rankTable, ranks] = createRankingTable(data, createSettings);
+  [dTable, ranks, values] = createRankingTable(data, createSettings);
+  
+  % if there is R-package for computation of p-values
+  countPVal = exist('multComp', 'file');
+  
+  for d = 1:length(dims)
+    for e = 1:length(evaluations)
+      if countPVal
+        fValData = cell2mat(arrayfun(@(x) values{x, d}(e, :), BBfunc, 'UniformOutput', false)');
+        pValData{d, e} = multComp(fValData);
+      end
+      rankData = cell2mat(arrayfun(@(x) ranks{x, d}(e, :), BBfunc, 'UniformOutput', false)');
+      dTable{d, e} = createDuelTable(rankData);
+    end
+  end
   
   % print table
   switch tableFormat
-    % prints table to figure
-    case 'figure'
-      nEvals = length(evaluations);
-      nDims = length(dims);
-      maxLengthData = max(cellfun(@length, datanames));
-      
-      evalRow = repmat(evaluations, [1, length(dims)+1]);      
-      % numbers should have normalized format
-      % choose how to display them:
-      % a) transform to text
-      % table = arrayfun(@(x) sprintf('%g', x), table, 'UniformOutput', false);
-      % maxLengthNumber = max(max(cellfun(@length, table)));
-      % b) round values
-      if tableRank == 1
-        rankTable = round(rankTable);
-      else
-      % c) multiply by ten
-        rankTable = 10*(rankTable);
-      end
-      publicTable = [evalRow; rankTable];
-      maxLengthNumber = max(max(arrayfun(@(x) ceil(log10(x)), publicTable)));
-      % column width is number-length dependent
-      colWidth = 20 + 5*maxLengthNumber;
-      tableSize = [11*(2+maxLengthData) + nEvals*(nDims+1)*colWidth, 20*(numOfData+2)];
-      
-      colBase = arrayfun(@(x) repmat({[num2str(x), 'D']}, [1, nEvals]), dims, 'UniformOutput', false);
-      colName = [[colBase{:}], repmat({'SUM'}, [1, nEvals])];
-      rowName = [{'FE/D'}, datanames];
-      f = figure('Position', [0, 0, tableSize]);
-      rankTable = uitable(f, 'Data', publicTable, ...
-                 'ColumnName', colName, ...
-                 'RowName', rowName, ...
-                 'ColumnWidth', {colWidth}, ...
-                 'Position', [1, 1, tableSize]);
       
     % prints table to latex file
     case {'tex', 'latex'}
@@ -103,12 +83,20 @@ function [rankTable, ranks] = rankingTable(data, varargin)
         mkdir(resultFolder)
       end
       FID = fopen(resultFile, 'w');
-      printTableTex(FID, rankTable, dims, evaluations, datanames, length(BBfunc))
+      printTableTex(FID, dTable, dims, evaluations, datanames, length(BBfunc))
       fclose(FID);
 
       fprintf('Table written to %s\n', resultFile);
+      
+    otherwise
+      error('Format ''%s'' is not supported.', tableFormat)
   end
 
+end
+
+function dt = createDuelTable(ranks)
+% create duel table 
+  
 end
 
 function printTableTex(FID, table, dims, evaluations, datanames, nFunc)
