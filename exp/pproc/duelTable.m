@@ -46,8 +46,7 @@ function [dTable, ranks] = duelTable(data, varargin)
   tableFormat = defopts(settings, 'Format', 'tex');
   dims    = defopts(settings, 'TableDims', funcSet.dims);
   BBfunc  = defopts(settings, 'TableFuns', funcSet.BBfunc);
-  tableRank = defopts(settings, 'Rank', 1);
-  evaluations = defopts(settings, 'Evaluations', [1/3 1]);
+  evaluations = defopts(settings, 'Evaluations', [1/3, 1]);
   defResultFolder = fullfile('exp', 'pproc', 'tex');
   resultFile = defopts(settings, 'ResultFile', fullfile(defResultFolder, 'duelTable.tex'));
   fileID = strfind(resultFile, filesep);
@@ -58,12 +57,14 @@ function [dTable, ranks] = duelTable(data, varargin)
   fieldID = isfield(settings, extraFields);
   createSettings = rmfield(settings, extraFields(fieldID));
   createSettings.Mode = 'target';
-  [dTable, ranks, values] = createRankingTable(data, createSettings);
+  [~, ranks, values] = createRankingTable(data, createSettings);
   
   % if there is R-package for computation of p-values
   countPVal = exist('multComp', 'file');
+  pValData = [];
   
-  for d = 1:length(dims)
+  nDim = length(dims);
+  for d = 1:nDim
     for e = 1:length(evaluations)
       if countPVal
         fValData = cell2mat(arrayfun(@(x) values{x, d}(e, :), BBfunc, 'UniformOutput', false)');
@@ -82,11 +83,20 @@ function [dTable, ranks] = duelTable(data, varargin)
       if ~exist(resultFolder, 'dir')
         mkdir(resultFolder)
       end
-      FID = fopen(resultFile, 'w');
-      printTableTex(FID, dTable, dims, evaluations, datanames, length(BBfunc))
-      fclose(FID);
-
-      fprintf('Table written to %s\n', resultFile);
+      
+      if nDim > 1
+        resultFile = arrayfun(@(x) [resultFile(1:end-4), '_', num2str(x), ...
+          'D', resultFile(end-3:end)], dims, 'UniformOutput', false);
+      else
+        resultFile{1} = resultFile;
+      end
+      for d = 1:nDim
+        FID = fopen(resultFile{d}, 'w');
+        printTableTex(FID, dTable(d, :), dims(d), evaluations, datanames, pValData)
+        fclose(FID);
+        
+        fprintf('Table written to %s\n', resultFile{d});
+      end
       
     otherwise
       error('Format ''%s'' is not supported.', tableFormat)
@@ -95,30 +105,42 @@ function [dTable, ranks] = duelTable(data, varargin)
 end
 
 function dt = createDuelTable(ranks)
-% create duel table 
+% create duel table
+% rank of data in row is lower than rank of data in column
+  [nFun, nData] = size(ranks);
   
+  dt = zeros(nData);
+  for f = 1:nFun
+    for dat = 1:nData
+      id = ranks(f, dat) < ranks(f, :);
+      dt(dat, :) = dt(dat, :) + id;
+    end
+  end
 end
 
-function printTableTex(FID, table, dims, evaluations, datanames, nFunc)
+function printTableTex(FID, table, dims, evaluations, datanames, pVal)
 % Prints table to file FID
 
   [numOfData, nColumns] = size(table);
   nDims = length(dims);
   nEvals = length(evaluations);
   
+  % symbol for number of evaluations reaching the best target
+  bestSymbol = '\bestFED';
+  
   fprintf(FID, '\\begin{table}\n');
   fprintf(FID, '\\centering\n');
-  fprintf(FID, '\\begin{tabular}[pos]{ l %s }\n', repmat([' |', repmat(' c', 1, nEvals)], 1, nDims+1));
+  fprintf(FID, '\\begin{tabular}[pos]{ l %s }\n', repmat([' |', repmat(' c', 1, nEvals)], 1, numOfData+1));
   fprintf(FID, '\\hline\n');
-  fprintf(FID, '{} ');
-  for d = 1:nDims
-    fprintf(FID, '& \\multicolumn{%d}{c|}{%dD} ', nEvals, dims(d));
+  fprintf(FID, ' %dD ', dims);
+  for dat = 1:numOfData
+    fprintf(FID, '& \\multicolumn{%d}{c|}{%dD} ', nEvals, datanames{dat});
   end
-  fprintf(FID, '& \\multicolumn{%d}{c}{$\\sum$} \\\\\n', nEvals);
+%   fprintf(FID, '& \\multicolumn{%d}{c}{$\\sum$} \\\\\n', nEvals);
   printString = '';
-  for d = 1:nDims + 1
+  for dat = 1:nDims + 1
     for e = 1:nEvals
-      printString = [printString, ' & ', num2str(evaluations(e))];
+      printString = [printString, ' & ', num2str(evaluations(e)), bestSymbol];
     end
   end
   fprintf(FID, 'FE/D %s \\\\\n', printString);
@@ -154,7 +176,7 @@ function printTableTex(FID, table, dims, evaluations, datanames, nFunc)
                 '$\\Delta_f^\\text{med}$ for different FE/D = \\{%s\\} and dimensions D = \\{%s\\}. ', ...
                 'Ties of the 1st ranks are counted for all respective algorithms. ', ...
                 'The ties often occure when $\\Delta f_T = 10^{-8}$ is reached (mostly on f1 and f5).}\n'], ...
-                nFunc, evalString, dimString);
+                pVal, evalString, dimString);
                
   fprintf(FID, '\\label{tab:fed}\n');
   fprintf(FID, '\\end{table}\n');
