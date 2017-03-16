@@ -1,4 +1,4 @@
-function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, id)
+function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
 %DATASETFROMINSTANCE - generates datasets for specified dim and #fun for offline model tunning
 
 % Generates datasets for offline model tunning from the DTS-CMA-ES
@@ -20,7 +20,6 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, id)
     return
   end
   exp_id = opts.inputExp_id;
-  opts.maxEval = defopts(opts, 'maxEval', 250);
   
   % load data from files
   scmaesOutFile = sprintf('%s/%s_results_%d_%dD_%d.mat', opts.exppath, exp_id, fun, dim, id);
@@ -33,117 +32,106 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, id)
     return
   end
 
-  % TODO:
-  % cycle through instance saved in exp_settings.instances
+  opts.maxEval = defopts(opts, 'maxEval', 250);
+  availInstances = intersect(inst, exp_settings.instances);
+  if (length(availInstances) < length(inst))
+    warning(['There are instances missing in the ' scmaesOutFile ' file.']);
+  end
+  opts.nInstances = length(availInstances);
 
-  % BBOB fitness initialization
-  fgeneric('initialize', exp_settings.bbob_function, exp_settings.instances(1), ['/tmp/bbob_output/']);
+  % prepare output variables
+  dataset = struct();
+  dataset.archives = cell(opts.nInstances, 1);
+  dataset.testSetX = cell(opts.nInstances, nSnapshots);
+  dataset.testSetY = cell(opts.nInstances, nSnapshots);
+  dataset.means    = cell(opts.nInstances, nSnapshots);
+  dataset.sigmas   = cell(opts.nInstances, nSnapshots);
+  dataset.BDs      = cell(opts.nInstances, nSnapshots);
+  dataset.cmaesStates = cell(opts.nInstances, nSnapshots);
+  dataset.generations = cell(opts.nInstances, 1);
 
-  % find maximal evaluation generation
-  maxGener = find(cmaes_out{1}{1}.origEvaled, opts.maxEval*dim, 'first');
-  nGenerations = cmaes_out{1}{1}.generations(maxGener(end));
-  gens = floor(linspace(0, nGenerations-1, nSnapshots+1));
-  gens(1) = [];
-  cmo = cmaes_out{1}{1};
+  for i_inst = 1:opts.nInstances
+    instanceNo = availInstances;
 
-  % TODO:
-  % make all these train/test sets 2-dimensional since we need all 15 instances
-  % and move before line# 46
-  trainSetX = cell(nSnapshots, 1);
-  trainSetY = cell(nSnapshots, 1);
-  testSetX = cell(nSnapshots, 1);
-  testSetY = cell(nSnapshots, 1);
-  
-  % Dataset generation
+    % BBOB fitness initialization
+    fgeneric('initialize', exp_settings.bbob_function, instanceNo, '/tmp/bbob_output/');
 
-  for i = 1:nSnapshots
-    g = gens(i);
+    % identify snapshot generations
+    %
+    % first, identify index the first orig-evaluated point just exceeding 'maxEval'
+    maxEvalGeneration = find(cmaes_out{1}{1}.origEvaled, opts.maxEval*dim, 'first');
+    % second, identify its generation
+    lastGeneration = cmaes_out{1}{1}.generations(maxEvalGeneration(end)) - 1;
+    % third place the spapshot generations equdistant in generations
+    gens = floor(linspace(0, lastGeneration, nSnapshots+1));
+    gens(1) = [];
+    cmo = cmaes_out{1}{1};
 
-    lambda = sum(cmo.generations == g);
+    % Dataset generation
 
-      % the model is not saved, so create a fresh new one
+    for sni = 1:nSnapshots        % sni stands for SNapshot Index
+      g = gens(sni);
+
+      lambda = sum(cmo.generations == g);
+
       xmean = cmo.means(:,g);
       sigma = cmo.sigmas(g);
       BD    = cmo.BDs{g};
       dim   = exp_settings.dim;
-      m = ModelFactory.createModel(SF.surrogateParams.modelType, SF.surrogateParams.modelOpts, xmean');
 
-      % create the Archive of original points
-      minTrainSize = m.getNTrainData();
-      archive = Archive(dim);
-      orig_id = logical(cmo.origEvaled(1:(cmo.generationStarts(g)-1)));
-      X_train = cmo.arxvalids(:,orig_id)';
-      y_train = cmo.fvalues(orig_id)';
-      archive.save(X_train, y_train, 5);
-      archive.gens = cmo.generations(orig_id);
+      cmaesState = struct( ...
+        'xmean', xmean, ...
+        'sigma', sigma, ...
+        'lambda', lambda, ...
+        'BD', BD, ...
+        ... % 'diagD', diagD, ...
+        'diagD', [], ...
+        ... % 'diagC', diagC, ...
+        'dim', dim, ...
+        'mu', floor(lambda/2), ...
+        'countiter', g);
 
-      % find the model's trainset -- points near the current xmean
-      nArchivePoints = myeval(SF.surrogateParams.evoControlTrainNArchivePoints);
-      [X_train, y_train, nData] = archive.getDataNearPoint(nArchivePoints, ...
-        xmean', SF.surrogateParams.evoControlTrainRange, ...
-        sigma, BD);
-    end
+      sampleOpts = struct( ...
+        'noiseReevals', 0, ...
+        'isBoundActive', true, ...
+        'lbounds', -5 * ones(dim, 1), ...
+        'ubounds',  5 * ones(dim, 1), ...
+        'counteval', cmo.generationStarts(g), ...
+        'flgEvalParallel', false, ...
+        'flgDiagonalOnly', false, ...
+        'noiseHandling', false, ...
+        'xintobounds', @xintobounds, ...
+        'origPopSize', lambda);
+ 
+      % Generate fresh CMA-ES' \lambda offsprings
+      [~, arxvalid, ~] = sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
 
-    fprintf('Train set size (gen.# %3d): %3d\n', g, size(X_train,1));
+      % Save everything needed
+      dataset.testSetX{i_inst, sni}  = arxvalid';
+      dataset.testSetY{i_inst, sni}  = fgeneric(dataset.testSetX{i_inst, sni}')';
+      dataset.means{i_inst, sni}     = xmean';
+      dataset.sigmas{i_inst, sni}    = sigma;
+      dataset.BDs{i_inst, sni}       = BD;
+      dataset.cmaesStates{i_inst, sni} = cmaesState;
 
-    cmaesState = struct( ...
-      'xmean', xmean, ...
-      'sigma', sigma, ...
-      'lambda', lambda, ...
-      'BD', BD, ...
-      ... % 'diagD', diagD, ...
-      'diagD', [], ...
-      ... % 'diagC', diagC, ...
-      'dim', dim, ...
-      'mu', floor(lambda/2), ...
-      'countiter', g);
+    end  % snapshots loop
 
-    sampleOpts = struct( ...
-      'noiseReevals', 0, ...
-      'isBoundActive', true, ...
-      'lbounds', -5 * ones(dim, 1), ...
-      'ubounds',  5 * ones(dim, 1), ...
-      'counteval', cmo.generationStarts(g), ...
-      'flgEvalParallel', false, ...
-      'flgDiagonalOnly', false, ...
-      'noiseHandling', false, ...
-      'xintobounds', @xintobounds, ...
-      'origPopSize', lambda);
+    % create the Archive of with the original-evaluated points
+    archive = Archive(dim);
+    orig_id = logical(cmo.origEvaled(1:lastGeneration));
+    X_orig = cmo.arxvalids(:,orig_id)';
+    y_orig = cmo.fvalues(orig_id)';
+    archive.save(X_orig, y_orig, cmo.generations(orig_id));
 
-      
-    % set seed due to reproducibility of default dataset
-    rng(opts.maxEval)
-    
-    % Generate fresh CMA-ES' \lambda offsprings
-    [arx, arxvalid, arz] = sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
+    dataset.archives{i_inst}    = archive;
+    dataset.generations{i_inst} = gens;
 
-    % Save everything needed
-    trainSetX{i} = X_train;
-    trainSetY{i} = y_train;
-    testSetX{i}  = arxvalid';
-    testSetY{i}  = fgeneric(testSetX{i}')';
-    means{i}     = xmean';
-    sigmas{i}    = sigma;
-    BDs{i}       = BD;
-    cmaesStates{i} = cmaesState;
-  end
+    fgeneric('finalize');
+  end  % instances loop
 
-  % Finalize
-
-  dataset = struct();
-  dataset.trainSetX = trainSetX;
-  dataset.trainSetY = trainSetY;
-  dataset.testSetX  = testSetX;
-  dataset.testSetY  = testSetY;
-  dataset.means = means;
-  dataset.sigmas = sigmas;
-  dataset.BDs = BDs;
-  dataset.cmaesStates = cmaesStates;
-  dataset.generations = gens;
   dataset.function  = fun;
-  dataset.dim       = m.dim;
+  dataset.dim       = dim;
   dataset.id        = id;
   dataset.sampleOpts = sampleOpts;
-
-  fgeneric('finalize');
+  dataset.maxEval   = opts.maxEval;
 end

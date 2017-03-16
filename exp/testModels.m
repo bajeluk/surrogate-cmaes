@@ -1,14 +1,22 @@
-function modelFolder = testModels(modelType, modelOptions, opts, funcToTest, dimsToTest, instToTest)
+function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, instToTest)
 % testModels -- tests fitting power of models on DTS dataset.
 %
 % modelFolder = testModels(...) tests models and returns resulting names 
 % of folders.
 %
 % Input:
-%   modelType    - type of model (from ECFactory) | string
 %   modelOptions - model options to test | struct (cell-array of struct)
-%   funcToTest         - functions to test | double
-%   dimsToTest         - dimensions to test | double
+%   opts         - other options and settings
+%       .modelType      - type of model (from ECFactory) | string
+%       .exp_id         - exp_id of the _model testing_ experiment | string
+%       .dataset        - filename (w/o extension) | string
+%       .maxEvals       - maximal number of FE per dimensions to consider | integer
+%       .exppath_short  - directory with experiments subdirectories | string
+%       .statistics     - cell-array of statistics' names | cell array of strings
+%       .rewrite_results - whether to rewrite already saved results | bool
+%   funcToTest         - functions to test | array of integers
+%   dimsToTest         - dimensions to test | array of integers
+%   instToTest         - dimensions to test | array of integers
 %
 % Output:
 %   modelFolder  - list of folders containing results | cell-array of 
@@ -29,6 +37,7 @@ function modelFolder = testModels(modelType, modelOptions, opts, funcToTest, dim
   end
 
   % Ensure input parameters as cell arrays
+  modelType = opts.modelType;
   if ~iscell(modelType)         modelType = {modelType}; end
   if ~iscell(modelOptions)      modelOptions = {modelOptions}; end
   nModel = length(modelOptions);

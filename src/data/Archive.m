@@ -25,7 +25,12 @@ classdef Archive < handle
       end
       obj.X = [obj.X; X(isNotYetSaved,:)];
       obj.y = [obj.y; y(isNotYetSaved,:)];
-      obj.gens = [obj.gens; generation * ones(sum(isNotYetSaved),1)];
+      if (length(generation) == 1)
+        obj.gens = [obj.gens; generation * ones(sum(isNotYetSaved),1)];
+      else
+        generation = generation(:);     % ensure column vector
+        obj.gens = [obj.gens; generation(isNotYetSaved)];
+      end
     end
 
     function [X, y] = getDataFromGenerations(obj, generations)

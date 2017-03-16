@@ -8,7 +8,7 @@ opts.exp_id     = 'exp_GPtest_01';
 % or struct with the field '.ds' with 3D cell array with the data for {d, f, i}'s
 opts.dataset    = 'DTS_005';
 % type of model to test according to the ModelFactory | string
-opts.model_type = 'gp';
+opts.modelType = 'gp';
 % EXPPATH_SHORT
 opts.exppath_short = fullfile('exp', 'experiments');
 % statistics to compute
@@ -71,8 +71,15 @@ modelOptions     = [defModel_options; models1_options];
 % ds_load = load(fullfile(opts.exppath, 'defSet'));
 % ds = ds_load;
 
+fprintf('== Summary of the testing assignment ==\n');
+fprintf('   # of models:        %d\n', length(modelOptions));
+fprintf('   functions:          %d\n', func);
+fprintf('   dimensions:         %d\n', dims);
+fprintf('   instances:          %d\n', instances);
+fprintf('=======================================\n');
+
 %% test chosen models
-modelFolders = testModels(opts.model_type, modelOptions, opts, func, dims, instances);
+modelFolders = testModels(modelOptions, opts, func, dims, instances);
 
 %% compare results
 % modelStatistics(modelFolders, func, dims)

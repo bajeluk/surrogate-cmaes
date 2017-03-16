@@ -1,5 +1,5 @@
-function ds = modelTestSets(exp_id, fun, dim, inst, maxEval)
-% ds = modelTestSets(exp_id, fun, dim, maxEval) creates/loads dataset from 
+function ds = modelTestSets(exp_id, fun, dim, inst, opts)
+% ds = modelTestSets(exp_id, fun, dim) creates/loads dataset from 
 % experiment.
 %
 % Input:
@@ -13,33 +13,29 @@ function ds = modelTestSets(exp_id, fun, dim, inst, maxEval)
 %   ds - loaded data | #fun x #dim cell-array
 %
 % See Also:
-%   modelTest
+%   datasetFromInstances, testModels, testOneModel
 
-  opts.outputDirname = 'exp_GPtest_01';
-  opts.datasetName   = 'DTS_005';
+  if (~exist('opts', 'var'))
+    opts = struct(); end
+  if (~exist('exp_id', 'var'))
+    exp_id = 'exp_doubleEC_21_log'; end
+  if (~exist('fun', 'var'))
+    fun = 1; end
+  if (~exist('dim', 'var'))
+    dim = 2; end
+  if (~exist('inst', 'var'))
+    inst = 1; end
 
-  if nargin < 5
-    if nargin < 4
-      if nargin < 3
-        if nargin < 2
-          if nargin < 1
-            opts.inputExp_id = 'exp_doubleEC_21_log';
-          else
-            opts.inputExp_id = exp_id;
-          end
-          fun = 1;
-        end
-        dim = 2;
-      end
-      inst = 1;
-    end
-    opts.maxEval = 250;
-  else
-    opts.maxEval = maxEval;
-  end
+  opts.outputDirname = defopts(opts, 'outputDirname', 'exp_GPtest_01');
+  opts.datasetName   = defopts(opts, 'datasetName', 'DTS_005');
+  opts.maxEval       = defopts(opts, 'maxEval', 250);
+  % exp_id of the logging (DTS-)CMA-ES experiment
+  opts.inputExp_id   = exp_id;
+  % The number of generated datasets per one CMA-ES run
+  opts.nSnapshotsPerRun = defopts(opts, 'nSnapshotsPerRun', 10);
 
-  % The number of generated datasets per one CMA-ES run (default is 10)
-  opts.nSnapshotsPerRun = 10;
+  % set random seed due to reproducibility of default dataset
+  rng(opts.maxEval)
 
   % path settings
   opts.exppath_short = fullfile('exp', 'experiments');
@@ -47,7 +43,6 @@ function ds = modelTestSets(exp_id, fun, dim, inst, maxEval)
   outputDir = fullfile('exp', 'experiments', opts.outputDirname);
   [~, ~] = mkdir(outputDir);
   outputDir = fullfile(outputDir, 'dataset');
-
   opts.datasetFile = fullfile(outputDir, [opts.datasetName '.mat']);
 
   % check experiment parameters
@@ -64,17 +59,17 @@ function ds = modelTestSets(exp_id, fun, dim, inst, maxEval)
     exp_inst = 1;
   end
 
-  % check fun and dim values
+  % take only dimensions and function which exist in the logging experiment
   dim = restricToDataset(dim, exp_dim, 'Dimensions');
   fun = restricToDataset(fun, exp_fun, 'Functions');
-  % take all instances from the experiment as default
-  inst = exp_inst;
+  inst = restricToDataset(inst, exp_inst, 'Instances');
 
   nDim = length(dim);
   nFun = length(fun);
   nInst = length(inst);
-
-  f_ds = struct('ds', {{}}, 'fun', {[]}, 'dim', {[]}, 'opts.maxEval', {opts.maxEval});
+  
+  assert(nInst > 0, 'There are no instances to process. Exitting.');
+  
   if (exist(opts.datasetFile, 'file'))
     fprintf('The dataset file "%s" already existed.\n   Copying to "%s.bak".\n', opts.datasetFile, opts.datasetFile);
     copyfile(opts.datasetFile, [opts.datasetFile '.bak']);
@@ -83,8 +78,11 @@ function ds = modelTestSets(exp_id, fun, dim, inst, maxEval)
       ds = f_ds.ds;
     end
   else
+    f_ds = struct('ds', {{}}, 'fun', {[]}, 'dim', {[]}, 'maxEval', {opts.maxEval});
     ds = cell(nFun, nDim, nInst);
   end
+
+  minMaxEval = Inf;
 
   % dimension loop
   for d = dim
@@ -97,24 +95,26 @@ function ds = modelTestSets(exp_id, fun, dim, inst, maxEval)
       fprintf('#### f%d in %dD ####\n', f, d);
 
       % instances loop
+      instancesDone = false(1, length(inst));
       for i = inst
         i_exp = find(i == exp_inst);
-
         if (~isempty(ds{f_exp, d_exp, i_exp}) && isstruct(ds{f_exp, d_exp, i_exp}))
-          fprintf('...already loaded\n');
-          continue
+          instancesDone(i_exp) = true;
         end
+      end
+      if (all(instancesDone))
+        fprintf('All instances are done. Advancing to the next function...\n');
+        continue
       end
 
       % load dataset from saved modellog/cmaes_out of the corresponding instance
-      ds_actual = datasetFromInstances(exp_id, nSnapshots, f, d, id);
+      ds_actual = datasetFromInstances(opts, opts.nSnapshotsPerRun, f, d, inst, id);
       % succesfully loaded
       if isstruct(ds_actual)
         ds(f_exp, d_exp, :) = ds_actual;
+        minMaxEval = min(ds_actual.maxEval, minMaxEval);
       end
 
-      % instances loop end  
-      end
     % function loop end  
     end
   % dimension loop end
@@ -123,7 +123,7 @@ function ds = modelTestSets(exp_id, fun, dim, inst, maxEval)
   % save default dataset
   fun = union(fun, f_ds.fun);
   dim = union(dim, f_ds.dim);
-  maxEval = min(opts.maxEval, f_ds.opts.maxEval);
+  maxEval = min(opts.maxEval, minMaxEval);
   save(opts.datasetFile, 'ds', 'fun', 'dim', 'maxEval')
 end
 
