@@ -7,6 +7,13 @@
 # * scmamp
 # * Rgraphviz (for correct installation of the former)
 # * optparse
+#
+# How to install dependencies in an R session:
+# > install.packages("optparse")
+# > # moved from CRAN to bioconductor
+# > source("http://www.bioconductor.org/biocLite.R")
+# > biocLite("Rgraphviz")
+# > install.packages("scmamp")
 
 suppressPackageStartupMessages(library("optparse"))
 suppressPackageStartupMessages(library("scmamp"))
@@ -63,7 +70,7 @@ if (opts$posthoc_test == "Friedman") {
 adj_fun = paste0("adjust", opts$correction)
 
 # read data
-fvalues <- read.table(opts$input, header=TRUE, sep=",")
+fvalues <- read.table(opts$input, header=FALSE, sep=",")
 
 # perform the posthoc test
 pv.matrix = do.call(posthoc_test_fun, list(fvalues))
