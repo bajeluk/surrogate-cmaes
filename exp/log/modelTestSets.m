@@ -64,11 +64,7 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
   fun = restricToDataset(fun, exp_fun, 'Functions');
   inst = restricToDataset(inst, exp_inst, 'Instances');
 
-  nDim = length(dim);
-  nFun = length(fun);
-  nInst = length(inst);
-  
-  assert(nInst > 0, 'There are no instances to process. Exitting.');
+  assert(~isempty(inst), 'There are no instances to process. Exitting.');
   
   if (exist(opts.datasetFile, 'file'))
     fprintf('The dataset file "%s" already existed.\n   Copying to "%s.bak".\n', opts.datasetFile, opts.datasetFile);
@@ -76,30 +72,31 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
     f_ds = load(opts.datasetFile);
     if (isfield(f_ds, 'ds') && ~isempty(f_ds.ds))
       ds = f_ds.ds;
+      dim = f_ds.dim;
+      fun = f_ds.fun;
+      inst = f_ds.inst;
     end
   else
-    f_ds = struct('ds', {{}}, 'fun', {[]}, 'dim', {[]}, 'maxEval', {opts.maxEval});
-    ds = cell(nFun, nDim, nInst);
+    f_ds = struct('ds', {{}}, 'fun', {[]}, 'dim', {[]}, 'inst', {[]}, 'maxEval', {opts.maxEval});
+    ds = cell(length(fun), length(dim), length(inst));
   end
 
-  minMaxEval = Inf;
-
   % dimension loop
-  for d = dim
-    d_exp = find(d == exp_dim);
+  for di = 1:length(dim)
+    d_exp = find(dim(di) == exp_dim);
 
     % function loop
-    for f = fun
-      f_exp = find(f == exp_fun);
+    for fi = 1:length(fun)
+      f_exp = find(fun(fi) == exp_fun);
       id = (d_exp-1)*length(exp_fun) + f_exp;
-      fprintf('#### f%d in %dD ####\n', f, d);
+      fprintf('#### f%d in %dD ####\n', fun(fi), dim(di));
 
       % instances loop
       instancesDone = false(1, length(inst));
-      for i = inst
-        i_exp = find(i == exp_inst);
-        if (~isempty(ds{f_exp, d_exp, i_exp}) && isstruct(ds{f_exp, d_exp, i_exp}))
-          instancesDone(i_exp) = true;
+      for ii = 1:length(inst)
+        i_exp = find(inst(ii) == exp_inst);
+        if (~isempty(ds{fi, di, ii}) && isstruct(ds{fi, di, ii}))
+          instancesDone(ii) = true;
         end
       end
       if (all(instancesDone))
@@ -108,12 +105,10 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
       end
 
       % load dataset from saved modellog/cmaes_out of the corresponding instance
-      ds_actual = datasetFromInstances(opts, opts.nSnapshotsPerRun, f, d, inst, id);
-      % succesfully loaded
-      if isstruct(ds_actual)
-        ds(f_exp, d_exp, :) = ds_actual;
-        minMaxEval = min(ds_actual.maxEval, minMaxEval);
-      end
+      ds_actual = datasetFromInstances(opts, opts.nSnapshotsPerRun, ...
+          fun(fi), dim(di), inst, id);
+        
+      ds(f_exp, d_exp, :) = ds_actual;
 
     % function loop end  
     end
@@ -123,8 +118,9 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
   % save default dataset
   fun = union(fun, f_ds.fun);
   dim = union(dim, f_ds.dim);
-  maxEval = min(opts.maxEval, minMaxEval);
-  save(opts.datasetFile, 'ds', 'fun', 'dim', 'maxEval')
+  inst = union(inst, f_ds.inst);
+  maxEval = opts.maxEval;
+  save(opts.datasetFile, 'ds', 'fun', 'dim', 'inst', 'maxEval')
 end
 
 function [intToTest] = restricToDataset(intToTest, dataInt, identifier)

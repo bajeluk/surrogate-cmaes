@@ -33,39 +33,52 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
   end
 
   opts.maxEval = defopts(opts, 'maxEval', 250);
-  availInstances = intersect(inst, exp_settings.instances);
-  if (length(availInstances) < length(inst))
-    warning(['There are instances missing in the ' scmaesOutFile ' file.']);
-  end
-  opts.nInstances = length(availInstances);
+  %  availInstances = intersect(inst, exp_settings.instances);
+  % if (length(availInstances) < length(inst))
+  %   warning(['There are instances missing in the ' scmaesOutFile ' file.']);
+  % end
+  nInstances = length(inst);
+  dataset = cell(1, nInstances);
 
-  % prepare output variables
-  dataset = struct();
-  dataset.archives = cell(opts.nInstances, 1);
-  dataset.testSetX = cell(opts.nInstances, nSnapshots);
-  dataset.testSetY = cell(opts.nInstances, nSnapshots);
-  dataset.means    = cell(opts.nInstances, nSnapshots);
-  dataset.sigmas   = cell(opts.nInstances, nSnapshots);
-  dataset.BDs      = cell(opts.nInstances, nSnapshots);
-  dataset.cmaesStates = cell(opts.nInstances, nSnapshots);
-  dataset.generations = cell(opts.nInstances, 1);
+  % cycle through instances
+  for i_inst = 1:nInstances
+    instanceNo = inst(i_inst);
 
-  for i_inst = 1:opts.nInstances
-    instanceNo = availInstances;
+    % look into the cmaes_out whether there this instance really is
+    if (i_inst > length(SF.cmaes_out) || isempty(SF.cmaes_out{i_inst}{1}))
+      warning('Instance %d is missing in the ''%s'' file.', instanceNo, scmaesOutFile);
+      dataset{i_inst} = [];
+      % and skip this instance if not
+      continue;
+    end
+
+    % prepare output fields
+    dataset{i_inst} = struct();
+    dataset{i_inst}.archive  = [];
+    dataset{i_inst}.testSetX = cell(1, nSnapshots);
+    dataset{i_inst}.testSetY = cell(1, nSnapshots);
+    dataset{i_inst}.means    = cell(1, nSnapshots);
+    dataset{i_inst}.sigmas   = cell(1, nSnapshots);
+    dataset{i_inst}.BDs      = cell(1, nSnapshots);
+    dataset{i_inst}.cmaesStates = cell(1, nSnapshots);
+    dataset{i_inst}.generations = [];
+
+    expInstanceId = find(exp_settings.instances == instanceNo, 1, 'first');
 
     % BBOB fitness initialization
     fgeneric('initialize', exp_settings.bbob_function, instanceNo, '/tmp/bbob_output/');
 
     % identify snapshot generations
     %
-    % first, identify index the first orig-evaluated point just exceeding 'maxEval'
-    maxEvalGeneration = find(cmaes_out{1}{1}.origEvaled, opts.maxEval*dim, 'first');
+    cmo = cmaes_out{expInstanceId}{1};
+    % first, identify the first maxEval*dim orig-evaluated points
+    origEvaledId = find(cmo.origEvaled, opts.maxEval*dim, 'first');
+    lastOrigEvaledId = origEvaledId(end);
     % second, identify its generation
-    lastGeneration = cmaes_out{1}{1}.generations(maxEvalGeneration(end)) - 1;
+    lastGeneration = cmo.generations(lastOrigEvaledId);
     % third place the spapshot generations equdistant in generations
-    gens = floor(linspace(0, lastGeneration, nSnapshots+1));
+    gens = floor(linspace(1, lastGeneration, nSnapshots+1));
     gens(1) = [];
-    cmo = cmaes_out{1}{1};
 
     % Dataset generation
 
@@ -107,31 +120,31 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
       [~, arxvalid, ~] = sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
 
       % Save everything needed
-      dataset.testSetX{i_inst, sni}  = arxvalid';
-      dataset.testSetY{i_inst, sni}  = fgeneric(dataset.testSetX{i_inst, sni}')';
-      dataset.means{i_inst, sni}     = xmean';
-      dataset.sigmas{i_inst, sni}    = sigma;
-      dataset.BDs{i_inst, sni}       = BD;
-      dataset.cmaesStates{i_inst, sni} = cmaesState;
+      dataset{i_inst}.testSetX{sni}  = arxvalid';
+      dataset{i_inst}.testSetY{sni}  = fgeneric(arxvalid)';
+      dataset{i_inst}.means{sni}     = xmean';
+      dataset{i_inst}.sigmas{sni}    = sigma;
+      dataset{i_inst}.BDs{sni}       = BD;
+      dataset{i_inst}.cmaesStates{sni} = cmaesState;
+      dataset{i_inst}.sampleOpts{sni} = sampleOpts;
 
     end  % snapshots loop
 
     % create the Archive of with the original-evaluated points
     archive = Archive(dim);
-    orig_id = logical(cmo.origEvaled(1:lastGeneration));
+    orig_id = logical(cmo.origEvaled(1:lastOrigEvaledId));
     X_orig = cmo.arxvalids(:,orig_id)';
     y_orig = cmo.fvalues(orig_id)';
     archive.save(X_orig, y_orig, cmo.generations(orig_id));
 
-    dataset.archives{i_inst}    = archive;
-    dataset.generations{i_inst} = gens;
+    dataset{i_inst}.archive     = archive;
+    dataset{i_inst}.generations = gens;
+    dataset{i_inst}.function  = fun;
+    dataset{i_inst}.dim       = dim;
+    dataset{i_inst}.id        = id;
+    dataset{i_inst}.instance  = instanceNo;
+    dataset{i_inst}.maxEval   = opts.maxEval;
 
     fgeneric('finalize');
   end  % instances loop
-
-  dataset.function  = fun;
-  dataset.dim       = dim;
-  dataset.id        = id;
-  dataset.sampleOpts = sampleOpts;
-  dataset.maxEval   = opts.maxEval;
 end
