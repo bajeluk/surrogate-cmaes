@@ -77,11 +77,10 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
   instToTest = restricToDataset(instToTest, dataInst, 'Instances');
 
   % Assign (hopefully) unique names and output directories to models
-  for i = 1:nModel
-    modelHashName{i} = [modelType{i}, 'model_', modelHash(modelOptions{i})];
+  for m = 1:nModel
+    modelHashName{m} = [modelType{m}, 'model_', modelHash(modelOptions{m})];
     % TODO: ensure, that this name is really unique
-    modelFolder{i}   = fullfile(opts.exppath_short, opts.exp_id, [modelHashName{i}, '_', num2str(maxEvals), 'FE']);
-    [~, ~] = mkdir(modelFolder{i});
+    modelFolder{m}   = fullfile(opts.exppath_short, opts.exp_id, [modelHashName{m}, '_', num2str(maxEvals), 'FE']);
   end
 
   % dimension loop
@@ -102,7 +101,10 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
       for m = 1:nModel
         fprintf('*******************  Fun: %d  Dim: %d  Model: %d  *******************\n', fun, dim, m)
 
+        % directory and filename for the output
+        [~, ~] = mkdir(modelFolder{m});
         modelFile = fullfile(modelFolder{m}, sprintf('%s_f%d_%dD.mat', modelHashName{m}, fun, dim));
+
         % do not rewrite existing files unless wanted
         if (exist(modelFile, 'file') && ~opts.rewrite_results)
           fprintf('File %s already exist. Skipping model testing.\n', modelFile)
@@ -135,14 +137,14 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
               fname = opts.statistics{st};
               stats.(fname)(i_data, :) = new_stats.(fname);
             end
-          end
 
-          % save model results
-          save(modelFile, 'stats', 'models', 'y_models')
+            % save results of the so-far calculated instances
+            save(modelFile, 'stats', 'models', 'y_models')
+          end  % instance loop
         end
-      end
-    end
-  end
+      end  % model loop
+    end  % function loop
+  end  % dimension loop
 
 end
 

@@ -26,18 +26,20 @@ subtask() {
   echo ID=$ID : DIM=$DIM : FUNC=$FUNC : INST=$INST : MATLAB_FCN=$MATLAB_FCN
   # submission on Metacentrum
   # TODO: convert into the new PBS-Pro task scheduler
-  qsub -N "${EXPID}__$1" -l "walltime=$QUEUE" -v FUNC,DIM,INST,MATLAB_FCN,EXPPATH_SHORT $EXPPATH_SHORT/modelTesting_metajob.sh && echo "submitted ok."
+  qsub -N "${EXPID}__$1" -l "walltime=$QUEUE" -v FUNC,DIM,INST,MATLAB_FCN,EXPPATH_SHORT $EXPPATH_SHORT/../modelTesting_metajob.sh && echo "submitted ok."
   ID=$((ID+1))
 }
 
 
-QUEUE=1d
+QUEUE=4h
 ID=1;
 
 MATLAB_FCN="exp_GPtest_01"
+INST="1 2 3 4 5 41 42 43 44 45 46 47 48 49 50"
 
 DIM=5
-for i in `seq 1 24`; do
+# for i in `seq 1 24`; do
+for i in 1 2 3; do
   FUNC=$i; subtask $ID
 done
 
@@ -47,3 +49,4 @@ DIM=10
 for i in `seq 1 24`; do
   FUNC=$i; subtask $ID
 done
+

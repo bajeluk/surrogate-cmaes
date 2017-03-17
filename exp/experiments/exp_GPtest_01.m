@@ -15,11 +15,11 @@ opts.exppath_short = fullfile('exp', 'experiments');
 opts.statistics = { 'mse', 'mzoe', 'kendall', 'rankmse', 'rankmzoe', 'rde' };
 
 % FUN/DIM/INST settings
-if ~exist('func', 'var')
+if (~exist('func', 'var') || isempty(func))
   func = (1:24);  end
-if ~exist('dims', 'var')
+if (~exist('dims', 'var') || isempty(dims))
   dims = [2, 5, 10];  end
-if ~exist('instances', 'var')
+if (~exist('instances', 'var') || isempty(instances))
   instances = [1:5 41:50];  end
 
 % Maximal number of function evaluation per dimension to consider

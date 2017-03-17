@@ -28,8 +28,7 @@ if [ -z "$DIM" ] ; then
   echo "Error: Task DIM numbers are not known"; exit 1
 fi
 if [ -z "$INST" ]; then
-  echo "Warning: INST is empty, using INST=1"
-  INST=1
+  echo "Warning: INST is empty, default instances will be used."
 fi
 if [ -z "$MATLAB_FCN" ] ; then
   echo "Error: Task MATLAB_FCN is not known"; exit 1
