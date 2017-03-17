@@ -18,12 +18,14 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
     return
   end
   exp_id = opts.inputExp_id;
-  
+
   opts.maxEval = defopts(opts, 'maxEval', 250);
+
+  % prepare output variable
   nInstances = length(inst);
   dataset = cell(1, nInstances);
 
-  % load data from files
+  % load data from S-CMA-ES log files
   scmaesOutFile = sprintf('%s/%s_results_%d_%dD_%d.mat', opts.exppath, exp_id, fun, dim, id);
   if exist(scmaesOutFile, 'file')
     SF = load(scmaesOutFile, 'cmaes_out', 'exp_settings', 'surrogateParams');
@@ -110,7 +112,7 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
         'noiseHandling', false, ...
         'xintobounds', @xintobounds, ...
         'origPopSize', lambda);
- 
+
       % Generate fresh CMA-ES' \lambda offsprings
       [~, arxvalid, ~] = sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
 

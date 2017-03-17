@@ -275,7 +275,7 @@ classdef GpModel < Model
       end
       if isnan(initial)
         % the initial point is not valid
-        % fprintf('  GpModel.train(): fmincon -- initial point is not valid.\n');
+        fprintf('  GpModel.train(): fmincon -- initial point is not valid.\n');
         trainErr = true;
       else
         % training itself

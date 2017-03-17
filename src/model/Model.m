@@ -263,7 +263,7 @@ classdef (Abstract) Model
 
       trainsetType = defopts(obj.options,'trainsetType','parameters');
       if (~strcmpi(trainsetType, 'parameters') && exist('archive','var'))
-          [X, y] = obj.generateDataset(archive, population);
+        [X, y] = obj.generateDataset(archive, population);
       end
 
       % minimal difference between minimal and maximal returned
@@ -277,7 +277,7 @@ classdef (Abstract) Model
         % compute coordinates in the (sigma*BD)-basis
         obj.trainSigma = sigma;
         obj.trainBD = BD;
-        XTransf =( (sigma * BD) \ X')';
+        XTransf = ( (sigma * BD) \ X')';
       else
         XTransf = X;
       end
@@ -341,13 +341,13 @@ classdef (Abstract) Model
 
 
     function [X,y] = generateDataset(obj, archive, population)
-        xMean = obj.stateVariables.xmean';
-        sigma = obj.stateVariables.sigma;
-        BD = obj.stateVariables.BD;
-        dim = obj.dim;
-        [X,y] = archive.getTrainsetData(obj.options.trainsetType,...
-            myeval(obj.options.trainsetSizeMax), xMean, obj.options.calculatedTrainRange,...
-            sigma, BD, population);
+      xMean = obj.stateVariables.xmean';
+      sigma = obj.stateVariables.sigma;
+      BD = obj.stateVariables.BD;
+      dim = obj.dim;
+      [X,y] = archive.getTrainsetData(obj.options.trainsetType,...
+          myeval(obj.options.trainsetSizeMax), xMean, obj.options.trainRange,...
+          sigma, BD, population);
     end
   end
 end

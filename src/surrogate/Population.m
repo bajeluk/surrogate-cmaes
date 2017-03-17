@@ -30,7 +30,7 @@ classdef Population
       obj.phase = (-1) * ones(1, lambda_);
     end
 
-    function obj = addPoints(obj, xNew, yNew, arxNew, arzNew, nOrigEvaled, varargin);
+    function obj = addPoints(obj, xNew, yNew, arxNew, arzNew, nOrigEvaled, varargin)
       % add new points with their f-values into the population
       % 'nOrigEvaled' - the number of points starting from begiining (index 1)
       %                 which have original fitness value

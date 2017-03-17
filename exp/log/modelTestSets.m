@@ -72,6 +72,7 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
   fprintf('   instances:    %s\n', num2str(inst));
   fprintf('==========================================\n');
 
+  is_ds_loaded = false;
   if (exist(opts.datasetFile, 'file'))
     fprintf('The dataset file "%s" already existed.\n   Copying to "%s.bak".\n', opts.datasetFile, opts.datasetFile);
     copyfile(opts.datasetFile, [opts.datasetFile '.bak']);

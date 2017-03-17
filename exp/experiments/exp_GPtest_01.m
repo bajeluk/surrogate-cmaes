@@ -52,8 +52,8 @@ defModelOptions.likBounds       = log([1e-6, 10]);
 
 % Full factorial design of the following parameters
 models1 = defModelOptions;      % deep copy (!)
-models1.trainsetType    = { 'clustering', 'allPoints', 'nearest', 'nearestToPopulation' };
-models1.trainRange      = { 0.99, 0.999 };
+models1.trainsetType    = { 'nearestToPopulation', 'nearest', 'clustering', 'allPoints' };
+models1.trainRange      = { 1.0, 0.999 };
 models1.trainsetSizeMax = { '5*dim', '10*dim', '15*dim', '20*dim' };
 models1.meanFcn         = { 'meanConst', 'meanLinear' };
 models1.covFcn          = { '{@covSEiso}', '{@covSEard}', ...
@@ -72,10 +72,10 @@ modelOptions     = [defModel_options; models1_options];
 % ds = ds_load;
 
 fprintf('== Summary of the testing assignment ==\n');
-fprintf('   # of models:        %d\n', length(modelOptions));
-fprintf('   functions:          %d\n', func);
-fprintf('   dimensions:         %d\n', dims);
-fprintf('   instances:          %d\n', instances);
+fprintf('   # of models:  %d\n', length(modelOptions));
+fprintf('   functions:    %s\n', num2str(func));
+fprintf('   dimensions:   %s\n', num2str(dims));
+fprintf('   instances:    %s\n', num2str(instances));
 fprintf('=======================================\n');
 
 %% test chosen models
