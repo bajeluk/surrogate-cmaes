@@ -23,7 +23,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 %                  string
 %
 % See Also:
-%   modelTest, modelTestSet, Model
+%   modelTestSet, testOneModel
 
   % Default input parameters settings
   if nargin < 6
@@ -65,7 +65,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
   data          = defopts(loadData, 'ds', dataset);
   dataFunc      = defopts(loadData, 'fun', funcToTest);
   dataDims      = defopts(loadData, 'dim', dimsToTest);
-  dataInst      = defopts(loadData, 'instToTest', instToTest);
+  dataInst      = defopts(loadData, 'inst', instToTest);
   dataMaxEvals  = defopts(loadData, 'maxEval', 250);
   dataNSnapshots = defopts(loadData, 'nSnapshotsPerRun', 10);
   maxEvals      = min(dataMaxEvals, opts.maxEvals);
@@ -79,6 +79,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
   % Assign (hopefully) unique names and output directories to models
   for i = 1:nModel
     modelHashName{i} = [modelType{i}, 'model_', modelHash(modelOptions{i})];
+    % TODO: ensure, that this name is really unique
     modelFolder{i}   = fullfile(opts.exppath_short, opts.exp_id, [modelHashName{i}, '_', num2str(maxEvals), 'FE']);
     [~, ~] = mkdir(modelFolder{i});
   end

@@ -13,39 +13,35 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
   % dim = 2;
   % id = 1;
 
-  dataset = {};
-
   if nargin < 1
     help datasetFromInstance
     return
   end
   exp_id = opts.inputExp_id;
   
+  opts.maxEval = defopts(opts, 'maxEval', 250);
+  nInstances = length(inst);
+  dataset = cell(1, nInstances);
+
   % load data from files
   scmaesOutFile = sprintf('%s/%s_results_%d_%dD_%d.mat', opts.exppath, exp_id, fun, dim, id);
   if exist(scmaesOutFile, 'file')
     SF = load(scmaesOutFile, 'cmaes_out', 'exp_settings', 'surrogateParams');
     cmaes_out = SF.cmaes_out;
     exp_settings = SF.exp_settings;
+    exp_instances = SF.exp_settings.instances;
   else
     warning('Model file or scmaes output file is missing in f%d %dD (id %d).', fun, dim, id)
     return
   end
 
-  opts.maxEval = defopts(opts, 'maxEval', 250);
-  %  availInstances = intersect(inst, exp_settings.instances);
-  % if (length(availInstances) < length(inst))
-  %   warning(['There are instances missing in the ' scmaesOutFile ' file.']);
-  % end
-  nInstances = length(inst);
-  dataset = cell(1, nInstances);
-
   % cycle through instances
   for i_inst = 1:nInstances
     instanceNo = inst(i_inst);
+    expInstanceId = find(exp_instances == instanceNo, 1);
 
     % look into the cmaes_out whether there this instance really is
-    if (i_inst > length(SF.cmaes_out) || isempty(SF.cmaes_out{i_inst}{1}))
+    if (isempty(expInstanceId) || i_inst > length(SF.cmaes_out) || isempty(SF.cmaes_out{expInstanceId}{1}))
       warning('Instance %d is missing in the ''%s'' file.', instanceNo, scmaesOutFile);
       dataset{i_inst} = [];
       % and skip this instance if not
@@ -63,8 +59,6 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
     dataset{i_inst}.cmaesStates = cell(1, nSnapshots);
     dataset{i_inst}.generations = [];
 
-    expInstanceId = find(exp_settings.instances == instanceNo, 1, 'first');
-
     % BBOB fitness initialization
     fgeneric('initialize', exp_settings.bbob_function, instanceNo, '/tmp/bbob_output/');
 
@@ -76,8 +70,9 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
     lastOrigEvaledId = origEvaledId(end);
     % second, identify its generation
     lastGeneration = cmo.generations(lastOrigEvaledId);
-    % third place the spapshot generations equdistant in generations
+    % third place the snapshot generations equdistant in generations...
     gens = floor(linspace(1, lastGeneration, nSnapshots+1));
+    % ...but do not start at the beginning
     gens(1) = [];
 
     % Dataset generation

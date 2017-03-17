@@ -65,60 +65,70 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
   inst = restricToDataset(inst, exp_inst, 'Instances');
 
   assert(~isempty(inst), 'There are no instances to process. Exitting.');
-  
+
+  fprintf('== Summary of the dataset being created ==\n');
+  fprintf('   functions:    %s\n', num2str(fun));
+  fprintf('   dimensions:   %s\n', num2str(dim));
+  fprintf('   instances:    %s\n', num2str(inst));
+  fprintf('==========================================\n');
+
   if (exist(opts.datasetFile, 'file'))
     fprintf('The dataset file "%s" already existed.\n   Copying to "%s.bak".\n', opts.datasetFile, opts.datasetFile);
     copyfile(opts.datasetFile, [opts.datasetFile '.bak']);
     f_ds = load(opts.datasetFile);
     if (isfield(f_ds, 'ds') && ~isempty(f_ds.ds))
-      ds = f_ds.ds;
-      dim = f_ds.dim;
-      fun = f_ds.fun;
-      inst = f_ds.inst;
+      is_ds_loaded = true;
     end
   else
     f_ds = struct('ds', {{}}, 'fun', {[]}, 'dim', {[]}, 'inst', {[]}, 'maxEval', {opts.maxEval});
-    ds = cell(length(fun), length(dim), length(inst));
   end
+  
+  % prepare output dataset
+  ds = cell(length(fun), length(dim), length(inst));
 
   % dimension loop
   for di = 1:length(dim)
-    d_exp = find(dim(di) == exp_dim);
+    d_exp = find(dim(di) == exp_dim, 1);
 
     % function loop
     for fi = 1:length(fun)
-      f_exp = find(fun(fi) == exp_fun);
+      f_exp = find(fun(fi) == exp_fun, 1);
       id = (d_exp-1)*length(exp_fun) + f_exp;
-      fprintf('#### f%d in %dD ####\n', fun(fi), dim(di));
+      fprintf('#### f%d in %dD (id=%d) ####\n', fun(fi), dim(di), id);
 
-      % instances loop
+      % check whether if we have some instances loaded
       instancesDone = false(1, length(inst));
-      for ii = 1:length(inst)
-        i_exp = find(inst(ii) == exp_inst);
-        if (~isempty(ds{fi, di, ii}) && isstruct(ds{fi, di, ii}))
-          instancesDone(ii) = true;
+      if (is_ds_loaded)
+        for ii = 1:length(inst)
+          i_exp = find(inst(ii) == exp_inst, 1);
+          d_loaded = find(dim(di) == f_ds.dim, 1);
+          f_loaded = find(fun(fi) == f_ds.fun, 1);
+          i_loaded = find(inst(ii) == f_ds.inst, 1);
+          if ((~isempty(d_loaded) && ~isempty(f_loaded) && ~isempty(i_loaded)) ...
+              &&  ~isempty(f_ds.ds{f_loaded, d_loaded, i_loaded}) ...
+              &&  isstruct(f_ds.ds{f_loaded, d_loaded, i_loaded}))
+            instancesDone(ii) = true;
+            ds{fi, di, ii} = f_ds.ds{f_loaded, d_loaded, i_loaded};
+          end
         end
-      end
-      if (all(instancesDone))
-        fprintf('All instances are done. Advancing to the next function...\n');
-        continue
+        if (all(instancesDone))
+          fprintf('All instances are done. Advancing to the next function...\n');
+          continue
+        end
       end
 
       % load dataset from saved modellog/cmaes_out of the corresponding instance
       ds_actual = datasetFromInstances(opts, opts.nSnapshotsPerRun, ...
-          fun(fi), dim(di), inst, id);
+          fun(fi), dim(di), inst(~instancesDone), id);
         
-      ds(f_exp, d_exp, :) = ds_actual;
+      ds(fi, di, ~instancesDone) = ds_actual;
 
     % function loop end  
     end
   % dimension loop end
   end
 
-  % save default dataset
-  fun = union(fun, f_ds.fun);
-  dim = union(dim, f_ds.dim);
-  inst = union(inst, f_ds.inst);
+  % save the dataset
   maxEval = opts.maxEval;
   save(opts.datasetFile, 'ds', 'fun', 'dim', 'inst', 'maxEval')
 end
