@@ -108,7 +108,12 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     arz = [arz zNew];
     origEvaled((end-length(yNew)+1):end) = true;
   end
-  
+
   assert(min(fitness_raw) >= min(archive.y), 'Assertion failed: minimal predicted fitness < min in archive by %e', min(archive.y) - min(fitness_raw));
 
+  % check that the resulting points in arxvalid are inside bound
+  % constraints
+  inBounds = all(arxvalid == sampleOpts.xintobounds(...
+      arxvalid, sampleOpts.lbounds, sampleOpts.ubounds));
+  assert(all(inBounds), 'Assertion failed: arxvalid is out of bounds in generation %d', countiter);
 end
