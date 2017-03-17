@@ -26,11 +26,11 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 %   modelTestSet, testOneModel
 
   % Default input parameters settings
-  if nargin < 6
+  if nargin < 5
     instToTest = [1];
-    if nargin < 5
+    if nargin < 4
       dimsToTest = [2];
-      if nargin < 4
+      if nargin < 3
         funcToTest = [1];
       end
     end
@@ -125,6 +125,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
           % instances loop
           for inst = instToTest
             i_data = find(inst == dataInst, 1);
+            fprintf('-- instance %2d --\n', inst);
 
             % train & test the model on the 'dataNSnapshots' datasets
             % from the current instance
