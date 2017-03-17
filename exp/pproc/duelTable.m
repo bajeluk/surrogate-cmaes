@@ -21,6 +21,7 @@ function [dTable, ranks] = duelTable(data, varargin)
 %     'Statistic'   - statistic of data | string or handle (@mean, @median)
 %     'TableDims'   - dimensions chosen to count
 %     'TableFuns'   - functions chosen to count
+%     'Alpha'       - significance level for hypothesis testing
 %
 % Output:
 %   rankTable - table of rankings
@@ -51,6 +52,8 @@ function [dTable, ranks] = duelTable(data, varargin)
   resultFile = defopts(settings, 'ResultFile', fullfile(defResultFolder, 'duelTable.tex'));
   fileID = strfind(resultFile, filesep);
   resultFolder = resultFile(1 : fileID(end) - 1);
+  alpha = defopts(settings, 'alpha', 0.05);
+  ftarget = defopts(settings, 'ftarget', 1e-8);
   
   % create ranking table
   extraFields = {'DataNames', 'ResultFile'};
@@ -58,17 +61,23 @@ function [dTable, ranks] = duelTable(data, varargin)
   createSettings = rmfield(settings, extraFields(fieldID));
   createSettings.Mode = 'target';
   [~, ranks, values] = createRankingTable(data, createSettings);
-  
-  % if there is R-package for computation of p-values
-  countPVal = exist('multComp', 'file');
-  pValData = [];
-  
+
   nDim = length(dims);
+  nEvals = length(evaluations);
+
+  % if there is R-package for computation of p-values
+  countPVal = exist('postHocTest', 'file');
+  pValData = cell(nDim, nEvals);
+  meanRanksData = cell(nDim, nEvals);
+  dTable = cell(nDim, nEvals);
+
   for d = 1:nDim
-    for e = 1:length(evaluations)
+    for e = 1:nEvals
       if countPVal
         fValData = cell2mat(arrayfun(@(x) values{x, d}(e, :), BBfunc, 'UniformOutput', false)');
-        pValData{d, e} = multComp(fValData);
+        [pv, meanRanks] = postHocTest(fValData, 'friedman', sprintf('/tmp/friedman_%d_%d.out.csv', d, e));
+        pValData{d, e} = pv;
+        meanRanksData{d, e} = meanRanks;
       end
       rankData = cell2mat(arrayfun(@(x) ranks{x, d}(e, :), BBfunc, 'UniformOutput', false)');
       dTable{d, e} = createDuelTable(rankData);
@@ -77,27 +86,28 @@ function [dTable, ranks] = duelTable(data, varargin)
   
   % print table
   switch tableFormat
-      
     % prints table to latex file
     case {'tex', 'latex'}
       if ~exist(resultFolder, 'dir')
         mkdir(resultFolder)
       end
-      
+
       if nDim > 1
         resultFile = arrayfun(@(x) [resultFile(1:end-4), '_', num2str(x), ...
           'D', resultFile(end-3:end)], dims, 'UniformOutput', false);
       else
         resultFile{1} = resultFile;
       end
+
       for d = 1:nDim
         FID = fopen(resultFile{d}, 'w');
-        printTableTex(FID, dTable(d, :), dims(d), evaluations, datanames, pValData)
+        printTableTex(FID, dTable(d, :), dims(d), evaluations, datanames, pValData(d, :), ...
+          meanRanksData(d, :), alpha, ftarget);
         fclose(FID);
         
         fprintf('Table written to %s\n', resultFile{d});
       end
-      
+
     otherwise
       error('Format ''%s'' is not supported.', tableFormat)
   end
@@ -108,7 +118,7 @@ function dt = createDuelTable(ranks)
 % create duel table
 % rank of data in row is lower than rank of data in column
   [nFun, nData] = size(ranks);
-  
+
   dt = zeros(nData);
   for f = 1:nFun
     for dat = 1:nData
@@ -118,81 +128,104 @@ function dt = createDuelTable(ranks)
   end
 end
 
-function printTableTex(FID, table, dims, evaluations, datanames, pVal)
+function printTableTex(FID, table, dim, evaluations, datanames, pVals, meanRanks, alpha, ftarget)
 % Prints table to file FID
+  FID =1;
 
-  [numOfData, nColumns] = size(table);
-  nDims = length(dims);
+  numOfData = length(datanames);
+
   nEvals = length(evaluations);
   
   % symbol for number of evaluations reaching the best target
-  bestSymbol = '\bestFED';
-  
+  bestSymbol = '\\bestFED';
+  maxFunEvalsString = '\\maxfunevals';
+
   fprintf(FID, '\\begin{table}\n');
   fprintf(FID, '\\centering\n');
-  fprintf(FID, '\\begin{tabular}[pos]{ l %s }\n', repmat([' |', repmat(' c', 1, nEvals)], 1, numOfData+1));
-  fprintf(FID, '\\hline\n');
-  fprintf(FID, ' %dD ', dims);
-  for dat = 1:numOfData
-    fprintf(FID, '& \\multicolumn{%d}{c|}{%dD} ', nEvals, datanames{dat});
-  end
-%   fprintf(FID, '& \\multicolumn{%d}{c}{$\\sum$} \\\\\n', nEvals);
-  printString = '';
-  for dat = 1:nDims + 1
-    for e = 1:nEvals
-      printString = [printString, ' & ', num2str(evaluations(e)), bestSymbol];
-    end
-  end
-  fprintf(FID, 'FE/D %s \\\\\n', printString);
-  fprintf(FID, '\\hline\n');
+  fprintf(FID, '\\begin{tabular}{ l%s }\n', [repmat('c', 1, 2*numOfData), 'rr']);
+  fprintf(FID, '\\toprule');
+  fprintf(FID, '\\textbf{%dD} &', dim);
+  %fprintf(FID, '\\multicolumn{%d}{c}{Score} & Mean ranks\\\n', numOfData);
+  %fprintf(FID, '\\midrule\n');
+
   % make datanames equally long
   datanames = sameLength(datanames);
-  % find max sums of ranks
-  maxTableRanks = max(table);
-  % data rows
-  for dat = 1:numOfData
-    printString = '';
-    % columns
-    for col = 1:nColumns
-      sumRank = table(dat, col);
-      if sumRank == maxTableRanks(col)
-        % print best data in bold
-        printString = [printString, ' & ', '\textbf{', num2str(sumRank), '}'];
-      else
-        printString = [printString, ' & ', num2str(sumRank)];
+
+  % header with algorithm names
+  fprintf(FID, strjoin(formatCell('\\\\multicolumn{2}{c}{%s}', datanames), ' & '));
+  fprintf(FID, ' Mean Rank &\\\\\n');
+  fprintf(FID, '\\midrule\n');
+
+  % header with evaluation numbers
+  fprintf(FID, '# FE');
+  fprintf(FID, ' & %d', evaluations);
+  fprintf(FID, '\\\\\n');
+  fprintf(FID, '\\midrule\n');
+
+  for i = 1:numOfData
+    % column with algorithm's name
+    fprintf(FID, '\\multirow{2}{*}{%s}', datanames{i});
+    
+    % a row with mutual score
+    for j = 1:numOfData
+      for k = 1:nEvals
+        dt = table{k};
+        fprintf(FID, ' & %d', dt(i, j));
       end
     end
-    fprintf(FID, '%s%s \\\\\n', datanames{dat}, printString);
+    fprintf(FID, '\\\\\n');
+
+    
+    % mean rank column
+    for k = 1:nEvals
+      mr = meanRanks{k};
+      fprintf(FID, '& \\multirow{2}{*}{%.2f}', mr(i));
+    end
+    fprintf(FID, '\\\\\n');
+
+    % a subrow with pvalues
+    fprintf(FID, ' ');
+    for j = 1:numOfData
+      for k = 1:nEvals
+        dt = table{k};
+        pv = pVals{k};
+        if dt(i, j) > dt(j, i) && pv(i, j) < alpha
+          fprintf(FID, ' & {\\footnotesize %.2e}', pv(i, j));
+        else
+          fprintf(FID, ' & {}');
+        end
+      end
+    end
   end
-  fprintf(FID, '\\hline\n');
+  fprintf(FID, '\\bottomrule\n');
   fprintf(FID, '\\end{tabular}\n');
-  % evaluation numbers
-  evalString = arrayString(evaluations, ',');
-  % dimension numbers 
-  dimString = arrayString(dims, ',');
+
   % caption printing
-  fprintf(FID, '\\vspace{1mm}\n');
-  fprintf(FID, ['\\caption{Counts of the 1st ranks from %d benchmark functions according to the lowest achieved ', ...
-                '$\\Delta_f^\\text{med}$ for different FE/D = \\{%s\\} and dimensions D = \\{%s\\}. ', ...
-                'Ties of the 1st ranks are counted for all respective algorithms. ', ...
-                'The ties often occure when $\\Delta f_T = 10^{-8}$ is reached (mostly on f1 and f5).}\n'], ...
-                pVal, evalString, dimString);
-               
-  fprintf(FID, '\\label{tab:fed}\n');
+  % fprintf(FID, '\\vspace{1mm}\n');
+  fprintf(FID, ['\\caption{Multi-comparison of algorithms in %dD. \n', ...
+                '%s denotes the smallest FE/D at which any ', ...
+                'of the tested algorithms reached the target \\Delta_f^\\text{med} = %.0e ', ...
+                'or %s if the target ', ...
+                'was not reached by any algorithms. \n', ...
+                'The number of wins of ith algorithm over jth algorithm ', ...
+                'for different FE/D ', ...
+                'over all benchmark functions are given in ith row and jth column. \n', ...
+                'P-value of Friedman post-hoc test with significance level \\alpha=%.2f ', ...
+                'is given for the winning algorithm in each significantly different pair.\n'], ...
+                dim, bestSymbol, ftarget, maxFunEvalsString, alpha);
+
+  fprintf(FID, '\\label{tab:duel%d}\n', dim);
   fprintf(FID, '\\end{table}\n');
   
-end
-
-function str = arrayString(vector, delimiter)
-% returns string containing 'vector' elements separated by 'delimiter'
-  str = num2str(vector(1));
-  for e = 2:length(vector);
-    str = [str, delimiter, ' ', num2str(vector(e))];
-  end
 end
 
 function cellOfStr = sameLength(cellOfStr)
 % returns cell array of strings with added empty space to the same length
   maxLength = max(cellfun(@length, cellOfStr));
   cellOfStr = cellfun(@(x) [x, repmat(' ', 1, maxLength - length(x))], cellOfStr, 'UniformOutput', false);
+end
+
+function cellOfStr = formatCell(fmt, cellOfStr)
+% map sprintf to each string in a cell array
+  cellOfStr = cellfun(@(x) sprintf(fmt, x), cellOfStr, 'UniformOutput', false);
 end
