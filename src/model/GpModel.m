@@ -96,6 +96,11 @@ classdef GpModel < Model
       % GP hyperparameter bounds
       obj.covBounds = defopts(obj.options, 'covBounds', ...
           [-2*ones(size(obj.hyp.cov)), 25*ones(size(obj.hyp.cov))]);
+      % expand also covariance Bounds if they do not respect ARD covariance
+      if ((size(obj.covBounds,1) == 2) && (isequal(covfcn, @covSEard) ...
+          || isequal(covfcn, @covMaternard)))
+        obj.covBounds = [repmat(obj.covBounds(1,:), obj.dim, 1); obj.covBounds(2:end,:)];
+      end
       obj.likBounds = defopts(obj.options, 'likBounds', log([1e-6, 10]));
 
       % general model prediction options
@@ -167,7 +172,7 @@ classdef GpModel < Model
         l_cov = length(obj.hyp.cov);
 
         % lower and upper bounds
-        [lb_hyp, ub_hyp] = obj.getLUBounds(yTrain);
+        [lb_hyp, ub_hyp] = obj.getLUBounds(yTrain, obj.hyp);
         lb = unwrap(lb_hyp)';
         ub = unwrap(ub_hyp)';
         opt = [];
@@ -383,7 +388,7 @@ classdef GpModel < Model
       end
     end
 
-    function [lb_hyp, ub_hyp] = getLUBounds(obj, yTrain)
+    function [lb_hyp, ub_hyp] = getLUBounds(obj, yTrain, startHyp)
       % return lower/upper bounds for GP model hyperparameter training
       %
       lb_hyp.cov = obj.covBounds(:,1);
@@ -399,6 +404,8 @@ classdef GpModel < Model
       elseif (isequal(obj.meanFcn, @meanLinear))
         min_y = min(yTrain);
         max_y = max(yTrain);
+        lb_hyp.mean = zeros(size(startHyp.mean));
+        ub_hyp.mean = zeros(size(startHyp.mean));
         for i=1:obj.dim
           % max_x -- max of each dimension from dataset_X
           dataset_X = obj.getDataset_X();
@@ -408,6 +415,8 @@ classdef GpModel < Model
           lb_hyp.mean(i) = -5 * max_tg;
           ub_hyp.mean(i) = 5 * max_tg;
         end
+        lb_hyp.mean = min(lb_hyp.mean, startHyp.mean);
+        ub_hyp.mean = max(ub_hyp.mean, startHyp.mean);
       end
     end
   end
