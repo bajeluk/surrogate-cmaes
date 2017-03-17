@@ -62,7 +62,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
     assert(iscell(opts.dataset), 'Dataset has to be string or cell')
     loadData = struct();
   end
-  data          = defopts(loadData, 'ds', dataset);
+  data          = defopts(loadData, 'ds', opts.dataset);
   dataFunc      = defopts(loadData, 'fun', funcToTest);
   dataDims      = defopts(loadData, 'dim', dimsToTest);
   dataInst      = defopts(loadData, 'inst', instToTest);

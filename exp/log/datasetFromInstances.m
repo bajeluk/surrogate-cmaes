@@ -65,6 +65,8 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
     fgeneric('initialize', exp_settings.bbob_function, instanceNo, '/tmp/bbob_output/');
 
     % identify snapshot generations
+    % TODO: make exponential gaps between snapshot generations
+    %       to have higher density at start of optim. run
     %
     cmo = cmaes_out{expInstanceId}{1};
     % first, identify the first maxEval*dim orig-evaluated points
@@ -73,7 +75,7 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
     % second, identify its generation
     lastGeneration = cmo.generations(lastOrigEvaledId);
     % third place the snapshot generations equdistant in generations...
-    gens = floor(linspace(1, lastGeneration, nSnapshots+1));
+    gens = floor(linspace(2, lastGeneration, nSnapshots+1));
     % ...but do not start at the beginning
     gens(1) = [];
 
