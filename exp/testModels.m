@@ -107,6 +107,8 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 
         % do not rewrite existing files unless wanted
         if (exist(modelFile, 'file') && ~opts.rewrite_results)
+          % TODO: check all instances before skipping, not only
+          %       presence of the file
           fprintf('File %s already exist. Skipping model testing.\n', modelFile)
         else
           % warn user if the results file will replaced by the new one
@@ -123,24 +125,26 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
           y_models = cell(length(instToTest), dataNSnapshots);
 
           % instances loop
-          for inst = instToTest
+          for ii = 1:length(instToTest)
+            inst = instToTest(ii);
             i_data = find(inst == dataInst, 1);
             fprintf('-- instance %2d --\n', inst);
 
             % train & test the model on the 'dataNSnapshots' datasets
             % from the current instance
-            [new_stats, models(i_data, :), y_models(i_data, :)] = ...
+            [new_stats, models(ii, :), y_models(ii, :)] = ...
                 testOneModel(modelType{m}, modelOptions{m}, ...
                 data{f_data, d_data, i_data}, dataNSnapshots, opts);
 
             % save results into output variables
             for st = 1:length(opts.statistics)
               fname = opts.statistics{st};
-              stats.(fname)(i_data, :) = new_stats.(fname);
+              stats.(fname)(ii, :) = new_stats.(fname);
             end
 
             % save results of the so-far calculated instances
-            save(modelFile, 'stats', 'models', 'y_models')
+            instances = instToTest(1:ii);
+            save(modelFile, 'stats', 'models', 'y_models', 'instances', 'modelOptions', 'fun', 'dim')
           end  % instance loop
         end
       end  % model loop

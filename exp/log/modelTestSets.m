@@ -43,6 +43,7 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
   outputDir = fullfile('exp', 'experiments', opts.outputDirname);
   [~, ~] = mkdir(outputDir);
   outputDir = fullfile(outputDir, 'dataset');
+  [~, ~] = mkdir(outputDir);
   opts.datasetFile = fullfile(outputDir, [opts.datasetName '.mat']);
 
   % check experiment parameters

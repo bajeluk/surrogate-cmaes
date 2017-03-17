@@ -47,10 +47,10 @@ echo "====================="
 ######### CALL #########
 #
 echo '##############'
-echo Will be called: $MATLAB -nodisplay -singleCompThread -r "func=[$FUNC]; dims=[$DIM]; inst=[$INST]; ${MATLAB_FCN}";
+echo Will be called: $MATLAB -nodisplay -singleCompThread -r "func=[$FUNC]; dims=[$DIM]; instances=[$INST]; ${MATLAB_FCN}; exit(0);";
 echo '##############'
 
-$MATLAB -nodisplay -singleCompThread -r "func=[$FUNC]; dims=[$DIM]; inst=[$INST]; ${MATLAB_FCN}";
+$MATLAB -nodisplay -singleCompThread -r "func=[$FUNC]; dims=[$DIM]; instances=[$INST]; ${MATLAB_FCN}; exit(0);";
 #
 ########################
 
