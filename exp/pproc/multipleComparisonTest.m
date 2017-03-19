@@ -23,7 +23,7 @@ function [pv, stat] = multipleComparisonTest(data, varargin)
   % write the input file with floats in scientific notation
   dlmwrite(fin, data, 'precision', '%e', 'delimiter', ',');
 
-  args = sprintf(' -i %s -p %s -s %s --test %s', ...
+  args = sprintf(' -i "%s" -p "%s" -s "%s" --test "%s"', ...
     fin, fout_pv, fout_stat, test);
   cmd = [fullfile(Rpath, Rscript), args];
 
