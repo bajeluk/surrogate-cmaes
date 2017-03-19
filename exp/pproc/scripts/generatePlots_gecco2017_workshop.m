@@ -20,6 +20,7 @@ maxEvals = 250;
 % folder for results
 actualFolder = pwd;
 articleFolder = fullfile(actualFolder(1:end - 1 - length('surrogate-cmaes')), 'latex_scmaes', 'gecco2017workshop');
+articleFolder = '/home/jakub/Documents/latex_scmaes/gecco2017workshop';
 plotResultsFolder = fullfile(articleFolder, 'images');
 tableFolder = fullfile(articleFolder, 'tex');
 if ~isdir(plotResultsFolder)
@@ -198,6 +199,30 @@ han = relativeFValuesPlot(data, ...
                               
                             
 print2pdf(han, pdfNames, 1)
-                         
+
+%% Multiple comparison of algorithms with a statistical posthoc test.
+
+close all
+
+tableFunc = funcSet.BBfunc;
+tableDims = [5, 20];
+
+resultDuelTable = fullfile(tableFolder, 'duelTable.tex');
+resultStatsTable = fullfile(tableFolder, 'statsTable.tex');
+
+datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', 'BIPOP-\\saACMES-k', 'S-CMA-ES GP', 'S-CMA-ES RF', 'DTS-CMA-ES'};
+
+[table, ranks] = duelTable(data, 'DataNames', datanames, ...
+                            'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
+                            'TableFuns', tableFunc, 'TableDims', tableDims, ...
+                            'Evaluations', [1/3 1], ...
+                            'ResultFile', resultDuelTable);
+
+[stats, meanRanks] = multCompStatsTable(data, 'DataNames', datanames, ...
+                       'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
+                       'TableFuns', tableFunc, 'TableDims', tableDims, ...
+                       'Evaluations', [1/3 1], ...
+                       'ResultFile', resultStatsTable);
+
 %% final clearing
 close all
