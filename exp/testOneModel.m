@@ -80,11 +80,12 @@ function [stats, models, y_models] = testOneModel(modelType, modelOpts, ds, nSna
         fname = opts.statistics{st};
         stats.(fname)(i) = predictionStats(y, y_models{i}, opts.statistics{st});
       end
+      fprintf('Model (gen. # %3d, %3d pts) MSE = %e, Kendall = %.2f, rankDiffErr = %.2f\n', ...
+        ds.generations(i), size(m.getDataset_y(), 1), stats.mse(i), stats.kendall(i), stats.rde(i));
+    else
+      fprintf('Model (gen. # %3d) is not trained\n', ds.generations(i));
     end
 
     models{i} = m;
-
-    fprintf('Model (gen. # %3d, %3d pts) MSE = %e, Kendall = %.2f, rankDiffErr = %.2f\n', ...
-      ds.generations(i), size(m.dataset.y, 1), stats.mse(i), stats.kendall(i), stats.rde(i));
   end
 end

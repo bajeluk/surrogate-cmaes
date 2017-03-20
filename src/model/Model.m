@@ -266,44 +266,49 @@ classdef (Abstract) Model
         [X, y] = obj.generateDataset(archive, population);
       end
 
-      % minimal difference between minimal and maximal returned
-      % value to regard the model as trained; otherwise, the
-      % constant response is mark of a badly trained model
-      % and therefor it is marked as untrained
-      MIN_RESPONSE_DIFFERENCE = min(1e-8, 0.05 * (max(y) - min(y)));
-
-      % transform input variables using Mahalanobis distance
-      if obj.transformCoordinates
-        % compute coordinates in the (sigma*BD)-basis
-        obj.trainSigma = sigma;
-        obj.trainBD = BD;
-        XTransf = ( (sigma * BD) \ X')';
+      if (isempty(X))
+        obj.trainGeneration= - 1;
+        warning('Model.train() - empty trainset. Considering the model as untrained.');
       else
-        XTransf = X;
-      end
+        % minimal difference between minimal and maximal returned
+        % value to regard the model as trained; otherwise, the
+        % constant response is mark of a badly trained model
+        % and therefor it is marked as untrained
+        MIN_RESPONSE_DIFFERENCE = min(1e-8, 0.05 * (max(y) - min(y)));
 
-      % dimensionality reduction
-      if (isprop(obj, 'dimReduction') && (obj.dimReduction ~= 1))
-        cntDimension = ceil(obj.dim * obj.dimReduction);
-        obj.shiftMean = obj.shiftMean(1:cntDimension);
-        changeMatrix = (eye(obj.dim) / BD);
-        changeMatrix = changeMatrix(1:cntDimension,:);
-        obj.reductionMatrix = changeMatrix;
-        XtransfReduce = changeMatrix * XTransf';
-        XtransfReduce = XtransfReduce';
-      else
-        XtransfReduce=XTransf;
-      end
+        % transform input variables using Mahalanobis distance
+        if obj.transformCoordinates
+          % compute coordinates in the (sigma*BD)-basis
+          obj.trainSigma = sigma;
+          obj.trainBD = BD;
+          XTransf = ( (sigma * BD) \ X')';
+        else
+          XTransf = X;
+        end
 
-      obj = trainModel(obj, XtransfReduce, y, xMean, generation);
+        % dimensionality reduction
+        if (isprop(obj, 'dimReduction') && (obj.dimReduction ~= 1))
+          cntDimension = ceil(obj.dim * obj.dimReduction);
+          obj.shiftMean = obj.shiftMean(1:cntDimension);
+          changeMatrix = (eye(obj.dim) / BD);
+          changeMatrix = changeMatrix(1:cntDimension,:);
+          obj.reductionMatrix = changeMatrix;
+          XtransfReduce = changeMatrix * XTransf';
+          XtransfReduce = XtransfReduce';
+        else
+          XtransfReduce=XTransf;
+        end
 
-      if (obj.isTrained())
-        % Test that we don't have a constant model
-        [~, xTestValid] = sampleCmaesNoFitness(sigma, lambda, stateVariables, sampleOpts);
-        yPredict = obj.predict(xTestValid');
-        if (max(yPredict) - min(yPredict) < MIN_RESPONSE_DIFFERENCE)
-          fprintf('Model.train(): model output is constant (diff=%e), considering the model as un-trained.\n', max(yPredict) - min(yPredict));
-          obj.trainGeneration = -1;
+        obj = trainModel(obj, XtransfReduce, y, xMean, generation);
+
+        if (obj.isTrained())
+          % Test that we don't have a constant model
+          [~, xTestValid] = sampleCmaesNoFitness(sigma, lambda, stateVariables, sampleOpts);
+          yPredict = obj.predict(xTestValid');
+          if (max(yPredict) - min(yPredict) < MIN_RESPONSE_DIFFERENCE)
+            fprintf('Model.train(): model output is constant (diff=%e), considering the model as un-trained.\n', max(yPredict) - min(yPredict));
+            obj.trainGeneration = -1;
+          end
         end
       end
     end

@@ -63,11 +63,11 @@ defModel_options = combineFieldValues(defModelOptions);
 models1_options  = combineFieldValues(models1);
 
 % Combine default options and full factorial design
-modelOptions     = [defModel_options; models1_options];
+%modelOptions     = [defModel_options; models1_options];
+modelOptions = models1_options;
 
 %% create testing dataset
-% ds = modelTestSets('exp_doubleEC_21_log15', func, dims, instances, opts);
-% opts.dataset = ds;
+%ds = modelTestSets('exp_doubleEC_21_log15', func, dims, instances, opts);
 
 fprintf('== Summary of the testing assignment ==\n');
 fprintf('   # of models:  %d\n', length(modelOptions));
@@ -79,5 +79,5 @@ fprintf('=======================================\n');
 %% test chosen models
 modelFolders = testModels(modelOptions, opts, func, dims, instances);
 
-%% compare results
-% modelStatistics(modelFolders, func, dims)
+%% load and calculate results
+[rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, func, dims, instances);
