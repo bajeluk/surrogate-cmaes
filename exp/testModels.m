@@ -156,6 +156,10 @@ end
 function hash = modelHash(modelOptions)
 %TODO: proper model hash
 % function creating hash for model identification using modelOptions
+    if (isempty(modelOptions) || ~isstruct(modelOptions))
+      hash = '0';
+      return;
+    end
 
     % gain fields and values of modelOptions
     [modelField, modelValues] = getFieldsVals(modelOptions);

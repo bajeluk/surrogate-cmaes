@@ -7,6 +7,7 @@
 # Final binary file $(FNAME) is copied into $(DESTDIR) directory
 
 FNAME = metacentrum_task_matlab
+MODEL = metacentrum_testmodels
 DESTDIR = exp
 
 MATLAB_COMPILER = mcc
@@ -16,9 +17,18 @@ SRC = exp/$(FNAME).m
 OTHERS = exp/*.m exp/pproc/*.m exp/log/*.m src/ src/cmaes/* src/data/* src/model/* src/sample/* src/surrogate/* src/util/* src/surrogateManager.m
 OUT = $(DESTDIR)/$(FNAME)
 
+SRC_MODEL = exp/$(MODEL).m
+OUT_MODEL = $(DESTDIR)/$(MODEL)
+
 $(OUT):	$(SRC) $(OTHERS)
 	$(MATLAB_COMPILER) -m $(MC_FLAGS) $(MC_INCLUDE) -o $(FNAME) $<
 	mv $(FNAME) $(DESTDIR)
+
+$(OUT_MODEL): 	$(SRC_MODEL) $(OTHERS)
+	$(MATLAB_COMPILER) -m $(MC_FLAGS) $(MC_INCLUDE) -o $(MODEL) $<
+	mv $(MODEL) $(DESTDIR)
+
+model:	$(OUT_MODEL)
 
 all:	$(OUT)
 

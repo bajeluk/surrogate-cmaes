@@ -261,7 +261,9 @@ classdef (Abstract) Model
       obj.trainMean = xMean;
       obj.stateVariables = stateVariables;
 
-      trainsetType = defopts(obj.options,'trainsetType','parameters');
+      trainsetType = defopts(obj.options, 'trainsetType', 'parameters');
+      obj.options.trainsetSizeMax = defopts(obj.options, 'trainsetSizeMax', 15*obj.dim);
+      obj.options.trainRange = defopts(obj.options, 'trainRange', 1);
       if (~strcmpi(trainsetType, 'parameters') && exist('archive','var'))
         [X, y] = obj.generateDataset(archive, population);
       end
