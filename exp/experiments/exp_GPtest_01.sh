@@ -22,6 +22,7 @@ export MATLAB_FCN
 
 subtask() {
   # make sure that these variables will be exported
+  export EXPID
   export EXPPATH_SHORT
   export ID
   export DIM
@@ -30,19 +31,19 @@ subtask() {
   export FUNC=`echo $FUNC | tr '\n' ' '`
   if [ "$useMCR" == 1 ]; then
     echo "MCR binary submit: ID=$ID : DIM=$DIM : FUNC=$FUNC : INST=$INST"
-    qsub -N "${EXPID}__${ID}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,OPTS,EXPPATH_SHORT $EXPPATH_SHORT/../modelTesting_binary_metajob.sh
+    qsub -N "${EXPID}__${ID}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,OPTS,EXPID,EXPPATH_SHORT $EXPPATH_SHORT/../modelTesting_binary_metajob.sh
   else
     echo ID=$ID : DIM=$DIM : FUNC=$FUNC : INST=$INST : MATLAB_FCN=$MATLAB_FCN
     # submission on Metacentrum
     # TODO: convert into the new PBS-Pro task scheduler
-    qsub -N "${EXPID}__$1" -l "walltime=$QUEUE" -v FUNC,DIM,INST,MATLAB_FCN,EXPPATH_SHORT $EXPPATH_SHORT/../modelTesting_metajob.sh && echo "submitted ok."
+    qsub -N "${EXPID}__$1" -l "walltime=$QUEUE" -v FUNC,DIM,INST,MATLAB_FCN,EXPID,EXPPATH_SHORT $EXPPATH_SHORT/../modelTesting_metajob.sh && echo "submitted ok."
   fi
   ID=$((ID+1))
 }
 
 OPTS=""
 
-QUEUE=4h
+QUEUE="48:00:00"
 ID=1;
 
 MATLAB_FCN="exp_GPtest_01"
