@@ -17,6 +17,7 @@ export LD_LIBRARY_PATH=/storage/plzen1/home/bajeluk/bin/mcr_2016b/v91/runtime/gl
 . $EXPPATH_SHORT/../bash_settings.sh
 
 MATLAB_BINARY_CALL="exp/metacentrum_testmodels"
+DATASET="$EXPPATH_SHORT/$EXPID/dataset/DTS_005.mat"
 
 export SCRATCHDIR
 export LOGNAME
@@ -35,22 +36,24 @@ if [ -z "$EXPPATH_SHORT" ] ; then
 fi
 
 cd "$EXPPATH_SHORT/../.."
+cp "$DATASET" "$SCRATCHDIR"
+DATASET=$SCRATCHDIR/`basename "$DATASET"`
 
 echo "====================="
 echo -n "Current dir:    "; pwd
 echo -n "Current node:   "; cat "$PBS_NODEFILE"
-echo    '$HOME =        ' $HOME
+echo    '$HOME =         ' $HOME
 echo    '$MCR_CACHE_ROOT = ' $MCR_CACHE_ROOT
-echo    "Will be called:" $MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" $ID
+echo    '$DATASET =      ' $DATASET
 echo "====================="
 
 ######### CALL #########
 #
 echo '##############'
-echo Will be called: $MATLAB_BINARY_CALL \"$EXPID\" \"$EXPPATH_SHORT\" \"$FUNC\" \"$DIM\" \"$INST\" \"$OPTS\"
+echo Will be called: $MATLAB_BINARY_CALL \"$EXPID\" \"$EXPPATH_SHORT\" \"$FUNC\" \"$DIM\" \"$INST\" \"$OPTS\" \"$DATASET\"
 echo '##############'
 
-$MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" "$FUNC" "$DIM" "$INST" "$OPTS"
+$MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" "$FUNC" "$DIM" "$INST" "$OPTS" "$DATASET"
 #
 ########################
 

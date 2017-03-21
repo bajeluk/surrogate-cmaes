@@ -1,4 +1,4 @@
-function metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_str, opts_str)
+function metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_str, opts_str, dataset)
 % exp_GPtest_01 model testing experiment -- Matlab part
 
   % Input parameter settings
@@ -25,7 +25,11 @@ function metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_s
 
   % dataset name (filename w/o extension of the dataset) | string
   % or struct with the field '.ds' with 3D cell array with the data for {d, f, i}'s
-  opts.dataset  = defopts(opts, 'dataset',  'DTS_005');
+  if (~exist('dataset', 'var'))
+    opts.dataset  = defopts(opts, 'dataset',  'DTS_005');
+  else
+    opts.dataset = dataset;
+  end
 
   % type of model to test according to the ModelFactory | string
   opts.modelType = defopts(opts, 'modelType', 'gp');
@@ -45,8 +49,8 @@ function metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_s
 
   % directory with the dataset and results
   opts.exppath = fullfile(opts.exppath_short, opts.exp_id);
-  % specifying the dataset -- expand the filename if dataset is string
-  if (ischar(opts.dataset))
+  % specifying the dataset -- expand the filename if dataset is string and not file
+  if (ischar(opts.dataset) && ~exist(opts.dataset, 'file'))
     opts.dataset = fullfile(opts.exppath, 'dataset', [opts.dataset, '.mat']);
   end
   % defSetFile = fullfile(scratch, 'model', 'defData', ['defSet_', num2str(maxEvals), 'FE.mat']);
