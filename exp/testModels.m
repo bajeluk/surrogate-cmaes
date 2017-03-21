@@ -107,11 +107,23 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 
         % do not rewrite existing files unless wanted
         if (exist(modelFile, 'file') && ~opts.rewrite_results)
-          % TODO: check all instances before skipping, not only
-          %       presence of the file
-          fprintf('File %s already exist. Skipping model testing.\n', modelFile)
+          % there are some already calculated results, try to load them and continue
+          oldResults = load(modelFile, 'stats', 'models', 'y_models', 'instances', 'modelOptions', 'fun', 'dim');
+          finishedInstances = ismember(instToTest, oldResults.instances);
+          if (all(finishedInstances))
+            fprintf('All instances in %s already calculated. Skipping model testing.\n', modelFile);
+            continue;
+          else
+            startInstanceIdx = find(~finishedInstances, 1);
+            fprintf('Some instances already calculated in %s.\n', modelFile);
+            fprintf('Starting from inst. # %d.\n', instToTest(startInstanceIdx));
+            stats = oldResults.stats;
+            models = oldResults.models;
+            y_models = oldResults.y_models;
+          end
         else
-          % warn user if the results file will replaced by the new one
+          % (re-)calculate the results
+          startInstanceIdx = 1;
           if (exist(modelFile, 'file'))
             warning('Stop testing if you do not want to rewrite file %s', modelFile)
           end
@@ -123,30 +135,30 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
           end
           models   = cell(length(instToTest), dataNSnapshots);
           y_models = cell(length(instToTest), dataNSnapshots);
-
-          % instances loop
-          for ii = 1:length(instToTest)
-            inst = instToTest(ii);
-            i_data = find(inst == dataInst, 1);
-            fprintf('-- instance %2d --\n', inst);
-
-            % train & test the model on the 'dataNSnapshots' datasets
-            % from the current instance
-            [new_stats, models(ii, :), y_models(ii, :)] = ...
-                testOneModel(modelType{m}, modelOptions{m}, ...
-                data{f_data, d_data, i_data}, dataNSnapshots, opts);
-
-            % save results into output variables
-            for st = 1:length(opts.statistics)
-              fname = opts.statistics{st};
-              stats.(fname)(ii, :) = new_stats.(fname);
-            end
-
-            % save results of the so-far calculated instances
-            instances = instToTest(1:ii);
-            save(modelFile, 'stats', 'models', 'y_models', 'instances', 'modelOptions', 'fun', 'dim')
-          end  % instance loop
         end
+
+        % instances loop
+        for ii = startInstanceIdx:length(instToTest)
+          inst = instToTest(ii);
+          i_data = find(inst == dataInst, 1);
+          fprintf('-- instance %2d --\n', inst);
+
+          % train & test the model on the 'dataNSnapshots' datasets
+          % from the current instance
+          [new_stats, models(ii, :), y_models(ii, :)] = ...
+              testOneModel(modelType{m}, modelOptions{m}, ...
+              data{f_data, d_data, i_data}, dataNSnapshots, opts);
+
+          % save results into output variables
+          for st = 1:length(opts.statistics)
+            fname = opts.statistics{st};
+            stats.(fname)(ii, :) = new_stats.(fname);
+          end
+
+          % save results of the so-far calculated instances
+          instances = instToTest(1:ii);
+          save(modelFile, 'stats', 'models', 'y_models', 'instances', 'modelOptions', 'fun', 'dim')
+        end  % instance loop
       end  % model loop
     end  % function loop
   end  % dimension loop
