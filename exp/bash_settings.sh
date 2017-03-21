@@ -1,5 +1,8 @@
 # Global settings and variables for surrogate-cmaes project
 
+# MATLAB Runtime environment
+export LD_LIBRARY_PATH=/software/matlab-9.1/runtime/glnxa64:/software/matlab-9.1/bin/glnxa64:/software/matlab-9.1/sys/os/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr_2016a/v901/runtime/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr_2016a/v901/bin/glnxa64:/storage/plzen1/home/bajeluk/bin/mcr_2016a/v901/sys/os/glnxa64:$LD_LIBRARY_PATH
+
 # set SCRACHDIR if it is not set (outside Metacentrum)
 if [ "${SCRATCHDIR}XX" = "XX" ]; then
   SCRATCHDIR=/tmp/surrogate-cmaes_$$

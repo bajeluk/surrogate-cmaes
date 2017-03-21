@@ -106,21 +106,27 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
         modelFile = fullfile(modelFolder{m}, sprintf('%s_f%d_%dD.mat', modelHashName{m}, fun, dim));
 
         % do not rewrite existing files unless wanted
+        finishedInstances = false(size(instToTest));
         if (exist(modelFile, 'file') && ~opts.rewrite_results)
           % there are some already calculated results, try to load them and continue
-          oldResults = load(modelFile, 'stats', 'models', 'y_models', 'instances', 'modelOptions', 'fun', 'dim');
-          finishedInstances = ismember(instToTest, oldResults.instances);
+          try
+            oldResults = load(modelFile, 'stats', 'models', 'y_models', 'instances', 'modelOptions', 'fun', 'dim');
+            finishedInstances = ismember(instToTest, oldResults.instances);
+          catch err
+            warning('File %s is corrupted. Will be rewritten.', modelFile);
+          end
           if (all(finishedInstances))
             fprintf('All instances in %s already calculated. Skipping model testing.\n', modelFile);
             continue;
-          else
-            startInstanceIdx = find(~finishedInstances, 1);
-            fprintf('Some instances already calculated in %s.\n', modelFile);
-            fprintf('Starting from inst. # %d.\n', instToTest(startInstanceIdx));
-            stats = oldResults.stats;
-            models = oldResults.models;
-            y_models = oldResults.y_models;
           end
+        end
+        if (any(finishedInstances))
+          startInstanceIdx = find(~finishedInstances, 1);
+          fprintf('Some instances already calculated in %s.\n', modelFile);
+          fprintf('Starting from inst. # %d.\n', instToTest(startInstanceIdx));
+          stats = oldResults.stats;
+          models = oldResults.models;
+          y_models = oldResults.y_models;
         else
           % (re-)calculate the results
           startInstanceIdx = 1;
