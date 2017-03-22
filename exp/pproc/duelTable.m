@@ -91,21 +91,12 @@ function [dTable, ranks] = duelTable(data, varargin)
         mkdir(resultFolder)
       end
 
-      if nDim > 1
-        resultFile = arrayfun(@(x) [resultFile(1:end-4), '_', num2str(x), ...
-          'D', resultFile(end-3:end)], dims, 'UniformOutput', false);
-      else
-        resultFile{1} = resultFile;
-      end
-
-      for d = 1:nDim
-        FID = fopen(resultFile{d}, 'w');
-        printTableTex(FID, dTable(d, :), dims(d), evaluations, ...
-          datanames, pValData(d, :), meanRanksData(d, :), alpha);
-        fclose(FID);
-        
-        fprintf('Table written to %s\n', resultFile{d});
-      end
+      FID = fopen(resultFile, 'w');
+      printTableTex(FID, dTable, dims, evaluations, ...
+        datanames, pValData, meanRanksData, alpha);
+      fclose(FID);
+ 
+      fprintf('Table written to %s\n', resultFile);
 
     otherwise
       error('Format ''%s'' is not supported.', tableFormat)
@@ -127,13 +118,14 @@ function dt = createDuelTable(ranks)
   end
 end
 
-function printTableTex(FID, table, dim, evaluations, datanames, pVals, ...
+function printTableTex(FID, table, dims, evaluations, datanames, pVals, ...
   meanRanks, alpha)
 % Prints table to file FID
 
   numOfData = length(datanames);
 
   nEvals = length(evaluations);
+  nDims = length(dims);
   
   % symbol for number of evaluations reaching the best target
   bestSymbol = '\bestFED';
@@ -155,88 +147,121 @@ function printTableTex(FID, table, dim, evaluations, datanames, pVals, ...
   fprintf(FID, '%%\\renewcommand{\\tabularxcolumn}[1]{m{#1}}\n');
 
   fprintf(FID, '\\begin{table*}[t]\n');
+  fprintf(FID, '\\newlength{\\dueltabcolw}\n');
+  fprintf(FID, '\\newlength{\\savetabcolsep}\n');
+  fprintf(FID, '\\newlength{\\savecmidrulekern}\n');
+  fprintf(FID, '\\setlength{\\savetabcolsep}{\\tabcolsep}\n');
+  fprintf(FID, '\\setlength{\\savecmidrulekern}{\\cmidrulekern}\n');
+  fprintf(FID, '\n');
+  fprintf(FID, '\\setlength{\\tabcolsep}{3pt}\n');
+  fprintf(FID, '\\setlength{\\cmidrulekern}{3pt}\n');
+  fprintf(FID, '\\setlength{\\dueltabcolw}{\\textwidth-1.9cm-%d\\tabcolsep}\n', 2*(2*numOfData+1));
+  fprintf(FID, '\\setlength{\\dueltabcolw}{\\dueltabcolw/%d}\n', 2*numOfData);
   fprintf(FID, '\\centering\n');
   fprintf(FID, '%%\\newcolumntype{R}{>{\\raggedleft\\arraybackslash}X}\n');
-  fprintf(FID, '\\newcolumntype{R}{>{\\raggedleft\\arraybackslash}m{\\colw}}\n');
+  fprintf(FID, '\\newcolumntype{R}{>{\\raggedleft\\arraybackslash}m{\\dueltabcolw}}\n');
   fprintf(FID, '%%\\begin{tabularx}{\\textwidth}{ m{1.9cm}%s }\n', [repmat('R', 1, 2*numOfData), '']); % 'rr'
-  fprintf(FID, '\\begin{tabular}{ m{2.6cm}%s }\n', [repmat('R', 1, 2*numOfData), '']); % 'rr'
-  fprintf(FID, '\\toprule\n');
-  fprintf(FID, '%dD &', dim);
-
-  % header with algorithm names
-  % fprintf(FID, strjoin(formatCell('\\\\multicolumn{2}{c}{%s}', datanames), ' & '));
-  fprintf(FID, strjoin(formatCell('\\\\multicolumn{2}{c}{\\\\parbox{2\\\\colw}{\\\\centering\\\\strut %s\\\\strut}}', datanames), ' & '));
-  %fprintf(FID, ' & \\multicolumn{2}{c}{Mean Rank}');
-  fprintf(FID, '\\\\\n');
+  fprintf(FID, '\\begin{tabular}{ m{1.9cm}%s }\n', [repmat('R', 1, 2*numOfData), '']); % 'rr'
   
-  fprintf(FID, '\\cmidrule(lr){1-1}\n');
-  for i = 1:numOfData
-    fprintf(FID, '\\cmidrule(lr){%d-%d}\n', 2*i, 2*i+1);
-  end
-
-  % header with evaluation numbers
-  fprintf(FID, '{\\LARGE\\sfrac{\\nbFEs}{%s}} & ', bestSymbol);
-  fprintf(FID, strjoin(repmat(evaluationsString, 1, numOfData), ' & ')); % numOfData + 1
-  fprintf(FID, '\\\\\n');
-  fprintf(FID, '\\midrule\n');
-
-  for i = 1:numOfData
-    % column with algorithm's name
-    fprintf(FID, sprintf('%s', datanames{i}));
-    
-    for j = 1:numOfData
-      for k = 1:nEvals
-        dt = table{k};
-        pv = pVals{k};
-
-        if i ~= j
-          sigdiff = dt(j, i) > dt(i, j) && pv(j, i) < alpha;
-          fprintf(FID, ' & ');
-%           if sigdiff
-%             fprintf(FID, '\\hfil');
-%           end
-          fprintf(FID, ' %d', dt(j, i));
-
-          if sigdiff
-%             fprintf(FID, '\\newline');
-%             fprintf(FID, ' \\raisebox{2pt}{\\footnotesize\\num{%.2e}}', pv(i, j));
-            fprintf(FID, '\\makebox[0pt][l]{$^{\\ast}$}');
-          end
-        else
-          % diagonal left empty
-          fprintf(FID, ' & {}');
-        end
-      end
+  for dim = 1:nDims
+    if dim == 1
+      fprintf(FID, '\\toprule\n');
+    else
+      fprintf(FID, '\\midrule[\\heavyrulewidth]\n');
     end
 
-%     % mean rank column
-%     for k = 1:nEvals
-%       mr = meanRanks{k};
-%       fprintf(FID, '& \\multirow{2}{*}{%.2f}', mr(i));
-%     end
+    fprintf(FID, '%dD &', dims(dim));
+
+    % header with algorithm names
+    % fprintf(FID, strjoin(formatCell('\\\\multicolumn{2}{c}{%s}', datanames), ' & '));
+    fprintf(FID, strjoin(formatCell('\\\\multicolumn{2}{c}{\\\\parbox{2\\\\dueltabcolw}{\\\\centering\\\\strut %s\\\\strut}}', datanames), ' & '));
+    %fprintf(FID, ' & \\multicolumn{2}{c}{Mean Rank}');
     fprintf(FID, '\\\\\n');
 
+    fprintf(FID, '\\cmidrule(lr){1-1}\n');
+    for i = 1:numOfData
+      fprintf(FID, '\\cmidrule(lr){%d-%d}\n', 2*i, 2*i+1);
+    end
+
+    % header with evaluation numbers
+    fprintf(FID, '{\\LARGE\\sfrac{\\nbFEs}{%s}} & ', bestSymbol);
+    fprintf(FID, strjoin(repmat(evaluationsString, 1, numOfData), ' & ')); % numOfData + 1
+    fprintf(FID, '\\\\\n');
+    fprintf(FID, '\\midrule\n');
+
+    for i = 1:numOfData
+      % column with algorithm's name
+      fprintf(FID, sprintf('%s', datanames{i}));
+
+      for j = 1:numOfData
+        for k = 1:nEvals
+          dt = table{dim, k};
+          pv = pVals{dim, k};
+
+          if i ~= j
+            sigdiff = dt(i, j) > dt(j, i) && pv(i, j) < alpha;
+            fprintf(FID, ' & ');
+            %           if sigdiff
+            %             fprintf(FID, '\\hfil');
+            %           end
+            fprintf(FID, ' %d', dt(i, j));
+
+            if sigdiff
+              %             fprintf(FID, '\\newline');
+              %             fprintf(FID, ' \\raisebox{2pt}{\\footnotesize\\num{%.2e}}', pv(i, j));
+              fprintf(FID, '\\makebox[0pt][l]{$^{\\ast}$}');
+            end
+          else
+            % diagonal left empty
+            fprintf(FID, ' & {}');
+          end
+        end
+      end
+
+      %     % mean rank column
+      %     for k = 1:nEvals
+      %       mr = meanRanks{k};
+      %       fprintf(FID, '& \\multirow{2}{*}{%.2f}', mr(i));
+      %     end
+      fprintf(FID, '\\\\\n');
+
+    end
+
+    if dim == nDims
+      fprintf(FID, '\\bottomrule\n');
+    end
   end
-  fprintf(FID, '\\bottomrule\n');
   fprintf(FID, '%%\\end{tabularx}\n');
   fprintf(FID, '\\end{tabular}\n');
 
   % caption printing
-  fprintf(FID, ['\\caption{A pairwise comparison of algorithms in $%d\\dm$ ', ...
-                'for different evaluations budgets.\n', ... 
-                'The table should be read column-wise, i.e.\n', ...
-                'the count of wins of ith algorithm against jth algorithm ', ...
-                'over all benchmark functions is given in ith column and jth row.\n', ...
+  dimString = sprintf('$%d\\\\dm$', dims(1));
+  for dim = 2:nDims-1
+    dimString = strjoin({dimString, sprintf('$%d\\\\dm$', dims(dim))}, ', ');
+  end
+
+  if nDims > 1
+    dimString = strjoin({dimString, sprintf('$%d\\\\dm$', dims(nDims))}, ' and ');
+  end
+
+  fprintf(FID, ['\\caption{A pairwise comparison of the algorithms in ', dimString, ...
+                ' over the BBOB for different evaluation budgets.\n', ... 
+                'The number of wins of ith algorithm against jth algorithm ', ...
+                'over all benchmark functions is given in ith row and jth column.\n', ...
                 'The asterisk marks the better out of each significantly different pair ', ...
-                'of algorithms according to Friedman post-hoc test with Bergmann-Hommel ', ...
+                'of algorithms according to the Friedman post-hoc test with the Bergmann-Hommel ', ...
                 'correction at significance level $\\alpha=%.2f$.\n', ...
                 '%s\\ denotes the smallest \\nbFEs\\ at which any of the tested algorithms ', ...
                 'reached the target $\\ftarget = %s$, ', ...
                 'but at most %s, the overall budget for the experiments.}\n'], ...
-          dim, alpha, bestSymbol, ftargetString, maxFunEvalsString ...
+          alpha, bestSymbol, ftargetString, maxFunEvalsString ...
   );
 
-  fprintf(FID, '\\label{tab:duel%dD}\n', dim);
+  fprintf(FID, '\n');
+  fprintf(FID, '\\setlength{\\tabcolsep}{\\savetabcolsep}\n');
+  fprintf(FID, '\\setlength{\\cmidrulekern}{\\savecmidrulekern}\n');
+
+  fprintf(FID, '\\label{tab:duel}\n');
   fprintf(FID, '\\end{table*}\n');
 
   fprintf(FID, '\\renewcommand{\\tabularxcolumn}[1]{p{#1}}\n');
