@@ -20,7 +20,6 @@ maxEvals = 250;
 % folder for results
 actualFolder = pwd;
 articleFolder = fullfile(actualFolder(1:end - 1 - length('surrogate-cmaes')), 'latex_scmaes', 'gecco2017workshop');
-articleFolder = '/home/jakub/Documents/latex_scmaes/gecco2017workshop';
 plotResultsFolder = fullfile(articleFolder, 'images');
 tableFolder = fullfile(articleFolder, 'tex');
 if ~isdir(plotResultsFolder)
@@ -105,7 +104,7 @@ data = {cmaes_data, ...
         scmaes_rf_data, ...
         dtscmaes_data};
 
-datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', 'BIPOP-{}^{s*}ACMES-k', 'S-CMA-ES GP', 'S-CMA-ES RF', 'DTS-CMA-ES'};
+datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', '{}^{s*}ACMES-k', 'S-CMA-ES GP', 'S-CMA-ES RF', 'DTS-CMA-ES'};
 
 colors = [cmaesCol; maesCol; lmmCol; saacmesCol; scmaes_gpCol; scmaes_rfCol; dtsCol]/255;
 
@@ -210,7 +209,7 @@ tableDims = [5, 20];
 resultDuelTable = fullfile(tableFolder, 'duelTable.tex');
 resultStatsTable = fullfile(tableFolder, 'statsTable.tex');
 
-datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', 'BIPOP-\\saACMES-k', 'S-CMA-ES GP', 'S-CMA-ES RF', 'DTS-CMA-ES'};
+datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', '\\saACMES-k', 'S-CMA-ES GP', 'S-CMA-ES RF', 'DTS-CMA-ES'};
 
 [table, ranks] = duelTable(data, 'DataNames', datanames, ...
                             'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
