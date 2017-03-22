@@ -109,7 +109,7 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
     end
   end
 
-  fprintf(FID, '\\begin{table}[h]\n');
+  fprintf(FID, '\\begin{table}[t]\n');
   fprintf(FID, '\\centering\n');
   fprintf(FID, '\\begin{tabular}{ l%s }\n', repmat('r', 1, nDims * nEvals));
   fprintf(FID, '\\toprule\n');
