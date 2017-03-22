@@ -1,7 +1,5 @@
 #!/bin/sh
-#PBS -l nodes=1:ppn=1
-#PBS -l mem=1gb
-#PBS -l scratch=1gb
+#PBS -l select=1:ncpus=1:mem=1500mb:scratch_local=1gb
 
 # it suppose the following variables set:
 #
