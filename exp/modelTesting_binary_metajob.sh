@@ -1,5 +1,5 @@
 #!/bin/sh
-#PBS -l select=1:ncpus=1:mem=1gb:scratch_local=1gb
+#PBS -l select=1:ncpus=1:mem=1500mb:scratch_local=1gb
 
 # it suppose the following variables set:
 #
@@ -34,6 +34,9 @@ fi
 if [ -z "$EXPPATH_SHORT" ] ; then
   echo "Error: directory with the experiment is not known"; exit 1
 fi
+
+# replace critical characters in $OPTS: '|' with ',' and "%" with "'"
+OPTS=`echo $OPTS | tr '%|' "',"`
 
 cd "$EXPPATH_SHORT/../.."
 cp "$DATASET" "$SCRATCHDIR"

@@ -25,7 +25,7 @@ function metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_s
 
   % dataset name (filename w/o extension of the dataset) | string
   % or struct with the field '.ds' with 3D cell array with the data for {d, f, i}'s
-  if (~exist('dataset', 'var'))
+  if (~exist('dataset', 'var') || isempty(dataset))
     opts.dataset  = defopts(opts, 'dataset',  'DTS_005');
   else
     opts.dataset = dataset;
@@ -80,6 +80,13 @@ function metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_s
 
   % Combine options into full factorial design
   modelOptions_fullfact  = combineFieldValues(modelOptions);
+
+  % restrict the fullfactorial design only to some indices
+  % if specified in opts
+  if (isfield(opts, 'modelOptionsIndices') && ~isempty(opts.modelOptionsIndices))
+    opts.modelOptionsIndices = myeval(opts.modelOptionsIndices);
+    modelOptions_fullfact = modelOptions_fullfact(opts.modelOptionsIndices);
+  end
 
   %% create testing dataset
   %ds = modelTestSets('exp_doubleEC_21_log15', func, dims, instances, opts);
