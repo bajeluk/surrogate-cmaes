@@ -50,6 +50,7 @@ stopifnot(any(opts$test == c("friedman", "iman")))
 
 # read data
 fvalues <- read.table(opts$input, header=FALSE, sep=",")
+fvalues <- (max(fvalues)-fvalues)/(max(fvalues)-min(fvalues))
 
 # perform the posthoc test
 res <- multipleComparisonTest(data=fvalues, test=opts$test)

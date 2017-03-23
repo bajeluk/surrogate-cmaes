@@ -22,11 +22,6 @@ function [pv, summary] = postHocTest(data, varargin)
   fin = [tempname, '.in.csv'];
   fout_pv = [tempname, '.pv.out.csv'];
   fout_sum = [tempname, '.sum.out.csv'];
-  
-  % invert the data so that higher is better
-  u = max(max(data));
-  l = min(min(data));
-  data = (u - data) / (u - l);
 
   if nargin >= 2
     if ismember(varargin{1}, ...

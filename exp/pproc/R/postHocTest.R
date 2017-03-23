@@ -59,6 +59,7 @@ stopifnot(any(opts$correction == c("bergmann", "shaffer")))
 
 # read data
 fvalues <- read.table(opts$input, header=FALSE, sep=",")
+fvalues <- (max(fvalues)-fvalues)/(max(fvalues)-min(fvalues))
 
 # perform the posthoc test
 res <- postHocTest(data=fvalues, test=opts$posthoc_test,
