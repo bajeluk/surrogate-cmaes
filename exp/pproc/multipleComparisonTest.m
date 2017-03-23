@@ -10,6 +10,11 @@ function [pv, stat] = multipleComparisonTest(data, varargin)
   fout_pv = [tempname, '.pv.out.csv'];
   fout_stat = [tempname, '.stat.out.csv'];
 
+  % invert the data so that higher is better
+  u = max(max(data));
+  l = min(min(data));
+  data = (u - data) / (u - l);
+
   if nargin >= 2
     if ismember(varargin{1}, {'friedman', 'iman'})
       test = varargin{1};
