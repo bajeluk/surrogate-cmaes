@@ -129,8 +129,10 @@ function printTableTex(FID, table, dims, evaluations, datanames, pVals, ...
   
   % symbol for number of evaluations reaching the best target
   bestSymbol = '\bestFED';
+  maxFunEvalsSymbol = '\maxFED';
   maxFunEvalsString = '$250\dm$';
   ftargetString = '10^{-8}';
+  NASymbol = '$\\times$';
 
   % representation of evaluation counts as a fraction
   evaluationsString = cell(1, nEvals);
@@ -153,15 +155,15 @@ function printTableTex(FID, table, dims, evaluations, datanames, pVals, ...
   fprintf(FID, '\\setlength{\\savetabcolsep}{\\tabcolsep}\n');
   fprintf(FID, '\\setlength{\\savecmidrulekern}{\\cmidrulekern}\n');
   fprintf(FID, '\n');
-  fprintf(FID, '\\setlength{\\tabcolsep}{3pt}\n');
-  fprintf(FID, '\\setlength{\\cmidrulekern}{3pt}\n');
-  fprintf(FID, '\\setlength{\\dueltabcolw}{\\textwidth-1.9cm-%d\\tabcolsep}\n', 2*(2*numOfData+1));
+  fprintf(FID, '\\setlength{\\tabcolsep}{2pt}\n');
+  fprintf(FID, '\\setlength{\\cmidrulekern}{2pt}\n');
+  fprintf(FID, '\\setlength{\\dueltabcolw}{\\textwidth-2cm-%d\\tabcolsep}\n', 2*(2*numOfData+1));
   fprintf(FID, '\\setlength{\\dueltabcolw}{\\dueltabcolw/%d}\n', 2*numOfData);
   fprintf(FID, '\\centering\n');
   fprintf(FID, '%%\\newcolumntype{R}{>{\\raggedleft\\arraybackslash}X}\n');
   fprintf(FID, '\\newcolumntype{R}{>{\\raggedleft\\arraybackslash}m{\\dueltabcolw}}\n');
-  fprintf(FID, '%%\\begin{tabularx}{\\textwidth}{ m{1.9cm}%s }\n', [repmat('R', 1, 2*numOfData), '']); % 'rr'
-  fprintf(FID, '\\begin{tabular}{ m{1.9cm}%s }\n', [repmat('R', 1, 2*numOfData), '']); % 'rr'
+  fprintf(FID, '%%\\begin{tabularx}{\\textwidth}{ m{2cm}%s }\n', [repmat('R', 1, 2*numOfData), '']); % 'rr'
+  fprintf(FID, '\\begin{tabular}{ m{2cm}%s }\n', [repmat('R', 1, 2*numOfData), '']); % 'rr'
   
   for dim = 1:nDims
     if dim == 1
@@ -184,7 +186,8 @@ function printTableTex(FID, table, dims, evaluations, datanames, pVals, ...
     end
 
     % header with evaluation numbers
-    fprintf(FID, '{\\LARGE\\sfrac{\\nbFEs}{%s}} & ', bestSymbol);
+    fprintf(FID, '{\\LARGE\\sfrac{\\nbFEs}{$\\text{min}(%s, %s)$}} & ', ...
+      bestSymbol, maxFunEvalsSymbol);
     fprintf(FID, strjoin(repmat(evaluationsString, 1, numOfData), ' & ')); % numOfData + 1
     fprintf(FID, '\\\\\n');
     fprintf(FID, '\\midrule\n');
@@ -212,8 +215,8 @@ function printTableTex(FID, table, dims, evaluations, datanames, pVals, ...
               fprintf(FID, '\\makebox[0pt][l]{$^{\\ast}$}');
             end
           else
-            % diagonal left empty
-            fprintf(FID, ' & {}');
+            % symbols at diagonal
+            fprintf(FID, [' & ', NASymbol]);
           end
         end
       end
@@ -251,10 +254,11 @@ function printTableTex(FID, table, dims, evaluations, datanames, pVals, ...
                 'The asterisk marks the better out of each significantly different pair ', ...
                 'of algorithms according to the Friedman post-hoc test with the Bergmann-Hommel ', ...
                 'correction at significance level $\\alpha=%.2f$.\n', ...
-                '%s\\ denotes the smallest \\nbFEs\\ at which any of the tested algorithms ', ...
-                'reached the target $\\ftarget = %s$, ', ...
-                'but at most %s, the overall budget for the experiments.}\n'], ...
-          alpha, bestSymbol, ftargetString, maxFunEvalsString ...
+                '%%%s\\ denotes the smallest \\nbFEs\\ at which any of the tested algorithms ', ...
+                'reached the target $\\ftarget = %s$.\n', ...
+                '%%%s\\ is equal to %s, the overall budget for the experiments.\n', ...
+                '}\n'], ...
+          alpha, bestSymbol, ftargetString, maxFunEvalsSymbol, maxFunEvalsString ...
   );
 
   fprintf(FID, '\n');

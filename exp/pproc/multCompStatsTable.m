@@ -97,6 +97,7 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
 
   % symbol for number of evaluations reaching the best target
   bestSymbol = '\bestFED';
+  maxFunEvalsSymbol = '\maxFED';
   
   % representation of evaluation counts as a fraction
   evaluationsString = cell(1, nEvals);
@@ -125,7 +126,8 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
   end
 
   % evaluations header
-  fprintf(FID, '{\\LARGE\\sfrac{\\nbFEs}{%s}} & ', bestSymbol);
+  fprintf(FID, '{\\LARGE\\sfrac{\\nbFEs}{$\\text{min}(%s, %s)$}} & ', ...
+    bestSymbol, maxFunEvalsSymbol);
   fprintf(FID, strjoin(repmat(evaluationsString, 1, nDims), ' & '));
   fprintf(FID, '\\\\\n');
   
@@ -164,9 +166,9 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
   
   % caption
   fprintf(FID, ['\\caption{Mean rank of each algorithm over the BBOB ', ...
-                'and the Friedman statistic with the Iman-Davenport correction ', ...
-                'for different dimensionalities ', ...
-                'and different evaluation budgets.}\n']);
+                'and the Iman-Davenport statistic ', ...
+                'for the %d considered combinations of ', ...
+                'dimensionalities and evaluation budgets.}\n'], nEvals * nDims);
   fprintf(FID, '\\label{tab:stat}\n');
   fprintf(FID, '\\end{table}\n');
 end
