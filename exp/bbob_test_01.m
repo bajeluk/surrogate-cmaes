@@ -16,11 +16,11 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   exppath = [exppath_short filesep exp_id];
   load([exppath filesep 'scmaes_params.mat']);
   [bbParams, surrogateParams, cmaesParams, nNonBbobValues] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
-  
+
   % BBOB parameters
   minfunevals = 'dim + 2';      % PUT MINIMAL SENSIBLE NUMBER OF EVALUATIONS for a restart
   bbobpath = 'vendor/bbob';     % should point to fgeneric.m etc.
-  maxrestarts = defopts(bbParams, 'maxrestarts', 1e4); % SET to zero for an entirely deterministic algorithm 
+  maxrestarts = defopts(bbParams, 'maxrestarts', 1e4); % SET to zero for an entirely deterministic algorithm
   % PROGRESS_LOG = defopts(bbParams, 'progressLog', false); % surrogateModel progress log
 
   localDatapath = [];       % directory in the shared folder where results of each instance will be copied through the progress
@@ -190,7 +190,7 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
   for iinstance = exp_settings.instances((nCompletedInstances+1):end)   % 15 function instances
     fmin = Inf;
 
-    fgeneric('initialize', exp_settings.bbob_function, iinstance, datapath, opt); 
+    fgeneric('initialize', exp_settings.bbob_function, iinstance, datapath, opt);
     yeRestarts = [];
     cmaes_out{end+1}  = {};
     t = tic;
@@ -227,7 +227,7 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
         % try to improve the best foud solution
         xstart = xopt;
         restartMaxfunevals = restartMaxfunevals - fgeneric('evaluations');
-      end  
+      end
     end
 
     elapsedTime = toc(t);
