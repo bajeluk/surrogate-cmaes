@@ -1,5 +1,8 @@
-function metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_str, opts_str, dataset)
-% exp_GPtest_01 model testing experiment -- Matlab part
+function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_str, opts_str, dataset)
+% exp_GPtest_01 model testing experiment -- Matlab part to be MCR-compiled
+%
+% Usage:
+%   metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_str, opts_str, dataset)
 
   % Input parameter settings
   %
@@ -16,9 +19,25 @@ function metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_s
   func          = parseCmdParam('func_str', func_str, 1:24);
   dims          = parseCmdParam('dim_str',  dim_str,  [2, 5, 10]);
   instances     = parseCmdParam('inst_str', inst_str, [1:5, 41:50]);
-  opts          = parseCmdParam('opts_str', opts_str, struct());
+  cmd_opts      = parseCmdParam('opts_str', opts_str, struct());
 
-  % EXPID (filename w/o extension of this script) | string
+  % run the script EXP_ID.m if it exists
+  opts = struct();
+  expScript = fullfile(exppath_short, [exp_id '.m']);
+  if (exist(expScript, 'file'))
+    run(expScript);
+  end
+  % and re-write the options specified on command-line
+  if (isstruct(cmd_opts) && ~isempty(cmd_opts))
+    cmd_fnames = fieldnames(cmd_opts);
+    for i = 1:length(cmd_fnames)
+      opts.(cmd_fnames{i}) = cmd_opts.(cmd_fnames{i});
+    end
+  end
+
+  % EXPID -- unique experiment identifier (directory with this name
+  %          is expected to hold the dataset and the results will be
+  %          placed there, too)
   opts.exp_id     = exp_id;
   % EXPPATH_SHORT
   opts.exppath_short = exppath_short;
@@ -55,28 +74,31 @@ function metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_s
   end
   % defSetFile = fullfile(scratch, 'model', 'defData', ['defSet_', num2str(maxEvals), 'FE.mat']);
 
-  % default model options
-  defModelOptions.useShift        = false;
-  defModelOptions.predictionType  = 'sd2';
-  defModelOptions.trainAlgorithm  = 'fmincon';
-  defModelOptions.covFcn          = '{@covMaterniso, 5}';
-  defModelOptions.normalizeY      = true;
-  defModelOptions.hyp.lik         = log(0.01);
-  defModelOptions.hyp.cov         = log([0.5; 2]);
-  defModelOptions.covBounds       = [ [-2;-2], [25;25] ];
-  defModelOptions.likBounds       = log([1e-6, 10]);
+  % use this default model options if not specified in the experiment
+  % script exp/experiments/EXP_ID.m
+  if (~exist('modelOptions', 'var'))
+    modelOptions.useShift        = false;
+    modelOptions.predictionType  = 'sd2';
+    modelOptions.trainAlgorithm  = 'fmincon';
+    modelOptions.covFcn          = '{@covMaterniso, 5}';
+    modelOptions.normalizeY      = true;
+    modelOptions.hyp.lik         = log(0.01);
+    modelOptions.hyp.cov         = log([0.5; 2]);
+    modelOptions.covBounds       = [ [-2;-2], [25;25] ];
+    modelOptions.likBounds       = log([1e-6, 10]);
 
-  % Full factorial design of the following parameters
-  defModelOptions.trainsetType    = { 'nearestToPopulation', 'nearest', 'clustering', 'allPoints' };
-  defModelOptions.trainRange      = { 1.0, 0.999 };
-  defModelOptions.trainsetSizeMax = { '5*dim', '10*dim', '15*dim', '20*dim' };
-  defModelOptions.meanFcn         = { 'meanConst', 'meanLinear' };
-  defModelOptions.covFcn          = { '{@covSEiso}', '{@covSEard}', ...
-                              '{@covMaterniso, 5}', '{@covMaterniso, 3}' };
+    % Full factorial design of the following parameters
+    modelOptions.trainsetType    = { 'nearestToPopulation', 'nearest', 'clustering', 'allPoints' };
+    modelOptions.trainRange      = { 1.0, 0.999 };
+    modelOptions.trainsetSizeMax = { '5*dim', '10*dim', '15*dim', '20*dim' };
+    modelOptions.meanFcn         = { 'meanConst', 'meanLinear' };
+    modelOptions.covFcn          = { '{@covSEiso}', '{@covSEard}', ...
+                                '{@covMaterniso, 5}', '{@covMaterniso, 3}' };
+  end
 
-  % modelOptions can be specified in opts_str, or the above
+  % modelOptions can be specified in opts_str, EXP_ID.m, or the above
   % defined structure will be used
-  modelOptions = defopts(opts, 'modelOptions', defModelOptions);
+  modelOptions = defopts(opts, 'modelOptions', modelOptions);
 
   % Combine options into full factorial design
   modelOptions_fullfact  = combineFieldValues(modelOptions);
@@ -105,6 +127,9 @@ function metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_s
   [rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, func, dims, instances);
 
   save(fullfile(opts.exppath, 'stats.mat'), 'modelFolders', 'rdeTable', 'mseTable', 'RDEs', 'MSEs');
+
+  status = 0;
+  return;
 end
 
 function out = parseCmdParam(name, value, defaultValue)
