@@ -132,7 +132,7 @@ function printTableTex(FID, table, dims, evaluations, datanames, pVals, ...
   maxFunEvalsSymbol = '\maxFED';
   maxFunEvalsString = '$250\dm$';
   ftargetString = '10^{-8}';
-  NASymbol = '$\\times$';
+  NASymbol = '---';
 
   % representation of evaluation counts as a fraction
   evaluationsString = cell(1, nEvals);
@@ -155,15 +155,15 @@ function printTableTex(FID, table, dims, evaluations, datanames, pVals, ...
   fprintf(FID, '\\setlength{\\savetabcolsep}{\\tabcolsep}\n');
   fprintf(FID, '\\setlength{\\savecmidrulekern}{\\cmidrulekern}\n');
   fprintf(FID, '\n');
-  fprintf(FID, '\\setlength{\\tabcolsep}{2pt}\n');
-  fprintf(FID, '\\setlength{\\cmidrulekern}{2pt}\n');
-  fprintf(FID, '\\setlength{\\dueltabcolw}{\\textwidth-2cm-%d\\tabcolsep}\n', 2*(2*numOfData+1));
+  fprintf(FID, '\\setlength{\\tabcolsep}{3pt}\n');
+  fprintf(FID, '\\setlength{\\cmidrulekern}{3pt}\n');
+  fprintf(FID, '\\setlength{\\dueltabcolw}{\\textwidth-1.85cm-%d\\tabcolsep}\n', 2*(2*numOfData+1));
   fprintf(FID, '\\setlength{\\dueltabcolw}{\\dueltabcolw/%d}\n', 2*numOfData);
   fprintf(FID, '\\centering\n');
   fprintf(FID, '%%\\newcolumntype{R}{>{\\raggedleft\\arraybackslash}X}\n');
   fprintf(FID, '\\newcolumntype{R}{>{\\raggedleft\\arraybackslash}m{\\dueltabcolw}}\n');
   fprintf(FID, '%%\\begin{tabularx}{\\textwidth}{ m{2cm}%s }\n', [repmat('R', 1, 2*numOfData), '']); % 'rr'
-  fprintf(FID, '\\begin{tabular}{ m{2cm}%s }\n', [repmat('R', 1, 2*numOfData), '']); % 'rr'
+  fprintf(FID, '\\begin{tabular}{ m{1.85cm}%s }\n', [repmat('R', 1, 2*numOfData), '']); % 'rr'
   
   for dim = 1:nDims
     if dim == 1
@@ -172,7 +172,7 @@ function printTableTex(FID, table, dims, evaluations, datanames, pVals, ...
       fprintf(FID, '\\midrule[\\heavyrulewidth]\n');
     end
 
-    fprintf(FID, '%dD &', dims(dim));
+    fprintf(FID, '$\\bm{%d\\dm}$ &', dims(dim));
 
     % header with algorithm names
     % fprintf(FID, strjoin(formatCell('\\\\multicolumn{2}{c}{%s}', datanames), ' & '));
@@ -186,8 +186,7 @@ function printTableTex(FID, table, dims, evaluations, datanames, pVals, ...
     end
 
     % header with evaluation numbers
-    fprintf(FID, '{\\LARGE\\sfrac{\\nbFEs}{$\\text{min}(%s, %s)$}} & ', ...
-      bestSymbol, maxFunEvalsSymbol);
+    fprintf(FID, '{\\LARGE\\sfrac{\\nbFEs}{%s}} & ', bestSymbol);
     fprintf(FID, strjoin(repmat(evaluationsString, 1, numOfData), ' & ')); % numOfData + 1
     fprintf(FID, '\\\\\n');
     fprintf(FID, '\\midrule\n');

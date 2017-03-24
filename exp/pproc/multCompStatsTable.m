@@ -117,7 +117,7 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
 
   % dimensionality header
   fprintf(FID, 'Dim');
-  fprintf(FID, sprintf('& \\\\multicolumn{2}{c}{%dD}', dims));
+  fprintf(FID, sprintf('& \\\\multicolumn{2}{c}{$%d\\\\dm$}', dims));
   fprintf(FID, '\\\\\n');
 
   fprintf(FID, '\\cmidrule(lr){1-1}\n');
@@ -126,8 +126,7 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
   end
 
   % evaluations header
-  fprintf(FID, '{\\LARGE\\sfrac{\\nbFEs}{$\\text{min}(%s, %s)$}} & ', ...
-    bestSymbol, maxFunEvalsSymbol);
+  fprintf(FID, '{\\LARGE\\sfrac{\\nbFEs}{%s}} & ', bestSymbol);
   fprintf(FID, strjoin(repmat(evaluationsString, 1, nDims), ' & '));
   fprintf(FID, '\\\\\n');
   
