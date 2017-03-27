@@ -31,14 +31,11 @@ function [rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, functi
   assert(isnumeric(instances), '''instToTest'' has to be integer')
   assert(isnumeric(snapshots), '''instToTest'' has to be integer')
 
-  rowsCount = length(modelFolders)*length(snapshots);
-  columnsCount = length(functions)*length(dimensions);
-
   % prepare resulting cell arrays
   RDEs = cell(length(modelFolders), length(functions), length(dimensions));
   MSEs = cell(length(modelFolders), length(functions), length(dimensions));
   isTrained = cell(length(modelFolders), length(functions), length(dimensions));
-
+  modelOpts = [];
   % {
   % iterate through all specified models / dimensions / functions
   for i_model = 1:length(modelFolders)
@@ -62,6 +59,9 @@ function [rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, functi
         else
           data = load(fileName);
           data_instances = ismember(data.instances, instances);
+          if (isempty(modelOpts))
+            modelOpts = data.modelOptions;
+          end
           if (any(data_instances))
 
             % save the statistics into respective resulting cell arrays
@@ -89,10 +89,17 @@ function [rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, functi
   % }
   % load('/tmp/stats.mat');
 
+  rowsCount = length(modelFolders)*length(snapshots);
+  columnsCount = length(functions)*length(dimensions);
+
   valuesRDE = cell(rowsCount, columnsCount);
   valuesMSE = cell(rowsCount, columnsCount);
   colNames  = cell(1, columnsCount);
   rowNames  = cell(1, rowsCount);
+
+  multiFieldNames = getFieldsWithMultiValues(modelOpts);
+  modelOptsValues = cell(rowsCount, length(multiFieldNames));
+
   row = 0;
 
   % set-up a new table row for each model, snapshot and dimension
@@ -107,6 +114,14 @@ function [rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, functi
 
         row = row + 1;
         rowNames{row} = sprintf('%s_%s_%dD_S%d', modelName, hash, dim, snapshot);
+        for m_opt = 1:length(multiFieldNames)
+          % modelOptsValues{row} = ...
+        end
+        trainsetType{row} = modelOpts{i_model}.trainsetType;
+        trainsetSizeMax{row} = modelOpts{i_model}.trainsetSizeMax;
+        trainRange{row} = modelOpts{i_model}.trainRange;
+        covFcn{row} = modelOpts{i_model}.covFcn;
+        meanFcn{row} = modelOpts{i_model}.meanFcn;
 
         % save current dimension and snapshot into the first two columns
         colNames(1:2) = {'dim', 'snapshot'};
@@ -142,13 +157,21 @@ function [rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, functi
 
   rdeTable = cell2table(valuesRDE, 'VariableNames', colNames);
   rdeTable.Properties.RowNames = rowNames;
+  modelOptsTable = cell2table([trainsetType, trainsetSizeMax, trainRange, covFcn, meanFcn], ...
+    'VariableNames', {'trainsetType', 'trainsetSizeMax', 'trainRange', 'covFcn', 'meanFcn'});
+  rdeTable = [modelOptsTable, rdeTable];
   disp('RDE Table');
   disp(rdeTable);
+  writetable(rdeTable, 'rdeTable.txt', 'WriteRowNames', true);
+  save('RDEs.mat','RDEs');
 
   mseTable = cell2table(valuesMSE, 'VariableNames', colNames);
   mseTable.Properties.RowNames = rowNames;
+  mseTable = [modelOptsTable, mseTable];
   disp('MSE Table');
   disp(mseTable);
+  writetable(mseTable, 'mseTable.txt', 'WriteRowNames', true);
+  save('MSEs.mat','MSEs');
 end
 
 function [modelName, hash, FEs] = parseFolderName(dirName)
@@ -163,5 +186,19 @@ function [modelName, hash, FEs] = parseFolderName(dirName)
     modelName = [];
     hash = [];
     FEs = [];
+  end
+end
+
+function multiFieldNames = getFieldsWithMultiValues(modelOpts)
+% Get names of fields with more than one value in its cell-array fieldvalue
+  assert(isstruct(modelOpts));
+  multiFieldNames = {};
+
+  fnames = fieldnames(modelOpts);
+  for i = 1:length(fnames)
+    fname = fnames{i};
+    if (iscell(modelOpts.(fname)) && length(modelOpts.(fname)) > 1)
+      multiFieldNames{i} = fname;
+    end
   end
 end
