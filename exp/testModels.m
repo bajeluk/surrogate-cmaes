@@ -171,26 +171,6 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 
 end
 
-function hash = modelHash(modelOptions)
-%TODO: proper model hash
-% function creating hash for model identification using modelOptions
-    if (isempty(modelOptions) || ~isstruct(modelOptions))
-      hash = '0';
-      return;
-    end
-
-    % gain fields and values of modelOptions
-    [modelField, modelValues] = getFieldsVals(modelOptions);
-
-    S = printStructure(modelOptions, 'Format', 'field');
-    S = double(S);
-    % exclude not necessary characters
-    S = S(S > 32 & S~= 61) - 32;
-
-    % create hash
-    hash = num2str(sum(S.*(1:length(S))));
-end
-
 
 function [sField, sVal] = getFieldsVals(s)
 % sf = getFields(s, fields) extracts fields and its values from structure s
