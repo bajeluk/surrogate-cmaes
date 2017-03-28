@@ -33,6 +33,10 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
   assert(isnumeric(instances), '''instToTest'' has to be integer')
   assert(isnumeric(snapshots), '''instToTest'' has to be integer')
 
+  % take all *model_* directories in the given directory if not directories
+  % *model_* given
+  modelFolders = expandModelSubdirs(modelFolders);
+
   % prepare resulting cell arrays
   RDEs = cell(length(modelFolders), length(functions), length(dimensions));
   MSEs = cell(length(modelFolders), length(functions), length(dimensions));
@@ -109,8 +113,8 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
   % three extra columns for hash, dimension and snapshot, and
   % 3-times more columns than functions as mean, std and # of sucess is stored
   N_DESCR_COLS = 3;
-  aggColumnsCount = N_DESCR_COLS + (3*length(functions))*length(dimensions);
-  allColumnsCount = length(functions)*length(dimensions);
+  aggColumnsCount = N_DESCR_COLS + 3*length(functions);
+  allColumnsCount = length(functions);
 
   % aggregated tables (mean, standard deviation and # of success trains)
   aggRDE    = cell(rowsCount, aggColumnsCount);
@@ -301,4 +305,22 @@ function [mo_struct, mo_idx] = getThisModelOption(dirName, modelOptions)
   fprintf(2, 'The right index of the directory hash not found in modelOptions.\n');
   mo_idx = -1;
   mo_struct = [];
+end
+
+function modelFolders = expandModelSubdirs(modelFolders)
+  % take all '*model_*' directories in the given directory if 'dir' is not a cell array
+  % of directories  with pattern  '*model_*'
+  if ((iscell(modelFolders) && length(modelFolders) == 1))
+    modelFolders = modelFolders{1}; end
+  if (isstr(modelFolders))
+    [~, dirItself] = fileparts(modelFolders);
+    if (isempty(strfind(dirItself, 'model_')))
+      warning('Considering the modelFolder ''%s'' as a directory with models...', modelFolders);
+      dirs = dir(fullfile(modelFolders, '*model_*'));
+      dirNames = { dirs.name };
+      modelFolders = cellfun(@(x) fullfile(modelFolders, x), dirNames, 'UniformOutput', false);
+    else
+      modelFolders = { modelFolders };
+    end
+  end
 end
