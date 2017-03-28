@@ -1,6 +1,6 @@
-function [rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, functions, dimensions, instances, snapshots, exp_id)
+function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders, functions, dimensions, instances, snapshots, exp_id)
 % modelStatistics --  creates a table with statistics,
-%                     each row represents model and number of snapshot (combined),
+%                     each aggRow represents model and number of snapshot (combined),
 %                     each column represents function and dimension (also combined),
 %                     value of cell is average of values from given instances
 %
@@ -108,12 +108,22 @@ function [rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, functi
   rowsCount = length(modelFolders)*length(snapshots);
   % three extra columns for hash, dimension and snapshot, and
   % 3-times more columns than functions as mean, std and # of sucess is stored
-  columnsCount = 3 + (3*length(functions))*length(dimensions);
+  N_DESCR_COLS = 3;
+  aggColumnsCount = N_DESCR_COLS + (3*length(functions))*length(dimensions);
+  allColumnsCount = length(functions)*length(dimensions);
 
-  valuesRDE = cell(rowsCount, columnsCount);
-  valuesMSE = cell(rowsCount, columnsCount);
-  colNames  = cell(1, columnsCount);
+  % aggregated tables (mean, standard deviation and # of success trains)
+  aggRDE    = cell(rowsCount, aggColumnsCount);
+  aggMSE    = cell(rowsCount, aggColumnsCount);
+  colNames  = cell(1, aggColumnsCount);
   rowNames  = cell(1, rowsCount);
+
+  % non-aggregated tables (all measured values)
+  allRDE_cell = cell(1, N_DESCR_COLS);
+  allRDE_mat  = NaN(1, allColumnsCount);
+  allMSE_cell = cell(1, N_DESCR_COLS);
+  allMSE_mat  = NaN(1, allColumnsCount);
+  allColNames = cell(1, N_DESCR_COLS + aggColumnsCount);
 
   % try to run the script exp/experiments/exp_id.m
   % and load the multi-valued fields from modelOptions
@@ -134,9 +144,11 @@ function [rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, functi
   end
   modelOptsValues = cell(rowsCount, length(multiFieldNames));
 
-  row = 0;
+  aggRow    = 0;
+  allRow    = 0;
+  N_INST    = length(instances);
 
-  % set-up a new table row for each model, snapshot and dimension
+  % set-up a new table aggRow for each model, snapshot and dimension
   for i_model = 1:length(modelFolders)
     [modelName, hash] = parseFolderName(modelFolders{i_model});
 
@@ -146,62 +158,89 @@ function [rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, functi
       for i_dim = 1:length(dimensions)
         dim = dimensions(i_dim);
 
-        row = row + 1;
-        rowNames{row} = sprintf('%s_%s_%dD_S%d', modelName, hash, dim, snapshot);
+        aggRow = aggRow + 1;
+        rowNames{aggRow} = sprintf('%s_%s_%dD_S%d', modelName, hash, dim, snapshot);
 
         % save values of model settings (from modelOptions) which had
         % multiple possible values
         for m_opt = 1:length(multiFieldNames)
-          modelOptsValues{row, m_opt} = folderModelOptions{i_model}.(multiFieldNames{m_opt});
+          modelOptsValues{aggRow, m_opt} = folderModelOptions{i_model}.(multiFieldNames{m_opt});
         end
 
-        % save current dimension and snapshot into the first two columns
-        colNames(1:3) = {'hash', 'dim', 'snapshot'};
-        valuesRDE(row, 1:3) = {hash, dim, snapshot};
-        valuesMSE(row, 1:3) = {hash, dim, snapshot};
+        % save the model's has, current dimension and snapshot# into the first three columns
+        colNames(1:N_DESCR_COLS) = {'hash', 'dim', 'snapshot'};
+        aggRDE(aggRow, 1:N_DESCR_COLS) = {hash, dim, snapshot};
+        aggMSE(aggRow, 1:N_DESCR_COLS) = {hash, dim, snapshot};
+
+        allColNames(1:N_DESCR_COLS) = {'hash', 'dim', 'snapshot'};
+        allRDE_cell(allRow+(1:N_INST), 1:N_DESCR_COLS) = repmat({hash, dim, snapshot}, N_INST, 1);
+        allMSE_cell(allRow+(1:N_INST), 1:N_DESCR_COLS) = repmat({hash, dim, snapshot}, N_INST, 1);
+        allRDE_mat(allRow+(1:N_INST), :) = NaN(N_INST, allColumnsCount);
+        allMSE_mat(allRow+(1:N_INST), :) = NaN(N_INST, allColumnsCount);
+
         col = 3;
+        allCol = 0;
 
         % save statistics from each model / function / dimension / snapshot
         for i_func = 1:length(functions)
           func = functions(i_func);
 
+          % all values
+          allCol = allCol + 1;
+          allColNames{N_DESCR_COLS + allCol} = sprintf('f%d', func);
+          n_inst = min(N_INST, length(RDEs{i_model, i_func, i_dim}(:, i_snapshot)));
+          allRDE_mat(allRow+(1:n_inst), allCol) = RDEs{i_model, i_func, i_dim}(1:n_inst, i_snapshot);
+          allMSE_mat(allRow+(1:n_inst), allCol) = MSEs{i_model, i_func, i_dim}(1:n_inst, i_snapshot);
+
           % mean
           col = col + 1;
           colNames{col} = sprintf('f%d_m', func);
-          valuesRDE{row, col} = nanmean(RDEs{i_model, i_func, i_dim}(:, i_snapshot));
-          valuesMSE{row, col} = nanmean(MSEs{i_model, i_func, i_dim}(:, i_snapshot));
+          aggRDE{aggRow, col} = nanmean(RDEs{i_model, i_func, i_dim}(:, i_snapshot));
+          aggMSE{aggRow, col} = nanmean(MSEs{i_model, i_func, i_dim}(:, i_snapshot));
 
           % standard deviation
           col = col + 1;
           colNames{col} = sprintf('f%d_std', func);
-          valuesRDE{row, col} = nanstd(RDEs{i_model, i_func, i_dim}(:, i_snapshot));
-          valuesMSE{row, col} = nanstd(MSEs{i_model, i_func, i_dim}(:, i_snapshot));
+          aggRDE{aggRow, col} = nanstd(RDEs{i_model, i_func, i_dim}(:, i_snapshot));
+          aggMSE{aggRow, col} = nanstd(MSEs{i_model, i_func, i_dim}(:, i_snapshot));
 
           % the number of successfuly trained models
           col = col + 1;
           colNames{col} = sprintf('f%d_tr', func);
           if (~isempty(isTrained{i_model, i_func, i_dim}))
-            valuesRDE{row, col} = sum(isTrained{i_model, i_func, i_dim}(:, i_snapshot));
-            valuesMSE{row, col} = sum(isTrained{i_model, i_func, i_dim}(:, i_snapshot));
+            aggRDE{aggRow, col} = sum(isTrained{i_model, i_func, i_dim}(:, i_snapshot));
+            aggMSE{aggRow, col} = sum(isTrained{i_model, i_func, i_dim}(:, i_snapshot));
+          else
+            aggRDE{aggRow, col} = sum(~isnan(MSEs{i_model, i_func, i_dim}(:, i_snapshot)));
+            aggMSE{aggRow, col} = sum(~isnan(MSEs{i_model, i_func, i_dim}(:, i_snapshot)));
           end
         end
+        allRow = allRow + N_INST;
       end
     end
   end
 
-  rdeTable = cell2table([modelOptsValues, valuesRDE], 'VariableNames', [multiFieldNames, colNames]);
-  rdeTable.Properties.RowNames = rowNames;
+  allRDE_table = cell2table([modelOptsValues, allRDE_cell]);
+  allRDE_table(end+(1:size(allRDE_mat,2)), :) = allRDE_mat;
+  allRDE_table.VariableNames = [multiFieldNames, allColNames];
+
+  allMSE = cell2table([modelOptsValues, allMSE_cell]);
+  allMSE(end+(1:size(allMSE_mat,2)), :) = allMSE_mat;
+  allMSE_table.VariableNames = [multiFieldNames, allColNames];
+
+  aggRDE_table = cell2table([modelOptsValues, aggRDE], 'VariableNames', [multiFieldNames, colNames]);
+  aggRDE_table.Properties.RowNames = rowNames;
   disp('RDE Table');
-  disp(rdeTable);
-  writetable(rdeTable, fullfile(exppath_short, exp_id, 'rdeTable.txt'), 'WriteRowNames', true);
+  disp(aggRDE_table);
+  writetable(aggRDE_table, fullfile(exppath_short, exp_id, 'aggRDE_table.txt'), 'WriteRowNames', true);
 
-  mseTable = cell2table([modelOptsValues, valuesMSE], 'VariableNames', [multiFieldNames, colNames]);
-  mseTable.Properties.RowNames = rowNames;
+  aggMSE_table = cell2table([modelOptsValues, aggMSE], 'VariableNames', [multiFieldNames, colNames]);
+  aggMSE_table.Properties.RowNames = rowNames;
   disp('MSE Table');
-  disp(mseTable);
-  writetable(mseTable, fullfile(exppath_short, exp_id, 'mseTable.txt'), 'WriteRowNames', true);
+  disp(aggMSE_table);
+  writetable(aggMSE_table, fullfile(exppath_short, exp_id, 'aggMSE_table.txt'), 'WriteRowNames', true);
 
-  save(fullfile(exppath_short, exp_id, 'modelStatistics.mat'), 'rdeTable', 'mseTable', 'RDEs', 'valuesRDE', 'MSEs', 'valuesMSE', 'isTrained', 'folderModelOptions', 'modelFolders', 'functions', 'dimensions', 'snapshots');
+  save(fullfile(exppath_short, exp_id, 'modelStatistics.mat'), 'aggRDE_table', 'aggMSE_table', 'RDEs', 'aggRDE', 'MSEs', 'aggMSE', 'allRDE_mat', 'allRDE_table', 'allMSE_mat', 'allMSE_table', 'isTrained', 'folderModelOptions', 'modelFolders', 'functions', 'dimensions', 'snapshots');
 end
 
 function [modelName, hash, FEs] = parseFolderName(dirName)
