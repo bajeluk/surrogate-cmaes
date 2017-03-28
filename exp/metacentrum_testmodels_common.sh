@@ -68,14 +68,6 @@ export OPTS
 export MATLAB_FCN
 
 subtask() {
-  # make sure that these variables will be exported
-  export EXPID
-  export EXPPATH_SHORT
-  export ID
-  export DIM
-  export INST
-  export OPTS
-  export FUNC=`echo $FUNC | tr '\n' ' '`
   if [ -n "$1" ]; then
     JOBNAME_SUFFIX="__$1"
   else

@@ -30,21 +30,27 @@ function compressedFolder = compressModelData(modelFolder, modelPreposition)
   % data are saved in separate folders
   dirs = dir(fullfile(modelFolder, '*model_*'));
   dirIndex = find([dirs.isdir]);
-  mo_struct = [];
 
   for i = 1:length(dirIndex)
     dirName = dirs(dirIndex(i)).name;
     fprintf('Processing ''%s''\n', dirName);
+    mo_struct = [];
 
     modelFiles = dir(fullfile(modelFolder, dirName, [modelPreposition, '*.mat']));
     % for each file that matches create its compressed copy in compressedFolder
     for j = 1:length(modelFiles)
       fprintf('... file ''%s''\n', modelFiles(j).name);
+      outFile = fullfile(compressedFolder,dirName, modelFiles(j).name);
+      if (exist(outFile, 'file'))
+        fprintf('... ... Processing skipped, the compressed file already exists.\n');
+        continue;
+      end
+
       % load original data
       data = load(fullfile(modelFolder,dirName, modelFiles(j).name));
 
       % identify the right modelOption entry during the first file processing
-      if (j == 1)
+      if (isempty(mo_struct))
         mo_struct = getThisModelOption(dirName, data.modelOptions);
       end
 
@@ -60,7 +66,7 @@ function compressedFolder = compressModelData(modelFolder, modelPreposition)
       % create folder
       [~,~] = mkdir(fullfile(compressedFolder,dirName));
       % save compressed data
-      save(fullfile(compressedFolder,dirName, modelFiles(j).name), '-struct', 'data');
+      save(outFile, '-struct', 'data');
     end
   end
 end
