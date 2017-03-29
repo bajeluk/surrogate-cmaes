@@ -1,4 +1,4 @@
-function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders, functions, dimensions, instances, snapshots, exp_id)
+function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders, functions, dimensions, instances, snapshots, exp_id, varargin)
 % modelStatistics --  creates a table with statistics,
 %                     each aggRow represents model and number of snapshot (combined),
 %                     each column represents function and dimension (also combined),
@@ -11,22 +11,37 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
 %   dimensions   - dimensions that will be displayed in table | array of integers
 %   instances    - instances that will be displayed in table | array of integers
 %   snapshots    - snapshots that will be displayed in table | array of integers
+%   exp_id       - EXP_ID of the experiment where to store the results and of which
+%                  to try to run the experiment script with modelOptions definition
+%
+% Name-value pair arguments:
+%   'savedModelStatistics', FILENAME -- the filename from where to load RDEs, MSEs and 
+%                  folderModelOptions 
 %
 % Output:
 %   tables with average RDE and MSE values
 %
+% TODO:
+% [ ]  make the aggregation statistics configurable (not fixed as mean,
+%      std,...)
+% [ ]  choose one method of saving numerical results (arrays, or cell arrays)
+
+
 
   % Default input parameters settings
   if (~exist('functions', 'var') || isempty(functions))
-    functions = 1; end
+    functions = 1:24; end
   if (~exist('dimensions', 'var') || isempty(dimensions))
-    dimensions = 2; end
+    dimensions = [2, 5, 10]; end
   if (~exist('instances', 'var') || isempty(instances))
     instances = [1:5, 41:50]; end
   if (~exist('snapshots', 'var') || isempty(snapshots))
     snapshots = [1 3 9]; end
   if (~exist('exp_id', 'var') || isempty(exp_id))
     exp_id = 'exp_GPtest_01'; warning('Using default exp_id = %s !', exp_id); end
+
+  opts = settings2struct(varargin{:});
+  opts.savedModelStatistics = defopts(opts, 'savedModelStatistics', []);
 
   assert(isnumeric(functions), '''funcToTest'' has to be integer')
   assert(isnumeric(dimensions), '''dimsToTest'' has to be integer')
@@ -37,93 +52,117 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
   % *model_* given
   modelFolders = expandModelSubdirs(modelFolders);
 
-  % prepare resulting cell arrays
-  RDEs = cell(length(modelFolders), length(functions), length(dimensions));
-  MSEs = cell(length(modelFolders), length(functions), length(dimensions));
-  isTrained = cell(length(modelFolders), length(functions), length(dimensions));
-  folderModelOptions = cell(1, length(modelFolders));
-  % {
-  % iterate through all specified models / dimensions / functions
-  for i_model = 1:length(modelFolders)
-    [modelName, hash] = parseFolderName(modelFolders{i_model});
-    fprintf('Model %d [%s_%s]... ', i_model, modelName, hash);
+  if (isempty(opts.savedModelStatistics))
+    % load the results from individual model-testing results files
 
-    for i_dim = 1:length(dimensions)
-      dim = dimensions(i_dim);
-      fprintf('%dD: ', dim);
+    % prepare resulting cell arrays
+    RDEs = cell(length(modelFolders), length(functions), length(dimensions));
+    MSEs = cell(length(modelFolders), length(functions), length(dimensions));
 
-      for i_func = 1:length(functions)
-        func = functions(i_func);
-        fprintf('f%d ', func);
-        is_empty = false;
+    isTrained = cell(length(modelFolders), length(functions), length(dimensions));
+    folderModelOptions = cell(1, length(modelFolders));
 
-        % load results for this model / fun / dim
-        fileName = fullfile(modelFolders{i_model}, sprintf('%s_%s_f%d_%dD.mat', modelName, hash, func, dim));
-        if (~exist(fileName, 'file'))
-          warning('File %s not found', fileName);
-          is_empty = true;
-        else
+    % iterate through all specified models / dimensions / functions
+    for i_model = 1:length(modelFolders)
+      [modelName, hash] = parseFolderName(modelFolders{i_model});
+      fprintf('Model %d [%s_%s]... ', i_model, modelName, hash);
 
-          % load the model testing results
-          data = load(fileName);
-          data_instances = ismember(data.instances, instances);
+      for i_dim = 1:length(dimensions)
+        dim = dimensions(i_dim);
+        fprintf('%dD: ', dim);
 
-          % set up correct modelOptions
-          if (isempty(folderModelOptions{i_model}))
-            if (iscell(data.modelOptions) && length(data.modelOptions) > 1)
-              [~, dirName] = fileparts(modelFolders{i_model});
-              folderModelOptions{i_model} = getThisModelOption(dirName, data.modelOptions);
-            elseif (isstruct(data.modelOptions))
-              folderModelOptions{i_model} = data.modelOptions;
-            else
-              warning('data.modelOptions are mssing or have wrong format');
-            end
-          end
+        for i_func = 1:length(functions)
+          func = functions(i_func);
+          fprintf('f%d ', func);
+          is_empty = false;
 
-          if (any(data_instances))
-
-            % save the statistics into respective resulting cell arrays
-            RDEs{i_model, i_func, i_dim} = data.stats.rde(data_instances, snapshots);
-            MSEs{i_model, i_func, i_dim} = data.stats.mse(data_instances, snapshots);
-            if (isfield(data, 'models'))
-              isTrained{i_model, i_func, i_dim} = cellfun( ...
-                  @(m) m.isTrained(), data.models(data_instances, snapshots) );
-            end
-
-          else
-            warning('There''s no instance with any results for %s_%s, f%d in %dD', ...
-                modelName, hash, func, dim);
+          % load results for this model / fun / dim
+          fileName = fullfile(modelFolders{i_model}, sprintf('%s_%s_f%d_%dD.mat', modelName, hash, func, dim));
+          if (~exist(fileName, 'file'))
+            warning('File %s not found', fileName);
             is_empty = true;
+          else
+
+            % load the model testing results
+            data = load(fileName);
+            data_instances = ismember(data.instances, instances);
+
+            % set up correct modelOptions
+            if (isempty(folderModelOptions{i_model}))
+              if (iscell(data.modelOptions) && length(data.modelOptions) > 1)
+                [~, dirName] = fileparts(modelFolders{i_model});
+                folderModelOptions{i_model} = getThisModelOption(dirName, data.modelOptions);
+              elseif (isstruct(data.modelOptions))
+                folderModelOptions{i_model} = data.modelOptions;
+              else
+                warning('data.modelOptions are mssing or have wrong format');
+              end
+            end
+
+            if (any(data_instances))
+
+              % save the statistics into respective resulting cell arrays
+              RDEs{i_model, i_func, i_dim} = data.stats.rde(data_instances, snapshots);
+              MSEs{i_model, i_func, i_dim} = data.stats.mse(data_instances, snapshots);
+              if (isfield(data, 'models'))
+                isTrained{i_model, i_func, i_dim} = cellfun( ...
+                    @(m) m.isTrained(), data.models(data_instances, snapshots) );
+              else
+                isTrained{i_model, i_func, i_dim} = ~ isnan(MSEs{i_model, i_func, i_dim});
+              end
+
+            else
+              warning('There''s no instance with any results for %s_%s, f%d in %dD', ...
+                  modelName, hash, func, dim);
+              is_empty = true;
+            end
+          end
+          if (is_empty)
+            RDEs{i_model, i_func, i_dim} = [];
+            MSEs{i_model, i_func, i_dim} = [];
+            isTrained{i_model, i_func, i_dim} = [];
           end
         end
-        if (is_empty)
-          RDEs{i_model, i_func, i_dim} = [];
-          MSEs{i_model, i_func, i_dim} = [];
-          isTrained{i_model, i_func, i_dim} = [];
-        end
+        fprintf('\n');
       end
-      fprintf('\n');
+    end
+
+  else
+    try
+      fprintf(['Trying to load the RDEs, MSEs and folderModelOptions from the file\n' ...
+               '  ''%s'' ...\n'], opts.savedModelStatistics);
+      saved = load(opts.savedModelStatistics);
+      RDEs = saved.RDEs;
+      MSEs = saved.MSEs;
+      folderModelOptions = saved.folderModelOptions;
+      isTrained = cellfun(@(x) ~isnan(x), MSEs, 'UniformOutput', false);
+    catch err
+      error('ERROR: Saved statistics cannot be loaded from ''%s'': %s', ...
+          opts.savedModelStatistics, err.message);
     end
   end
 
-  % }
-  % load('/tmp/stats.mat');
-
   rowsCount = length(modelFolders)*length(snapshots);
-  % three extra columns for hash, dimension and snapshot, and
-  % 3-times more columns than functions as mean, std and # of sucess is stored
+  % three descriptive columns for hash, dimension and snapshot
   N_DESCR_COLS = 3;
+  % the number of aggreg. columns is 3-times more than # of functions,
+  % because 'mean', 'std' and '# of sucess trains' are stored
   aggColumnsCount = N_DESCR_COLS + 3*length(functions);
+  % the number of data columns in 'allXXX' corresponds to the number of
+  % functions
   allColumnsCount = length(functions);
 
-  % aggregated tables (mean, standard deviation and # of success trains)
+  % aggregated tables (aggregation via mean, standard deviation
+  % and # of success trains)
+  %
+  % TODO: make the aggregation statistics configurable
   aggRDE    = cell(rowsCount, aggColumnsCount);
   aggMSE    = cell(rowsCount, aggColumnsCount);
   colNames  = cell(1, aggColumnsCount);
   rowNames  = cell(1, rowsCount);
 
-  % try to run the script exp/experiments/exp_id.m
-  % and load the multi-valued fields from modelOptions
+  % try to run the script 'exp/experiments/[EXP_ID].m'
+  % and load the multi-valued fields from the "loaded" modelOptions
   exppath_short = fullfile('exp', 'experiments');
   expScript = fullfile(exppath_short, [exp_id '.m']);
   multiFieldNames = {};
@@ -134,14 +173,21 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
     end
   end
   % if multi-field modelOptions loading was unsuccessful,
-  % use the modelOpts loaded from some model test results above
+  % use the modelOpts loaded from the first model test results above
   if (isempty(multiFieldNames))
     multiFieldNames = sort(fields(folderModelOptions{1}));
     warning('Unable to load non-factorial design of modelOptions. Using all possible fields (%d) from some modelOptions loaded from test results.', length(multiFieldNames));
   end
+  % prepare cell-array for the values of the multi-valued fields
   modelOptsValues = cell(rowsCount, length(multiFieldNames));
 
-  % non-aggregated tables (all measured values)
+  % non-aggregated tables (having non-aggregated all measured values)
+  % the columns are:
+  %     hash, dimension, snapshot#, ...[multi-valued values] ..., f1, f2, ...
+  % store the values into separate numerical arrays (not cell-arrays as in
+  % the case of aggregated statistics
+  %
+  % TODO: choose one method of saving numerical results (arrays/cell arrays)
   allRDE_cell = cell(1, N_DESCR_COLS + length(multiFieldNames));
   allRDE_mat  = NaN(1, allColumnsCount);
   allMSE_cell = cell(1, N_DESCR_COLS + length(multiFieldNames));
@@ -256,7 +302,7 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
   disp(aggMSE_table);
   writetable(aggMSE_table, fullfile(exppath_short, exp_id, 'aggMSE_table.txt'), 'WriteRowNames', true);
 
-  save(fullfile(exppath_short, exp_id, 'modelStatistics.mat'), 'aggRDE_table', 'aggMSE_table', 'RDEs', 'aggRDE', 'MSEs', 'aggMSE', 'allRDE_mat', 'allRDE_table', 'allMSE_mat', 'allMSE_table', 'isTrained', 'folderModelOptions', 'modelFolders', 'functions', 'dimensions', 'snapshots');
+  save(fullfile(exppath_short, exp_id, 'modelStatistics.mat'), 'aggRDE_table', 'aggMSE_table', 'RDEs', 'aggRDE', 'MSEs', 'aggMSE', 'allRDE_mat', 'allRDE_table', 'allMSE_mat', 'allMSE_table', 'isTrained', 'folderModelOptions', 'modelFolders', 'functions', 'dimensions', 'snapshots', 'instances');
 end
 
 function [modelName, hash, FEs] = parseFolderName(dirName)
@@ -312,7 +358,7 @@ function modelFolders = expandModelSubdirs(modelFolders)
   % of directories  with pattern  '*model_*'
   if ((iscell(modelFolders) && length(modelFolders) == 1))
     modelFolders = modelFolders{1}; end
-  if (isstr(modelFolders))
+  if (ischar(modelFolders))
     [~, dirItself] = fileparts(modelFolders);
     if (isempty(strfind(dirItself, 'model_')))
       warning('Considering the modelFolder ''%s'' as a directory with models...', modelFolders);
