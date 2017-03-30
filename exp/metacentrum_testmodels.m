@@ -25,7 +25,14 @@ function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_st
   opts = struct();
   expScript = fullfile(exppath_short, [exp_id '.m']);
   if (exist(expScript, 'file'))
-    run(expScript);
+    % eval the script line by line (as it cannot be run()-ed when deployed)
+    fid = fopen(expScript);
+    tline = fgetl(fid);
+    while (ischar(tline))
+      eval(tline);
+      tline = fgetl(fid);
+    end
+    fclose(fid);
   end
   % and re-write the options specified on command-line
   if (isstruct(cmd_opts) && ~isempty(cmd_opts))

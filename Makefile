@@ -24,7 +24,7 @@ $(OUT):	$(SRC) $(OTHERS)
 	$(MATLAB_COMPILER) -m $(MC_FLAGS) $(MC_INCLUDE) -o $(FNAME) $<
 	mv $(FNAME) $(DESTDIR)
 
-$(OUT_MODEL): 	$(SRC_MODEL) $(OTHERS)
+$(OUT_MODEL): 	$(SRC_MODEL) $(OTHERS) exp/experiments/exp_*.m
 	$(MATLAB_COMPILER) -m $(MC_FLAGS) $(MC_INCLUDE) -o $(MODEL) $<
 	mv $(MODEL) $(DESTDIR)
 
