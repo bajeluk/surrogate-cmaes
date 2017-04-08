@@ -3,10 +3,10 @@
 %% Load data
 % load exp/experiments/exp_GPtest_01/modelStatistics.mat
 
+for dim_i = 1:length(dimensions)
+
   %% Calculate model settings ranks
   %
-  dim_i = 1;
-
   dim = dimensions(dim_i);
   nSettings = length(folderModelOptions);
   nInstances = length(instances);
@@ -66,8 +66,8 @@
   %  which performed (very) well, particularly with maximal rank 'maxRank'
   %  and the success rate of training has to be at least 'minTrainedPerc'
 
-  maxRank = 5;
-  minTrainedPerc = 0.85;
+  maxRank = 8;
+  minTrainedPerc = 0.9;
 
   % bool vector of already covered functions/snapshots
   isCovered = false(1, length(functions)*length(snapshots));
@@ -103,10 +103,10 @@
     isCovered(boolSets(maxCoveringSet, :)) = true;
   end
 
-  disp('The following settings were chosen (with # of hits underneath):')
+  fprintf('The following settings were chosen for %dD (with # of hits underneath):', dim)
   nHits = sum(boolSets(chosenSets, :), 2);
   disp([find(chosenSets)'; nHits']);
-  fprintf('The total number of settings is %d.\n', sum(chosenSets));
+  fprintf('The total number of settings in %dD is %d.\n', dim, sum(chosenSets));
 
   testedOptions = { 'covFcn', 'trainsetType', 'trainRange', 'trainsetSizeMax', 'meanFcn' };
   bestSettings = cell(sum(chosenSets), 2+length(testedOptions));
@@ -118,3 +118,4 @@
   end
   disp('Chosen settings:');
   disp(bestSettings);
+end
