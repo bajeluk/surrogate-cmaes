@@ -16,10 +16,16 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
 %
 % Name-value pair arguments:
 %   'savedModelStatistics', FILENAME -- the filename from where to load RDEs, MSEs and 
-%                  folderModelOptions 
+%                  folderModelOptions
+%   'firstStatistic'  -- the first statistic to calculate from set of
+%                        results on (usually 15) instances (default: @mean)
+%   'firstStatisticName' -- the title to be printed in table headers
+%   'secondStatistic'  -- the first statistic to calculate from set of
+%                        results on (usually 15) instances (default: @std)
+%   'secondStatisticName' -- the title to be printed in table headers
 %
 % Output:
-%   tables with average RDE and MSE values
+%   tables with average RDE and MSE values, and w/o aggregation
 %
 % TODO:
 % [ ]  make the aggregation statistics configurable (not fixed as mean,
@@ -42,6 +48,10 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
 
   opts = settings2struct(varargin{:});
   opts.savedModelStatistics = defopts(opts, 'savedModelStatistics', []);
+  opts.firstStatistic = defopts(opts, 'firstStatistic', @mean);
+  opts.firstStatisticName = defopts(opts, 'firstStatisticName', func2str(opts.firstStatistic));
+  opts.secondStatistic = defopts(opts, 'secondStatistic', @std);
+  opts.secondStatisticName = defopts(opts, 'secondStatisticName', func2str(opts.secondStatistic));
 
   assert(isnumeric(functions), '''funcToTest'' has to be integer')
   assert(isnumeric(dimensions), '''dimsToTest'' has to be integer')
@@ -252,17 +262,23 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
           allRDE_mat(allRow+(1:n_inst), allCol) = RDEs{i_model, i_func, i_dim}(1:n_inst, i_snapshot);
           allMSE_mat(allRow+(1:n_inst), allCol) = MSEs{i_model, i_func, i_dim}(1:n_inst, i_snapshot);
 
-          % mean
+          % mean (the default of firstStatistic is @mean)
           col = col + 1;
-          colNames{col} = sprintf('f%d_m', func);
-          aggRDE{aggRow, col} = nanmean(RDEs{i_model, i_func, i_dim}(:, i_snapshot));
-          aggMSE{aggRow, col} = nanmean(MSEs{i_model, i_func, i_dim}(:, i_snapshot));
+          colNames{col} = sprintf(['f%d_', opts.firstStatisticName], func);
+          thisRDE = RDEs{i_model, i_func, i_dim}(:, i_snapshot);
+          thisMSE = MSEs{i_model, i_func, i_dim}(:, i_snapshot);
+          % remove NaN's
+          thisRDE(isnan(thisRDE)) = [];
+          thisMSE(isnan(thisMSE)) = [];
+          % calculate the first statistic
+          aggRDE{aggRow, col} = opts.firstStatistic(thisRDE);
+          aggMSE{aggRow, col} = opts.firstStatistic(thisMSE);
 
-          % standard deviation
+          % standard deviation (the default of secondStatistic is @std)
           col = col + 1;
-          colNames{col} = sprintf('f%d_std', func);
-          aggRDE{aggRow, col} = nanstd(RDEs{i_model, i_func, i_dim}(:, i_snapshot));
-          aggMSE{aggRow, col} = nanstd(MSEs{i_model, i_func, i_dim}(:, i_snapshot));
+          colNames{col} = sprintf(['f%d_', opts.secondStatisticName], func);
+          aggRDE{aggRow, col} = opts.secondStatistic(thisRDE);
+          aggMSE{aggRow, col} = opts.secondStatistic(thisMSE);
 
           % the number of successfuly trained models
           col = col + 1;
