@@ -3,12 +3,16 @@
 %% Load data
 % load exp/experiments/exp_GPtest_01/modelStatistics.mat
 
+bestSettings = cell(3,1);
+aggRDE_nHeaderCols = 3;
+nSettings = length(folderModelOptions);
+modelMeanRDE = zeros(nSettings, length(dimensions));
+
 for dim_i = 1:length(dimensions)
 
   %% Calculate model settings ranks
   %
   dim = dimensions(dim_i);
-  nSettings = length(folderModelOptions);
   nInstances = length(instances);
 
   modelRanks = zeros(nSettings, length(functions)*length(snapshots));
@@ -19,8 +23,8 @@ for dim_i = 1:length(dimensions)
     for snp_i = 1:length(snapshots)
       snp = snapshots(snp_i);
       rows = (aggRDE_table.dim == dim) & (aggRDE_table.snapshot == snp);
-      modelRanks(:,(func-1)*3 + snp_i) = ranking(cell2mat(aggRDE(rows, 5 + ((func-1)*3)))');
-      nTrained(:,(func-1)*3 + snp_i)   = cell2mat(aggRDE(rows, 6 + ((func-1)*3)))';
+      modelRanks(:,(func-1)*3 + snp_i) = ranking(cell2mat(aggRDE(rows, aggRDE_nHeaderCols+2 + ((func-1)*3)))');
+      nTrained(:,(func-1)*3 + snp_i)   = cell2mat(aggRDE(rows, aggRDE_nHeaderCols+3 + ((func-1)*3)))';
     end
   end
 
@@ -66,7 +70,7 @@ for dim_i = 1:length(dimensions)
   %  which performed (very) well, particularly with maximal rank 'maxRank'
   %  and the success rate of training has to be at least 'minTrainedPerc'
 
-  maxRank = 8;
+  maxRank = 20;
   minTrainedPerc = 0.9;
 
   % bool vector of already covered functions/snapshots
@@ -105,17 +109,33 @@ for dim_i = 1:length(dimensions)
 
   fprintf('The following settings were chosen for %dD (with # of hits underneath):', dim)
   nHits = sum(boolSets(chosenSets, :), 2);
-  disp([find(chosenSets)'; nHits']);
+  [find(chosenSets)'; nHits']
   fprintf('The total number of settings in %dD is %d.\n', dim, sum(chosenSets));
 
+  % Calculate statistics of each model
+  settingsHashes = cellfun(@modelHash, folderModelOptions, 'UniformOutput', false)';
+  for m = 1:nSettings
+    hash = settingsHashes{m};
+    rows = (aggRDE_table.dim == dim) & cellfun(@(x) strcmpi(x, hash), aggRDE_table.hash);
+    rdeMatrix = cell2mat(aggRDE(rows, (aggRDE_nHeaderCols+1):3:end));
+    modelMeanRDE(m, dim_i) = mean(mean(rdeMatrix));
+  end
+
+  headerCols    = { 'setting#', '# covered', 'avg. RDE', 'avg. rank' };
   testedOptions = { 'covFcn', 'trainsetType', 'trainRange', 'trainsetSizeMax', 'meanFcn' };
-  bestSettings = cell(sum(chosenSets), 2+length(testedOptions));
-  bestSettings(:,1) = num2cell(find(chosenSets));
-  bestSettings(:,2) = num2cell(nHits);
+
+  nHeaderCols = length(headerCols);
+  bestSettings{dim_i} = cell(1+sum(chosenSets), nHeaderCols + length(testedOptions));
+  bestSettings{dim_i}(1, :) = [headerCols testedOptions];
+  bestSettings{dim_i}(2:end,1) = num2cell(find(chosenSets));        % indices of chosen models
+  bestSettings{dim_i}(2:end,2) = num2cell(nHits);   % the numbers of hits of each model
+  bestSettings{dim_i}(2:end,3) = num2cell(modelMeanRDE(chosenSets, dim_i));       % mean of RDE accros f/snp
+  bestSettings{dim_i}(2:end,4) = num2cell(mean(modelRanks(chosenSets, :), 2));      % mean ranks
+
   for opi = 1:length(testedOptions)
     opt = testedOptions{opi};
-    bestSettings(:, 2+opi) = cellfun(@(x) getfield(x, opt), folderModelOptions(find(chosenSets)), 'UniformOutput', false);
+    bestSettings{dim_i}(2:end, nHeaderCols + opi) = cellfun(@(x) getfield(x, opt), folderModelOptions(find(chosenSets)), 'UniformOutput', false);
   end
   disp('Chosen settings:');
-  disp(bestSettings);
+  disp(bestSettings{dim_i});
 end
