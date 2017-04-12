@@ -7,6 +7,9 @@ bestSettings = cell(3,1);
 aggRDE_nHeaderCols = 3;
 nSettings = length(folderModelOptions);
 modelMeanRDE = zeros(nSettings, length(dimensions));
+modelMeanRDECovered = zeros(nSettings, length(dimensions));
+modelMeanRankCovered = zeros(nSettings, length(dimensions));
+modelFunctionsCovered = cell(nSettings, length(dimensions));
 
 for dim_i = 1:length(dimensions)
 
@@ -119,9 +122,18 @@ for dim_i = 1:length(dimensions)
     rows = (aggRDE_table.dim == dim) & cellfun(@(x) strcmpi(x, hash), aggRDE_table.hash);
     rdeMatrix = cell2mat(aggRDE(rows, (aggRDE_nHeaderCols+1):3:end));
     modelMeanRDE(m, dim_i) = mean(mean(rdeMatrix));
+    rdeMatrixCovered = rdeMatrix;
+    modelFunctionsCovered{m, dim_i} = false(1,length(functions));
+    for sni = 1:length(snapshots)
+      rdeMatrixCovered(sni, ~boolSets(m, sni:3:end)) = NaN;
+      modelFunctionsCovered{m, dim_i} = modelFunctionsCovered{m, dim_i} ...
+          | boolSets(m, sni:3:end);
+    end
+    modelMeanRDECovered(m, dim_i) = mean(rdeMatrixCovered(~isnan(rdeMatrixCovered)));
+    modelMeanRankCovered(m, dim_i) = mean(modelRanks(m, boolSets(m, :)));
   end
 
-  headerCols    = { 'setting#', '# covered', 'avg. RDE', 'avg. rank' };
+  headerCols    = { 'settingNo', 'No_covered', 'avg_RDE', 'covrd_RDE', 'avg_rank', 'covrd_rank', 'covrd_funs' };
   testedOptions = { 'covFcn', 'trainsetType', 'trainRange', 'trainsetSizeMax', 'meanFcn' };
 
   nHeaderCols = length(headerCols);
@@ -130,12 +142,19 @@ for dim_i = 1:length(dimensions)
   bestSettings{dim_i}(2:end,1) = num2cell(find(chosenSets));        % indices of chosen models
   bestSettings{dim_i}(2:end,2) = num2cell(nHits);   % the numbers of hits of each model
   bestSettings{dim_i}(2:end,3) = num2cell(modelMeanRDE(chosenSets, dim_i));       % mean of RDE accros f/snp
-  bestSettings{dim_i}(2:end,4) = num2cell(mean(modelRanks(chosenSets, :), 2));      % mean ranks
+  bestSettings{dim_i}(2:end,4) = num2cell(modelMeanRDECovered(chosenSets, dim_i));       % mean of RDE accros f/snp which are covered by this settings
+  bestSettings{dim_i}(2:end,5) = num2cell(mean(modelRanks(chosenSets, :), 2));      % mean ranks
+  bestSettings{dim_i}(2:end,6) = num2cell(modelMeanRankCovered(chosenSets, dim_i));   % mean ranks of the covered f/snp
+  bestSettings{dim_i}(2:end,7) = cellfun(@(x) num2str(find(x)), ...
+      modelFunctionsCovered(chosenSets, dim_i), 'UniformOutput', false);  % list of covered functions
 
   for opi = 1:length(testedOptions)
     opt = testedOptions{opi};
-    bestSettings{dim_i}(2:end, nHeaderCols + opi) = cellfun(@(x) getfield(x, opt), folderModelOptions(find(chosenSets)), 'UniformOutput', false);
+    bestSettings{dim_i}(2:end, nHeaderCols + opi) = cellfun(@(x) getfield(x, opt), folderModelOptions(chosenSets), 'UniformOutput', false);
   end
   disp('Chosen settings:');
   disp(bestSettings{dim_i});
+
+  bestSettingsTable{dim_i} = cell2table(bestSettings{dim_i}(2:end, :), ...
+      'VariableNames', bestSettings{dim_i}(1,:));
 end
