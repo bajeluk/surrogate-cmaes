@@ -1,4 +1,4 @@
-% rde_ranking.m -- Identify the best model settings to be used in ModelPool
+% mse_ranking.m -- Identify the best model settings to be used in ModelPool
 
 %% Load data
 % load exp/experiments/exp_GPtest_01/modelStatistics.mat
@@ -9,10 +9,10 @@ defaultParameterSets = struct( ...
   'nBestPoints',    { { 0 } } );
 
 bestSettings = cell(3,1);
-aggRDE_nHeaderCols = 3;
+aggMSE_nHeaderCols = 3;
 nSettings = length(folderModelOptions);
-modelMeanRDE = zeros(nSettings, length(dimensions));
-modelMeanRDECovered = zeros(nSettings, length(dimensions));
+modelMeanMSE = zeros(nSettings, length(dimensions));
+modelMeanMSECovered = zeros(nSettings, length(dimensions));
 modelMeanRankCovered = zeros(nSettings, length(dimensions));
 modelFunctionsCovered = cell(nSettings, length(dimensions));
 
@@ -30,9 +30,9 @@ for dim_i = 1:length(dimensions)
   for func = functions
     for snp_i = 1:length(snapshots)
       snp = snapshots(snp_i);
-      rows = (aggRDE_table.dim == dim) & (aggRDE_table.snapshot == snp);
-      modelRanks(:,(func-1)*3 + snp_i) = ranking(cell2mat(aggRDE(rows, aggRDE_nHeaderCols+2 + ((func-1)*3)))');
-      nTrained(:,(func-1)*3 + snp_i)   = cell2mat(aggRDE(rows, aggRDE_nHeaderCols+3 + ((func-1)*3)))';
+      rows = (aggMSE_table.dim == dim) & (aggMSE_table.snapshot == snp);
+      modelRanks(:,(func-1)*3 + snp_i) = ranking(cell2mat(aggMSE(rows, aggMSE_nHeaderCols+2 + ((func-1)*3)))');
+      nTrained(:,(func-1)*3 + snp_i)   = cell2mat(aggMSE(rows, aggMSE_nHeaderCols+3 + ((func-1)*3)))';
     end
   end
 
@@ -124,21 +124,21 @@ for dim_i = 1:length(dimensions)
   settingsHashes = cellfun(@modelHash, folderModelOptions, 'UniformOutput', false)';
   for m = 1:nSettings
     hash = settingsHashes{m};
-    rows = (aggRDE_table.dim == dim) & cellfun(@(x) strcmpi(x, hash), aggRDE_table.hash);
-    rdeMatrix = cell2mat(aggRDE(rows, (aggRDE_nHeaderCols+1):3:end));
-    modelMeanRDE(m, dim_i) = mean(mean(rdeMatrix));
-    rdeMatrixCovered = rdeMatrix;
+    rows = (aggMSE_table.dim == dim) & cellfun(@(x) strcmpi(x, hash), aggMSE_table.hash);
+    mseMatrix = cell2mat(aggMSE(rows, (aggMSE_nHeaderCols+1):3:end));
+    modelMeanMSE(m, dim_i) = mean(mean(mseMatrix));
+    mseMatrixCovered = mseMatrix;
     modelFunctionsCovered{m, dim_i} = false(1,length(functions));
     for sni = 1:length(snapshots)
-      rdeMatrixCovered(sni, ~boolSets(m, sni:3:end)) = NaN;
+      mseMatrixCovered(sni, ~boolSets(m, sni:3:end)) = NaN;
       modelFunctionsCovered{m, dim_i} = modelFunctionsCovered{m, dim_i} ...
           | boolSets(m, sni:3:end);
     end
-    modelMeanRDECovered(m, dim_i) = mean(rdeMatrixCovered(~isnan(rdeMatrixCovered)));
+    modelMeanMSECovered(m, dim_i) = mean(mseMatrixCovered(~isnan(mseMatrixCovered)));
     modelMeanRankCovered(m, dim_i) = mean(modelRanks(m, boolSets(m, :)));
   end
 
-  headerCols    = { 'settingNo', 'No_covered', 'avg_RDE', 'covrd_RDE', 'avg_rank', 'covrd_rank', 'covrd_funs' };
+  headerCols    = { 'settingNo', 'No_covered', 'avg_MSE', 'covrd_MSE', 'avg_rank', 'covrd_rank', 'covrd_funs' };
   testedOptions = { 'covFcn', 'trainsetType', 'trainRange', 'trainsetSizeMax', 'meanFcn' };
 
   nHeaderCols = length(headerCols);
@@ -146,8 +146,8 @@ for dim_i = 1:length(dimensions)
   bestSettings{dim_i}(1, :) = [headerCols testedOptions];
   bestSettings{dim_i}(2:end,1) = num2cell(find(chosenSets));        % indices of chosen models
   bestSettings{dim_i}(2:end,2) = num2cell(nHits);   % the numbers of hits of each model
-  bestSettings{dim_i}(2:end,3) = num2cell(modelMeanRDE(chosenSets, dim_i));       % mean of RDE accros f/snp
-  bestSettings{dim_i}(2:end,4) = num2cell(modelMeanRDECovered(chosenSets, dim_i));       % mean of RDE accros f/snp which are covered by this settings
+  bestSettings{dim_i}(2:end,3) = num2cell(modelMeanMSE(chosenSets, dim_i));       % mean of MSE accros f/snp
+  bestSettings{dim_i}(2:end,4) = num2cell(modelMeanMSECovered(chosenSets, dim_i));       % mean of MSE accros f/snp which are covered by this settings
   bestSettings{dim_i}(2:end,5) = num2cell(mean(modelRanks(chosenSets, :), 2));      % mean ranks
   bestSettings{dim_i}(2:end,6) = num2cell(modelMeanRankCovered(chosenSets, dim_i));   % mean ranks of the covered f/snp
   bestSettings{dim_i}(2:end,7) = cellfun(@(x) num2str(find(x)), ...
