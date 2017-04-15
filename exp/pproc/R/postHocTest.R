@@ -35,13 +35,14 @@ option_list <- list(
                                 default="friedman",
                                 help=paste0("Posthoc test. One of ",
                                             "\"friedman\" (default), ",
+                                            "\"wilcoxon\", ",
                                             "\"quade\", ",
                                             "\"aligned ranks\".")),
-                    make_option("--correction", action="store",
+                    make_option(c("-c", "--correction"), action="store",
                                 default="bergmann",
-                                help=paste0("P-values correction method. Either ",
-                                            "\"bergmann\" (default),",
-                                            " or \"shaffer\"."))
+                                help=paste0("P-values correction method. One of ",
+                                            "\"bergmann\" (default), ",
+                                            "\"shaffer\", or \"bonferrroni\"."))
 
                )
 
@@ -54,8 +55,8 @@ opt_parser = OptionParser(usage="usage: %prog [options]",
 opts <- parse_args(opt_parser, print_help_and_exit=TRUE)
 
 stopifnot(any(opts$posthoc_test == c("friedman", "quade",
-                                     "aligned ranks")))
-stopifnot(any(opts$correction == c("bergmann", "shaffer")))
+                                     "wilcoxon", "aligned ranks")))
+stopifnot(any(opts$correction == c("bergmann", "shaffer", "bonferroni")))
 
 # read data
 fvalues <- read.table(opts$input, header=FALSE, sep=",")

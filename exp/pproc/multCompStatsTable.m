@@ -64,7 +64,7 @@ function [stats, meanRanks] = multCompStatsTable(data, varargin)
     for e = 1:nEvals
       fValData = cell2mat(arrayfun(@(x) values{x, d}(e, :), BBfunc, 'UniformOutput', false)');
       [~, mr] = postHocTest(fValData, 'friedman');
-      [~, stat] = multipleComparisonTest(fValData, 'iman');
+      [p, stat] = multipleComparisonTest(fValData, 'iman');
       meanRanks{d, e} = mr;
       stats{d, e} = stat;
     end
