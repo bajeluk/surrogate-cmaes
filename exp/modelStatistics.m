@@ -318,7 +318,7 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
   disp(aggMSE_table);
   writetable(aggMSE_table, fullfile(exppath_short, exp_id, 'aggMSE_table.txt'), 'WriteRowNames', true);
 
-  save(fullfile(exppath_short, exp_id, 'modelStatistics.mat'), 'aggRDE_table', 'aggMSE_table', 'RDEs', 'aggRDE', 'MSEs', 'aggMSE', 'allRDE_mat', 'allRDE_table', 'allMSE_mat', 'allMSE_table', 'isTrained', 'folderModelOptions', 'modelFolders', 'functions', 'dimensions', 'snapshots', 'instances');
+  save(fullfile(exppath_short, exp_id, 'modelStatistics.mat'), 'aggRDE_table', 'aggMSE_table', 'RDEs', 'aggRDE', 'MSEs', 'aggMSE', 'allRDE_mat', 'allRDE_table', 'allMSE_mat', 'allMSE_table', 'isTrained', 'folderModelOptions', 'modelFolders', 'functions', 'dimensions', 'snapshots', 'instances', 'multiFieldNames');
 end
 
 function [modelName, hash, FEs] = parseFolderName(dirName)
@@ -333,21 +333,6 @@ function [modelName, hash, FEs] = parseFolderName(dirName)
     modelName = [];
     hash = [];
     FEs = [];
-  end
-end
-
-function multiFieldNames = getFieldsWithMultiValues(modelOpts)
-% Get names of fields with more than one value in its cell-array fieldvalue
-  assert(isstruct(modelOpts));
-
-  fnames = fieldnames(modelOpts);
-  % multiFieldNames = cell(1, length(fnames));
-  multiFieldNames = {};
-  for i = 1:length(fnames)
-    fname = fnames{i};
-    if (iscell(modelOpts.(fname)) && length(modelOpts.(fname)) > 1)
-      multiFieldNames{end+1} = fname;
-    end
   end
 end
 
