@@ -1,4 +1,4 @@
-function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
+function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, isForModelPool, nPreviousGenerations)
 %DATASETFROMINSTANCE - generates datasets for specified dim and #fun for offline model tunning
 
 % Generates datasets for offline model tunning from the DTS-CMA-ES
@@ -20,7 +20,10 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
   exp_id = opts.inputExp_id;
 
   opts.maxEval = defopts(opts, 'maxEval', 250);
-
+  if ~exist('isForModelPool', 'var')
+    isForModelPool = false;
+    nPreviousGenerations = 0;
+  end
   % prepare output variable
   nInstances = length(inst);
   dataset = cell(1, nInstances);
@@ -53,13 +56,21 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
     % prepare output fields
     dataset{i_inst} = struct();
     dataset{i_inst}.archive  = [];
-    dataset{i_inst}.testSetX = cell(1, nSnapshots);
-    dataset{i_inst}.testSetY = cell(1, nSnapshots);
-    dataset{i_inst}.means    = cell(1, nSnapshots);
-    dataset{i_inst}.sigmas   = cell(1, nSnapshots);
-    dataset{i_inst}.BDs      = cell(1, nSnapshots);
-    dataset{i_inst}.cmaesStates = cell(1, nSnapshots);
-    dataset{i_inst}.generations = [];
+    if (isForModelPool)
+      dataset{i_inst}.testSetX = cell(nSnapshots, nPreviousGenerations+1);
+      dataset{i_inst}.testSetY = cell(nSnapshots, nPreviousGenerations+1);
+      dataset{i_inst}.means    = cell(nSnapshots, nPreviousGenerations+1);
+      dataset{i_inst}.sigmas   = cell(nSnapshots, nPreviousGenerations+1);
+      dataset{i_inst}.BDs      = cell(nSnapshots, nPreviousGenerations+1);
+      dataset{i_inst}.cmaesStates = cell(nSnapshots, nPreviousGenerations+1);
+    else
+      dataset{i_inst}.testSetX = cell(1, nSnapshots);
+      dataset{i_inst}.testSetY = cell(1, nSnapshots);
+      dataset{i_inst}.means    = cell(1, nSnapshots);
+      dataset{i_inst}.sigmas   = cell(1, nSnapshots);
+      dataset{i_inst}.BDs      = cell(1, nSnapshots);
+      dataset{i_inst}.cmaesStates = cell(1, nSnapshots);
+    end
 
     % BBOB fitness initialization
     fgeneric('initialize', exp_settings.bbob_function, instanceNo, '/tmp/bbob_output/');
@@ -82,51 +93,67 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id)
     % Dataset generation
 
     for sni = 1:nSnapshots        % sni stands for SNapshot Index
-      g = gens(sni);
+      for genShift = nPreviousGenerations:-1:0
+        g = gens(sni);
+        g = g-genShift;
+        if (g < 1)
+          continue;
+        end
 
-      lambda = sum(cmo.generations == g);
+        lambda = sum(cmo.generations == g);
 
-      xmean = cmo.means(:,g);
-      sigma = cmo.sigmas(g);
-      BD    = cmo.BDs{g};
-      dim   = exp_settings.dim;
+        xmean = cmo.means(:,g);
+        sigma = cmo.sigmas(g);
+        BD    = cmo.BDs{g};
+        dim   = exp_settings.dim;
 
-      cmaesState = struct( ...
-        'xmean', xmean, ...
-        'sigma', sigma, ...
-        'lambda', lambda, ...
-        'BD', BD, ...
-        ... % 'diagD', diagD, ...
-        'diagD', [], ...
-        ... % 'diagC', diagC, ...
-        'dim', dim, ...
-        'mu', floor(lambda/2), ...
-        'countiter', g);
+        cmaesState = struct( ...
+          'xmean', xmean, ...
+          'sigma', sigma, ...
+          'lambda', lambda, ...
+          'BD', BD, ...
+          ... % 'diagD', diagD, ...
+          'diagD', [], ...
+          ... % 'diagC', diagC, ...
+          'dim', dim, ...
+          'mu', floor(lambda/2), ...
+          'countiter', g);
 
-      sampleOpts = struct( ...
-        'noiseReevals', 0, ...
-        'isBoundActive', true, ...
-        'lbounds', -5 * ones(dim, 1), ...
-        'ubounds',  5 * ones(dim, 1), ...
-        'counteval', cmo.generationStarts(g), ...
-        'flgEvalParallel', false, ...
-        'flgDiagonalOnly', false, ...
-        'noiseHandling', false, ...
-        'xintobounds', @xintobounds, ...
-        'origPopSize', lambda);
+        sampleOpts = struct( ...
+          'noiseReevals', 0, ...
+          'isBoundActive', true, ...
+          'lbounds', -5 * ones(dim, 1), ...
+          'ubounds',  5 * ones(dim, 1), ...
+          'counteval', cmo.generationStarts(g), ...
+          'flgEvalParallel', false, ...
+          'flgDiagonalOnly', false, ...
+          'noiseHandling', false, ...
+          'xintobounds', @xintobounds, ...
+          'origPopSize', lambda);
 
-      % Generate fresh CMA-ES' \lambda offsprings
-      [~, arxvalid, ~] = sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
+        % Generate fresh CMA-ES' \lambda offsprings
+        [~, arxvalid, ~] = sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
 
-      % Save everything needed
-      dataset{i_inst}.testSetX{sni}  = arxvalid';
-      dataset{i_inst}.testSetY{sni}  = fgeneric(arxvalid)';
-      dataset{i_inst}.means{sni}     = xmean';
-      dataset{i_inst}.sigmas{sni}    = sigma;
-      dataset{i_inst}.BDs{sni}       = BD;
-      dataset{i_inst}.cmaesStates{sni} = cmaesState;
-      dataset{i_inst}.sampleOpts{sni} = sampleOpts;
+        % Save everything needed
+        if (isForModelPool)
+          dataset{i_inst}.testSetX{sni, genShift+1}    = arxvalid';
+          dataset{i_inst}.testSetY{sni, genShift+1}    = fgeneric(arxvalid)';
+          dataset{i_inst}.means{sni, genShift+1}       = xmean';
+          dataset{i_inst}.sigmas{sni, genShift+1}      = sigma;
+          dataset{i_inst}.BDs{sni, genShift+1}         = BD;
+          dataset{i_inst}.cmaesStates{sni, genShift+1} = cmaesState;
+          dataset{i_inst}.sampleOpts{sni, genShift+1}  = sampleOpts;
+        else
+          dataset{i_inst}.testSetX{sni}  = arxvalid';
+          dataset{i_inst}.testSetY{sni}  = fgeneric(arxvalid)';
+          dataset{i_inst}.means{sni}     = xmean';
+          dataset{i_inst}.sigmas{sni}    = sigma;
+          dataset{i_inst}.BDs{sni}       = BD;
+          dataset{i_inst}.cmaesStates{sni} = cmaesState;
+          dataset{i_inst}.sampleOpts{sni} = sampleOpts;
+        end
 
+      end % generationShift loop
     end  % snapshots loop
 
     % create the Archive of with the original-evaluated points

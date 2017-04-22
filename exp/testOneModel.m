@@ -5,8 +5,13 @@ function [stats, models, y_models] = testOneModel(modelType, modelOpts, ds, nSna
 %   modelType   - type of tested model acc. to ModelFactory | string
 %   modelOpts   - options of the tested model | struct
 %   ds          - dataset for testing | struct
-%   nSnapshots  - the number of snapshots recorded as a dataset per CMA-ES run
-%   opts        - other options and settings (e.g.  opts.statistics)
+%   nSnapshots  - the number of snapshots recorded as a dataset per CMA-ES run;
+%                 there must be the same number of datasets in 'ds.testSetX'
+%   opts        - other options and settings:
+%       .statistics      -- names of statistics to calculate; default: {'mse'}
+%                           | cell-array of strings
+%       .snapshotsToTest -- array of snapshots integer indices to test 
+%                           default: [1:nSnapshots] | array of integers
 %
 % Output:
 %   stats       - cell array of structures with calculated statistics (one per snapshot)
@@ -26,6 +31,7 @@ function [stats, models, y_models] = testOneModel(modelType, modelOpts, ds, nSna
     nSnapshots = length(ds.testSetX);
   end
   opts.statistics = defopts(opts, 'statistics', { 'mse' });
+  opts.snapshotsToTest = defopts(opts, 'snapshotsToTest', [1:nSnapshots]);
 
   % prepare output fields
   for st = 1:length(opts.statistics)
@@ -35,7 +41,7 @@ function [stats, models, y_models] = testOneModel(modelType, modelOpts, ds, nSna
   y_models = cell(1, nSnapshots);
 
   % cycle through all snapshots (usually 10)
-  for i = 1:nSnapshots
+  for i = opts.snapshotsToTest
     [lambda, dim] = size(ds.testSetX{i});
 
     % prepare archive for this snapshot one generation shorter
@@ -68,9 +74,25 @@ function [stats, models, y_models] = testOneModel(modelType, modelOpts, ds, nSna
       y_train = [];
     end
 
-    m = m.train(X_train, y_train, ds.cmaesStates{i}, ds.sampleOpts{i}, ...
-        thisArchive, thisPopulation);
+    if (isa(m,'ModelPool'))
+      for j = (m.historyLength+1):-1:1;
+        if (isempty(ds.testSetX{i, j}))
+          fprintf('Empty ds.testSetX{%d, %d}, not training ModelPool',i, j);
+          continue;
+        end
+        thisPopulation = Population(lambda, dim);
+        thisPopulation = thisPopulation.addPoints(ds.testSetX{i, j}', zeros(size(ds.testSetY{i, j}')), ...
+        ds.testSetX{i,j}', NaN(size(ds.testSetX{i,j}')), 0);
 
+        thisArchive = ds.archive.duplicate();
+        thisArchive = thisArchive.restrictToGenerations(1:(ds.generations(i)-j));
+        m = m.train(X_train, y_train, ds.cmaesStates{i,j}, ds.sampleOpts{i,j}, ...
+            thisArchive, thisPopulation);
+      end
+    else
+      m = m.train(X_train, y_train, ds.cmaesStates{i}, ds.sampleOpts{i}, ...
+          thisArchive, thisPopulation);
+    end
     if m.isTrained()
       y = ds.testSetY{i};
       y_models{i} = m.predict(ds.testSetX{i});

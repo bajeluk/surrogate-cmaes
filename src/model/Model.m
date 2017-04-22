@@ -270,6 +270,8 @@ classdef (Abstract) Model
 
       if (isempty(X))
         obj.trainGeneration= - 1;
+        obj.trainSigma = sigma;
+        obj.trainBD = BD;
         warning('Model.train() - empty trainset. Considering the model as untrained.');
       else
         % minimal difference between minimal and maximal returned

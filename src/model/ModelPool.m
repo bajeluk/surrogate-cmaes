@@ -94,9 +94,10 @@ classdef ModelPool < Model
 
       obj.nTrainData = Inf;
       for i=1:obj.modelsCount
-        %create the models, calculate needed properties
+        % create the models, calculate needed properties
         modelOptions = obj.modelPoolOptions.parameterSets(i);
-        obj.modelPoolOptions.parameterSets(i).calculatedTrainRange = ModelPool.calculateTrainRange(modelOptions.trainRange, obj.dim);
+        % now obsolete:
+        % obj.modelPoolOptions.parameterSets(i).calculatedTrainRange = ModelPool.calculateTrainRange(modelOptions.trainRange, obj.dim);
         obj.models{i,1} = obj.createGpModel(i, xMean);
         obj.nTrainData = min(obj.models{i,1}.getNTrainData(),obj.nTrainData);
       end
@@ -309,8 +310,8 @@ classdef ModelPool < Model
         if (size(X,1)~=0)
           if (obj.isModelTrained(i,ageOfTestedModels))
             [yModel, ~] = obj.models{i, ageOfTestedModels}.modelPredict(X);
-            if (size(yArchive)==size(yModel))
-              choosingCriterium(i) = sum((yModel - yArchive).^2)/size(yArchive);
+            if (size(yArchive) == size(yModel))
+              choosingCriterium(i) = sum((yModel - yArchive).^2) / length(yArchive);
             end
           end
         end
@@ -326,7 +327,7 @@ classdef ModelPool < Model
           if (obj.isModelTrained(i,ageOfTestedModels))
             [yModel, ~] = obj.models{i,ageOfTestedModels}.modelPredict(X);
             if (size(yArchive)==size(yModel))
-              choosingCriterium(i) = sum(abs(yModel - yArchive))/size(yArchive);
+              choosingCriterium(i) = sum(abs(yModel - yArchive)) / length(yArchive);
             end
           end
         end
