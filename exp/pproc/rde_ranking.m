@@ -5,8 +5,7 @@
 
 defaultParameterSets = struct( ...
   'trainAlgorithm', { {'fmincon'} }, ...
-  'hyp',            { {struct('lik', log(0.01), 'cov', log([0.5; 2]))} }, ...
-  'nBestPoints',    { { 0 } } );
+  'hyp',            { {struct('lik', log(0.01), 'cov', log([0.5; 2]))} });
 printBestSettingsDefinition = false;
 
 maxRank = 20;
@@ -32,6 +31,7 @@ for dim_i = 1:length(dimensions)
   modelRanks = zeros(nSettings, length(functions)*nSnapshots);
   nTrained   = zeros(nSettings, length(functions)*nSnapshots);
   dimId = find(dim == dimensions, 1);
+  functions(functions>100) = functions(functions>100) - 100; % for noisy functions
 
   for func = functions
     for snp_i = 1:nSnapshots
@@ -130,12 +130,20 @@ for dim_i = 1:length(dimensions)
   fprintf('The total number of settings in %dD is %d.\n', dim, sum(chosenSets));
 
   % Calculate statistics of each model
+  % take mean RDE statistic into modelMeanRDE (mean is calculated from instances)
+  colMean = 1;
   settingsHashes = cellfun(@modelHash, folderModelOptions, 'UniformOutput', false)';
+
   for m = 1:nSettings
     hash = settingsHashes{m};
+
+    % take all rows corresponding to the actual settings' hash
     rows = (aggRDE_table.dim == dim) & cellfun(@(x) strcmpi(x, hash), aggRDE_table.hash);
-    rdeMatrix = cell2mat(aggRDE(rows, (aggRDE_nHeaderCols+1):aggRDE_nColsPerFunction:end));
+    rdeMatrix = cell2mat(aggRDE(rows, (aggRDE_nHeaderCols+colMean):aggRDE_nColsPerFunction:end));
     modelMeanRDE(m, dim_i) = mean(mean(rdeMatrix));
+
+    % calculate also statistics based only on the functions/snapshots
+    % which are covered by respective settings
     rdeMatrixCovered = rdeMatrix;
     modelFunctionsCovered{m, dim_i} = false(1,length(functions));
     for sni = 1:nSnapshots

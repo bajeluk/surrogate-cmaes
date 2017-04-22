@@ -5,11 +5,15 @@
 
 defaultParameterSets = struct( ...
   'trainAlgorithm', { {'fmincon'} }, ...
-  'hyp',            { {struct('lik', log(0.01), 'cov', log([0.5; 2]))} }, ...
-  'nBestPoints',    { { 0 } } );
+  'hyp',            { {struct('lik', log(0.01), 'cov', log([0.5; 2]))} });
+printBestSettingsDefinition = false;
 
-bestSettings = cell(3,1);
+maxRank = 20;
+minTrainedPerc = 0.9;
+
+bestSettings = cell(length(dimensions),1);
 aggMSE_nHeaderCols = 3;
+aggMSE_nColsPerFunction = 3;
 nSettings = length(folderModelOptions);
 modelMeanMSE = zeros(nSettings, length(dimensions));
 modelMeanMSECovered = zeros(nSettings, length(dimensions));
@@ -23,16 +27,24 @@ for dim_i = 1:length(dimensions)
   dim = dimensions(dim_i);
   nInstances = length(instances);
 
-  modelRanks = zeros(nSettings, length(functions)*length(snapshots));
-  nTrained   = zeros(nSettings, length(functions)*length(snapshots));
+  nSnapshots = length(snapshots);
+  modelRanks = zeros(nSettings, length(functions)*nSnapshots);
+  nTrained   = zeros(nSettings, length(functions)*nSnapshots);
   dimId = find(dim == dimensions, 1);
+  functions(functions>100) = functions(functions>100) - 100; % for noisy functions
 
   for func = functions
-    for snp_i = 1:length(snapshots)
+    for snp_i = 1:nSnapshots
       snp = snapshots(snp_i);
+      % take rows which belong to the considered dimension/snapshot
+      % combination
       rows = (aggMSE_table.dim == dim) & (aggMSE_table.snapshot == snp);
-      modelRanks(:,(func-1)*3 + snp_i) = ranking(cell2mat(aggMSE(rows, aggMSE_nHeaderCols+2 + ((func-1)*3)))');
-      nTrained(:,(func-1)*3 + snp_i)   = cell2mat(aggMSE(rows, aggMSE_nHeaderCols+3 + ((func-1)*3)))';
+      % take ranks according to the 2nd statistic
+      colStat = 2;
+      modelRanks(:,(func-1)*nSnapshots + snp_i) = ranking(cell2mat(aggMSE(rows, aggMSE_nHeaderCols+colStat + ((func-1)*aggMSE_nColsPerFunction)))');
+      % # of train success should be in the 3rd column
+      colNTrained = 3;
+      nTrained(:,(func-1)*nSnapshots + snp_i)   = cell2mat(aggMSE(rows, aggMSE_nHeaderCols+colNTrained + ((func-1)*aggMSE_nColsPerFunction)))';
     end
   end
 
@@ -78,11 +90,8 @@ for dim_i = 1:length(dimensions)
   %  which performed (very) well, particularly with maximal rank 'maxRank'
   %  and the success rate of training has to be at least 'minTrainedPerc'
 
-  maxRank = 20;
-  minTrainedPerc = 0.9;
-
   % bool vector of already covered functions/snapshots
-  isCovered = false(1, length(functions)*length(snapshots));
+  isCovered = false(1, length(functions)*nSnapshots);
   % bool array indicating whether model settings performed (very) well on
   % respective function/snapshot
   boolSets = (modelRanks <= maxRank) & (nTrained/nInstances >= minTrainedPerc);
@@ -121,29 +130,37 @@ for dim_i = 1:length(dimensions)
   fprintf('The total number of settings in %dD is %d.\n', dim, sum(chosenSets));
 
   % Calculate statistics of each model
+  % take mean MSE statistic into modelMeanMSE (mean is calculated from instances)
+  colMean = 1;
   settingsHashes = cellfun(@modelHash, folderModelOptions, 'UniformOutput', false)';
+
   for m = 1:nSettings
     hash = settingsHashes{m};
+
+    % take all rows corresponding to the actual settings' hash
     rows = (aggMSE_table.dim == dim) & cellfun(@(x) strcmpi(x, hash), aggMSE_table.hash);
-    mseMatrix = cell2mat(aggMSE(rows, (aggMSE_nHeaderCols+1):3:end));
+    mseMatrix = cell2mat(aggMSE(rows, (aggMSE_nHeaderCols+colMean):aggMSE_nColsPerFunction:end));
     modelMeanMSE(m, dim_i) = mean(mean(mseMatrix));
+
+    % calculate also statistics based only on the functions/snapshots
+    % which are covered by respective settings
     mseMatrixCovered = mseMatrix;
     modelFunctionsCovered{m, dim_i} = false(1,length(functions));
-    for sni = 1:length(snapshots)
-      mseMatrixCovered(sni, ~boolSets(m, sni:3:end)) = NaN;
+    for sni = 1:nSnapshots
+      mseMatrixCovered(sni, ~boolSets(m, sni:nSnapshots:end)) = NaN;
       modelFunctionsCovered{m, dim_i} = modelFunctionsCovered{m, dim_i} ...
-          | boolSets(m, sni:3:end);
+          | boolSets(m, sni:nSnapshots:end);
     end
     modelMeanMSECovered(m, dim_i) = mean(mseMatrixCovered(~isnan(mseMatrixCovered)));
     modelMeanRankCovered(m, dim_i) = mean(modelRanks(m, boolSets(m, :)));
   end
 
   headerCols    = { 'settingNo', 'No_covered', 'avg_MSE', 'covrd_MSE', 'avg_rank', 'covrd_rank', 'covrd_funs' };
-  testedOptions = { 'covFcn', 'trainsetType', 'trainRange', 'trainsetSizeMax', 'meanFcn' };
+  % multiFieldNames = { 'covFcn', 'trainsetType', 'trainRange', 'trainsetSizeMax', 'meanFcn' };
 
   nHeaderCols = length(headerCols);
-  bestSettings{dim_i} = cell(1+sum(chosenSets), nHeaderCols + length(testedOptions));
-  bestSettings{dim_i}(1, :) = [headerCols testedOptions];
+  bestSettings{dim_i} = cell(1+sum(chosenSets), nHeaderCols + length(multiFieldNames));
+  bestSettings{dim_i}(1, :) = [headerCols multiFieldNames];
   bestSettings{dim_i}(2:end,1) = num2cell(find(chosenSets));        % indices of chosen models
   bestSettings{dim_i}(2:end,2) = num2cell(nHits);   % the numbers of hits of each model
   bestSettings{dim_i}(2:end,3) = num2cell(modelMeanMSE(chosenSets, dim_i));       % mean of MSE accros f/snp
@@ -153,20 +170,32 @@ for dim_i = 1:length(dimensions)
   bestSettings{dim_i}(2:end,7) = cellfun(@(x) num2str(find(x)), ...
       modelFunctionsCovered(chosenSets, dim_i), 'UniformOutput', false);  % list of covered functions
 
-  bestSettingsStruct{dim_i} = struct();
-  for opi = 1:length(testedOptions)
-    opt = testedOptions{opi};
+  for opi = 1:length(multiFieldNames)
+    opt = multiFieldNames{opi};
     bestSettings{dim_i}(2:end, nHeaderCols + opi) = cellfun(@(x) getfield(x, opt), folderModelOptions(chosenSets), 'UniformOutput', false);
-    bestSettingsStruct{dim_i}.(opt) = bestSettings{dim_i}(2:end, nHeaderCols + opi)';
   end
   disp('Chosen settings:');
   disp(bestSettings{dim_i});
 
+  % extract the best settings itself in a separate new cell
+  % and add also the standard options from 'defaultParameterSets' defined
+  % at the beginning of this file
+  bestSettingsCell{dim_i} = bestSettings{dim_i}(2:end, (nHeaderCols+1):end);
   for fld = fieldnames(defaultParameterSets)'
     value = defaultParameterSets.(fld{1});
-    bestSettingsStruct{dim_i}.(fld{1}) = value( ones(1, sum(chosenSets)) );
+    bestSettingsCell{dim_i}(:, end+1) = value( ones(1, sum(chosenSets)), 1 );
   end
-  printStructure(bestSettingsStruct{dim_i}, 'StructName', 'parameterSets');
+
+  % convert the created cell into a structure
+  % and print it on the screen
+  bestSettingsStruct{dim_i} = cell2struct(bestSettingsCell{dim_i}, ...
+      [multiFieldNames, fieldnames(defaultParameterSets)'], 2);
+  if (exist('printBestSettingsDefinition', 'var') && islogical(printBestSettingsDefinition) ...
+      && printBestSettingsDefinition)
+    printStructure(bestSettingsStruct{dim_i}, 'StructName', 'parameterSets');
+  else
+    disp('Printing the definitions of the best settings structs is switched off.')
+  end
 
   bestSettingsTable{dim_i} = cell2table(bestSettings{dim_i}(2:end, :), ...
       'VariableNames', bestSettings{dim_i}(1,:));
