@@ -6,10 +6,12 @@
 defaultParameterSets = struct( ...
   'trainAlgorithm', { {'fmincon'} }, ...
   'hyp',            { {struct('lik', log(0.01), 'cov', log([0.5; 2]))} });
-printBestSettingsDefinition = false;
+printBestSettingsDefinition = true;
 
-maxRank = 20;
-minTrainedPerc = 0.9;
+maxRank = 25;
+minTrainedPerc = 0.7;
+% take ranks according to the i-th statistic
+colStat = 1;
 
 bestSettings = cell(length(dimensions),1);
 aggRDE_nHeaderCols = 3;
@@ -39,8 +41,7 @@ for dim_i = 1:length(dimensions)
       % take rows which belong to the considered dimension/snapshot
       % combination
       rows = (aggRDE_table.dim == dim) & (aggRDE_table.snapshot == snp);
-      % take ranks according to the 2nd statistic
-      colStat = 2;
+      % take ranks according to the chosen statistic
       modelRanks(:,(func-1)*nSnapshots + snp_i) = ranking(cell2mat(aggRDE(rows, aggRDE_nHeaderCols+colStat + ((func-1)*aggRDE_nColsPerFunction)))');
       % # of train success should be in the 3rd column
       colNTrained = 3;
@@ -109,9 +110,11 @@ for dim_i = 1:length(dimensions)
     howMuchWillCover = sum(boolSets(:, ~isCovered), 2);
     % sets the number to zero for already chosen sets
     howMuchWillCover(chosenSets) = 0;
+    % re-weight the sets with their average/summed covering rank
+    weights = howMuchWillCover ./ sum(modelRanks(:, ~isCovered), 2);
     % take all the settings with the maximal covering property
-    nMaxCovers = max(howMuchWillCover);
-    maxCovered = find(howMuchWillCover == nMaxCovers);
+    maxWeight = max(weights);
+    maxCovered = find(weights == maxWeight);
     % choose one of the max-covering sets:
     %   take such settings which has maximal covering number
     %   and is the first in sortedSettings (see above)
