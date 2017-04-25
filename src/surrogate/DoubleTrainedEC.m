@@ -139,9 +139,20 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             return;
           end
         end
+      end
 
+      % sample new population of lambda points out of which will be chosen
+      % later in this generation
+      nLambdaRest = lambda - obj.nPresampledPoints;
+      [xExtend, xExtendValid, zExtend] = ...
+          sampleCmaesNoFitness(obj.cmaesState.sigma, nLambdaRest, obj.cmaesState, sampleOpts);
+
+      if (obj.modelAge == 0)
         % (first) model training
-        obj.newModel = obj.newModel.train(xTrain, yTrain, obj.cmaesState, sampleOpts);
+        phase = 4;
+        tmp_pop = obj.pop;
+        tmp_pop = tmp_pop.addPoints(xExtendValid, NaN(1,nLambdaRest), xExtend, zExtend, 0, phase);
+        obj.newModel = obj.newModel.train(xTrain, yTrain, obj.cmaesState, sampleOpts, obj.archive, tmp_pop);
         if (obj.newModel.isTrained())
           obj = obj.updateModelArchive(obj.newModel, obj.modelAge);
         else
@@ -157,7 +168,6 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       end  % if (obj.modelAge == 0)
 
       obj.model = obj.newModel;
-      nLambdaRest = lambda - obj.nPresampledPoints;
 
       % Validation Generation -- raise the number of orig. evaluated points
       % once in several (opts.validationGenerationPeriod) generations
@@ -175,11 +185,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           obj.nBestPoints, nPoints, sampleOpts, varargin{:});
       nPoints = nPoints - obj.usedBestPoints;
 
-      % sample new points -- the rest of population
-      [xExtend, xExtendValid, zExtend] = ...
-          sampleCmaesNoFitness(obj.cmaesState.sigma, nLambdaRest - obj.usedBestPoints, obj.cmaesState, sampleOpts);
-
-      % merge the preselected best point(s) with the sampled rest of population
+      % merge the preselected best point(s) with the sampled population (see above)
       xExtend      = [xBest,      xExtend];
       xExtendValid = [xBestValid, xExtendValid];
       zExtend      = [zBest,      zExtend];

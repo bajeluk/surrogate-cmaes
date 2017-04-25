@@ -28,9 +28,10 @@ classdef Population
       obj.nPoints = 0;
       obj.origEvaled = false(1, lambda_);
       obj.phase = (-1) * ones(1, lambda_);
+      obj.isEvaled = false(1, lambda);
     end
 
-    function obj = addPoints(obj, xNew, yNew, arxNew, arzNew, nOrigEvaled, varargin);
+    function obj = addPoints(obj, xNew, yNew, arxNew, arzNew, nOrigEvaled, varargin)
       % add new points with their f-values into the population
       % 'nOrigEvaled' - the number of points starting from begiining (index 1)
       %                 which have original fitness value
@@ -39,15 +40,55 @@ classdef Population
       %                         Phase 0 -- presample
       %                         Phase 1 -- orig. evaluation of the "best" point(s)
       %                         Phase 2 -- model evaluations of the rest of points
-      nNew = length(yNew);
+      nNew = size(xNew, 2);
       if (nNew == 0)
         % nothing to save
         return;
       end
+      if (isempty(yNew))  yNew = NaN(1, nNew);  end
+
+      % varargin processing
+      thisPhase = 0;
       if (nargin >= 7 && ~isempty(varargin{1}))
         thisPhase = varargin{1};
-      else
-        thisPhase = 0;
+      end
+      assert(size(xNew, 2) == nNew, 'Number of points and its y-values are not consistent!');
+
+      obj.x(:, obj.nPoints + [1:nNew])   = xNew;
+      obj.y(obj.nPoints + [1:nNew])      = yNew;
+      obj.isEvaled(obj.nPoints + [1:nNew]) = ~isnan(yNew);
+      obj.arx(:, obj.nPoints + [1:nNew]) = arxNew;
+      obj.arz(:, obj.nPoints + [1:nNew]) = arzNew;
+      obj.origEvaled(obj.nPoints + [1:nOrigEvaled]) = true;
+      obj.phase(obj.nPoints + [1:nNew]) = thisPhase;
+
+      obj.nPoints = obj.nPoints + nNew;
+    end
+
+    function obj = updateYValue(obj, xNew, yNew, arxNew, arzNew, nOrigEvaled, varargin)
+      % add new points with their f-values into the population
+      % 'nOrigEvaled' - the number of points starting from begiining (index 1)
+      %                 which have original fitness value
+      % 'varargin{1}' - the phase number which these points came in
+      %                 in DoubleTraineEC:
+      %                         Phase 0 -- presample
+      %                         Phase 1 -- orig. evaluation of the "best" point(s)
+      %                         Phase 2 -- model evaluations of the rest of points
+      nNew = size(xNew, 2);
+      if (nNew == 0)
+        % nothing to save
+        return;
+      end
+      if (isempty(yNew))  yNew = NaN(1, nNew);  end
+
+      % varargin processing
+      thisPhase = 0;
+      isEvaled = true(1, size(xNew, 2));
+
+      if (nargin >= 8 && ~isempty(varargin{2}))
+        isEvaled = varargin{2};
+      elseif (nargin >= 7 && ~isempty(varargin{1}))
+        thisPhase = varargin{1};
       end
       assert(size(xNew, 2) == nNew, 'Number of points and its y-values are not consistent!');
 
