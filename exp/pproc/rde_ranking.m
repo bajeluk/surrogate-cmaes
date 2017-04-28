@@ -8,10 +8,21 @@ defaultParameterSets = struct( ...
   'hyp',            { {struct('lik', log(0.01), 'cov', log([0.5; 2]))} });
 printBestSettingsDefinition = true;
 
-maxRank = 25;
-minTrainedPerc = 0.7;
-% take ranks according to the i-th statistic
-colStat = 1;
+maxRank         = defopts(opts, 'maxRank', 25);
+minTrainedPerc  = defopts(opts, 'minTrainedPerc', 0.85);
+% take only models with 'ranks <= maxRank' according
+% to the i-th statistic, 1 = mean, 2 = 75%-quantile
+colStat         = defopts(opts, 'colStat', 2);
+% consider the following criterion when choosing the best settings
+% for choosing for Set Cover problem
+colSetCover     = defopts(opts, 'colSetCover', colStat);
+% transformation of the number of covered functions/snapshots
+% ('fsCovered' is a column vector of these number for each settings)
+% and ranks of respective models for covering functions/snapshots
+% ('mRanks' is a matrix of size 'nSettings x sum(~isCovered)')
+% f_weight        = defopts(opts, 'f_weight', @(fsCovered, mRanks) sqrt(fsCovered) ./ sum(mRanks.^(1.5), 2));
+f_weight        = defopts(opts, 'f_weight', ...
+    @(nCover, modelErrors) (nCover.^(3))./sum(modelErrors, 2));
 
 bestSettings = cell(length(dimensions),1);
 aggRDE_nHeaderCols = 3;
@@ -31,6 +42,7 @@ for dim_i = 1:length(dimensions)
 
   nSnapshots = length(snapshots);
   modelRanks = zeros(nSettings, length(functions)*nSnapshots);
+  modelErrors = zeros(nSettings, length(functions)*nSnapshots);
   nTrained   = zeros(nSettings, length(functions)*nSnapshots);
   dimId = find(dim == dimensions, 1);
   functions(functions>100) = functions(functions>100) - 100; % for noisy functions
@@ -42,8 +54,10 @@ for dim_i = 1:length(dimensions)
       % combination
       rows = (aggRDE_table.dim == dim) & (aggRDE_table.snapshot == snp);
       % take ranks according to the chosen statistic
-      modelRanks(:,(func-1)*nSnapshots + snp_i) = ranking(cell2mat(aggRDE(rows, aggRDE_nHeaderCols+colStat + ((func-1)*aggRDE_nColsPerFunction)))');
-      % # of train success should be in the 3rd column
+      modelRanks(:,(func-1)*nSnapshots + snp_i) = ranking(cell2mat(aggRDE(rows, aggRDE_nHeaderCols + colStat + ((func-1)*aggRDE_nColsPerFunction)))');
+      % take this error values for choosing models in Set Cover problem
+      modelErrors(:,(func-1)*nSnapshots + snp_i) = ranking(cell2mat(aggRDE(rows, aggRDE_nHeaderCols + colSetCover + ((func-1)*aggRDE_nColsPerFunction)))');
+      % # of train success should be in the 3rd column\
       colNTrained = 3;
       nTrained(:,(func-1)*nSnapshots + snp_i)   = cell2mat(aggRDE(rows, aggRDE_nHeaderCols+colNTrained + ((func-1)*aggRDE_nColsPerFunction)))';
     end
@@ -110,8 +124,9 @@ for dim_i = 1:length(dimensions)
     howMuchWillCover = sum(boolSets(:, ~isCovered), 2);
     % sets the number to zero for already chosen sets
     howMuchWillCover(chosenSets) = 0;
-    % re-weight the sets with their average/summed covering rank
-    weights = howMuchWillCover ./ sum(modelRanks(:, ~isCovered), 2);
+    % re-weight the sets with their Set Cover problem criterion
+    weights = f_weight(howMuchWillCover, ...
+        boolSets(:, ~isCovered) .* modelErrors(:, ~isCovered));
     % take all the settings with the maximal covering property
     maxWeight = max(weights);
     maxCovered = find(weights == maxWeight);
