@@ -1,4 +1,4 @@
-function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled] = surrogateManager(cmaesState, inOpts, sampleOpts, counteval, varargin)
+function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled, newStopFlag] = surrogateManager(cmaesState, inOpts, sampleOpts, counteval, varargin)
 % surrogateManager  controls sampling of new solutions and using a surrogate model
 %
 % @xmean, @sigma, @lambda, @BD, @diagD -- CMA-ES internal variables
@@ -20,6 +20,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   persistent archive;           % archive of original-evaluated individuals
 
   persistent observers;         % observers of EvolutionControls
+
+  stopFlagHistoryLength = 3;    % history of CMA-ES restart suggestions
+  persistent stopFlagHistory;   %
 
   % TODO: make an array with all the status variables from each generation
   
@@ -51,6 +54,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
 
   surrogateStats = [];
   origEvaled = false(1, lambda);
+  newStopFlag = [];
 
   % copy the defaults settings...
   surrogateOpts = sDefaults;
@@ -85,11 +89,27 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     archive = Archive(dim);
     ec = ECFactory.createEC(surrogateOpts);
     [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
+    stopFlagHistory = false(1, stopFlagHistoryLength);
   end
   
   % run one generation according to evolution control
   [ec, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = ...
     ec.runGeneration(cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin{:});
+
+  % STOPFLAGS -- update and check for new stopflag suggestions
+  stopFlagHistory = circshift(stopFlagHistory, [0, 1]);
+  % suggest restart if RMSE < 5e-10
+  if (isprop(ec, 'stats') && isfield(ec.stats, 'rmseReeval') ...
+      && ~isempty(ec.stats.rmseReeval) && ec.stats.rmseReeval < 5e-10)
+    fprintf(2, 'S-CMA-ES is suggesting CMA-ES to restart due to low RMSE on re-evaled point(s).\n');
+    stopFlagHistory(1) = true;
+  end
+  % if the stopflag suggestion fired in 'stopFlagHistoryLength' consecutive generations,
+  % tell CMA-ES to restart and reset the stopFlagHistory array
+  if (all(stopFlagHistory))
+    newStopFlag = 'stagnation';
+    stopFlagHistory = false(1, stopFlagHistoryLength);
+  end
 
   if (size(fitness_raw, 2) < lambda)
     % the model was in fact not trained
