@@ -193,7 +193,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       nLambdaRest = nLambdaRest - obj.usedBestPoints;
 
       % get the model's prediction
-      [notEvaledX, notEvaledZ] = obj.pop.getNotEvaledX();
+      [notEvaledX, notEvaledZ] = obj.pop.getNotOrigEvaledX();
       [modelOutput, yModel] = obj.model.getModelOutput(notEvaledX');
 
       doubleTrainIteration = 0;
@@ -221,7 +221,13 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
               sampleCmaesOnlyFitness(xToReeval, xToReeval, notEvaledZ(:, reevalID), ...
               obj.cmaesState.sigma, nToReeval, obj.counteval, obj.cmaesState, sampleOpts, ...
               varargin{:});
-          obj.pop = obj.pop.removeNotEvaluated(nToReeval);
+          [obj.pop, xRemoved] = obj.pop.removeNotOrigEvaluated(nToReeval, reevalID);
+
+          % TODO: remove this debug assertion
+          % DEBUG:
+          % xRemoved(xRemoved > 5.0) = 5.0; xRemoved(xRemoved < -5.0) = -5.0;
+          assert(all(all(abs(xToReeval - xRemoved) < 1000*eps)), 'Assertion failed: Removed not-evaluated points from Pop are different than re-evaluated.');
+
           phase = 1;        % re-evaluated points
           obj.pop = obj.pop.addPoints(xNewValid, yNew, xNew, zNew, nToReeval, phase);
 
@@ -247,21 +253,19 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           if (obj.retrainedModel.isTrained())
             obj = obj.updateModelArchive(obj.retrainedModel, obj.modelAge);
 
-            % update the f-values with the retrained model's prediction
-            [notEvaledX, notEvaledZ] = obj.pop.getNotEvaledX();
+            % update the model predicted f-values with the retrained model's prediction
+            [notEvaledX, notEvaledZ] = obj.pop.getNotOrigEvaledX();
             [modelOutput, yModel] = obj.retrainedModel.getModelOutput(notEvaledX');
 
           else
-            % update the f-values with the first model's prediction
-            [notEvaledX, notEvaledZ] = obj.pop.getNotEvaledX();
+            % update the model predicted f-values with the first model's prediction
+            [notEvaledX, notEvaledZ] = obj.pop.getNotOrigEvaledX();
             [modelOutput, yModel] = obj.model.getModelOutput(notEvaledX');
           end
 
           nPoints = nPoints - nToReeval;
 
         end % if (nToReeval > 0)
-
-        nPoints = nPoints - nToReeval;
 
         notEverythingEvaluated = false;
       end % while (notEverythingEvaluated)
@@ -271,9 +275,6 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.pop = obj.pop.updateYValue(notEvaledX, yModel', 0, phase);
 
       assert(obj.pop.nPoints == lambda, 'There are not yet all lambda points prepared, but they should be!');
-
-      % sort the returned solutions (the best to be first)
-      [obj.pop, ~] = obj.pop.sort;
 
       % save the resulting re-evaluated population as the returning parameters
       [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
@@ -427,21 +428,35 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     function [obj, yNew, xNew, xNewValid, zNew, counteval] = fillPopWithOrigFitness(obj, sampleOpts, varargin)
       %Fill the rest of the current population 'pop' (of class Population) with 
       % the original-evaluated individuals
-      nToEval = obj.cmaesState.lambda - sum(obj.pop.nPoints);
+      [x, arz] = obj.pop.getNotEvaledX();
+      nToEval = obj.pop.lambda - sum(obj.pop.isEvaled);
       if (nToEval > 0)
-        [y, arx, x, arz, obj.counteval] = sampleCmaes(obj.cmaesState, sampleOpts, ...
-            nToEval, obj.counteval, varargin{:});
+        nSample = nToEval - size(x, 2);
+        if (nSample > 0)
+          [arxFill, xFill, zFill] = ...
+            sampleCmaesNoFitness(obj.cmaesState.sigma, nSample, obj.cmaesState, sampleOpts);
+          x   = [x, xFill];
+          arz = [arz, zFill];
+          phase = 4;    % not-evaluated points
+          obj.pop = obj.pop.addPoints(xFill, NaN(1,size(xFill,2)), arxFill, zFill, 0, phase);
+        end
+        [y, arx, x, arz, obj.counteval] = ...
+            sampleCmaesOnlyFitness(x, x, arz, obj.cmaesState.sigma, nToEval, ...
+            obj.counteval, obj.cmaesState, sampleOpts, varargin{:});
         obj.archive.save(x', y', obj.cmaesState.countiter);
 
         phase = 3;      % original-evaluated rest of the population
-        obj.pop = obj.pop.addPoints(x, y, arx, arz, nToEval, phase);
+        obj.pop = obj.pop.updateYValue(x, y, nToEval, phase);
       end
-      obj.pop.sort();
+      
+      obj.pop = obj.pop.sort();
       yNew = obj.pop.y;
       xNewValid = obj.pop.x;
       xNew = obj.pop.arx;
       zNew = obj.pop.arz;
       counteval = obj.counteval;
+      
+      assert(~any(isnan(yNew)), 'Assertion failed: fillPopWithOrigFitness is about to return some NaN''s');
     end
 
     function reevalID = choosePointsForReevaluation(obj, nPoints, xExtend, modelOutput, yModel)
@@ -628,7 +643,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             varargin{:});
         % and save them into the Population
         phase = 1;        % this is the first orig-evaluated point
-        obj.pop = obj.pop.removeNotEvaluated(obj.usedBestPoints); % remove this number of non-evaluated points
+        obj.pop = obj.pop.removeNotOrigEvaluated(obj.usedBestPoints); % remove this number of non-evaluated points
         obj.pop = obj.pop.addPoints(xBestValid, yBestOrig, xBest, zBest, obj.usedBestPoints, phase);
         obj.archive.save(xBestValid', yBestOrig', obj.cmaesState.countiter);
       else
