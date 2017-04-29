@@ -129,6 +129,14 @@ classdef Population
       Z = obj.arz(:, ~obj.isEvaled);
     end
 
+    function [X, Z] = getNotOrigEvaledX(obj)
+      % returns matrix of size  lambda x n  with points
+      % not evaluated by the original fitness (ie. which
+      % have isEvaled == false)
+      X = obj.x(:, ~obj.origEvaled);
+      Z = obj.arz(:, ~obj.origEvaled);
+    end
+
     function X = getOriginalX(obj)
       X = obj.x(:, obj.origEvaled);
     end
@@ -145,22 +153,32 @@ classdef Population
       y = obj.y((obj.isEvaled & ~obj.origEvaled));
     end
 
-    function obj = removeNotEvaluated(obj, n)
-      % remove specified number of not evaluated points
-      % (ie. which have isEvaled == false)
-      idxNotEvaled = find(~obj.isEvaled);
-      if (n > sum(~obj.isEvaled))
-        warning('removeNotEvaluated(): # of points to be removed is higher than # of not evaluated points. Only available will be deleted.');
+    function [obj, xRemoved] = removeNotOrigEvaluated(obj, n, varargin)
+      % remove specified number of not original-evaluated points
+      % (ie. which have origEvaled == false)
+      % if bool vector is given in varargin{1}, the points
+      % with true value are removed (should hold n == sum(varargin{1}))
+      idxNotOrigEvaled = find(~obj.origEvaled);
+      if (nargin >= 3 && ~isempty(varargin{1}))
+        idxToRemove = idxNotOrigEvaled(varargin{1});
+      else
+        idxToRemove = idxNotOrigEvaled;
       end
-      n = min(n, sum(~obj.isEvaled));
+      if (n > length(idxToRemove))
+        warning('removeNotEvaluated(): # of points to be removed is higher than # of not evaluated points. Only available/specified will be deleted.');
+      end
 
-      obj.x(:, idxNotEvaled(1:n))   = [];
-      obj.y(idxNotEvaled(1:n))      = [];
-      obj.isEvaled(idxNotEvaled(1:n)) = [];
-      obj.arx(:, idxNotEvaled(1:n)) = [];
-      obj.arz(:, idxNotEvaled(1:n)) = [];
-      obj.origEvaled(idxNotEvaled(1:n)) = [];
-      obj.phase(idxNotEvaled(1:n))  = [];
+      n = min(n, length(idxToRemove));
+      idxToRemove = idxToRemove(1:n);
+
+      xRemoved = obj.x(:, idxToRemove);
+      obj.x(:, idxToRemove)     = [];
+      obj.y(idxToRemove)        = [];
+      obj.isEvaled(idxToRemove) = [];
+      obj.arx(:, idxToRemove)   = [];
+      obj.arz(:, idxToRemove)   = [];
+      obj.origEvaled(idxToRemove) = [];
+      obj.phase(idxToRemove)    = [];
 
       obj.nPoints = obj.nPoints - n;
     end
