@@ -8,26 +8,29 @@ defaultParameterSets = struct( ...
   'hyp',            { {struct('lik', log(0.01), 'cov', log([0.5; 2]))} });
 printBestSettingsDefinition = false;
 includeARD = false;
-include5dim = true;
+include5dim = false;
+includeMeanLinear = false;
 
-settingsHashes = cellfun(@modelHash, folderModelOptions, 'UniformOutput', false)';
-
-if (~includeARD || ~include5dim)
+if (~includeARD || ~include5dim || ~includeMeanLinear)
   % Omit ARD covariance functions & 5*dim trainsetSizeMax
   nonARD_settings = cellfun(@(x) (includeARD | ~strcmp(x.covFcn, '{@covSEard}')) ...
-      & (include5dim | ~strcmp(x.trainsetSizeMax, '5*dim')), folderModelOptions);
+      & (include5dim | ~strcmp(x.trainsetSizeMax, '5*dim')) ...
+      & (includeMeanLinear | ~strcmp(x.meanFcn, 'meanLinear')), folderModelOptions);
   folderModelOptions = folderModelOptions(nonARD_settings);
   modelFolders = modelFolders(nonARD_settings);
   isTrained = isTrained(nonARD_settings, :, :);
   RDEs = RDEs(nonARD_settings, :, :);
   MSEs = MSEs(nonARD_settings, :, :);
   nonARD_tables = (includeARD | ~strcmp(aggRDE_table.covFcn, '{@covSEard}')) ...
-      & (include5dim | ~strcmp(aggRDE_table.trainsetSizeMax, '5*dim'));
+      & (include5dim | ~strcmp(aggRDE_table.trainsetSizeMax, '5*dim')) ...
+      & (includeMeanLinear | ~strcmp(aggRDE_table.meanFcn, 'meanLinear'));
   aggRDE = aggRDE(nonARD_tables, :);
   aggRDE_table = aggRDE_table(nonARD_tables, :);
   aggMSE = aggMSE(nonARD_tables, :);
   aggMSE_table = aggMSE_table(nonARD_tables, :);
 end
+
+settingsHashes = cellfun(@modelHash, folderModelOptions, 'UniformOutput', false)';
 
 maxRank         = defopts(opts, 'maxRank', 25);
 minTrainedPerc  = defopts(opts, 'minTrainedPerc', 0.85);
