@@ -7,6 +7,27 @@ defaultParameterSets = struct( ...
   'trainAlgorithm', { {'fmincon'} }, ...
   'hyp',            { {struct('lik', log(0.01), 'cov', log([0.5; 2]))} });
 printBestSettingsDefinition = false;
+includeARD = false;
+include5dim = true;
+
+settingsHashes = cellfun(@modelHash, folderModelOptions, 'UniformOutput', false)';
+
+if (~includeARD || ~include5dim)
+  % Omit ARD covariance functions & 5*dim trainsetSizeMax
+  nonARD_settings = cellfun(@(x) (includeARD | ~strcmp(x.covFcn, '{@covSEard}')) ...
+      & (include5dim | ~strcmp(x.trainsetSizeMax, '5*dim')), folderModelOptions);
+  folderModelOptions = folderModelOptions(nonARD_settings);
+  modelFolders = modelFolders(nonARD_settings);
+  isTrained = isTrained(nonARD_settings, :, :);
+  RDEs = RDEs(nonARD_settings, :, :);
+  MSEs = MSEs(nonARD_settings, :, :);
+  nonARD_tables = (includeARD | ~strcmp(aggRDE_table.covFcn, '{@covSEard}')) ...
+      & (include5dim | ~strcmp(aggRDE_table.trainsetSizeMax, '5*dim'));
+  aggRDE = aggRDE(nonARD_tables, :);
+  aggRDE_table = aggRDE_table(nonARD_tables, :);
+  aggMSE = aggMSE(nonARD_tables, :);
+  aggMSE_table = aggMSE_table(nonARD_tables, :);
+end
 
 maxRank         = defopts(opts, 'maxRank', 25);
 minTrainedPerc  = defopts(opts, 'minTrainedPerc', 0.85);
@@ -151,7 +172,6 @@ for dim_i = 1:length(dimensions)
   % Calculate statistics of each model
   % take mean RDE statistic into modelMeanRDE (mean is calculated from instances)
   colMean = 1;
-  settingsHashes = cellfun(@modelHash, folderModelOptions, 'UniformOutput', false)';
 
   for m = 1:nSettings
     hash = settingsHashes{m};
