@@ -131,6 +131,17 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
   fprintf(FID, '\\\\\n');
   
   fprintf(FID, '\\midrule\n');
+
+  mins = cell(nDims, nEvals);
+  mins(1:nDims, 1:nEvals) = {Inf};
+
+  for d = 1:nDims
+    for e = 1:nEvals
+      r = meanRanks{d, e};
+      [~, ind] = min(r);
+      mins{d, e} = ind;
+    end
+  end
   
   % rows
   for i = 1:numOfData
@@ -140,7 +151,11 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
     for d = 1:nDims
       for e = 1:nEvals
         mr = meanRanks{d, e};
-        fprintf(FID, ' & %.2f', mr(i));
+        if i == mins{d, e}
+          fprintf(FID, ' & $\\bm{%.2f}$', mr(i));
+        else
+          fprintf(FID, ' & $%.2f$', mr(i));
+        end
       end
     end
     fprintf(FID, '\\\\\n');
@@ -155,7 +170,7 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
   fprintf(FID, statsSymbol);
   for d = 1:nDims
     for e = 1:nEvals
-      fprintf(FID, ' & %.2f', stats{d, e});
+      fprintf(FID, ' & $%.2f$', stats{d, e});
     end
   end
 
