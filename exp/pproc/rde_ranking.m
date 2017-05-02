@@ -7,12 +7,30 @@ defaultParameterSets = struct( ...
   'trainAlgorithm', { {'fmincon'} }, ...
   'hyp',            { {struct('lik', log(0.01), 'cov', log([0.5; 2]))} });
 printBestSettingsDefinition = false;
-includeARD = false;
-include5dim = false;
-includeMeanLinear = false;
 
+maxRank         = defopts(opts, 'maxRank', 25);
+minTrainedPerc  = defopts(opts, 'minTrainedPerc', 0.85);
+% take only models with 'ranks <= maxRank' according
+% to the i-th statistic, 1 = mean, 2 = 75%-quantile
+colStat         = defopts(opts, 'colStat', 2);
+% consider the following criterion when choosing the best settings
+% for choosing for Set Cover problem
+colSetCover     = defopts(opts, 'colSetCover', colStat);
+% transformation of the number of covered functions/snapshots
+% ('fsCovered' is a column vector of these number for each settings)
+% and ranks of respective models for covering functions/snapshots
+% ('mRanks' is a matrix of size 'nSettings x sum(~isCovered)')
+% f_weight        = defopts(opts, 'f_weight', @(fsCovered, mRanks) sqrt(fsCovered) ./ sum(mRanks.^(1.5), 2));
+f_weight        = defopts(opts, 'f_weight', ...
+    @(nCover, modelErrors) (nCover.^(3))./sum(modelErrors, 2));
+
+% Omit ARD covariance functions, 5*dim trainsetSizeMax and meanLinear
+% (if specified)
+includeARD = defopts(opts, 'includeARD', false);
+include5dim = defopts(opts, 'include5dim', true);
+includeMeanLinear = defopts(opts, 'includeMeanLinear', false);
 if (~includeARD || ~include5dim || ~includeMeanLinear)
-  % Omit ARD covariance functions & 5*dim trainsetSizeMax
+  % Omit ARD covariance functions, 5*dim trainsetSizeMax and meanLinear
   nonARD_settings = cellfun(@(x) (includeARD | ~strcmp(x.covFcn, '{@covSEard}')) ...
       & (include5dim | ~strcmp(x.trainsetSizeMax, '5*dim')) ...
       & (includeMeanLinear | ~strcmp(x.meanFcn, 'meanLinear')), folderModelOptions);
@@ -31,22 +49,6 @@ if (~includeARD || ~include5dim || ~includeMeanLinear)
 end
 
 settingsHashes = cellfun(@modelHash, folderModelOptions, 'UniformOutput', false)';
-
-maxRank         = defopts(opts, 'maxRank', 25);
-minTrainedPerc  = defopts(opts, 'minTrainedPerc', 0.85);
-% take only models with 'ranks <= maxRank' according
-% to the i-th statistic, 1 = mean, 2 = 75%-quantile
-colStat         = defopts(opts, 'colStat', 2);
-% consider the following criterion when choosing the best settings
-% for choosing for Set Cover problem
-colSetCover     = defopts(opts, 'colSetCover', colStat);
-% transformation of the number of covered functions/snapshots
-% ('fsCovered' is a column vector of these number for each settings)
-% and ranks of respective models for covering functions/snapshots
-% ('mRanks' is a matrix of size 'nSettings x sum(~isCovered)')
-% f_weight        = defopts(opts, 'f_weight', @(fsCovered, mRanks) sqrt(fsCovered) ./ sum(mRanks.^(1.5), 2));
-f_weight        = defopts(opts, 'f_weight', ...
-    @(nCover, modelErrors) (nCover.^(3))./sum(modelErrors, 2));
 
 bestSettings = cell(length(dimensions),1);
 aggRDE_nHeaderCols = 3;

@@ -1,15 +1,21 @@
 %% load GP model results
 load('exp/experiments/exp_GPtest_01/modelStatistics.mat');
 
+% NOISY modelStatistics
+% load('exp/experiments/exp_GPtest_02_noisy/modelStatistics.mat');
+
 %% Core settings
 dimensions = 2;
+
+% for dimensions = [2, 5, 10]
+
 snapshots = [3, 9];
 multiFieldNames = { 'covFcn', 'trainsetType', 'trainRange', 'trainsetSizeMax', 'meanFcn' };
 
 %% Model choice settings
 
 % maximal allowed rank for choosing the model for the function/snapshot
-rdeRankingOpts.maxRank = {35, 50};
+rdeRankingOpts.maxRank = {25, 35};
 % index of the statistic by which the ranking is done, 1 = mean, 2 = 75%-quantile
 rdeRankingOpts.colStat = {2};
 % minimal allowed training success rate for choosing the model for the function/snapshot
@@ -22,6 +28,10 @@ rdeRankingOpts.colSetCover = {1, 2};
 % ('mRanks' is a matrix of size 'nSettings x sum(~isCovered)')
 rdeRankingOpts.f_weight = { @(nCover, modelErrors) (nCover.^(3))./sum(modelErrors, 2), ...
     @(nCover, modelErrors) (nCover.^(4))./sum(modelErrors, 2) };
+
+rdeRankingOpts.includeARD = { false };
+rdeRankingOpts.include5dim = { true };
+rdeRankingOpts.includeMeanLinear = { false };
 
 % get the numbers of factors
 optsFields = fieldnames(rdeRankingOpts);
@@ -55,7 +65,7 @@ end
 %% make a table with results
 rdeRankingResults_header = ['id', optsFields', ...
   { 'nSettings', 'avg_nCovered', ...
-    'avg_RDE', 'avg_covrd_RDE', 'avg_rank', 'avg_covrd_rank', ...
+    'avg_RDE', 'avg_covrd_RDE', 'max_covrd_RDE', 'avg_rank', 'avg_covrd_rank', ...
     'avg_n_covrd_funs', 'n_ARD', 'n_Linear' }];
 rdeRankingResults = table((1:n_fullfact)');
 for f = 1:length(optsFields)
@@ -76,6 +86,9 @@ for ffi = 1:n_fullfact
   % avg_covrd_RDE
   f = f + 1;
   rdeRankingResults{ffi, f} = mean(bestSettingsTables{ffi}.covrd_RDE);
+  % max_covrd_RDE
+  f = f + 1;
+  rdeRankingResults{ffi, f} = max(bestSettingsTables{ffi}.covrd_RDE);
   % avg_rank
   f = f + 1;
   rdeRankingResults{ffi, f} = mean(bestSettingsTables{ffi}.avg_rank);
@@ -100,15 +113,21 @@ rdeRankingResults.Properties.VariableNames = rdeRankingResults_header;
 %% output results
 fprintf(['\nBest sets of settings according to the average RDE\n'...
     'of covered fuctions/snapshot:\n\n']);
-disp(sortrows(rdeRankingResults, 'avg_covrd_RDE'));
+tmp = sortrows(rdeRankingResults, 'avg_covrd_RDE');
+disp(tmp(1:3,:));
+% disp(sortrows(rdeRankingResults, 'max_covrd_RDE'));
 
 % print the 3 best settings options structs
-N_PRINT = 3;
+N_PRINT = 1;
 [~, idx] = sort(rdeRankingResults.avg_covrd_RDE);
+% [~, idx] = sort(rdeRankingResults.avg_covrd_RDE);
 for i = 1:N_PRINT
+  disp(bestSettingsTables{idx(i)});
   fprintf('\n== Best set of settings #%d (id = %d)== \n\n', i, idx(i));
   printStructure(bestSettingsStructs{idx(i)});
 end
+
+% end  % for dimensions = [2, 5, 10]
 
 %% find aggRDE_table rows which correspond to the historically most used settings
 %{
