@@ -19,6 +19,12 @@ function reportFile = generateReport(expFolder, varargin)
 %                        function publish (see help publish) | string
 %                      - to disable publishing set option to 'off' 
 %                        (default)
+%     'Dimensions'     - generate output only for this dimensions | []
+%     'QuantilePlots'  - whether use quantile plots for showing algorithms
+%                        differencies | false
+%     'AlgNames'       - cell array of names of algorithms | {}
+%     'RemoveAlgs'     - remove these algorithms from report, defined by
+%                        their indices in a row vector| []
 %
 % Output:
 %   reportFile - name of m-file containing report | string
@@ -43,6 +49,11 @@ function reportFile = generateReport(expFolder, varargin)
   legendOption = defopts(reportSettings, 'LegendOption', 'out');
   omitEmptyPlots = defopts(reportSettings, 'OmitEmptyPlots', false);
   reportDescription = defopts(reportSettings, 'Description', []);
+  paramDimensions = defopts(reportSettings, 'Dimensions', []);
+  quantilePlots = defopts(reportSettings, 'QuantilePlots', false);
+  algNames = defopts(reportSettings, 'AlgNames', {});
+  removeAlgs = defopts(reportSettings, 'RemoveAlgs', []);
+
   if ~iscell(expFolder)
     expFolder = {expFolder};
   end
@@ -93,7 +104,11 @@ function reportFile = generateReport(expFolder, varargin)
     end
   end
   BBfunc = unique([BBfunc{:}]);
-  dims = unique([dims{:}]);
+  if isempty(paramDimensions)
+    dims = unique([dims{:}]);
+  else
+    dims = paramDimensions;
+  end
   
   % create report name
   if nFolders > 1
@@ -163,18 +178,33 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  mkdir(resFolder)\n');
   fprintf(FID, 'end\n');
   fprintf(FID, '\n');
+  if ~isempty(algNames)
+    for n = 1:length(algNames)
+      fprintf(FID, 'expAlgNames{%d} = ''%s'';\n', n, algNames{n});
+    end
+    fprintf(FID, '\n');
+  end
   fprintf(FID, '%% loading results\n');
   fprintf(FID, 'funcSet.BBfunc = %s;\n', printStructure(BBfunc, FID, 'Format', 'value'));
   fprintf(FID, 'funcSet.dims = %s;\n', printStructure(dims, FID, 'Format', 'value'));
   fprintf(FID, '[expData, expSettings] = catEvalSet(expFolder, funcSet);\n');
+  if ~isempty(removeAlgs)
+    fprintf(FID, 'expData(:,:,[%s]) = [];\n', num2str(removeAlgs));
+    fprintf(FID, 'expSettings([%s]) = [];\n', num2str(removeAlgs));
+    if ~isempty(algNames)
+      fprintf(FID, 'expAlgNames([%s]) = [];\n', num2str(removeAlgs));
+    end
+  end
   fprintf(FID, 'nSettings = length(expSettings);\n');
   fprintf(FID, 'expData = arrayfun(@(x) expData(:,:,x), 1:nSettings, ''UniformOutput'', false);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% create or gain algorithm names\n');
-  fprintf(FID, 'expAlgNames = cell(1, nSettings);\n');
   fprintf(FID, 'anonymAlg = ~cellfun(@(x) isfield(x, ''algName''), expSettings);\n');
-  fprintf(FID, 'expAlgNames(anonymAlg) = arrayfun(@(x) [''ALG'', num2str(x)], 1:sum(anonymAlg), ''UniformOutput'', false);\n');
-  fprintf(FID, 'expAlgNames(~anonymAlg) = cellfun(@(x) x.algName, expSettings(~anonymAlg), ''UniformOutput'', false);\n');
+  if (isempty(algNames))
+    fprintf(FID, 'expAlgNames = cell(1, nSettings);\n');
+    fprintf(FID, 'expAlgNames(anonymAlg) = arrayfun(@(x) [''ALG'', num2str(x)], 1:sum(anonymAlg), ''UniformOutput'', false);\n');
+    fprintf(FID, 'expAlgNames(~anonymAlg) = cellfun(@(x) x.algName, expSettings(~anonymAlg), ''UniformOutput'', false);\n');
+  end
   fprintf(FID, '\n');
   fprintf(FID, '%% color settings\n');
   fprintf(FID, 'expCol = getAlgColors(1:nSettings);\n');
@@ -309,7 +339,11 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                            ''FunctionNames'', true, ...\n');
   fprintf(FID, '                            ''LegendOption'', ''%s'', ...\n', legendOption);
   fprintf(FID, '                            ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
-  fprintf(FID, '                            ''Statistic'', @median);\n');
+  if (quantilePlots)
+    fprintf(FID, '                            ''Statistic'', ''quantile'');\n');
+  else
+    fprintf(FID, '                            ''Statistic'', @median);\n');
+  end
   fprintf(FID, 'end\n');
   fprintf(FID, '\n');
 
