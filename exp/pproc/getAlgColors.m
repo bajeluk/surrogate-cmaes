@@ -40,15 +40,41 @@ function colors = getAlgColors(colId)
     149, 128,  78; ... % khaki
     163,  97,  97; ... % almost brown
      77,  77,  77 ...  % dark grey
-    %  36, 140, 248; ... % light blue   | BIPOP-saACMES
-    %  22,  22, 138; ... % dark blue    | CMA-ES
-    % 154, 205,  50; ... % some green   | DTS-CMA-ES
-    % 178,  34,  34; ... % bloody red   | S-CMA-ES
-    % 255, 155,   0; ... % light orange | SMAC
-    % 255, 225,   0; ... % yellow       | lmm-CMA-ES
     ];
   
-  max_color = max(colId);
-  colors = repmat(color_base, ceil(max_color/length(color_base)), 1);
-  colors = colors(colId, :);
+  def_alg_color_base = [...
+     22,  22, 138; ... % dark blue    | CMA-ES
+    255, 225,   0; ... % yellow       | lmm-CMA-ES
+    100, 149, 237; ... % light blue   | BIPOP-saACMES
+    178,  34,  34; ... % bloody red   | S-CMA-ES
+    154, 205,  50; ... % some green   | DTS-CMA-ES
+    255, 155,   0; ... % light orange | SMAC
+    ];
+  
+  def_alg_names = {'cmaes', 'lmmcmaes', 'saacmes', 'scmaes', 'dtscmaes', 'smac'};
+ 
+  if ischar(colId)
+    colId = {colId};
+  end
+  
+  % return default algorithm colors
+  if iscell(colId)
+    colors = zeros(length(colId), 3);
+    
+    algId = cellfun(@(x) find(strcmp(x, def_alg_names)), colId, 'UniformOutput', false);
+    noAlg = cellfun(@isempty, algId);
+    if any(noAlg)
+      warning('Algorithms %s have no default color. Returned colors are from the predefined spectrum.', ...
+              strjoin(colId(noAlg), ', '));
+      colors_rep = repmat(color_base, ceil(sum(noAlg)/length(color_base)), 1);
+      colors( noAlg, :) = colors_rep(1:sum(noAlg), :);
+    end
+    colors(~noAlg, :) = def_alg_color_base(cell2mat(algId), :);
+    
+  % return common colors
+  else
+    max_color = max(colId);
+    colors = repmat(color_base, ceil(max_color/length(color_base)), 1);
+    colors = colors(colId, :);
+  end
 end

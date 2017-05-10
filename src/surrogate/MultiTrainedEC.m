@@ -209,7 +209,7 @@ classdef MultiTrainedEC < EvolutionControl
         %           ordering of values
         %         - small constant is added because of the rounding errors
         %           when numbers of different orders of magnitude are summed
-        fminDataset = min(obj.model.dataset.y);
+        fminDataset = min(obj.model.getDataset_y());
         fminModel = min(yModel);
         diff = max(fminDataset - fminModel, 0);
         yFinal = yFinal + 1.000001*diff;

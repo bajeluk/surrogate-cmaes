@@ -8,15 +8,23 @@ function reportFile = generateReport(expFolder, varargin)
 %   settings  - pairs of property (string) and value, or struct with 
 %               properties as fields:
 %
-%     'Description'  - description of the report | string
-%     'LegendOption' - legend option of plots from relativeFValues,
-%                      recommended settings for generateReport are:
-%                        'out'     - legend is in one separate figure
-%                        'manyout' - legend is in multiple separated
-%                                    figures
-%     'Publish'      - resulting format of published report similar to 
-%                      function publish (see help publish) | string
-%                    - to disable publishing set option to 'off' (default)
+%     'Description'    - description of the report | string
+%     'LegendOption'   - legend option of plots from relativeFValues,
+%                        recommended settings for generateReport are:
+%                          'out'     - legend is in one separate figure
+%                          'manyout' - legend is in multiple separated
+%                                      figures
+%     'OmitEmptyPlots' - omit plots with no data available | boolean
+%     'Publish'        - resulting format of published report similar to 
+%                        function publish (see help publish) | string
+%                      - to disable publishing set option to 'off' 
+%                        (default)
+%     'Dimensions'     - generate output only for this dimensions | []
+%     'QuantilePlots'  - whether use quantile plots for showing algorithms
+%                        differencies | false
+%     'AlgNames'       - cell array of names of algorithms | {}
+%     'RemoveAlgs'     - remove these algorithms from report, defined by
+%                        their indices in a row vector| []
 %
 % Output:
 %   reportFile - name of m-file containing report | string
@@ -39,7 +47,13 @@ function reportFile = generateReport(expFolder, varargin)
   reportSettings = settings2struct(varargin{:});
   publishOption = defopts(reportSettings, 'Publish', 'off');
   legendOption = defopts(reportSettings, 'LegendOption', 'out');
+  omitEmptyPlots = defopts(reportSettings, 'OmitEmptyPlots', false);
   reportDescription = defopts(reportSettings, 'Description', []);
+  paramDimensions = defopts(reportSettings, 'Dimensions', []);
+  quantilePlots = defopts(reportSettings, 'QuantilePlots', false);
+  algNames = defopts(reportSettings, 'AlgNames', {});
+  removeAlgs = defopts(reportSettings, 'RemoveAlgs', []);
+
   if ~iscell(expFolder)
     expFolder = {expFolder};
   end
@@ -90,7 +104,11 @@ function reportFile = generateReport(expFolder, varargin)
     end
   end
   BBfunc = unique([BBfunc{:}]);
-  dims = unique([dims{:}]);
+  if isempty(paramDimensions)
+    dims = unique([dims{:}]);
+  else
+    dims = paramDimensions;
+  end
   
   % create report name
   if nFolders > 1
@@ -126,7 +144,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%% tested in experiments %s.\n', strjoin(expName, ', '));
   fprintf(FID, '%% Moreover, algorithm settings are compared\n');
   fprintf(FID, '%% to important algorithms in continuous black-box optimization field \n');
-  fprintf(FID, '%% (CMA-ES, BIPOP-s*ACM-ES, SMAC, S-CMA-ES, and DTS-CMA-ES).\n');
+  fprintf(FID, '%% (CMA-ES, BIPOP-s*ACM-ES, SMAC, S-CMA-ES, lmm-CMA-ES and DTS-CMA-ES).\n');
   fprintf(FID, '%% \n');
   if any(cellfun(@(x) isfield(x, 'exp_description'), settings))
     for f = 1:nFolders
@@ -160,18 +178,33 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  mkdir(resFolder)\n');
   fprintf(FID, 'end\n');
   fprintf(FID, '\n');
+  if ~isempty(algNames)
+    for n = 1:length(algNames)
+      fprintf(FID, 'expAlgNames{%d} = ''%s'';\n', n, algNames{n});
+    end
+    fprintf(FID, '\n');
+  end
   fprintf(FID, '%% loading results\n');
   fprintf(FID, 'funcSet.BBfunc = %s;\n', printStructure(BBfunc, FID, 'Format', 'value'));
   fprintf(FID, 'funcSet.dims = %s;\n', printStructure(dims, FID, 'Format', 'value'));
   fprintf(FID, '[expData, expSettings] = catEvalSet(expFolder, funcSet);\n');
+  if ~isempty(removeAlgs)
+    fprintf(FID, 'expData(:,:,[%s]) = [];\n', num2str(removeAlgs));
+    fprintf(FID, 'expSettings([%s]) = [];\n', num2str(removeAlgs));
+    if ~isempty(algNames)
+      fprintf(FID, 'expAlgNames([%s]) = [];\n', num2str(removeAlgs));
+    end
+  end
   fprintf(FID, 'nSettings = length(expSettings);\n');
   fprintf(FID, 'expData = arrayfun(@(x) expData(:,:,x), 1:nSettings, ''UniformOutput'', false);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%% create or gain algorithm names\n');
-  fprintf(FID, 'expAlgNames = cell(1, nSettings);\n');
   fprintf(FID, 'anonymAlg = ~cellfun(@(x) isfield(x, ''algName''), expSettings);\n');
-  fprintf(FID, 'expAlgNames(anonymAlg) = arrayfun(@(x) [''ALG'', num2str(x)], 1:sum(anonymAlg), ''UniformOutput'', false);\n');
-  fprintf(FID, 'expAlgNames(~anonymAlg) = cellfun(@(x) x.algName, expSettings(~anonymAlg), ''UniformOutput'', false);\n');
+  if (isempty(algNames))
+    fprintf(FID, 'expAlgNames = cell(1, nSettings);\n');
+    fprintf(FID, 'expAlgNames(anonymAlg) = arrayfun(@(x) [''ALG'', num2str(x)], 1:sum(anonymAlg), ''UniformOutput'', false);\n');
+    fprintf(FID, 'expAlgNames(~anonymAlg) = cellfun(@(x) x.algName, expSettings(~anonymAlg), ''UniformOutput'', false);\n');
+  end
   fprintf(FID, '\n');
   fprintf(FID, '%% color settings\n');
   fprintf(FID, 'expCol = getAlgColors(1:nSettings);\n');
@@ -305,7 +338,12 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                            ''Colors'', expCol, ...\n');
   fprintf(FID, '                            ''FunctionNames'', true, ...\n');
   fprintf(FID, '                            ''LegendOption'', ''%s'', ...\n', legendOption);
-  fprintf(FID, '                            ''Statistic'', @median);\n');
+  fprintf(FID, '                            ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
+  if (quantilePlots)
+    fprintf(FID, '                            ''Statistic'', ''quantile'');\n');
+  else
+    fprintf(FID, '                            ''Statistic'', @median);\n');
+  end
   fprintf(FID, 'end\n');
   fprintf(FID, '\n');
 
@@ -398,6 +436,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                              ''Colors'', colors, ...\n');
   fprintf(FID, '                              ''FunctionNames'', true, ...\n');
   fprintf(FID, '                              ''LegendOption'', ''%s'', ...\n', legendOption);
+  fprintf(FID, '                              ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
   fprintf(FID, '                              ''Statistic'', @median);\n');
   fprintf(FID, '  end\n');
   fprintf(FID, '  \n');
@@ -414,6 +453,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                          ''Colors'', colors, ...\n');
   fprintf(FID, '                          ''FunctionNames'', true, ...\n');
   fprintf(FID, '                          ''LegendOption'', ''%s'', ...\n', legendOption);
+  fprintf(FID, '                          ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
   fprintf(FID, '                          ''Statistic'', @median);\n');
   fprintf(FID, 'else\n');
   fprintf(FID, '  warning(''Could not load %%s.\\n');
@@ -445,10 +485,18 @@ function reportFile = generateReport(expFolder, varargin)
 
   % publish report file
   if ~strcmpi(publishOption, 'off')
+    % warn user about clearing variables
+    fprintf('Recommendation: Use ')
+    fprintf(2, '''clear all'' ');
+    fprintf('command before running generateReport to ensure that no static variables from the previous run will be used.\n')
     fprintf('Publishing...\nThis may take a few minutes...\n')
     addpath(mainPpFolder)
     publishedReport = publish(reportFile, 'format', publishOption, ...
                                           'showCode', false);
+    % replace importhtml tags with generated html code
+    if strcmp(publishOption, 'html')
+      htmlPostProc(publishedReport)
+    end
     fprintf('Report published to %s\n', publishedReport)
   end
   

@@ -1,5 +1,5 @@
 classdef DTScreenStatistics < Observer
-%SCREENSTATISTICS -- print statistics from DoubleTrainEC on screen
+%SCREENSTATISTICS -- print statistics from DoubleTrainEC on screen without adaptivity
   properties
     verbosity
   end
