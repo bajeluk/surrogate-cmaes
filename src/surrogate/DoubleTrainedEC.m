@@ -217,15 +217,16 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         if (nPoints > 0)
 
           % choose point(s) for re-evaluation
-          if (nToReevalPerIteration > 1 ...
-              &&  ((nPoints - floor(nToReevalPerIteration)) == 1))
-            % take all remaining points if there would stay only one
+          if ((doubleTrainIteration == obj.maxDoubleTrainIterations) ...
+              || ((nToReevalPerIteration > 1) ...
+                  &&  ((nPoints - floor(nToReevalPerIteration)) == 1)))
+            % take all remaining points if there would stay only one or this
+            % is the last round of the DTS re-evaluating cycle
             nToReevalPerIteration = nPoints;
           end
-          nToReeval = max(1, round(nToReevalPerIteration));
+          nToReeval = min(nPoints, max(1, round(nToReevalPerIteration)));
           isToReeval = obj.choosePointsForReevaluation(obj.pop, lastModel, nToReeval);
-          nToReeval = sum(isToReeval);
-          assert(nToReeval == nPoints, 'Not all points aimed for reevaluation has been reevaluated');
+          assert(nToReeval == sum(isToReeval), 'Not all points aimed for reevaluation has been reevaluated');
 
           % original-evaluate the chosen point(s)
           xToReeval = obj.pop.x(:, isToReeval);
@@ -275,9 +276,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
           nPoints = nPoints - nToReeval;
 
-        end % if (nToReeval > 0)
+        end % if (nToReeval > 0  &&  obj.useDoubleTraining)
 
-        notEverythingEvaluated = false;
+        notEverythingEvaluated = (doubleTrainIteration < obj.maxDoubleTrainIterations);
       end % while (notEverythingEvaluated)
 
       if (any(~obj.pop.isEvaled))
