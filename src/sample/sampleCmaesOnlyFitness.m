@@ -36,6 +36,12 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
       fitness_raw = feval(fitfun, arxvalid, varargin{:});
       countevalNaN = countevalNaN + sum(isnan(fitness_raw));
       counteval = counteval + sum(~isnan(fitness_raw));
+  else
+      for k = 1:size(fitness_raw, 2)
+        fitness_raw(k) = feval(fitfun, arxvalid(:,k), varargin{:});
+      end
+      countevalNaN = countevalNaN + sum(isnan(fitness_raw));
+      counteval = counteval + sum(~isnan(fitness_raw));
   end
 
   % non-parallel evaluation and remaining NaN-values
@@ -43,7 +49,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
   fitness_raw(lambda + find(isnan(fitness_raw(1:noiseReevals)))) = NaN;
   for k=find(isnan(fitness_raw)), 
     % fitness_raw(k) = NaN;
-    tries = flgEvalParallel;  % in parallel case this is the first re-trial
+    tries = 1;  % we have already tried f-eval once (see above)
     % Resample, until fitness is not NaN
     while isnan(fitness_raw(k))
       if k <= lambda  % regular samples (not the re-evaluation-samples)

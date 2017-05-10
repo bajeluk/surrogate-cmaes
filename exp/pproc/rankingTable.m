@@ -1,9 +1,9 @@
-function [table, ranks] = rankingTable(data, varargin)
-% [table, ranks] = rankingTable(data, settings)
+function [rankTable, ranks] = rankingTable(data, varargin)
+% [rankTable, ranks] = rankingTable(data, settings)
 % Creates and prints table containing rankings for different evaluations.
 %
 % Input:
-%   data      - cell array of data
+%   data     - cell array of data
 %   settings - pairs of property (string) and value or struct with 
 %              properties as fields:
 %
@@ -23,14 +23,14 @@ function [table, ranks] = rankingTable(data, varargin)
 %     'TableFuns'   - functions chosen to count
 %
 % Output:
-%   table - table of rankings
-%   ranks - rankings for each function and dimension
+%   rankTable - table of rankings
+%   ranks     - rankings for each function and dimension
 %
 % See Also:
 %   createRankingTable, speedUpPlot, speedUpPlotCompare, dataReady
 
   % initialization
-  table = [];
+  rankTable = [];
   if nargin < 1 || isempty(data)
     help rankingTable
     return
@@ -57,7 +57,7 @@ function [table, ranks] = rankingTable(data, varargin)
   extraFields = {'DataNames', 'ResultFile'};
   fieldID = isfield(settings, extraFields);
   createSettings = rmfield(settings, extraFields(fieldID));
-  [table, ranks] = createRankingTable(data, createSettings);
+  [rankTable, ranks] = createRankingTable(data, createSettings);
   
   % print table
   switch tableFormat
@@ -75,12 +75,12 @@ function [table, ranks] = rankingTable(data, varargin)
       % maxLengthNumber = max(max(cellfun(@length, table)));
       % b) round values
       if tableRank == 1
-        table = round(table);
+        rankTable = round(rankTable);
       else
       % c) multiply by ten
-        table = 10*(table);
+        rankTable = 10*(rankTable);
       end
-      publicTable = [evalRow; table];
+      publicTable = [evalRow; rankTable];
       maxLengthNumber = max(max(arrayfun(@(x) ceil(log10(x)), publicTable)));
       % column width is number-length dependent
       colWidth = 20 + 5*maxLengthNumber;
@@ -90,7 +90,7 @@ function [table, ranks] = rankingTable(data, varargin)
       colName = [[colBase{:}], repmat({'SUM'}, [1, nEvals])];
       rowName = [{'FE/D'}, datanames];
       f = figure('Position', [0, 0, tableSize]);
-      table = uitable(f, 'Data', publicTable, ...
+      rankTable = uitable(f, 'Data', publicTable, ...
                  'ColumnName', colName, ...
                  'RowName', rowName, ...
                  'ColumnWidth', {colWidth}, ...
@@ -102,7 +102,7 @@ function [table, ranks] = rankingTable(data, varargin)
         mkdir(resultFolder)
       end
       FID = fopen(resultFile, 'w');
-      printTableTex(FID, table, dims, evaluations, datanames, length(BBfunc))
+      printTableTex(FID, rankTable, dims, evaluations, datanames, length(BBfunc))
       fclose(FID);
 
       fprintf('Table written to %s\n', resultFile);

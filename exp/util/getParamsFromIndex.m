@@ -31,17 +31,44 @@ function [bbParams, sgParams, cmParams, nNonBbobValues, totalCombs] = getParamsF
   % Surrogate parameters
   sgParams = struct();
   for i = 1:length(sgAll)
-    fieldnames = strsplit(sgAll(i).name, '.');
-    switch length(fieldnames)
+    this_name   = sgAll(i).name;
+    this_values = sgAll(i).values;
+    f_names = strsplit(this_name, {'.', '__'});
+
+    % behave differently if 'modelOpts' is under the cursor:
+    % replace sub-settings separated by __ into separate struct
+    if (strcmpi(f_names, 'modelopts'))
+      level1_structs = {};
+      modelOpts_struct = this_values{paramIDs(pid+i)};
+      modelOpts_f_names = fieldnames(modelOpts_struct);
+      for mo_i = 1:length(modelOpts_f_names)
+        mo_f_name = modelOpts_f_names{mo_i};
+        f_name_splitted = strsplit(mo_f_name, {'.', '__'});
+        if (length(f_name_splitted) > 1)
+          if (~ismember(f_name_splitted{1}, level1_structs))
+            level1_structs{end+1} = f_name_splitted{1};
+            if (~isfield(modelOpts_struct, f_name_splitted{1}))
+              modelOpts_struct.(f_name_splitted{1}) = struct();
+            end
+          end
+          modelOpts_struct.(f_name_splitted{1}).(f_name_splitted{2}) = ...
+              modelOpts_struct.(mo_f_name);
+          modelOpts_struct = rmfield(modelOpts_struct, mo_f_name);
+        end
+      end
+      this_values{paramIDs(pid+i)} = modelOpts_struct;
+    end
+
+    switch length(f_names)
     case 1
-      sgParams.(sgAll(i).name) = sgAll(i).values{paramIDs(pid+i)};
+      sgParams.(this_name) = this_values{paramIDs(pid+i)};
     case 2
-      sgParams.(fieldnames{1}).(fieldnames{2}) = sgAll(i).values{paramIDs(pid+i)};
+      sgParams.(f_names{1}).(f_names{2}) = this_values{paramIDs(pid+i)};
     case 3
-      sgParams.(fieldnames{1}).(fieldnames{2}).(fieldnames{3}) = sgAll(i).values{paramIDs(pid+i)};
+      sgParams.(f_names{1}).(f_names{2}).(f_names{3}) = this_values{paramIDs(pid+i)};
     otherwise
       % join the names with underscores
-      sgParams.(strjoin(C,'_')) = sgAll(i).values{paramIDs(pid+i)};
+      sgParams.(strjoin(C,'_')) = this_values{paramIDs(pid+i)};
     end
   end
   pid = pid + length(sgAll);

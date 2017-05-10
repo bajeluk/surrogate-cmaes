@@ -78,8 +78,8 @@ function surrogateStats = getModelStatistics(model, cmaesState, surrogateOpts, s
       evalsReached = surrogateOpts.saveModelTrainingData(idxLastReached);
       filename = sprintf([surrogateOpts.experimentPath filesep 'modeltrain_f%s_%d.mat'], surrogateOpts.expFileID, evalsReached);
       if (~exist(filename, 'file'))
-        trainsetX = model.dataset.X;
-        trainsetY = model.dataset.y;
+        trainsetX = model.getDataset_X();
+        trainsetY = model.getDataset_y();
         testsetX = xValidTest';
         testsetY = yTest;
         surrogateOpts.modelOpts.bbob_func = [];

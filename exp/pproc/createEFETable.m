@@ -115,7 +115,7 @@ function efe = instanceEFE(fbest, efeTarget, maxInstances)
   for i = 1:nInstances
     efe_actual = find(fbest(:, i) < efeTarget, 1, 'first');
     if isempty(efe_actual)
-      efe(i) = maxEvals * (1 + 1/9 * log( fbest(end) / efeTarget ) );
+      efe(i) = maxEvals * (1 + 1/9 * log( fbest(end, i) / efeTarget ) );
     else
       efe(i) = efe_actual;
     end

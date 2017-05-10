@@ -14,7 +14,7 @@ function settings = settings2struct(varargin)
 %       b: 2
 
   if nargin < 1 || isempty(varargin) || isempty(varargin{1})
-    settings = {};
+    settings = struct();
     return
   end
 

@@ -3,6 +3,12 @@ Surrogate CMA-ES
 
 Surrogate CMA-ES (S-CMA-ES) is a surrogate-based optimizing evolution strategy. It is based on the N. Hansen's CMA-ES algorithm which is interconnected with Gaussian processes or random forests.
 
+## Log and News ##
+
+2017/03/22: Metacentrum interface migrated to the newer [PBS Pro](https://wiki.metacentrum.cz/wiki/PBS_Professional), default memory limit raised to 1.5GB
+
+## Introduction ##
+
 The optimizer can be called via the similar function interface as the original Matlab CMA-ES code:
 
 ```matlab
@@ -228,6 +234,7 @@ where
 - **settings** are pairs of property (string) and value, or struct with properties as fields: 
     - **Description** is description of the report (string),
     - **LegendOption** is an option how legends should be organized (settings similar to function `relativeFValues`, recommended settings for `generateReport` are `out` (legend is in one separate figure) and `manyout` (legend is in multiple separated figures).
+    - **OmitEmptyPlots** is an option if plots with no data available will be omitted in report (boolean).
     - **Publish** is the format of the resulting file similar to function `publish`, i.e. `html`, `pdf`; set to `off` to disable publishing (string).
 
 The function generates Matlab script `[expFolder]/pproc/[exp_id]_report.m` which will be published using Matlab function `publish` according to **Publish** option in **settings**. Published file can be found in `[expFolder]/pproc/html` folder.
@@ -235,5 +242,7 @@ The function generates Matlab script `[expFolder]/pproc/[exp_id]_report.m` which
 To report multiple experiment results put all experiment folder names into cell-array **expFolder**. The script `exp_[n]report_[hash].m` will be generated in all `pproc` folders of experiment folders, where `n` denotes number of experiment folders and `hash` is a sequence of characters generated according to experiment folder names.
 
 Generated report contains plots of dependences of minimal function values on function evaluations divided by dimension for individual functions. First, only comparison of algorithm runs are plotted in each tested function and dimension. Second, former algorithms are compared to important algorithms in continuous black-box optimization field.
+
+**Recommendation**. Use `clear all` command before running `generateReport` to ensure that no static variables from the previous run will be used.
 
 **Warning**. Report generating requires a few minutes of rendering Matlab figures. This can cause some troubles with computer usability because of pop-up figure windows in older versions of Matlab. To avoid these problems run `generateReport` in remote desktop or take a break.
