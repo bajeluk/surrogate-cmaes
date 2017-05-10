@@ -312,6 +312,10 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             obj.usedUpdaterState.err = obj.origRatioUpdater.historyErr(obj.cmaesState.countiter);
             obj.usedUpdaterState.gain = obj.origRatioUpdater.gain;
             obj.usedUpdaterState.smoothedErr = obj.origRatioUpdater.historySmoothedErr(obj.cmaesState.countiter);
+          else
+            % update the model predicted f-values with the first model's prediction
+            [notEvaledX, notEvaledZ] = obj.pop.getNotOrigEvaledX();
+            [modelOutput, yModel] = obj.model.getModelOutput(notEvaledX');
           end
 
           nPoints = nPoints - nToReeval;
