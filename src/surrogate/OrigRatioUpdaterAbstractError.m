@@ -87,7 +87,8 @@ classdef (Abstract) OrigRatioUpdaterAbstractError < OrigRatioUpdater
         err = NaN;
       else
         % calculate the error according to the subclass' computeErr()
-        err = obj.computeErr(modelY, origY, obj.ec.cmaesState.mu);
+        mu = ceil(obj.ec.cmaesState.mu * (size(modelY, 2) / obj.ec.cmaesState.lambda));
+        err = obj.computeErr(modelY, origY, mu);
       end
       obj.historyErr(countiter) = err;
 

@@ -196,7 +196,6 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       % Validation Generation -- raise the number of orig. evaluated points
       % once in several (opts.validationGenerationPeriod) generations
-      obj.restrictedParam = obj.surrogateOpts.evoControlRestrictedParam;
       if (obj.validationPopSize > 0 && mod(obj.cmaesState.countiter, obj.validationGenerationPeriod) == 0)
         obj.restrictedParam = max(min(1, obj.validationPopSize/nLambdaRest), obj.restrictedParam);
       end
@@ -238,15 +237,16 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         if (nPoints > 0)
 
           % choose point(s) for re-evaluation
-          if (nToReevalPerIteration > 1 ...
-              &&  ((nPoints - floor(nToReevalPerIteration)) == 1))
-            % take all remaining points if there would stay only one
+          if ((doubleTrainIteration == obj.maxDoubleTrainIterations) ...
+              || ((nToReevalPerIteration > 1) ...
+                  &&  ((nPoints - floor(nToReevalPerIteration)) == 1)))
+            % take all remaining points if there would stay only one or this
+            % is the last round of the DTS re-evaluating cycle
             nToReevalPerIteration = nPoints;
           end
-          nToReeval = max(1, round(nToReevalPerIteration));
+          nToReeval = min(nPoints, max(1, round(nToReevalPerIteration)));
           isToReeval = obj.choosePointsForReevaluation(obj.pop, lastModel, nToReeval);
-          nToReeval = sum(isToReeval);
-          assert(nToReeval == nPoints, 'Not all points aimed for reevaluation has been reevaluated');
+          assert(nToReeval == sum(isToReeval), 'Not all points aimed for reevaluation has been reevaluated');
 
           % original-evaluate the chosen point(s)
           xToReeval = obj.pop.x(:, isToReeval);
@@ -303,9 +303,10 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             % of the while cycle or for the next generation of CMA-ES)
             % TODO: use the first model's prediction from above, but be carefull to use
             %       the right subset of points only
-            yFirstModel  = obj.model.predict(notEvaledX');
+            notOrigEvaledX = obj.pop.getNotOrigEvaledX();
+            firstModelY = obj.model.predict(notOrigEvaledX');
             obj.restrictedParam = obj.origRatioUpdater.update(...
-                yFirstModel', yModel', dim, lambda, obj.cmaesState.countiter, obj);
+                firstModelY', obj.pop.getModelY(), dim, lambda, obj.cmaesState.countiter, obj);
 
             % save the statistics about the new Updater's state
             obj.usedUpdaterState.err = obj.origRatioUpdater.historyErr(obj.cmaesState.countiter);
