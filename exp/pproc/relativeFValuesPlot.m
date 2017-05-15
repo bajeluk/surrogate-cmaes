@@ -124,9 +124,12 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.lineWidth = defopts(settings, 'LineWidth', 1);
   % statistic settings
   statistic = defopts(settings, 'Statistic', @mean);
+  plotSet.drawQuantiles = false;
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
       statistic = @(x, dim) quantile(x, [0.25, 0.5, 0.75], dim);
+      plotSet.lineWidth = defopts(settings, 'LineWidth', 2);
+      plotSet.drawQuantiles = true;
     else
       statistic = str2func(statistic);
     end
@@ -208,7 +211,14 @@ function handle = relativePlot(data_stats, settings)
         actualData = log10( actualData(1:nData, :) );
         actualMin = min(min(actualData));
         actualMax = max(max(actualData));
-        for D = 1:nUsefulData
+
+        if settings.drawQuantiles
+          dataToProcess = 1:(3*nUsefulData);
+          nEmptyId = sort([(nEmptyId-1)*3+1, (nEmptyId-1)*3+2, (nEmptyId-1)*3+3]);
+        else
+          dataToProcess = 1:nUsefulData;
+        end
+        for D = dataToProcess
           % % this is old version for scaling BEFORE logarithm
           % minGraph = 1e-8; maxGraph = 1;
           % relativeData{nEmptyId(D)}{f, d} = log10(thisData);
@@ -222,7 +232,7 @@ function handle = relativePlot(data_stats, settings)
   % aggregate accross dimensions
   if settings.aggDims
     nDimsToPlot = 1;
-    for D = 1:numOfData
+    for D = 1:length(relativeData)
       for f = 1:numOfFuncIds
         nDims = size(relativeData{D}, 2);
         relativeData{D}{f, 1} = mean(cell2mat(arrayfun(@(x) relativeData{D}{f,x}, 1:nDims, 'UniformOutput', false)'));
@@ -380,12 +390,20 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   if length(medianLineWidth) < nRelativeData
     medianLineWidth = medianLineWidth(1)*ones(1, nRelativeData);
   end
+  if settings.drawQuantiles
+    % we should draw 1st and 3rd quantiles, too, with the same
+    % colors and thinner lines
+    relativeData = relativeData([2:3:end, 1:3:end, 3:3:end]);
+    colors = repmat(colors, 3, 1);
+    medianLineWidth((end/3+1):end) = ceil(0.5*medianLineWidth((end/3+1):end));
+    lineSpec = repmat(lineSpec, 1, 3);
+  end
   fullLegend = any(strcmp(settings.legendOption, {'first', 'split'}));
 
   notEmptyData = false(1, nRelativeData);
   % find not empty data
   for dat = 1:nRelativeData
-    notEmptyData(dat) = ~isempty(relativeData{dat}{fId, dId});
+    notEmptyData(dat) = ~isempty(relativeData{dat}) && ~isempty(relativeData{dat}{fId, dId});
   end
   
   if any(notEmptyData)
@@ -415,6 +433,10 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
           lineSpec{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :), ...
           'Visible', 'off');
       end
+    end
+    if settings.drawQuantiles
+      nRelativeData = nRelativeData / 3;
+      notEmptyData((end/3+1):end) = [];
     end
     % if the legend should be plotted with all labels given, add artificial
     % not visible data

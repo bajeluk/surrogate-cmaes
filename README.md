@@ -3,6 +3,12 @@ Surrogate CMA-ES
 
 Surrogate CMA-ES (S-CMA-ES) is a surrogate-based optimizing evolution strategy. It is based on the N. Hansen's CMA-ES algorithm which is interconnected with Gaussian processes or random forests.
 
+## Log and News ##
+
+2017/03/22: Metacentrum interface migrated to the newer [PBS Pro](https://wiki.metacentrum.cz/wiki/PBS_Professional), default memory limit raised to 1.5GB
+
+## Introduction ##
+
 The optimizer can be called via the similar function interface as the original Matlab CMA-ES code:
 
 ```matlab

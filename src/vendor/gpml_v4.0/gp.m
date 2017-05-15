@@ -116,7 +116,7 @@ try                                                  % call the inference method
       warning('on');
     end
   end
-catch
+catch err
   msgstr = lasterr;
   if nargin > 7
     warning('Inference method failed [%s] .. attempting to continue', msgstr)

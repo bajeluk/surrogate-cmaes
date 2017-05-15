@@ -27,9 +27,9 @@ function [ok, fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrai
     % pre-sample new points, preferably in areas where we don't have
     % the points yet
     expandedSigma = surrogateOpts.evoControlSampleRange * sigma;
-    [arx, ~, arz] = ...
+    [~, arxvalid, arz] = ...
         sampleCmaesNoFitness(expandedSigma, dim*lambda, cmaesState, sampleOpts);
-    [xPreSample, zPreSample] = SurrogateSelector.chooseDistantPoints(missingTrainSize, arx', arz', xTrain, xmean, expandedSigma, BD);
+    [xPreSample, zPreSample] = SurrogateSelector.chooseDistantPoints(missingTrainSize, arxvalid', arz', xTrain, xmean, expandedSigma, BD);
     % evaluate the 'preSample' with the original fitness
     [fitness_raw, arx, arxvalid, arz, counteval] = ...
         sampleCmaesOnlyFitness(xPreSample, xPreSample, zPreSample, expandedSigma, missingTrainSize, counteval, cmaesState, sampleOpts, varargin{:});

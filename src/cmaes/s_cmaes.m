@@ -830,7 +830,10 @@ while isempty(stopflag)
   else
     % hand over the control to surrogateManager()
     surrogateOpts.sampleOpts = sampleOpts;
-    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled] = surrogateManager(cmaesState, surrogateOpts, sampleOpts, counteval, varargin{:});
+    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled, newStopFlag] = surrogateManager(cmaesState, surrogateOpts, sampleOpts, counteval, varargin{:});
+    if (~isempty(newStopFlag))
+      stopflag(end+1) = { newStopFlag };
+    end
     popsize = lambda;
   end
   
