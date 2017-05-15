@@ -17,6 +17,16 @@ function [data, settings] = dataReady(datapath, funcSet)
 % See Also:
 %   bbobDataReady, catEvalSet
 
+  if nargout > 0
+    data = {};
+  end
+  settings = {};
+
+  if nargin < 2
+    help dataReady
+    return
+  end
+
   BBfunc = funcSet.BBfunc;
   dims = funcSet.dims;
   BBfuncInv = inverseIndex(BBfunc);
@@ -45,7 +55,6 @@ function [data, settings] = dataReady(datapath, funcSet)
   end
   errPathList = cell2mat(cellfun(@(x) [x, ' '], datapath, 'UniformOutput', false));
 
-  settings = {};
   data = cell(nFunc, nDim);
   if isempty(datalist)
     data = bbobDataReady(datapath, funcSet);

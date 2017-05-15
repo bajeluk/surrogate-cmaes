@@ -1,30 +1,44 @@
-function [df, dVals] = difField(struct1, struct2)
-% return structure different field values and its fieldnames
+function [df, dVals] = difField(varargin)
+% [df, dVals] = difField(s1, s2, ...) return structure different field
+% values and its fieldnames.
+%
+% Input:
+%   s1, s2, ... - structures to compare | struct or cell-array of struct
+%
+% Output:
+%   df    - different fields among tested structures | cell-array of char
+%   dVals - different values in df | cell-array
+%
+% Note:
+%   Empty cells are ignored, empty structures are not.
 
-  % put structrures and cell-arrays of structures to one cell-array
-  if isstruct(struct1) 
-    strCell{1} = struct1;
-  elseif iscell(struct1)
-    strCell = struct1;
-  else
-    error('struct1 is not cell-array or structure')
-  end
-  if nargin == 2
-    if isstruct(struct2)
-      strCell{end+1} = struct2; 
-    elseif iscell(struct2)
-      strCell(end+1:end+length(struct2))
-    else
-      error('struct2 is not cell-array or structure')
-    end
-  end
-  
   df = {};
   dVals = {};
+  
+  if nargin < 1
+    help difField
+    return
+  end
+
+  % put structrures and cell-arrays of structures to one cell-array
+  structId = cellfun(@isstruct, varargin);
+  cellId = cellfun(@iscell, varargin);
+  assert(all(structId | cellId), 'Input is not cell-array or structure')
+  
+  if any(cellId)
+    strCell = [varargin{cellId}];
+    assert(all(cellfun(@isstruct, strCell)), 'There is a cell-array not containing a structure')
+  else
+    strCell = {};
+  end
+  strCell = [strCell, varargin{structId}];
+  
+  % one structure case is not comparable
   nStruct = length(strCell);
   if nStruct < 2
     return
   end
+  
   % gain all subfields
   allSubfields = cellfun(@(x) subfields(x)', strCell, 'UniformOutput', false);
   uniqueSubfields = unique([allSubfields{:}]');

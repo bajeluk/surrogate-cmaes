@@ -15,9 +15,11 @@ function [evals, settings] = catEvalSet(folders, funcSet)
 %   settings - appropriate settings to 'data' | structure
 %
 % See Also:
-%   catEvalSet
+%   dataReady
   
-  evals = {};
+  if nargout > 0
+    evals = {};
+  end
   settings = {};
   if nargin < 2
     help catEvalSet
