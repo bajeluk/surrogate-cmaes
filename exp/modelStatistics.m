@@ -114,6 +114,21 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
               % save the statistics into respective resulting cell arrays
               RDEs{i_model, i_func, i_dim} = data.stats.rde(data_instances, snapshots);
               MSEs{i_model, i_func, i_dim} = data.stats.mse(data_instances, snapshots);
+
+              % MAE error calculation (it is not in data.stats)
+              temp_maes = NaN(length(instances),length(snapshots));
+              for i_inst = 1:length(instances) 
+                for i_sn = 1:length(snapshots)
+                  sn_number = snapshots(i_sn);
+                  testSetY = ds.ds{i_func, i_dim, i_inst}.testSetY{sn_number};
+                  testSetModeled = data.y_models{i_inst, sn_number};
+                  if (size(testSetModeled,1) > 0)
+                    temp_maes(i_inst, i_sn) = sum(abs(testSetY - testSetModeled))/length(testSetModeled);
+                  end
+                end
+              end
+              MAEs{i_model, i_func, i_dim} = temp_maes;
+
               if (isfield(data, 'models'))
                 isTrained{i_model, i_func, i_dim} = cellfun( ...
                     @(m) m.isTrained(), data.models(data_instances, snapshots) );
