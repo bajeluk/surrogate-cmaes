@@ -33,7 +33,6 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
 % [ ]  choose one method of saving numerical results (arrays, or cell arrays)
 
 
-
   % Default input parameters settings
   if (~exist('functions', 'var') || isempty(functions))
     functions = 1:24; end
@@ -60,14 +59,15 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
 
   % take all *model_* directories in the given directory if not directories
   % *model_* given
+  ds = load(fullfile(modelFolders, 'dataset/DTS_005.mat'));
   modelFolders = expandModelSubdirs(modelFolders);
-
   if (isempty(opts.savedModelStatistics))
     % load the results from individual model-testing results files
 
     % prepare resulting cell arrays
     RDEs = cell(length(modelFolders), length(functions), length(dimensions));
     MSEs = cell(length(modelFolders), length(functions), length(dimensions));
+    MAEs = cell(length(modelFolders), length(functions), length(dimensions));
 
     isTrained = cell(length(modelFolders), length(functions), length(dimensions));
     folderModelOptions = cell(1, length(modelFolders));
@@ -104,6 +104,8 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
                 folderModelOptions{i_model} = getThisModelOption(dirName, data.modelOptions);
               elseif (isstruct(data.modelOptions))
                 folderModelOptions{i_model} = data.modelOptions;
+              elseif (isstruct(data.modelOptions{1}))
+                folderModelOptions{i_model} = data.modelOptions{1};
               else
                 warning('data.modelOptions are mssing or have wrong format');
               end
@@ -145,6 +147,7 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
           if (is_empty)
             RDEs{i_model, i_func, i_dim} = [];
             MSEs{i_model, i_func, i_dim} = [];
+            MAEs{i_model, i_func, i_dim} = [];
             isTrained{i_model, i_func, i_dim} = [];
           end
         end
@@ -159,6 +162,7 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
       saved = load(opts.savedModelStatistics);
       RDEs = saved.RDEs;
       MSEs = saved.MSEs;
+      MAEs = saved.MAEs;
       folderModelOptions = saved.folderModelOptions;
       isTrained = cellfun(@(x) ~isnan(x), MSEs, 'UniformOutput', false);
     catch err
@@ -183,6 +187,7 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
   % TODO: make the aggregation statistics configurable
   aggRDE    = cell(rowsCount, aggColumnsCount);
   aggMSE    = cell(rowsCount, aggColumnsCount);
+  aggMAE    = cell(rowsCount, aggColumnsCount);
   colNames  = cell(1, aggColumnsCount);
   rowNames  = cell(1, rowsCount);
 
@@ -217,6 +222,8 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
   allRDE_mat  = NaN(1, allColumnsCount);
   allMSE_cell = cell(1, N_DESCR_COLS + length(multiFieldNames));
   allMSE_mat  = NaN(1, allColumnsCount);
+  allMAE_cell = cell(1, N_DESCR_COLS + length(multiFieldNames));
+  allMAE_mat  = NaN(1, allColumnsCount);
   allColNames = cell(1, N_DESCR_COLS + length(multiFieldNames) + allColumnsCount);
 
   aggRow    = 0;
@@ -246,6 +253,7 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
         colNames(1:N_DESCR_COLS) = {'hash', 'dim', 'snapshot'};
         aggRDE(aggRow, 1:N_DESCR_COLS) = {hash, dim, snapshot};
         aggMSE(aggRow, 1:N_DESCR_COLS) = {hash, dim, snapshot};
+        aggMAE(aggRow, 1:N_DESCR_COLS) = {hash, dim, snapshot};
 
         % prepare **all values tables**
         % columns are: hash, dim, snapshot, ...[multiFieldNames]..., f1, f2, f3, ...
@@ -253,15 +261,19 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
         allColNames(N_DESCR_COLS + (1:length(multiFieldNames))) = multiFieldNames;
         allRDE_cell(allRow+(1:N_INST), 1:N_DESCR_COLS) = repmat({hash, dim, snapshot}, N_INST, 1);
         allMSE_cell(allRow+(1:N_INST), 1:N_DESCR_COLS) = repmat({hash, dim, snapshot}, N_INST, 1);
+        allMAE_cell(allRow+(1:N_INST), 1:N_DESCR_COLS) = repmat({hash, dim, snapshot}, N_INST, 1);
         % save modelOption-values (already here, they are the same for every
         % function (in fact even for dimension...)
         allRDE_cell(allRow+(1:N_INST), N_DESCR_COLS + (1:length(multiFieldNames))) = ...
             repmat(modelOptsValues(aggRow, :), N_INST, 1);
         allMSE_cell(allRow+(1:N_INST), N_DESCR_COLS + (1:length(multiFieldNames))) = ...
             repmat(modelOptsValues(aggRow, :), N_INST, 1);
+	      allMAE_cell(allRow+(1:N_INST), N_DESCR_COLS + (1:length(multiFieldNames))) = ...
+            repmat(modelOptsValues(aggRow, :), N_INST, 1);
         % prepare also matrices for numerical results (filled with NaNs)
         allRDE_mat(allRow+(1:N_INST), :) = NaN(N_INST, allColumnsCount);
         allMSE_mat(allRow+(1:N_INST), :) = NaN(N_INST, allColumnsCount);
+        allMAE_mat(allRow+(1:N_INST), :) = NaN(N_INST, allColumnsCount);
 
         col = 3;
         allCol = 0;
@@ -276,24 +288,29 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
           n_inst = min(N_INST, length(RDEs{i_model, i_func, i_dim}(:, i_snapshot)));
           allRDE_mat(allRow+(1:n_inst), allCol) = RDEs{i_model, i_func, i_dim}(1:n_inst, i_snapshot);
           allMSE_mat(allRow+(1:n_inst), allCol) = MSEs{i_model, i_func, i_dim}(1:n_inst, i_snapshot);
+          allMAE_mat(allRow+(1:n_inst), allCol) = MAEs{i_model, i_func, i_dim}(1:n_inst, i_snapshot);
 
           % mean (the default of firstStatistic is @mean)
           col = col + 1;
           colNames{col} = sprintf(['f%d_', opts.firstStatisticName], func);
           thisRDE = RDEs{i_model, i_func, i_dim}(:, i_snapshot);
           thisMSE = MSEs{i_model, i_func, i_dim}(:, i_snapshot);
+          thisMAE = MAEs{i_model, i_func, i_dim}(:, i_snapshot);
           % remove NaN's
           thisRDE(isnan(thisRDE)) = [];
           thisMSE(isnan(thisMSE)) = [];
+          thisMAE(isnan(thisMAE)) = [];
           % calculate the first statistic
           aggRDE{aggRow, col} = opts.firstStatistic(thisRDE);
           aggMSE{aggRow, col} = opts.firstStatistic(thisMSE);
+          aggMAE{aggRow, col} = opts.firstStatistic(thisMAE);
 
           % standard deviation (the default of secondStatistic is @std)
           col = col + 1;
           colNames{col} = sprintf(['f%d_', opts.secondStatisticName], func);
           aggRDE{aggRow, col} = opts.secondStatistic(thisRDE);
           aggMSE{aggRow, col} = opts.secondStatistic(thisMSE);
+          aggMAE{aggRow, col} = opts.secondStatistic(thisMAE);
 
           % the number of successfuly trained models
           col = col + 1;
@@ -301,9 +318,11 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
           if (~isempty(isTrained{i_model, i_func, i_dim}))
             aggRDE{aggRow, col} = sum(isTrained{i_model, i_func, i_dim}(:, i_snapshot));
             aggMSE{aggRow, col} = sum(isTrained{i_model, i_func, i_dim}(:, i_snapshot));
+            aggMAE{aggRow, col} = sum(isTrained{i_model, i_func, i_dim}(:, i_snapshot));
           else
             aggRDE{aggRow, col} = sum(~isnan(MSEs{i_model, i_func, i_dim}(:, i_snapshot)));
             aggMSE{aggRow, col} = sum(~isnan(MSEs{i_model, i_func, i_dim}(:, i_snapshot)));
+            aggMAE{aggRow, col} = sum(~isnan(MAEs{i_model, i_func, i_dim}(:, i_snapshot)));
           end
         end
         allRow = allRow + N_INST;
@@ -320,6 +339,10 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
   allMSE_table(:, end+(1:size(allMSE_mat,2))) = num2cell(allMSE_mat);
   allMSE_table.Properties.VariableNames = allColNames;
 
+  allMAE_table = cell2table(allMAE_cell);
+  allMAE_table(:, end+(1:size(allMAE_mat,2))) = num2cell(allMAE_mat);
+  allMAE_table.Properties.VariableNames = allColNames;
+
   % aggregated tables
   aggRDE_table = cell2table([modelOptsValues, aggRDE], 'VariableNames', [multiFieldNames, colNames]);
   aggRDE_table.Properties.RowNames = rowNames;
@@ -333,7 +356,13 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
   disp(aggMSE_table);
   writetable(aggMSE_table, fullfile(exppath_short, exp_id, 'aggMSE_table.txt'), 'WriteRowNames', true);
 
-  save(fullfile(exppath_short, exp_id, 'modelStatistics.mat'), 'aggRDE_table', 'aggMSE_table', 'RDEs', 'aggRDE', 'MSEs', 'aggMSE', 'allRDE_mat', 'allRDE_table', 'allMSE_mat', 'allMSE_table', 'isTrained', 'folderModelOptions', 'modelFolders', 'functions', 'dimensions', 'snapshots', 'instances', 'multiFieldNames');
+  aggMAE_table = cell2table([modelOptsValues, aggMAE], 'VariableNames', [multiFieldNames, colNames]);
+  aggMAE_table.Properties.RowNames = rowNames;
+  disp('MAE Table');
+  disp(aggMAE_table);
+  writetable(aggMAE_table, fullfile(exppath_short, exp_id, 'aggMAE_table.txt'), 'WriteRowNames', true);
+
+  save(fullfile(exppath_short, exp_id, 'modelStatistics.mat'), 'aggRDE_table', 'aggMSE_table','aggMAE_table', 'RDEs', 'aggRDE', 'MSEs', 'aggMSE','MAEs', 'aggMAE', 'allRDE_mat', 'allRDE_table', 'allMSE_mat', 'allMSE_table','allMAE_mat', 'allMAE_table', 'isTrained', 'folderModelOptions', 'modelFolders', 'functions', 'dimensions', 'snapshots', 'instances', 'multiFieldNames');
 end
 
 function [modelName, hash, FEs] = parseFolderName(dirName)

@@ -46,7 +46,7 @@ classdef ModelPool < Model
     retrainPeriod
     nTrainData            % min of getNTrainData of all created models
     xMean
-    minTrainedModelsPercentilForModelChoice % if percentile of oldest models that are trained
+    minTrainedModelsPercentileForModelChoice % if percentile of oldest models that are trained
                                             % drops below this value, we try newer generations of models
     maxGenerationShiftForModelChoice  % stops trying to find trained generation
                                       % and switches to likelihood after this value of searched generations
@@ -59,8 +59,14 @@ classdef ModelPool < Model
       obj.modelsCount = length(modelOptions.parameterSets);
       assert(obj.modelsCount ~= 0, 'ModelPool(): No model provided!');
 
-      if (strcmpi(obj.bestModelSelection, 'likelihood'))
-        % likelihood selection does not need older models
+      obj.bestModelSelection = defopts(modelOptions, 'bestModelSelection', 'rdeAll');
+
+      if (strcmpi(obj.bestModelSelection, 'likelihood')...
+         || strcmpi(obj.bestModelSelection, 'poiavg')...
+         || strcmpi(obj.bestModelSelection, 'poimax')...
+         || strcmpi(obj.bestModelSelection, 'eiavg')...
+         || strcmpi(obj.bestModelSelection, 'eimax'))
+        % these selections do not need older models
         obj.historyLength = 0;
       else
         obj.historyLength = defopts(modelOptions, 'historyLength', 4);
@@ -68,7 +74,7 @@ classdef ModelPool < Model
           warning('ModelPool: history length needs to be at least 2 in order to choose from at least 1 point, choosing 2 as value.');
           obj.historyLength = 2;
         end
-        obj.minTrainedModelsPercentilForModelChoice = defopts(modelOptions, 'minTrainedModelsPercentilForModelChoice', 0.25);
+        obj.minTrainedModelsPercentileForModelChoice = defopts(modelOptions, 'minTrainedModelsPercentileForModelChoice', 0.25);
         obj.maxGenerationShiftForModelChoice = defopts(modelOptions, 'maxGenerationShiftForModelChoice', 1);
         if obj.maxGenerationShiftForModelChoice >= obj.historyLength -1
           warning('ModelPool: maxGenerationShiftForModelChoice is too high, choosing %d as value.', obj.historyLength - 2)
@@ -84,7 +90,6 @@ classdef ModelPool < Model
       obj.shiftMean = zeros(1, obj.dim);
       obj.shiftY    = 0;
       obj.stdY      = 1;
-      obj.bestModelSelection = defopts(modelOptions, 'bestModelSelection', 'mse');
 
       % general model prediction options
       obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
@@ -101,17 +106,6 @@ classdef ModelPool < Model
         obj.models{i,1} = obj.createGpModel(i, xMean);
         obj.nTrainData = min(obj.models{i,1}.getNTrainData(),obj.nTrainData);
       end
-    end
-
-    function gpModel = createGpModel(obj, modelIndex, xMean)
-      newModelOptions = obj.modelPoolOptions.parameterSets(modelIndex);
-      newModelOptions.predictionType = obj.predictionType;
-      newModelOptions.transformCoordinates = obj.transformCoordinates;
-      newModelOptions.dimReduction = obj.dimReduction;
-      newModelOptions.options.normalizeY = obj.options.normalizeY;
-
-      gpModel = ModelFactory.createModel('gp', newModelOptions, xMean);
-
     end
 
     function nData = getNTrainData(obj)
@@ -145,7 +139,6 @@ classdef ModelPool < Model
 
           obj.models(i,:) = circshift(obj.models(i,:),[0,1]);
           obj.isModelTrained(i,:) = circshift(obj.isModelTrained(i,:),[0,1]);
-          obj.isModelTrained(i,1) = 0;
           obj.models{i,1} = obj.createGpModel(i, obj.xMean);
           obj.models{i,1} = obj.models{i,1}.train(X, y, stateVariables, sampleOpts, obj.archive, population);
 
@@ -153,6 +146,7 @@ classdef ModelPool < Model
             trainedModelsCount = trainedModelsCount+1;
             obj.isModelTrained(i,1) = 1;
           else
+            obj.isModelTrained(i,1) = 0;
             obj.models{i,1}.trainGeneration = -1;
           end
         end
@@ -183,7 +177,18 @@ classdef ModelPool < Model
 
   end
 
-  methods (Access = public)
+  methods (Access = protected)
+    function gpModel = createGpModel(obj, modelIndex, xMean)
+      newModelOptions = obj.modelPoolOptions.parameterSets(modelIndex);
+      newModelOptions.predictionType = obj.predictionType;
+      newModelOptions.transformCoordinates = obj.transformCoordinates;
+      newModelOptions.dimReduction = obj.dimReduction;
+      newModelOptions.options.normalizeY = obj.options.normalizeY;
+
+      gpModel = ModelFactory.createModel('gp', newModelOptions, xMean);
+
+    end
+
     function [bestModelIndex, choosingCriterium] = chooseBestModel(obj, lastGeneration, population)
 
       if (isempty(lastGeneration))
@@ -194,12 +199,15 @@ classdef ModelPool < Model
       for i = obj.historyLength+1 : -1 : obj.historyLength+1 - obj.maxGenerationShiftForModelChoice;
         trainedPercentile = mean(obj.isModelTrained(:,i));
 
-        if (trainedPercentile >= obj.minTrainedModelsPercentilForModelChoice)
+        if (trainedPercentile >= obj.minTrainedModelsPercentileForModelChoice)
           ageOfTestedModels = i;
           break;
         end
       end
-
+      switch lower(obj.bestModelSelection)
+        case {'poiavg', 'poimax', 'eiavg', 'eimax'}
+          ageOfTestedModels = 1; % poi/ei use only 1 generation of models
+      end
       if (ageOfTestedModels == -1 || strcmpi(obj.modelPoolOptions.bestModelSelection,'likelihood'))
         choosingCriterium = obj.getLikelihood();
       else
@@ -212,18 +220,34 @@ classdef ModelPool < Model
             choosingCriterium = obj.getMse(ageOfTestedModels, lastGeneration);
           case 'mae'
             choosingCriterium = obj.getMae(ageOfTestedModels, lastGeneration);
+          case 'poiavg'
+            choosingCriterium = obj.getPOICriterium(true, population);
+          case 'poimax'
+            choosingCriterium = obj.getPOICriterium(false, population);
+          case 'eiavg'
+            choosingCriterium = obj.getEICriterium(true, population);
+          case 'eimax'
+            choosingCriterium = obj.getEICriterium(false, population);
           otherwise
             error(['ModelPool.chooseBestModel: ' obj.modelPoolOptions.bestModelSelection ' -- no such option available']);
         end
       end
       % choose the best model from trained ones according to the choosing criterium
-      [minValue,bestModelIndex] = min(choosingCriterium(obj.isModelTrained(:,1)));
-      if minValue==Inf
-        bestModelIndex = 1;
-        if (mean(obj.isModelTrained(:,i))>0)
-          warning('ModelPool.chooseBestModel: value of minimum is Inf, ageOfTestedModels %d, percentile of trainedModels %d', ...
-            ageOfTestedModels, mean(obj.isModelTrained(:,i)));
-        end
+      switch lower(obj.bestModelSelection)
+        case {'poiavg', 'poimax', 'eiavg', 'eimax'}
+          [maxValue, bestModelIndex] = max(choosingCriterium(obj.isModelTrained(:,1)));
+          if (maxValue<=0)
+            warning('ModelPool.chooseBestModel: Max value of best model selection is not positive.');
+          end
+        otherwise
+          [minValue,bestModelIndex] = min(choosingCriterium(obj.isModelTrained(:,1)));
+          if minValue==Inf
+            bestModelIndex = 1;
+            if (mean(obj.isModelTrained(:,i))>0)
+              warning('ModelPool.chooseBestModel: value of minimum is Inf, ageOfTestedModels %d, percentile of trainedModels %d', ...
+                ageOfTestedModels, mean(obj.isModelTrained(:,i)));
+            end
+          end
       end
     end
 
@@ -264,7 +288,7 @@ classdef ModelPool < Model
       end
     end
 
-    function choosingCriterium = getRdeAll(obj, ageOfTestedModels, population, mu)
+    function choosingCriterium = getRdeAll(obj, ageOfTestedModels, population)
       choosingCriterium = Inf(obj.modelsCount,1);
       for modelIndex=1:obj.modelsCount
         partialCriteriumValues = [];
@@ -310,8 +334,8 @@ classdef ModelPool < Model
         if (size(X,1)~=0)
           if (obj.isModelTrained(i,ageOfTestedModels))
             [yModel, ~] = obj.models{i, ageOfTestedModels}.modelPredict(X);
-            if (size(yArchive) == size(yModel))
-              choosingCriterium(i) = sum((yModel - yArchive).^2) / length(yArchive);
+            if (size(yArchive)==size(yModel))
+              choosingCriterium(i) = sum((yModel - yArchive).^2)/length(yArchive);
             end
           end
         end
@@ -327,7 +351,7 @@ classdef ModelPool < Model
           if (obj.isModelTrained(i,ageOfTestedModels))
             [yModel, ~] = obj.models{i,ageOfTestedModels}.modelPredict(X);
             if (size(yArchive)==size(yModel))
-              choosingCriterium(i) = sum(abs(yModel - yArchive)) / length(yArchive);
+              choosingCriterium(i) = sum(abs(yModel - yArchive))/length(yArchive);
             end
           end
         end
@@ -338,6 +362,38 @@ classdef ModelPool < Model
       choosingCriterium = Inf(obj.modelsCount,1);
       for i=1:obj.modelsCount
         choosingCriterium(i) = obj.models{i,1}.trainLikelihood;
+      end
+    end
+
+    function choosingCriterium = getPOICriterium(obj, useMean, population)
+      choosingCriterium = zeros(obj.modelsCount,1);
+      X = population.x';
+      for i=1:obj.modelsCount
+        [y, sd2] = obj.models{i,1}.predict(X);
+        fmin = min(obj.models{i,1}.getDataset_y());
+        fmax = max(obj.models{i,1}.getDataset_y());
+        target = fmin - 0.05 * (fmax - fmin);
+        output = getPOI(X, y, sd2, target);
+        if (useMean)
+          choosingCriterium(i) = mean(output);
+        else
+          choosingCriterium(i) = max(output);
+        end
+      end
+    end
+
+    function choosingCriterium = getEICriterium(obj, useMean, population)
+      choosingCriterium = zeros(obj.modelsCount,1);
+      X = population.x';
+      for i=1:obj.modelsCount
+        [y, sd2] = obj.models{i,1}.predict(X);
+        fmin = min(obj.models{i,1}.getDataset_y());
+        output = getEI(X, y, sd2, fmin);
+        if (useMean)
+          choosingCriterium(i) = mean(output);
+        else
+          choosingCriterium(i) = max(output);
+        end
       end
     end
 
