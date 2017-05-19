@@ -1,22 +1,42 @@
-function promisingParam(evals, dataSettings)
+function [paramSignificance, p, tb, stats] = promisingParam(evals, dataSettings, varargin)
+% [paramSignificance, p, tb, stats] = promisingParam(evals, dataSettings)
 % Identifies promising parameters in settings according to evaluations in
-% evals.
+% evals using anovan and multcompare functions.
+%
+% [...] = promisingParam(evals, dataSettings, settings) identifies 
+% parameters using additional function settings. 
 %
 % Input:
 %   evals        - array of evaluation data (output of catEvalSet)
 %   dataSettings - array of data settings (output of catEvalSet)
+%   settings - pairs of property (string) and value or struct with 
+%              properties as fields:
+%
+%     'Alpha'     - anovan and multcompare significance level
+%     'EvalRatio' - fractions of best-data evaluations to be computed
+%     'Target'    - target distance to the fitness function optimum
+%
+% Output:
+%   paramSignificance - number of functions, where the parameter value was
+%                       significantly best
+%   p                 - anovan p-values | cell-array
+%   tb                - anovan tables | cell-array
+%   stats             - anovan statistics | cell-array
 %
 % See Also:
-%   catEvalSet
+%   anovan, catEvalSet, multcompare
 
   if nargin < 2
     help promisingParam
     return
   end
   
-  targetValue = 1e-8;
-  evalRatio = 1;
-  alpha = 0.05;
+  % parse input
+  settings = settings2struct(varargin);
+  
+  targetValue = defopts(settings, 'Target', 1e-8);
+  evalRatio = defopts(settings, 'EvalRatio', 1);
+  alpha = defopts(settings, 'Alpha', 0.05);
   
   % important sizes
   [nFunc, nDims, nSettings] = size(evals);
@@ -80,27 +100,31 @@ function promisingParam(evals, dataSettings)
       for e = 1:nEvalNumbers
         % reshape evaluations to vector
         actualAnovaEvals = reshape(anovaEvals{e}, [1, nInstances*nSettings]);
-        % perform anova
-        [p{f, d, e}, tb{f, d, e}, stats{f, d, e}] = ...
-          anovan(actualAnovaEvals, difFieldVals, ...
-                 'Model', 'linear', 'VarNames', dFields);
-               
-        % identify significant values
-        signifID = p{f, d, e} < alpha;
-        if any(signifID)
-          signifID = find(signifID);
-          for id = signifID
-            [mult_c, mult_mat] = multcompare(stats{f, d, e}, 'Dimension', id);
-            [~, bestParId] = min(mult_mat(:, 1));
-            comparableValues = mult_c(mult_c(:, 6) >  alpha ...
-                                  & ((mult_c(:, 1) == bestParId) ...
-                                  |  (mult_c(:, 2) == bestParId)), 1:2);
-            comparableValues = comparableValues(comparableValues ~= bestParId);
-            % increase the number of significant functions
-            % TODO: the following row throws an error
-            paramSignificance{id}(bestParId) = paramSignificance{id}(bestParId) + 1;
-            if ~isempty(comparableValues)
-              paramSignificance{id}(comparableValues) = paramSignificance{id}(comparableValues) + 1;
+        % anova input cannot contain NaN value if it does, omit it from
+        % significance computation
+        if ~any(any(isnan(actualAnovaEvals)))
+          % perform anova
+          [p{f, d, e}, tb{f, d, e}, stats{f, d, e}] = ...
+            anovan(actualAnovaEvals, difFieldVals, ...
+                   'Model', 'linear', 'VarNames', dFields, 'Display', 'off');
+
+          % identify significant values
+          signifID = p{f, d, e} < alpha;
+          if any(signifID)
+            signifID = find(signifID');
+            for id = signifID
+              [mult_c, mult_mat] = multcompare(stats{f, d, e}, ...
+                'Dimension', id, 'Display', 'off');
+              [~, bestParId] = min(mult_mat(:, 1));
+              comparableValues = mult_c(mult_c(:, 6) >  alpha ...
+                                    & ((mult_c(:, 1) == bestParId) ...
+                                    |  (mult_c(:, 2) == bestParId)), 1:2);
+              comparableValues = comparableValues(comparableValues ~= bestParId);
+              % increase the number of significant functions
+              paramSignificance{id}(bestParId) = paramSignificance{id}(bestParId) + 1;
+              if ~isempty(comparableValues)
+                paramSignificance{id}(comparableValues) = paramSignificance{id}(comparableValues) + 1;
+              end
             end
           end
         end
