@@ -1,0 +1,73 @@
+
+VERSION
+-------
+
+This is the BBComp client software, version 1.2.1.
+
+
+VERSION HISTORY
+---------------
+
+Version 1.2.1 (released ??.02.2017)
+changes:
+(*) small bug fixed related to the GVGPC track on Windows systems
+
+Version 1.2.0 (released 16.01.2017)
+changes:
+(*) internal changes related to the real-world problems track
+(*) added definition of numberOfObjectives in client_python_full
+
+Version 1.1.2 (released 03.06.2016)
+changes:
+(*) added a Python 3 client
+(*) fixed a bug in the Windows client that prevented connecting to the
+	competition server.
+
+Version 1.1.1 (released 21.02.2016)
+changes:
+(*) internal bug fixes
+
+Version 1.1.0 (released 17.02.2016)
+changes:
+(*) interface extended to multi-objective problems by introducing the
+	new function numberOfObjectives and by extending the functions
+	evaluate and history.
+(*) Example clients extended to multi-objective tracks.
+
+
+Version 1.0.6 (released 06.03.2015)
+changes:
+(*) changed the competition port from 6881 to 39772 to avoid problems with
+	firewalls attempting to block bit-torrent clients
+
+Version 1.0.5 (released 23.02.2015)
+changes:
+(*) updated MSVC libraries, fixing library loading problems with the Matlab
+    client on Windows
+
+Version 1.0.4 (released 15.01.2015)
+changes:
+(*) minor bugs fixed in the advanced Python example client
+
+Version 1.0.3 (released 10.01.2015)
+changes:
+(*) fixed a minor bug related to the internal state of the library
+(*) added more client code examples implementing the Nelder Mead algorithm
+
+Version 1.0.2 (released 17.12.2014)
+changes:
+(*) minimal changes internal to the black box library, related only to logging
+
+Version 1.0.1 (released 14.12.2014)
+bug fix release - changes:
+(*) string comparison bugs fixed in the Java client
+
+Version 1.0.0 (released 30.11.2014)
+first release version - features:
+(*) dynamic library
+(*) TCP/IP proxy
+(*) C client
+(*) C++ client
+(*) Java client
+(*) Python client
+(*) Matlab client
