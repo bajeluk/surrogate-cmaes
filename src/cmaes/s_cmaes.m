@@ -2,9 +2,10 @@ function [xmin, ...      % minimum search point of last iteration
 	  fmin, ...      % function value of xmin
 	  counteval, ... % number of function evaluations done
 	  stopflag, ...  % stop criterion reached
-	  out, ...     % struct with various histories and solutions
-	  bestever, ... % struct containing overall best solution (for convenience)
-	  y_eval...     % BAJELUK BEST/COUNTEVAL RECORDING
+	  out, ...       % struct with various histories and solutions
+	  bestever, ...  % struct containing overall best solution (for convenience)
+	  y_eval, ...    % BAJELUK BEST/COUNTEVAL RECORDING
+    archive...     % BAJELUK ARCHIVE
 	 ] = s_cmaes( ...
     fitfun, ...    % name of objective/fitness function
     xstart, ...    % objective variables initial point, determines N
@@ -830,7 +831,7 @@ while isempty(stopflag)
   else
     % hand over the control to surrogateManager()
     surrogateOpts.sampleOpts = sampleOpts;
-    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled, newStopFlag] = surrogateManager(cmaesState, surrogateOpts, sampleOpts, counteval, varargin{:});
+    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled, newStopFlag, archive] = surrogateManager(cmaesState, surrogateOpts, sampleOpts, counteval, varargin{:});
     if (~isempty(newStopFlag))
       stopflag(end+1) = { newStopFlag };
     end

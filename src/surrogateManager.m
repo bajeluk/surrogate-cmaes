@@ -1,4 +1,4 @@
-function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled, newStopFlag] = surrogateManager(cmaesState, inOpts, sampleOpts, counteval, varargin)
+function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled, newStopFlag, archive] = surrogateManager(cmaesState, inOpts, sampleOpts, counteval, varargin)
 % surrogateManager  controls sampling of new solutions and using a surrogate model
 %
 % @xmean, @sigma, @lambda, @BD, @diagD -- CMA-ES internal variables
@@ -17,7 +17,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   % ec - one such instance for evolution control, persistent between
   % different calls of the surrogateManager() function
 
-  persistent archive;           % archive of original-evaluated individuals
+%   persistent archive;           % archive of original-evaluated individuals
 
   persistent observers;         % observers of EvolutionControls
 
@@ -69,7 +69,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
 
   % switching evolution control
   % TODO: consider removing this completely
-  if counteval > surrogateOpts.evoControlSwitchBound*dim
+  if ~strcmp(surrogateOpts.evoControl, surrogateOpts.evoControlSwitchMode) && ...
+    (counteval > surrogateOpts.evoControlSwitchBound*dim || toc(surrogateOpts.startTime) > surrogateOpts.evoControlMaxTime)
+    fprintf('Switching evolution control from ''%s'' to ''%s''', surrogateOpts.evoControl, surrogateOpts.evoControlSwitchMode)
     surrogateOpts.evoControl = surrogateOpts.evoControlSwitchMode;
     % EC type has changed -> create new instance of EvolutionControl
     % TODO: delete the old instances of 'ec' and 'observers'
@@ -85,8 +87,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
 
   % construct Archive, EvolutionControl and its Observers
   % Note: independent restarts of the whole CMA-ES still clears the archive
+  archive = defopts(surrogateOpts, 'archive', Archive(dim));
   if (countiter == 1 && (isempty(ec) || (counteval < ec.counteval)))
-    archive = Archive(dim);
     ec = ECFactory.createEC(surrogateOpts);
     [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
     stopFlagHistory = false(1, stopFlagHistoryLength);
