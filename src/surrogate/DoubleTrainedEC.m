@@ -645,11 +645,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     %
     % lastModel -- return the last valid model (either first or second)
 
-      rmse = NaN; kendall = NaN; errRank = NaN;
-      % do we have access to the original BBOB fitness?
-      if (~ isfield(obj.surrogateOpts.modelOpts, 'bbob_func'))
-        return;
-      end
+      rmse = NaN; kendall = NaN; errRank = NaN; lastModel = [];
       if (~isempty(obj.retrainedModel) && obj.retrainedModel.isTrained())
         % statistics according to the retrained model
         lastModel = obj.retrainedModel;
@@ -658,6 +654,11 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         lastModel = obj.model;
       else
         % we do not have any valid model
+        return;
+      end
+
+      % do we have access to the original BBOB fitness?
+      if (~ isfield(obj.surrogateOpts.modelOpts, 'bbob_func'))
         return;
       end
 

@@ -45,7 +45,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   sDefaults.evoControlValidatePoints      = 0;
   sDefaults.evoControlRestrictedParam     = 0.2;    % 0..1
   sDefaults.evoControlAdaptivity          = 0.1;
-  sDefaults.evoControlSwitchMode          = 'none'; % none | individual | generation | doubletrained(restricted)
+  sDefaults.evoControlSwitchMode          = []; % none | individual | generation | doubletrained(restricted)
   sDefaults.evoControlSwitchBound         = inf;    % 1 .. inf (reasonable 10--100)
   sDefaults.evoControlSwitchPopulation    = 1;      % 1 .. inf (reasonable 1--20)
   sDefaults.evoControlSwitchPopBound      = inf;    % 1 .. inf (reasonable 10--100)
@@ -69,7 +69,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
 
   % switching evolution control
   % TODO: consider removing this completely
-  if ~strcmp(surrogateOpts.evoControl, surrogateOpts.evoControlSwitchMode) && ...
+  if ~isempty(surrogateOpts.evoControlSwitchMode) && ...
+    ~strcmp(surrogateOpts.evoControl, surrogateOpts.evoControlSwitchMode) && ...
     (counteval > surrogateOpts.evoControlSwitchBound*dim || toc(surrogateOpts.startTime) > surrogateOpts.evoControlMaxTime)
     fprintf('Switching evolution control from ''%s'' to ''%s''', surrogateOpts.evoControl, surrogateOpts.evoControlSwitchMode)
     surrogateOpts.evoControl = surrogateOpts.evoControlSwitchMode;

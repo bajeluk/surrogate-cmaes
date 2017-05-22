@@ -12,6 +12,10 @@ classdef DTScreenStatistics < Observer
 
     function notify(obj, ec, varargin)
       % get the interesting data and process them
+
+      if (~ isfield(ec.surrogateOpts.modelOpts, 'bbob_func'))
+        ec.surrogateOpts.fopt = min(ec.archive.y);
+      end
       if (mod(ec.cmaesState.countiter, 10) == 1)
       %           #####  iter /evals(or:p,b) | Dopt |rmseR | rnkR | rnk2 |rnkVal * | Mo nD nDiR |sigm^2| aErr |smooEr| orRat| aGain|
         fprintf('####### iter /evals(or:p,b) | D_fopt. | rmseRee | rnkR | rnk2 | .rankErrValid. | M  nData | sigma^2. | aErr |smooEr| orRat| aGain|\n');

@@ -4,7 +4,8 @@ exp_description = 'Surrogate CMA-ES settings for BBComp 1-OBJ task, DTS with pre
 % Surrogate manager parameters
 
 surrogateParams.evoControl = 'doubletrained';
-surrogateParams.observers = {'DTScreenStatistics', 'DTFileStatistics'};
+% surrogateParams.observers = {'DTScreenStatistics', 'DTFileStatistics'};
+surrogateParams.observers = {'DTScreenStatistics'};
 surrogateParams.modelType = 'gp';
 surrogateParams.evoControlRestrictedParam = 0.05;
 surrogateParams.evoControlTrainRange = 10;             % will be multip. by sigma
@@ -19,6 +20,8 @@ surrogateParams.DTAdaptive_lowErr = 0.15;
 surrogateParams.DTAdaptive_highErr = 0.40;
 surrogateParams.DTAdaptive_defaultErr = 0.10;
 
+% surrogateParams.evoControlSwitchMode = 'none';
+surrogateParams.evoControlMaxTime = 10; % 7*24*3600;
 surrogateParams.evoControlMaxDoubleTrainIterations = 2;
 surrogateParams.evoControlPreSampleSize = 0.75;
 surrogateParams.evoControlNBestPoints = [0.2 1.0];

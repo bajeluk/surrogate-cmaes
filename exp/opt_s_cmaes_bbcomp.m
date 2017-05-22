@@ -59,7 +59,8 @@ end
   % TODO: comment this line! :)
   % sgParams.saveModelTrainingData = [ 10 25 50 100 200 300 470 700 900 1200 1500 2000 2400 ];
 
-  [x, fmin, counteval, stopflag, out, bestever, y_eval, archive] = s_cmaes(FUN, xstart, 8/3, cmOptions, 'SurrogateOptions', sgParams);
+  sigma = 1/3;
+  [x, fmin, counteval, stopflag, out, bestever, y_eval, archive] = s_cmaes(FUN, xstart, sigma, cmOptions, 'SurrogateOptions', sgParams);
 
   % n_y_evals = size(y_eval,1);
   % y_eval(:,1) = y_eval(:,1) - (ftarget - fDelta) * ones(n_y_evals,1);

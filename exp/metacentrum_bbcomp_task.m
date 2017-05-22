@@ -59,6 +59,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
     [~, ~] = mkdir(localDatapath);
   end
   [~, ~] = mkdir(datapath);
+  surrogateParams.datapath = datapath;
 
   % Metacentrum task and node properties
   cmd_opts.machine = '';
@@ -83,7 +84,26 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   %
   % the computation itself
   %
-  %
+
+  % MOCK IMPLEMENTATION
+  FUN = @frosen;
+  dim = 2;
+  maxfunevals = 5000;
+
+  surrogateParams.archive = Archive(dim);
+  surrogateParams.startTime = tic;
+  nEvals = 0;
+  xstart = rand(dim, 1);
+
+  while nEvals < maxfunevals
+
+    [x, y_evals, stopflag, archive, varargout] = opt_s_cmaes_bbcomp(FUN, dim, ...
+        maxfunevals, cmaesParams, surrogateParams, xstart);
+
+    nEvals = size(archive.X, 1);
+
+    xstart = cmaesRestartPoint(archive);
+  end
 
 
   % copy the bbcomp results onto persistant storage if outside EXPPATH
