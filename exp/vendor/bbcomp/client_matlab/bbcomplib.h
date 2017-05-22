@@ -14,7 +14,7 @@
 	#define DLL_INIT static void initializer(void)
 	#define DLL_QUIT static void finalizer(void)
 #elif __linux__
-	#define DLL_EXPORT __attribute__((visibility("default")))
+	#define DLL_EXPORT// __attribute__((visibility("default")))
 	#define DLL_INIT __attribute__((constructor)) static void initializer(void)
 	#define DLL_QUIT __attribute__((destructor)) static void finalizer(void)
 #elif __APPLE__
