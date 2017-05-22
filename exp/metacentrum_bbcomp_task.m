@@ -104,8 +104,8 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
         maxfunevals, cmaesParams, surrogateParams, xstart);
 
     nEvals = size(archive.X, 1);
-
     xstart = cmaesRestartPoint(archive);
+    surrogateParams.archive = archive;
   end
 
 
@@ -131,7 +131,7 @@ end
 
 function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams)
   % initialization of the BBCOMP client
-  addpath(bbcompParams.libbpath);
+  addpath(bbcompParams.libpath);
   try
     bbc_client = BbcClient(bbcompParams.libname, bbcompParams.libhfile, ...
       bbcompParams.username, bbcompParams.password, bbcompParams.maxTrials);
@@ -141,8 +141,8 @@ function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams)
     trial = 1;
     while trial < bbcompParams.maxTrials
       try
-        bbc_client = bbc_client.login();
-        bbc_client = bbc_client.setTrack(bbcompParams.trackname);
+        bbc_client.login();
+        bbc_client.setTrack(bbcompParams.trackname);
         numProblems = bbc_client.getNumberOfProblems();
 
         if (id > numProblems)
@@ -155,11 +155,11 @@ function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams)
         dim = bbc_client.getDimension();
         maxfunevals = bbc_client.getBudget();
       catch ME
-        fields = split(ME.identifier, ':');
+        fields = strsplit(ME.identifier, ':');
         if strcmp(fields{1}, 'BbcClient')
           warning('BbcClient initialization in trial %d / %d failed with message:\n%s.', ...
               trial, bbcompParams.maxTrials, ME.message);
-          pause(bbcompParams, loginDelay);
+          pause(bbcompParams.loginDelay);
           trial = trial + 1;
         else
           rethrow(ME);
@@ -167,7 +167,7 @@ function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams)
       end
     end
   catch ME
-    fields = split(ME.identifier, ':');
+    fields = strsplit(ME.identifier, ':');
     if strcmp(fields{1}, 'BbcClient')
       error('BBCOMP initialization error: %s. Error message:\n%s', ...
           ME.identifier, ME.message);

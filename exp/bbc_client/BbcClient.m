@@ -6,6 +6,7 @@ classdef BbcClient < BbcClientBase
     libhfile
     username
     password
+    maxTrials
   end % properties
 
   methods (Access = public)

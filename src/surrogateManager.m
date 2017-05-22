@@ -60,6 +60,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   surrogateOpts = sDefaults;
   % and replace those set in the surrogateOpts:
   for fname = fieldnames(inOpts)'
+    if (strcmp(fname, 'archive')), continue; end;
     surrogateOpts.(fname{1}) = inOpts.(fname{1});
   end
 
@@ -88,7 +89,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
 
   % construct Archive, EvolutionControl and its Observers
   % Note: independent restarts of the whole CMA-ES still clears the archive
-  archive = defopts(surrogateOpts, 'archive', Archive(dim));
+  archive = defopts(inOpts, 'archive', Archive(dim));
   if (countiter == 1 && (isempty(ec) || (counteval < ec.counteval)))
     ec = ECFactory.createEC(surrogateOpts);
     [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
