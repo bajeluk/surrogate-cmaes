@@ -98,7 +98,7 @@ classdef MultiTrainedEC < EvolutionControl
 
       % original-evaluate the chosen points
       [yNew, xNew, xNewValid, zNew, counteval] = ...
-          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, nInit, counteval, cmaesState, sampleOpts, varargin{:});
+          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, nInit, counteval, cmaesState, sampleOpts, 'Archive', archive, varargin{:});
       fprintf('counteval: %d\n', counteval)
       yFinal(reevalID) = yNew;
       origEvaled(reevalID) = true; nOrigEvaled = sum(origEvaled);
@@ -144,7 +144,7 @@ classdef MultiTrainedEC < EvolutionControl
         zToReeval = zPop(:, reevalID);
         % original-evaluate the chosen one point
         [yNew, xNew, xNewValid, zNew, counteval] = ...
-            sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, 1, counteval, cmaesState, sampleOpts, varargin{:});
+            sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, 1, counteval, cmaesState, sampleOpts, 'Archive', archive, varargin{:});
         fprintf('counteval: %d\n', counteval)
         yFinal(reevalID) = yNew;
         origEvaled(reevalID) = true; nOrigEvaled = sum(origEvaled);
