@@ -69,8 +69,14 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
     fclose(nodeFile);
   end
 
-  fprintf('== Summary of the testing assignment ==\n');
-  fprintf('   problemID:    %s\n', num2str(id));
+  [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams);
+
+  fprintf('==== Summary of the testing assignment ==\n');
+  fprintf('     problemID:    %s\n', num2str(id));
+  fprintf('     dimension:    %s\n', num2str(dim));
+  fprintf('   maxfunevals:    %s\n', num2str(maxfunevals));
+  %fprintf('        tracks:    %s\n, join('bbc_client.getTrackNames()', ','));
+  fprintf('selected track:    %s\n', bbcompParams.trackname);
   fprintf('=======================================\n');
   % Matlab should have been called from a SCRACHDIR
   startup;
@@ -79,16 +85,13 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   % Initialize random number generator
   exp_settings.seed = myeval(defopts(cmd_opts, 'seed', 'floor(sum(100 * clock()))'));
   rng(exp_settings.seed);
-
+  
   %
   %
   % the computation itself
   %
 
-  % MOCK IMPLEMENTATION
-  FUN = @frosen;
-  dim = 2;
-  maxfunevals = 5000;
+  FUN = @(x) bbc_client.safeEvaluate(x, id, bbcompParams.trackname);
 
   surrogateParams.archive = Archive(dim);
   surrogateParams.startTime = tic;
@@ -123,5 +126,53 @@ function out = parseCmdParam(name, value, defaultValue)
     out = myeval(value);
   else
     error('%s has to be string for eval()-uation', name);
+  end
+end
+
+function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams)
+  % initialization of the BBCOMP client
+  addpath(bbcompParams.libbpath);
+  try
+    bbc_client = BbcClient(bbcompParams.libname, bbcompParams.libhfile, ...
+      bbcompParams.username, bbcompParams.password, bbcompParams.maxTrials);
+
+    % some robustness to network failures is achived by retrying
+    % initialization
+    trial = 1;
+    while trial < bbcompParams.maxTrials
+      try
+        bbc_client = bbc_client.login();
+        bbc_client = bbc_client.setTrack(bbcompParams.trackname);
+        numProblems = bbc_client.getNumberOfProblems();
+
+        if (id > numProblems)
+          error('Input problem id is %d, but maximum number of BBCOMP problems is %d', ...
+            id, numProblems);
+        else
+          bbc_client = bbc_client.setProblem(id);
+        end
+
+        dim = bbc_client.getDimension();
+        maxfunevals = bbc_client.getBudget();
+      catch ME
+        fields = split(ME.identifier, ':');
+        if strcmp(fields{1}, 'BbcClient')
+          warning('BbcClient initialization in trial %d / %d failed with message:\n%s.', ...
+              trial, bbcompParams.maxTrials, ME.message);
+          pause(bbcompParams, loginDelay);
+          trial = trial + 1;
+        else
+          rethrow(ME);
+        end
+      end
+    end
+  catch ME
+    fields = split(ME.identifier, ':');
+    if strcmp(fields{1}, 'BbcClient')
+      error('BBCOMP initialization error: %s. Error message:\n%s', ...
+          ME.identifier, ME.message);
+    else
+      rethrow(ME);
+    end
   end
 end

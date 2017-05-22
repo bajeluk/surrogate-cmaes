@@ -51,3 +51,14 @@ surrogateParams.modelOpts.likBounds       = log([1e-6, 10]);
 cmaesParams.PopSize = '(8 + floor(6*log(N)))';
 cmaesParams.Restarts = 4;
 cmaesParams.DispModulo = 0;
+
+% BBCOMP client
+
+bbcompParams.libpath = 'exp/vendor/bbcomp/library/';
+bbcompParams.libname = 'libbbcomp';
+bbcompParams.libhfile = 'exp/vendor/bbcomp/client_matlab/bbcomplib.h';
+bbcompParams.username = 'FILLME';
+bbcompParams.password = 'FILLME';
+bbcompParams.trackname = 'trial';
+bbcompParams.maxTrials = 1e2; % maximum no. of trials for network operations
+bbcompParams.loginDelay = 2; % delay after each login retrial in seconds
