@@ -2,7 +2,15 @@ function [fitness_raw, arx, arxvalid, arz, counteval_out] = sampleCmaes(cmaesSta
 
   % TODO: rewrite the meaning of counteval as the number of _NEW_ original
   %       evaluations made during this specific call
-  
+
+  % input options
+  if (nargin >= 6 && ischar(varargin{1}) && strcmpi(varargin{1}, 'Archive'))
+    archive = varargin{2};
+    varargin(1:2) = [];
+  else
+    archive = [];
+  end
+
   % CMA-ES state variables
   xmean = cmaesState.xmean;
   sigma = cmaesState.sigma;
@@ -27,7 +35,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval_out] = sampleCmaes(cmaesSta
   N = size(xmean, 1);
 
   % Generate and evaluate lambda offspring
- 
+
   fitness_raw = NaN(1, lambda + noiseReevals);
   countevalNaN = 0;
   newCounteval = 0;
@@ -61,7 +69,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval_out] = sampleCmaes(cmaesSta
       % (the latter will decrease the overall step size) and
       % recalculate arx accordingly. Do not change arx or arz in any
       % other way.
- 
+
       if ~isBoundActive
         arxvalid = arx;
       else
@@ -98,28 +106,40 @@ function [fitness_raw, arx, arxvalid, arz, counteval_out] = sampleCmaes(cmaesSta
           arx(:,k) = arx(:,k-lambda) + (noiseEpsilon * sigma) * (BD * randn(N,1));
         end
       end
-      
+
       % You may handle constraints here. You may either resample
       % arz(:,k) and/or multiply it with a factor between -1 and 1
       % (the latter will decrease the overall step size) and
       % recalculate arx accordingly. Do not change arx or arz in any
       % other way.
- 
+
       if ~bnd.isactive
         arxvalid(:,k) = arx(:,k);
       else
         arxvalid(:,k) = xintobounds(arx(:,k), lbounds, ubounds);
       end
+
+      % Do not re-evaluate the already saved point, but use
+      % the value from archive
+      if (~isempty(archive) && k <= lambda)
+        [isAlreadySaved, idx] = archive.isInArchive(arxvalid(:,k)');
+        if (isAlreadySaved)
+          fitness_raw(k) = archive.y(idx);
+          newCounteval = newCounteval - 1;
+          break;
+        end
+      end
+
       % You may handle constraints here.  You may copy and alter
       % (columns of) arxvalid(:,k) only for the evaluation of the
       % fitness function. arx should not be changed.
       fitness_raw(k) = feval(fitfun, arxvalid(:,k), varargin{:});
       tries = tries + 1;
       if isnan(fitness_raw(k))
-	countevalNaN = countevalNaN + 1;
+	      countevalNaN = countevalNaN + 1;
       end
       if mod(tries, 100) == 0
-	warning([num2str(tries) ...
+	      warning([num2str(tries) ...
                  ' NaN objective function values at evaluation ' ...
                  num2str(counteval_in + newCounteval)]);
       end

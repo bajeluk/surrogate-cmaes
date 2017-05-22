@@ -254,7 +254,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           [yNew, xNew, xNewValid, zNew, obj.counteval] = ...
               sampleCmaesOnlyFitness(xToReeval, xToReeval, zToReeval, ...
               obj.cmaesState.sigma, nToReeval, obj.counteval, obj.cmaesState, sampleOpts, ...
-              varargin{:});
+              'Archive', obj.archive, varargin{:});
 
           [obj.pop, xRemoved] = obj.pop.remove(isToReeval);
 
@@ -504,7 +504,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         end
         [y, arx, x, arz, obj.counteval] = ...
             sampleCmaesOnlyFitness(x, x, arz, obj.cmaesState.sigma, nToEval, ...
-            obj.counteval, obj.cmaesState, sampleOpts, varargin{:});
+            obj.counteval, obj.cmaesState, sampleOpts, 'Archive', obj.archive, varargin{:});
         obj.archive.save(x', y', obj.cmaesState.countiter);
 
         phase = 3;      % original-evaluated rest of the population
@@ -706,7 +706,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         [yBestOrig,  xBest, xBestValid, zBest, obj.counteval] = ...
             sampleCmaesOnlyFitness(xBest, xBestValid, zBest, ...
             obj.cmaesState.sigma, obj.usedBestPoints, obj.counteval, obj.cmaesState, sampleOpts, ...
-            varargin{:});
+            'Archive', obj.archive, varargin{:});
         % and save them into the Population
         phase = 1;        % this is the first orig-evaluated point
         obj.pop = obj.pop.removeNotOrigEvaluated(obj.usedBestPoints); % remove this number of non-evaluated points

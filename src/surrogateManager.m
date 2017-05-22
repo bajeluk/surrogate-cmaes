@@ -118,7 +118,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     disp('EvolutionControl came back without full population of lambda points!');
     disp('It shouldn''t happen. Rest of points will be orig-evaluated.');
     disp('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-    [yNew, xNew, xNewValid, zNew, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda - size(fitness_raw, 2), counteval, varargin{:});
+    [yNew, xNew, xNewValid, zNew, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda - size(fitness_raw, 2), counteval, 'Archive', archive, varargin{:});
     archive = archive.save(xNewValid', yNew', countiter);
 
     % save the resulting re-evaluated population as the returning parameters

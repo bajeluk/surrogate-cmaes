@@ -4,6 +4,14 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
 % It generates new samples for the individuals for which NaN function value is
 % returned according to @xmean, @sigma, @BD and @diagD
 
+  % input options
+  if (nargin >= 10 && ischar(varargin{1}) && strcmpi(varargin{1}, 'Archive'))
+    archive = varargin{2};
+    varargin(1:2) = [];
+  else
+    archive = [];
+  end
+
   % CMA-ES state variables
   xmean = cmaesState.xmean;
   BD = cmaesState.BD;
@@ -23,9 +31,22 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
   N = size(xmean, 1);
 
   % Generate and evaluate lambda offspring
- 
+
   fitness_raw = NaN(1, lambda + noiseReevals);
   countevalNaN = 0;
+
+  isEvaled = false(1, lambda + noiseReevals);
+  if (~isempty(archive))
+    for k = 1:size(fitness_raw, 2)
+      % Do not re-evaluate the already saved point, but use
+      % the value from archive
+      [isAlreadySaved, idx] = archive.isInArchive(arxvalid(:,k)');
+      if (isAlreadySaved)
+        fitness_raw(k) = archive.y(idx);
+        isEvaled(k) = true;
+      end
+    end
+  end
 
   % parallel evaluation
   if flgEvalParallel
@@ -33,16 +54,16 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
       % You may handle constraints here.  You may copy and alter
       % (columns of) arxvalid(:,k) only for the evaluation of the
       % fitness function. arx and arxvalid should not be changed.
-      fitness_raw = feval(fitfun, arxvalid, varargin{:});
-      countevalNaN = countevalNaN + sum(isnan(fitness_raw));
-      counteval = counteval + sum(~isnan(fitness_raw));
+      fitness_raw(~isEvaled) = feval(fitfun, arxvalid(~isEvaled), varargin{:});
   else
       for k = 1:size(fitness_raw, 2)
-        fitness_raw(k) = feval(fitfun, arxvalid(:,k), varargin{:});
+        if (~isEvaled(k))
+          fitness_raw(k) = feval(fitfun, arxvalid(:,k), varargin{:});
+        end
       end
-      countevalNaN = countevalNaN + sum(isnan(fitness_raw));
-      counteval = counteval + sum(~isnan(fitness_raw));
   end
+  countevalNaN = countevalNaN + sum(isnan(fitness_raw(~isEvaled)));
+  counteval = counteval + sum(~isnan(fitness_raw(~isEvaled)));
 
   % non-parallel evaluation and remaining NaN-values
   % set also the reevaluated solution to NaN
@@ -67,13 +88,13 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
           arx(:,k) = arx(:,k-lambda) + (noiseEpsilon * sigma) * (BD * randn(N,1));
         end
       end
-      
+
       % You may handle constraints here. You may either resample
       % arz(:,k) and/or multiply it with a factor between -1 and 1
       % (the latter will decrease the overall step size) and
       % recalculate arx accordingly. Do not change arx or arz in any
       % other way.
- 
+
       if ~bnd.isactive
         arxvalid(:,k) = arx(:,k);
       else

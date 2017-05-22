@@ -4,12 +4,19 @@ classdef Archive < handle
     X    = [];          % archive - input-space data
     y    = [];          % archive - dependent-space data
     gens = [];          % archive - generations of the data where they come from
+    tolX;               % minimal tolerance in X-space to consider points equal
+                        % in maximal metric
   end
 
   methods
-    function obj = Archive(dimension)
+    function obj = Archive(dimension, varargin)
       % constructor
       obj.dim = dimension;
+      if (nargin >= 2 && isnumeric(varargin{1}))
+        obj.tolX = varargin{1};
+      else
+       obj.tolX = eps;
+      end
     end
 
     function obj = save(obj, X, y, generation)
@@ -17,15 +24,24 @@ classdef Archive < handle
       assert(size(X,1) == size(y,1), 'Archive.save: dimensions X and y mismatch.');
       assert(size(y,2) == 1, 'Archive.save: y is not a column vector.');
       assert(size(X,2) == obj.dim, 'Archive.save: dimension of X''s and Archive.dim mismatch.');
-      if (~isempty(obj.X))
-        isNotYetSaved = ~(ismember(X, obj.X, 'rows'));
-        % TODO: put here some TolX criterion, not this silly 'ismember()'
-      else
-        isNotYetSaved = true(size(X,1),1);
-      end
+      isNotYetSaved = ~obj.isInArchive(X);
       obj.X = [obj.X; X(isNotYetSaved,:)];
       obj.y = [obj.y; y(isNotYetSaved,:)];
       obj.gens = [obj.gens; generation * ones(sum(isNotYetSaved),1)];
+    end
+
+    function [inArx, indices] = isInArchive(obj, X)
+      inArx = false(size(X,1), 1);
+      indices = zeros(size(X,1), 1);
+      if (~isempty(obj.X))
+        for i = 1:size(X, 1)
+          [minDist, idx] = min(max(abs(repmat(X(i,:),size(obj.X,1),1) - obj.X), [], 2));
+          inArx(i) = minDist <= obj.tolX;
+          if (inArx(i))
+            indices(i) = idx;
+          end
+        end
+      end
     end
 
     function [X, y] = getDataFromGenerations(obj, generations)
@@ -45,7 +61,7 @@ classdef Archive < handle
       %   nData -- the number of all available data in the specified range
       nData = length(obj.y);
       X = []; y = [];
-      
+
       if (nData == 0)
         return;
       end
@@ -53,7 +69,7 @@ classdef Archive < handle
       % compute coordinates in the (sigma*BD)-basis
       BDinv = inv(sigma*BD);
       xTransf = ( BDinv * (obj.X - repmat(x,nData,1))' )';
-      
+
       % take the points closer than *rangeSigma*
       diff = sum(xTransf.^2, 2);
       isInRange = diff < (rangeSigma ^ 2);
@@ -85,7 +101,7 @@ classdef Archive < handle
         end
       end
     end
-    
+
     function [X, y] = getClosestDataFromPoints(obj, n, xInput, sigma, BD)
       % returns union of 'n'-tuples of points which are closest to each 
       % of data points from the points in 'xInput'
@@ -93,11 +109,11 @@ classdef Archive < handle
       % if (n == 0), all the available data are returned
       nData = length(obj.y);
       X = []; y = [];
-      
+
       if (nData == 0)
         return;
       end
-      
+
       if (nData > n)
         % there are more data than 'n'
         indicesToReturn = false(size(obj.y,1),1);
@@ -117,7 +133,7 @@ classdef Archive < handle
       else
         indicesToReturn = true(size(obj.y,1),1);
       end
-      
+
       % return the final points
       X = obj.X(indicesToReturn,:);
       y = obj.y(indicesToReturn);

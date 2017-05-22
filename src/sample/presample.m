@@ -32,7 +32,7 @@ function [ok, fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrai
     [xPreSample, zPreSample] = SurrogateSelector.chooseDistantPoints(missingTrainSize, arxvalid', arz', xTrain, xmean, expandedSigma, BD);
     % evaluate the 'preSample' with the original fitness
     [fitness_raw, arx, arxvalid, arz, counteval] = ...
-        sampleCmaesOnlyFitness(xPreSample, xPreSample, zPreSample, expandedSigma, missingTrainSize, counteval, cmaesState, sampleOpts, varargin{:});
+        sampleCmaesOnlyFitness(xPreSample, xPreSample, zPreSample, expandedSigma, missingTrainSize, counteval, cmaesState, sampleOpts, 'Archive', archive, varargin{:});
     archive = archive.save(arxvalid', fitness_raw', countiter);
     xTrain = [xTrain; arxvalid'];
     yTrain = [yTrain; fitness_raw'];
