@@ -240,6 +240,7 @@ defopts.CMA.ccov1 = '2 / ((N+1.3)^2+mueff)  % learning rate for rank-one update'
 defopts.CMA.ccovmu = '2 * (mueff-2+1/mueff) / ((N+2)^2+mueff) % learning rate for rank-mu update'; 
 defopts.CMA.on     = 'yes'; 
 defopts.CMA.active = '0  % active CMA, 1: neg. updates with pos. def. check, 2: neg. updates'; 
+defopts.EvalFinalMeanBeforeRestart = 'yes  % evaluate final xmean before restart if budget not spent';
 
 flg_future_setting = 0;  % testing for possible future variant(s)
 if flg_future_setting    
@@ -820,6 +821,7 @@ while isempty(stopflag)
     'dim', size(xmean,1), ...
     'mu', myeval(opts.ParentNumber), ...
     'fitfun_handle', fitfun_handle, ...
+    'maxfunevals', stopMaxFunEvals, ...
     'countiter', countiter + 1);
 
   
@@ -1723,7 +1725,7 @@ end % while, end generation loop
 % Evaluate xmean and return best recent point in xmin
 fmin = fitness.raw(1);
 xmin = arxvalid(:, fitness.idx(1)); % Return best point of last generation.
-if length(stopflag) > sum(strcmp(stopflag, 'stoptoresume')) % final stopping
+if myevalbool(opts.EvalFinalMeanBeforeRestart) && length(stopflag) > sum(strcmp(stopflag, 'stoptoresume')) % final stopping
   out.solutions.mean.f = ...
       feval(fitfun, xintobounds(xmean, lbounds, ubounds), varargin{:});
   counteval = counteval + 1;

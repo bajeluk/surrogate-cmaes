@@ -158,7 +158,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           [obj, ok] = obj.tryOldModel();
           if (~ok)
             [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-                = obj.finalizeGeneration(sampleOpts, varargin);
+                = obj.finalizeGeneration(sampleOpts, varargin{:});
             return;
           end
         end
@@ -414,7 +414,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     function [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] = finalizeGeneration(obj, sampleOpts, varargin)
       % fill the rest of the population with original evaluations
       [obj, fitness_raw, arx, arxvalid, arz, counteval] = ...
-          obj.fillPopWithOrigFitness(sampleOpts, varargin);
+          obj.fillPopWithOrigFitness(sampleOpts, varargin{:});
       origEvaled = obj.pop.origEvaled;
 
       % calculate statistics

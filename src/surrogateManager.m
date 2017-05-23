@@ -67,6 +67,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   assert(size(xmean,2) == 1, 'surrogateManager(): xmean is not a column vector!');
   dim = size(xmean,1);
   cmaesState.dim = dim;
+  cmaesState.thisGenerationMaxevals = cmaesState.maxfunevals - counteval;
 
   % switching evolution control
   % TODO: consider removing this completely

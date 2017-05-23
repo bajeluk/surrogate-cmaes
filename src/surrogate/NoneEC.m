@@ -21,7 +21,8 @@ classdef NoneEC < EvolutionControl
           sampleOpts, lambda, counteval, 'Archive', archive, varargin{:});
       surrogateStats = NaN(1, 2);
       origEvaled = true(1, lambda);
-      archive = archive.save(arxvalid', fitness_raw', countiter);
+      nonInfIdx = fitness_raw < Inf;
+      archive = archive.save(arxvalid(:,nonInfIdx)', fitness_raw(nonInfIdx)', countiter);
       obj.counteval = counteval;
     end
 
