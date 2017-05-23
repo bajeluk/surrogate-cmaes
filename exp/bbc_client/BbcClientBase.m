@@ -1,4 +1,4 @@
-classdef (Abstract) BbcClientBase
+classdef (Abstract) BbcClientBase < handle
   %BBCCLIENTBASE Summary of this class goes here
   %   Detailed explanation goes here
 
@@ -10,11 +10,12 @@ classdef (Abstract) BbcClientBase
     numProblems = getNumberOfProblems(obj);
     setProblem(obj, problemID);
     setTrack(obj, trackname);
-    getDimension(obj);
-    getBudget(obj);
-    getEvaluations(obj);
-    evaluate(obj, point);
-    safeEvaluate(obj, point, problemID, trackname)
+    dim = getDimension(obj);
+    bud = getBudget(obj);
+    evals = getEvaluations(obj);
+    value = evaluate(obj, point);
+    value = safeEvaluate(obj, point, problemID, trackname);
+    value = truncate2bounds(obj, value);
   end
 end
 

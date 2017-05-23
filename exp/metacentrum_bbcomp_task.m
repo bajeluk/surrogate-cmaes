@@ -69,15 +69,24 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
     fclose(nodeFile);
   end
 
-  [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams);
+  try
+    [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams);
+  catch ME
+    fields = strsplit(ME.identifier, ':');
+    if strcmp(fields{1}, 'BbcClient')
+      error('Could not initialize BBCOMP client: %s. Error message:\n%s', ...
+          ME.identifier, ME.message);
+    else
+      rethrow(ME);
+    end
+  end
 
-  fprintf('==== Summary of the testing assignment ==\n');
+  fprintf('==== Summary of the testing assignment ====\n');
   fprintf('     problemID:    %s\n', num2str(id));
   fprintf('     dimension:    %s\n', num2str(dim));
   fprintf('   maxfunevals:    %s\n', num2str(maxfunevals));
-  %fprintf('        tracks:    %s\n, join('bbc_client.getTrackNames()', ','));
   fprintf('selected track:    %s\n', bbcompParams.trackname);
-  fprintf('=======================================\n');
+  fprintf('===========================================\n');
   % Matlab should have been called from a SCRACHDIR
   startup;
 
@@ -108,6 +117,8 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
     surrogateParams.archive = archive;
   end
 
+  bbc_client.cleanup();
+  clear bbc_client;
 
   % copy the bbcomp results onto persistant storage if outside EXPPATH
   if (~isempty(OUTPUTDIR) && ~strcmpi(OUTPUTDIR, opts.exppath) && isunix)
@@ -131,48 +142,41 @@ end
 
 function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams)
   % initialization of the BBCOMP client
-  addpath(bbcompParams.libpath);
-  try
-    bbc_client = BbcClient(bbcompParams.libname, bbcompParams.libhfile, ...
-      bbcompParams.username, bbcompParams.password, bbcompParams.maxTrials);
+  % addpath(bbcompParams.libpath); % needed for the dynamic library
 
-    % some robustness to network failures is achived by retrying
-    % initialization
-    trial = 1;
-    while trial < bbcompParams.maxTrials
-      try
-        bbc_client.login();
-        bbc_client.setTrack(bbcompParams.trackname);
-        numProblems = bbc_client.getNumberOfProblems();
+  bbc_client = BbcClientTcp(bbcompParams.proxyHostname, ...
+    bbcompParams.proxyPort + id, ...
+    bbcompParams.username, bbcompParams.password, ...
+    bbcompParams.proxyTimeout, bbcompParams.proxyConnectTimeout, ...
+    bbcompParams.maxTrials);
 
-        if (id > numProblems)
-          error('Input problem id is %d, but maximum number of BBCOMP problems is %d', ...
-            id, numProblems);
-        else
-          bbc_client = bbc_client.setProblem(id);
-        end
+  % some robustness to network failures is achived by retrying
+  % initialization
+  trial = 1;
+  while trial < bbcompParams.maxTrials
+    try
+      bbc_client.login();
+      bbc_client.setTrack(bbcompParams.trackname);
+      numProblems = bbc_client.getNumberOfProblems();
 
-        dim = bbc_client.getDimension();
-        maxfunevals = bbc_client.getBudget();
-      catch ME
-        fields = strsplit(ME.identifier, ':');
-        if strcmp(fields{1}, 'BbcClient')
-          warning('BbcClient initialization in trial %d / %d failed with message:\n%s.', ...
-              trial, bbcompParams.maxTrials, ME.message);
-          pause(bbcompParams.loginDelay);
-          trial = trial + 1;
-        else
-          rethrow(ME);
-        end
+      if (id > numProblems)
+        error('Input problem id is %d, but maximum number of BBCOMP problems is %d', ...
+          id, numProblems);
+      else
+        bbc_client = bbc_client.setProblem(id);
       end
-    end
-  catch ME
-    fields = strsplit(ME.identifier, ':');
-    if strcmp(fields{1}, 'BbcClient')
-      error('BBCOMP initialization error: %s. Error message:\n%s', ...
-          ME.identifier, ME.message);
-    else
-      rethrow(ME);
+
+      dim = bbc_client.getDimension();
+      maxfunevals = bbc_client.getBudget();
+    catch ME
+      if strcmp(ME.identifier, 'BbcClient:call')
+        warning('BbcClient initialization in trial %d / %d failed.\n%s.', ...
+            trial, bbcompParams.maxTrials, getReport(ME));
+        pause(bbcompParams.loginDelay);
+        trial = trial + 1;
+      else
+        rethrow(ME);
+      end
     end
   end
 end

@@ -1,28 +1,22 @@
 classdef BbcClient < BbcClientBase
   %BBCCLIENT A client for the Black-Box Competition server.
-    
+
   properties (Access = protected)
-    libname
-    libhfile
     username
     password
     maxTrials
   end % properties
 
   methods (Access = public)
-    function obj = BbcClient(libname, libhfile, username, password, maxTrials)
+    function obj = BbcClient(username, password, maxTrials)
       % initialization
-      obj.libname = libname;
-      obj.libhfile = libhfile;
       obj.username = username;
       obj.password = password;
       obj.maxTrials = maxTrials;
-
-      obj.loadBBCompLibrary();
     end
 
     function login(obj)
-      result = calllib(obj.libname, 'login', obj.username, obj.password);
+      result = obj.call('login', obj.username, obj.password);
       if ~result
         msg = obj.errorMessage();
         if strcmp(msg, 'already logged in')
@@ -59,7 +53,7 @@ classdef BbcClient < BbcClientBase
     end
 
     function setTrack(obj, trackname)
-      result = calllib(obj.libname, 'setTrack', trackname);
+      result = obj.call('setTrack', trackname);
       if ~result
         throw(MException('BbcClient:setTrack', ...
           'setTrack failed with message: %s', obj.errorMessage()));
@@ -76,7 +70,7 @@ classdef BbcClient < BbcClientBase
           if strcmp(ME.identifier, 'BbcClient:setTrack')
             warning('setTrack in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
-            obj.safeLogin(maxTrials, 1);
+            obj.safeLogin(obj.maxTrials, 1);
             trial = trial + 1;
           else
             rethrow(ME);
@@ -91,7 +85,7 @@ classdef BbcClient < BbcClientBase
     end
 
     function numTracks = getNumberOfTracks(obj)
-      numTracks = calllib(obj.libname, 'numberOfTracks');
+      numTracks = obj.call('numberOfTracks');
       if ~numTracks
         throw(MException('BbcClient:getNumberOfTracks', ...
           'numberOfTracks failed with message: %s', obj.errorMessage()));
@@ -99,7 +93,7 @@ classdef BbcClient < BbcClientBase
     end
 
     function trackName = getTrackName(obj, i)
-      trackName = calllib(obj.libname, 'trackName', i-1); % indexing from 0
+      trackName = obj.call('trackName', int8(i-1)); % indexing from 0
       if isempty(trackName)
         throw(MException('BbcClient:getTrackName', ...
           'trackName failed with message: %s', obj.errorMessage()));
@@ -120,7 +114,7 @@ classdef BbcClient < BbcClientBase
     end
 
     function numProblems = getNumberOfProblems(obj)
-      numProblems = calllib(obj.libname, 'numberOfProblems');
+      numProblems = obj.call('numberOfProblems');
       if ~numProblems
         throw(MException('BbcClient:getNumberOfProblems', ...
           'numberOfProblems failed with message: %s', obj.errorMessage()));
@@ -152,7 +146,7 @@ classdef BbcClient < BbcClientBase
     end
 
     function setProblem(obj, problemID)
-      result = calllib(obj.libname, 'setProblem', problemID);
+      result = obj.call('setProblem', uint16(problemID-1)); % indexing from 0
       if ~result
         throw(MException('BbcClient:setProblem', ...
           'setProblem failed with message: %s', obj.errorMessage()));
@@ -184,7 +178,7 @@ classdef BbcClient < BbcClientBase
     end
 
     function dim = getDimension(obj)
-      dim = calllib(obj.libname, 'dimension');
+      dim = obj.call('dimension');
       if ~dim
         throw(MException('BbcClient:getDimension', ...
           'dimension failed with message: %s', obj.errorMessage()));
@@ -216,7 +210,7 @@ classdef BbcClient < BbcClientBase
     end
 
     function bud = getBudget(obj)
-      bud = calllib(obj.libname, 'budget');
+      bud = obj.call('budget');
       if ~bud
         throw(MException('BbcClient:getBudget', ...
           'budget failed with message: %s', obj.errorMessage()));
@@ -248,7 +242,7 @@ classdef BbcClient < BbcClientBase
     end
 
     function evals = getEvaluations(obj)
-      evals = calllib(obj.libname, 'evaluations');
+      evals = obj.call('evaluations');
       if evals < 0
         throw(MException('BbcClient:getEvaluations', ...
           'evaluations failed with message: %s', obj.errorMessage()));
@@ -279,20 +273,25 @@ classdef BbcClient < BbcClientBase
       end
     end
 
-    function value = evaluate(obj, point)
+    function value = evaluate(obj, point, varargin)
+      if ~isempty(varargin) && varargin{1}
+        point = obj.truncate2bounds(point);
+      end
+
       value = libpointer('doublePtr', 1e+100);
-      [result, ~, value] = calllib(obj.libname, 'evaluate', point, value);
+      [result, ~, value] = obj.call('evaluate', point, value);
+
       if ~result
         throw(MException('BbcClient:evaluate', ...
           'evaluate failed with message: %s', obj.errorMessage()));
       end
     end
 
-    function value = safeEvaluate(obj, point, problemID, trackname)
+    function value = safeEvaluate(obj, point, problemID, trackname, varargin)
       trial = 1;
       while trial <= obj.maxTrials
         try
-          value = obj.evaluate(point);
+          value = obj.evaluate(point, varargin{:});
           break;
         catch ME
           if strcmp(ME.identifier, 'BbcClient:evaluate')
@@ -312,15 +311,7 @@ classdef BbcClient < BbcClientBase
       end
     end
 
-    function cleanup(obj)
-      if libisloaded(obj.libname)
-        unloadlibrary(obj.libname);
-      end
-    end
-  end % methods
-
-  methods (Static)
-    function value = truncate2bounds(value)
+    function value = truncate2bounds(~, value)
       value = max(0.0, min(1.0, value));
     end
   end % methods
@@ -341,12 +332,20 @@ classdef BbcClient < BbcClientBase
     end
 
     function msg = errorMessage(obj)
-      msg = calllib(obj.libname, 'errorMessage');
+      msg = obj.call('errorMessage');
       if ~ischar(msg)
         msg = '';
       end
     end
   end % methods
+
+  methods (Abstract, Access = public)
+    cleanup(obj);
+  end
   
+  methods (Abstract, Access = protected)
+    varargout = call(obj, method, varargin);
+  end % methods
+
 end % classdef
 
