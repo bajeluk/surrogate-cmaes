@@ -13,9 +13,6 @@ classdef DTScreenStatistics < Observer
     function notify(obj, ec, varargin)
       % get the interesting data and process them
 
-      if (~ isfield(ec.surrogateOpts.modelOpts, 'bbob_func'))
-        ec.surrogateOpts.fopt = min(ec.archive.y);
-      end
       if (mod(ec.cmaesState.countiter, 10) == 1)
       %           #####  iter /evals(or:p,b) | Dopt |rmseR | rnkR | rnk2 |rnkVal * | Mo nD nDiR |sigm^2| aErr |smooEr| orRat| aGain|
         fprintf('####### iter /evals(or:p,b) | D_fopt. | rmseRee | rnkR | rnk2 | .rankErrValid. | M  nData | sigma^2. | aErr |smooEr| orRat| aGain|\n');
@@ -28,6 +25,11 @@ classdef DTScreenStatistics < Observer
       if (~isempty(ec.retrainedModel) && ec.retrainedModel.isTrained() ...
           && ec.retrainedModel.trainGeneration == ec.cmaesState.countiter)
         model = '#'; nTrainData = ec.retrainedModel.getTrainsetSize(); end
+      % Display so-far optimal value when non-BBOB function
+      if (~ isfield(ec.surrogateOpts.modelOpts, 'bbob_func'))
+        ec.surrogateOpts.fopt = 0.0; % min(ec.archive.y);
+      end
+
       outputValues1 = [...
           ec.cmaesState.countiter, ec.counteval, sum(ec.pop.origEvaled), ...
           ec.nPresampledPoints, ec.usedBestPoints, ...

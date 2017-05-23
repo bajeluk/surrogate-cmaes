@@ -64,6 +64,10 @@ classdef DTFileStatistics < Observer
         model = 2; nTrainData = ec.retrainedModel.getTrainsetSize();
         modelLikelihood = ec.retrainedModel.trainLikelihood;
       end
+      % Display so-far optimal value when non-BBOB function
+      if (~ isfield(ec.surrogateOpts.modelOpts, 'bbob_func'))
+        ec.surrogateOpts.fopt = 0.0; % min(ec.archive.y);
+      end
 
       %             iter  tot orEvl Dopt 
       fprintf(fid, ['%4d  %5d  %2d  %.4e  ' ...

@@ -131,7 +131,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval_out] = sampleCmaes(cmaesSta
 
       % Do not re-evaluate the already saved point, but use
       % the value from archive
-      if (~isempty(archive) && k <= lambda)
+      if (~isempty(archive))
         [isAlreadySaved, idx] = archive.isInArchive(arxvalid(:,k)');
         if (isAlreadySaved)
           fitness_raw(k) = archive.y(idx);
