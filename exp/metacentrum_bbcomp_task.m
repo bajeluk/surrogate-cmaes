@@ -93,6 +93,14 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   fprintf('   maxfunevals:    %s\n', num2str(maxfunevals));
   fprintf('selected track:    %s\n', bbcompParams.trackname);
   fprintf('===========================================\n');
+
+  % Other different settings, mostly for logging purposes
+  opts.expFileID = defopts(opts, 'expFileID', [num2str(dim) 'D_' num2str(id)]);
+  surrogateParams.datapath  = datapath;
+  surrogateParams.exp_id    = opts.exp_id;
+  surrogateParams.expFileID = opts.expFileID;
+  surrogateParams.instance  = id;
+
   % Matlab should have been called from a SCRACHDIR
   startup;
 

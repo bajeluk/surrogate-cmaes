@@ -4,6 +4,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
 % It generates new samples for the individuals for which NaN function value is
 % returned according to @xmean, @sigma, @BD and @diagD
 
+  MAX_TRIES = 1000;
+
   % CMA-ES state variables
   xmean = cmaesState.xmean;
   BD = cmaesState.BD;
@@ -86,7 +88,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
     % fitness_raw(k) = NaN;
     tries = 1;  % we have already tried f-eval once (see above)
     % Resample, until fitness is not NaN
-    while isnan(fitness_raw(k))
+    while (isnan(fitness_raw(k)) && tries < MAX_TRIES)
       if k <= orig_lambda  % regular samples (not the re-evaluation-samples)
         arz(:,k) = randn(N,1); % (re)sample
 
