@@ -117,6 +117,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
       && ~isempty(ec.stats.rmseReeval) && ec.stats.rmseReeval < 5e-10)
     fprintf(2, 'S-CMA-ES is suggesting CMA-ES to restart due to low RMSE on re-evaled point(s).\n');
     stopFlagHistory(1) = true;
+  else
+    stopFlagHistory(1) = false;
   end
   % if the stopflag suggestion fired in 'stopFlagHistoryLength' consecutive generations,
   % tell CMA-ES to restart and reset the stopFlagHistory array

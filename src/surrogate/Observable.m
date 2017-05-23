@@ -14,7 +14,7 @@ classdef Observable
 
     function notify_observers(self, varargin)
       for i = 1:length(self.observers)
-        self.observers{i}.notify(self, varargin);
+        self.observers{i}.notify(self, varargin{:});
       end
     end
   end

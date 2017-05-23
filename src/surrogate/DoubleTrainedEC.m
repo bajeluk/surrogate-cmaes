@@ -167,6 +167,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % sample new population of lambda points out of which will be chosen
       % later in this generation
       nLambdaRest = lambda - obj.nPresampledPoints;
+      maxevals = defopts(cmaesState, 'thisGenerationMaxevals', lambda);
+      maxevals = maxevals - obj.nPresampledPoints;
       [xExtend, xExtendValid, zExtend] = ...
           sampleCmaesNoFitness(obj.cmaesState.sigma, nLambdaRest, obj.cmaesState, sampleOpts);
       % add these points into Population without valid f-value (marked as notEvaluated)
@@ -185,7 +187,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           if (~ok)
             % model cannot be trained :( -- return with orig-evaluated population
             [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-                = obj.finalizeGeneration(sampleOpts, varargin);
+                = obj.finalizeGeneration(sampleOpts, varargin{:});
             return;
           end
         end
@@ -202,15 +204,18 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       % the number of points to orig-evaluate
       nPoints = obj.origPointsRoundFcn(nLambdaRest * obj.restrictedParam);
+      nPoints = min(nPoints, maxevals);
 
       % Preselection: orig-evaluate the best predicted point(s)
       % out of 'obj.preselectionPopRatio*lambda' sampled points
       % (if obj.nBestPoints > 0).
       % Already saves the really used number of preselected points into 
       % 'obj.usedBestPoints'  and the points into  'obj.Population'
-      [obj, yBestOrig, xBest, xBestValid, zBest] = obj.preselection( ...
-          obj.nBestPoints, nPoints, sampleOpts, varargin{:});
-      nPoints = nPoints - obj.usedBestPoints;
+      if (nPoints > 0)
+        [obj, yBestOrig, xBest, xBestValid, zBest] = obj.preselection( ...
+            obj.nBestPoints, nPoints, sampleOpts, varargin{:});
+        nPoints = nPoints - obj.usedBestPoints;
+      end
 
       % evaluate the population's not-original f-values with the (first) model
       % TODO: save this first model's prediction for later use
@@ -336,7 +341,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       % save the resulting re-evaluated population as the returning parameters
       [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-          = obj.finalizeGeneration(sampleOpts, varargin);
+          = obj.finalizeGeneration(sampleOpts, varargin{:});
     end
 
 
