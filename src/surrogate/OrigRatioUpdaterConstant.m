@@ -6,14 +6,14 @@ classdef OrigRatioUpdaterConstant < OrigRatioUpdater
   
   methods 
     % get new value of parameter
-    function newRatio = update(obj, ~, ~, ~, ~, ~)
+    function newRatio = update(obj, ~, ~, ~, ~, ~, ~)
       % ratio is not updated
       newRatio = obj.lastRatio;
     end
 
     function obj = OrigRatioUpdaterConstant(parameters)
       % constructor
-      obj = obj@OrigRatioUpdater(parameters);
+      obj = obj@OrigRatioUpdater();
       if isstruct(parameters)
         % starting value of ratio for initial generations
         obj.lastRatio = defopts(parameters, 'startRatio', 0.2);

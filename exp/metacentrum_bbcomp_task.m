@@ -80,6 +80,12 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
       rethrow(ME);
     end
   end
+  
+  % DEBUG
+%   FUN = @frosen;
+%   dim = 2;
+%   maxfunevals = 10000;
+  % /DEBUG
 
   fprintf('==== Summary of the testing assignment ====\n');
   fprintf('     problemID:    %s\n', num2str(id));
@@ -100,21 +106,61 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   % the computation itself
   %
 
-  FUN = @(x) bbc_client.safeEvaluate(x, id, bbcompParams.trackname);
+  % FUN = @(x) bbc_client.safeEvaluate(x, id, bbcompParams.trackname);
 
   surrogateParams.archive = Archive(dim);
   surrogateParams.startTime = tic;
-  nEvals = 0;
-  xstart = rand(dim, 1);
+  xstart = 'cmaesRestartPoint(surrogateOpts.archive)';
+  fmin = Inf;
+  yeRestarts = [];
+  y_evals = cell(0);
+  restarts = -1;
+  
+  exp_results.evals = [];
+  exp_results.restarts = [];
+  exp_results.fbests = [];
+  exp_results.f025 = [];
+  exp_results.f050 = [];
+  exp_results.f075 = [];
+  exp_results.stopflags = {};
+  exp_results.time = 0;
 
-  while nEvals < maxfunevals
+  while maxfunevals > 0
 
-    [x, y_evals, stopflag, archive, varargout] = opt_s_cmaes_bbcomp(FUN, dim, ...
+    restarts = restarts + 1;
+    
+    t = tic;
+    
+    % optimize bbcomp function using scmaes
+    [x, ye, stopflag, archive, varargout] = opt_s_cmaes_bbcomp(FUN, dim, ...
         maxfunevals, cmaesParams, surrogateParams, xstart);
 
-    nEvals = size(archive.X, 1);
-    xstart = cmaesRestartPoint(archive);
+    maxfunevals = maxfunevals - varargout.evals;
     surrogateParams.archive = archive;
+    
+    % #FE restart correction
+    if (fmin < Inf)
+        ye(:, 1) = min([ye(:, 1) repmat(fmin, size(ye, 1), 1)], [], 2);
+        ye(:, 2) = ye(:, 2) + yeRestarts(end, 2);
+    end
+    fmin = min([ye(:, 1); fmin]);
+    yeRestarts = [yeRestarts; ye];
+    
+    elapsedTime = toc(t);
+    y_evals = cat(1,y_evals,yeRestarts);
+
+    % save results
+    exp_results.evals(end+1)     = size(archive.X, 1);
+    exp_results.restarts(end+1)  = restarts;
+    exp_results.fbests(end+1)    = min(y_evals{end}(:,1));
+    exp_results.f025(end+1)      = y_evals{end}( max([1 floor(size(y_evals{end},1)/4)]) ,1);
+    exp_results.f050(end+1)      = y_evals{end}( max([1 floor(size(y_evals{end},1)/2)]) ,1);
+    exp_results.f075(end+1)      = y_evals{end}( max([1 floor(3*size(y_evals{end},1)/4)]) ,1);
+    exp_results.stopflags{end+1} = stopflag;
+    exp_results.y_evals          = y_evals;
+    exp_results.time             = exp_results.time + elapsedTime;
+    
+    save(RESULTSFILE, 'exp_id', 'exp_settings', 'exp_results', 'surrogateParams', 'cmaesParams', 'y_evals')
   end
 
   bbc_client.cleanup();

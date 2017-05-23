@@ -49,6 +49,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   sDefaults.evoControlSwitchBound         = inf;    % 1 .. inf (reasonable 10--100)
   sDefaults.evoControlSwitchPopulation    = 1;      % 1 .. inf (reasonable 1--20)
   sDefaults.evoControlSwitchPopBound      = inf;    % 1 .. inf (reasonable 10--100)
+  sDefaults.evoControlSwitchTime             = inf;
   sDefaults.modelType = '';                         % gp | rf
   sDefaults.modelOpts = [];                         % model specific options
 
@@ -71,15 +72,23 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
 
   % switching evolution control
   % TODO: consider removing this completely
-  if ~isempty(surrogateOpts.evoControlSwitchMode) && ...
-    ~strcmp(surrogateOpts.evoControl, surrogateOpts.evoControlSwitchMode) && ...
-    (counteval > surrogateOpts.evoControlSwitchBound*dim || toc(surrogateOpts.startTime) > surrogateOpts.evoControlMaxTime)
-    fprintf('Switching evolution control from ''%s'' to ''%s''', surrogateOpts.evoControl, surrogateOpts.evoControlSwitchMode)
-    surrogateOpts.evoControl = surrogateOpts.evoControlSwitchMode;
-    % EC type has changed -> create new instance of EvolutionControl
-    % TODO: delete the old instances of 'ec' and 'observers'
-    ec = ECFactory.createEC(surrogateOpts);
-    [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
+  if ~isempty(surrogateOpts.evoControlSwitchMode)
+    surrogateOptsNew = surrogateOpts;
+    surrogateOptsNew.evoControl = surrogateOpts.evoControlSwitchMode;
+    % create new EC
+    ec_new = ECFactory.createEC(surrogateOptsNew);
+    % if the switch was not performed and it should be, do it
+    if ~strcmp(class(ec_new), class(ec)) && ...
+      (counteval > surrogateOpts.evoControlSwitchBound*dim || ...
+      toc(surrogateOpts.startTime) > surrogateOpts.evoControlSwitchTime)
+      fprintf('Switching evolution control from ''%s'' to ''%s''\n', ...
+        surrogateOpts.evoControl, surrogateOpts.evoControlSwitchMode)
+      surrogateOpts = surrogateOptsNew;
+      % EC type has changed -> create new instance of EvolutionControl
+      % TODO: delete the old instances of 'ec' and 'observers'
+      ec = ec_new;
+      [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
+    end
   end
   
   % switching population size

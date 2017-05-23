@@ -1,4 +1,4 @@
-function run_s_cmaes_bbcomp(FUN, dim, maxfunevals)
+function run_s_cmaes_bbcomp(FUN, dim, maxfunevals, maxTime)
 
   persistent archive;
 
@@ -7,23 +7,22 @@ function run_s_cmaes_bbcomp(FUN, dim, maxfunevals)
   % maxfunevals = [];
   cmParams = struct();
   
-  sgParams = struct(...
+  surrogateParams = struct(...
     'evoControl', 'doubletrained', ...
     'evoControlSwitchMode', 'none', ...
     'archive', Archive(dim), ...
     'startTime', tic, ...
-    'evoControlMaxTime', 7*24*3600);
+    'evoControlMaxTime', maxTime);
   
-  nEvals = 0;
   xstart = rand(dim, 1);
   
-  while nEvals < maxfunevals
+  while maxfunevals > 0
     
-    [x, y_evals, stopflag, archive, varargout] = opt_s_cmaes_bbcomp(FUN, dim, maxfunevals, cmParams, sgParams, xstart);
+    [x, y_evals, stopflag, archive, varargout] = opt_s_cmaes_bbcomp(FUN, dim, maxfunevals, cmParams, surrogateParams, xstart);
     
-    nEvals = size(archive.X, 1);
-    
+    maxfunevals = maxfunevals - varargout.evals;
     xstart = cmaesRestartPoint(archive);
+    surrogateParams.archive = archive;
   end
 
 end

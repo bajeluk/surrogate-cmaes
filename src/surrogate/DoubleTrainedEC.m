@@ -129,7 +129,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         if (~ok)
           % model could not be created nor older is usable :(. Use the standard CMA-ES.
           [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-              = obj.finalizeGeneration(sampleOpts, varargin);
+              = obj.finalizeGeneration(sampleOpts, varargin{:});
           return;
         end
       end

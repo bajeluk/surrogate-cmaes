@@ -19,7 +19,7 @@ classdef NoneEC < EvolutionControl
 
       [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, ...
           sampleOpts, lambda, counteval, 'Archive', archive, varargin{:});
-      surrogateStats = NaN(1, 2);
+      surrogateStats = NaN(1, 7);
       origEvaled = true(1, lambda);
       nonInfIdx = fitness_raw < Inf;
       archive = archive.save(arxvalid(:,nonInfIdx)', fitness_raw(nonInfIdx)', countiter);
