@@ -4,8 +4,8 @@ exp_description = 'Surrogate CMA-ES settings for BBComp 1-OBJ task, DTS with pre
 % Surrogate manager parameters
 
 surrogateParams.evoControl = 'doubletrained';
-% surrogateParams.observers = {'DTScreenStatistics', 'DTFileStatistics'};
-surrogateParams.observers = {'NoneScreenStatistics'};
+surrogateParams.observers = {'DTScreenStatistics', 'DTFileStatistics'};
+% surrogateParams.observers = {'NoneScreenStatistics'};
 surrogateParams.modelType = 'gp';
 surrogateParams.evoControlRestrictedParam = 0.05;
 surrogateParams.evoControlTrainRange = 10;             % will be multip. by sigma
@@ -20,8 +20,8 @@ surrogateParams.DTAdaptive_lowErr = 0.15;
 surrogateParams.DTAdaptive_highErr = 0.40;
 surrogateParams.DTAdaptive_defaultErr = 0.10;
 
-surrogateParams.evoControlSwitchMode = 'none';
-surrogateParams.evoControlSwitchTime = 1; % 7*24*3600;
+% surrogateParams.evoControlSwitchMode = 'none';
+% surrogateParams.evoControlSwitchTime = 1; % 7*24*3600;
 surrogateParams.evoControlMaxDoubleTrainIterations = 2;
 surrogateParams.evoControlPreSampleSize = 0.75;
 surrogateParams.evoControlNBestPoints = [0.2 1.0];
@@ -50,14 +50,16 @@ surrogateParams.modelOpts.likBounds       = log([1e-6, 10]);
 
 cmaesParams.PopSize = '(8 + floor(6*log(N)))';
 cmaesParams.Restarts = 4;
-cmaesParams.DispModulo = 0;
+cmaesParams.DispModulo = 50;
+cmaesParams.EvalInitialX = false;
+cmaesParams.EvalFinalMeanBeforeRestart = false;
 
 % BBCOMP client
 
 bbcompParams.libpath = 'exp/vendor/bbcomp/library/';
 bbcompParams.libname = 'libbbcomp';
 bbcompParams.libhfile = 'exp/vendor/bbcomp/client_matlab/bbcomplib.h';
-bbcompParams.username = 'bajer';
+bbcompParams.username = 'FILLME';
 bbcompParams.password = 'FILLME';
 bbcompParams.trackname = 'trial';
 bbcompParams.proxyHostname = 'localhost';

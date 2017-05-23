@@ -20,6 +20,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   expScript = fullfile(exppath_short, [exp_id '.m']);
   if (exist(expScript, 'file'))
     % eval the script line by line (as it cannot be run()-ed when deployed)
+    fprintf('Running the script ''%s''...\n', expScript);
     fid = fopen(expScript);
     tline = fgetl(fid);
     while (ischar(tline))

@@ -144,9 +144,11 @@ classdef BbcClientTcp < BbcClient
             else
               varargout{3} = str2double(response{2});
             end
-          elseif nargout >= 2
+          end
+          if nargout >= 2
             varargout{2} = [];
-          elseif nargout >= 1
+          end
+          if nargout >= 1
             varargout{1} = str2double(response{1});
           end
       end
