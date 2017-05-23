@@ -75,7 +75,7 @@ classdef BbcClientTcp < BbcClient
         arg = varargin{i};
         switch class(arg)
           case 'char'
-            if contains(arg, '"')
+            if ~isempty(strfind(arg, '"'))
               throw(MException('BbcClient:call', ...
                 'Quotes inside string arguments not allowed.'));
             end
@@ -135,7 +135,7 @@ classdef BbcClientTcp < BbcClient
           end
         case {'errorMessage', 'trackName'}
           if nargout
-            varargout{1} = replace(response{1}, '"', '');
+            varargout{1} = strrep(response{1}, '"', '');
           end
         case 'evaluate'
           if length(response) < 2

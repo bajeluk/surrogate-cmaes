@@ -70,7 +70,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   end
 
   try
-    [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams);
+    [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams, id);
   catch ME
     fields = strsplit(ME.identifier, ':');
     if strcmp(fields{1}, 'BbcClient')
@@ -186,11 +186,11 @@ function out = parseCmdParam(name, value, defaultValue)
   end
 end
 
-function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams)
+function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams, id)
   % initialization of the BBCOMP client
   % addpath(bbcompParams.libpath); % needed for the dynamic library
 
-  bbc_client = BbcClientTcp(bbcompParams.proxyHostname, ...
+    bbc_client = BbcClientTcp(bbcompParams.proxyHostname, ...
     bbcompParams.proxyPort + id, ...
     bbcompParams.username, bbcompParams.password, ...
     bbcompParams.proxyTimeout, bbcompParams.proxyConnectTimeout, ...
@@ -209,11 +209,13 @@ function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams)
         error('Input problem id is %d, but maximum number of BBCOMP problems is %d', ...
           id, numProblems);
       else
-        bbc_client = bbc_client.setProblem(id);
+        bbc_client.setProblem(id);
       end
 
       dim = bbc_client.getDimension();
       maxfunevals = bbc_client.getBudget();
+      break;
+
     catch ME
       if strcmp(ME.identifier, 'BbcClient:call')
         warning('BbcClient initialization in trial %d / %d failed.\n%s.', ...
