@@ -1,0 +1,16 @@
+
+MODE = -O3 -DNDEBUG
+#MODE = -g -DDEBUG
+
+FLAGS = -I../library/ ${MODE} -Wall
+
+
+proxy: proxy.cpp socket.cpp libbbcomp.dylib
+	${CXX} ${FLAGS} proxy.cpp socket.cpp libbbcomp.dylib -o proxy
+
+libbbcomp.dylib:
+	cp ../library/libbbcomp.dylib .
+
+clean:
+	rm -f proxy libbbcomp.dylib
+	rm -rf *dSYM
