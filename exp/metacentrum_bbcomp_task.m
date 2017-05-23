@@ -101,6 +101,10 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   surrogateParams.exp_id    = opts.exp_id;
   surrogateParams.expFileID = opts.expFileID;
   surrogateParams.instance  = id;
+  exp_settings.maxfunevals  = maxfunevals;
+  exp_settings.dim          = dim;
+  exp_settings.id           = id;
+  exp_settings.trackname    = bbcompParams.trackname;
 
   % Matlab should have been called from a SCRACHDIR
   startup;
@@ -133,18 +137,21 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   exp_results.f075 = [];
   exp_results.stopflags = {};
   exp_results.time = 0;
+  remainingEvals = maxfunevals;
 
-  while maxfunevals > 0
+  % === independent RESTARTS cycle ===
+  while remainingEvals > 0
 
     restarts = restarts + 1;
-    
     t = tic;
     
+    %
     % optimize bbcomp function using scmaes
+    %
     [x, ye, stopflag, archive, varargout] = opt_s_cmaes_bbcomp(FUN, dim, ...
-        maxfunevals, cmaesParams, surrogateParams, xstart);
+        remainingEvals, cmaesParams, surrogateParams, xstart);
 
-    maxfunevals = maxfunevals - varargout.evals;
+    remainingEvals = remainingEvals - varargout.evals;
     surrogateParams.archive = archive;
     
     % #FE restart correction
@@ -168,9 +175,11 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
     exp_results.stopflags{end+1} = stopflag;
     exp_results.y_evals          = y_evals;
     exp_results.time             = exp_results.time + elapsedTime;
+    exp_results.remainingEvals   = remainingEvals;
     
-    save(RESULTSFILE, 'exp_id', 'exp_settings', 'exp_results', 'surrogateParams', 'cmaesParams', 'y_evals')
-  end
+    save(RESULTSFILE, 'exp_id', 'archive', 'exp_settings', 'exp_results', 'surrogateParams', 'cmaesParams', 'y_evals', 'bbcompParams')
+
+  end  % === independent RESTARTS cycle ===
 
   bbc_client.cleanup();
   clear bbc_client;
