@@ -7,20 +7,31 @@
 # Final binary file $(FNAME) is copied into $(DESTDIR) directory
 
 FNAME = metacentrum_task_matlab
+BBCOMP = metacentrum_bbcomp_task
 DESTDIR = exp
 
 MATLAB_COMPILER = mcc
-MC_FLAGS= -R -singleCompThread -R -nojvm -R -nodisplay
-MC_INCLUDE= -a exp/opt_cmaes.m -a exp/opt_s_cmaes.m -a exp/util -a exp/vendor/bbob -a src -a exp/log
+MC_FLAGS= -R -singleCompThread -R -nodisplay
+# MC_INCLUDE= -a exp/opt_cmaes.m -a exp/opt_s_cmaes.m -a exp/opt_s_cmaes_bbcomp.m -a exp/util -a exp/vendor/bbob -a src -a exp/log
+MC_INCLUDE= -a exp/opt_cmaes.m -a exp/opt_s_cmaes.m -a exp/util -a exp/vendor/bbob -a src -a exp/log -a exp/vendor/bbcomp/proxy
 SRC = exp/$(FNAME).m
 OTHERS = exp/*.m exp/pproc/*.m exp/log/*.m src/ src/cmaes/* src/data/* src/model/* src/sample/* src/surrogate/* src/util/* src/surrogateManager.m
 OUT = $(DESTDIR)/$(FNAME)
+
+BBCOMP_SRC = exp/$(BBCOMP).m
+BBCOMP_OUT = $(DESTDIR)/$(BBCOMP)
 
 $(OUT):	$(SRC) $(OTHERS)
 	$(MATLAB_COMPILER) -m $(MC_FLAGS) $(MC_INCLUDE) -o $(FNAME) $<
 	mv $(FNAME) $(DESTDIR)
 
+$(BBCOMP_OUT):	$(BBCOMP_SRC) $(OTHERS)
+	$(MATLAB_COMPILER) -m $(MC_FLAGS) $(MC_INCLUDE) -o $(BBCOMP) $<
+	mv $(BBCOMP) $(DESTDIR)
+
 all:	$(OUT)
+
+metacentrum_bbcomp_task: $(BBCOMP_OUT)
 
 clean:
 	rm mccExcludedFiles.log readme.txt requiredMCRProducts.txt run_$(FNAME).sh
