@@ -106,7 +106,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   % the computation itself
   %
 
-  % FUN = @(x) bbc_client.safeEvaluate(x, id, bbcompParams.trackname);
+  FUN = @(x) bbc_client.safeEvaluate(x, id, bbcompParams.trackname);
 
   surrogateParams.archive = Archive(dim);
   surrogateParams.startTime = tic;

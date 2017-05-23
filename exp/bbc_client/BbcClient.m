@@ -282,8 +282,7 @@ classdef BbcClient < BbcClientBase
       [result, ~, value] = obj.call('evaluate', point, value);
 
       if ~result
-        throw(MException('BbcClient:evaluate', ...
-          'evaluate failed with message: %s', obj.errorMessage()));
+        value = Inf;
       end
     end
 
@@ -294,7 +293,8 @@ classdef BbcClient < BbcClientBase
           value = obj.evaluate(point, varargin{:});
           break;
         catch ME
-          if strcmp(ME.identifier, 'BbcClient:evaluate')
+          fields = strsplit(ME.identifier, ':');
+          if strcmp(fields{1}, 'BbcClient')
             warning('evaluate in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
             obj.safeSetProblem(problemID, trackname, obj.maxTrials);

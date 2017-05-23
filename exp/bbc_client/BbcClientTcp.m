@@ -138,13 +138,12 @@ classdef BbcClientTcp < BbcClient
             varargout{1} = strrep(response{1}, '"', '');
           end
         case 'evaluate'
-          if length(response) < 2
-            throw(MException('BbcClient:call', ...
-              'Not enough number of response arguments.'));
-          end
-
           if nargout >= 3
-            varargout{3} = str2double(response{2});
+            if length(response) < 2
+              varargout{3} = NaN;
+            else
+              varargout{3} = str2double(response{2});
+            end
           elseif nargout >= 2
             varargout{2} = [];
           elseif nargout >= 1
