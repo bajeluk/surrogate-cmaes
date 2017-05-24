@@ -30,6 +30,13 @@ classdef Archive < handle
       obj.gens = [obj.gens; generation * ones(sum(isNotYetSaved),1)];
     end
 
+    function obj = delete(obj, indices)
+      % remove data at given indices
+      obj.X(indices,:) = [];
+      obj.y(indices)   = [];
+      obj.gens(indices) = [];
+    end
+
     function [inArx, indices] = isInArchive(obj, X)
       inArx = false(size(X,1), 1);
       indices = zeros(size(X,1), 1);
@@ -137,6 +144,13 @@ classdef Archive < handle
       % return the final points
       X = obj.X(indicesToReturn,:);
       y = obj.y(indicesToReturn);
+    end
+
+    function obj2 = duplicate(obj)
+      obj2 = Archive(obj.dim);
+      obj2.X = obj.X;
+      obj2.y = obj.y;
+      obj2.gens = obj.gens;
     end
   end
 end
