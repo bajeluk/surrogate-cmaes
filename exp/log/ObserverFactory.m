@@ -52,6 +52,15 @@ classdef ObserverFactory
               observers{i} = NoneScreenStatistics(params);
               ec = observers{i}.registerObservable(ec);
             end
+          case 'nonefilestatistics'
+            if isa(ec, 'NoneEC')
+              params.datapath  = surrogateOpts.datapath;
+              params.exp_id    = surrogateOpts.exp_id;
+              params.expFileID = surrogateOpts.expFileID;
+              params.instance  = surrogateOpts.instance;
+              observers{i} = NoneFileStatistics(params);
+              ec = observers{i}.registerObservable(ec);
+            end
           case 'ecsaver'
             params.datapath       = surrogateOpts.datapath;
             params.exp_id         = surrogateOpts.exp_id;
