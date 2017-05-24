@@ -1,4 +1,4 @@
-classdef NoneEC < EvolutionControl
+classdef NoneEC < EvolutionControl & Observable
   properties 
     model
     counteval

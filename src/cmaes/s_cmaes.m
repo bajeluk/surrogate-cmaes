@@ -178,6 +178,8 @@ cmaVersion = '3.62.beta';
 if (~isempty(varargin) && isstr(varargin{1}) && strcmpi(varargin{1}, 'surrogateoptions'))
   surrogateOpts = varargin{2};
   varargin = varargin(3:end);
+else
+  surrogateOpts = [];
 end
 
 % ----------- Set Defaults for Input Parameters and Options -------------
@@ -668,7 +670,8 @@ else % flgresume
     fitness.histsel(1)=fitness.hist(1);
     counteval = counteval + 1;
     % save initial point to the archive (if the archive exists)
-    if isfield(surrogateOpts, 'archive') && isa(surrogateOpts.archive, 'Archive')
+    if (~isempty(surrogateOpts) && isstruct(surrogateOpts) && isfield(surrogateOpts, 'archive') ...
+        && isa(surrogateOpts.archive, 'Archive'))
       surrogateOpts.archive = surrogateOpts.archive.save(xmean', fitness.hist(1), 0);
     end
     if fitness.hist(1) < out.solutions.bestever.f 
@@ -829,7 +832,7 @@ while isempty(stopflag)
     'countiter', countiter + 1);
 
   
-  if (~exist('surrogateOpts','var'))
+  if (~exist('surrogateOpts', 'var') || (isempty(surrogateOpts)))
     % use standard CMA-ES (no surrogate at all)
     [fitness.raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
     surrogateStats = NaN(1, 2);
