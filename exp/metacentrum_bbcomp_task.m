@@ -208,7 +208,7 @@ function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams, id)
   % initialization of the BBCOMP client
   % addpath(bbcompParams.libpath); % needed for the dynamic library
 
-    bbc_client = BbcClientTcp(bbcompParams.proxyHostname, ...
+  bbc_client = BbcClientTcp(bbcompParams.proxyHostname, ...
     bbcompParams.proxyPort + id, ...
     bbcompParams.username, bbcompParams.password, ...
     bbcompParams.proxyTimeout, bbcompParams.proxyConnectTimeout, ...
@@ -232,6 +232,13 @@ function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams, id)
 
       dim = bbc_client.getDimension();
       maxfunevals = bbc_client.getBudget();
+
+      evals = bbc_client.getEvaluations();
+      if evals
+        error('%d / %d evaluations already consumed, not a clean start.', ...
+          evals, maxfunevals);
+      end
+
       break;
 
     catch ME
