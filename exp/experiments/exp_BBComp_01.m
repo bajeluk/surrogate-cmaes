@@ -4,7 +4,7 @@ exp_description = 'Surrogate CMA-ES settings for BBComp 1-OBJ task, DTS with pre
 % Surrogate manager parameters
 
 surrogateParams.evoControl = 'doubletrained';
-surrogateParams.observers = {'DTScreenStatistics', 'DTFileStatistics', 'ECSaver'};
+surrogateParams.observers = {'DTScreenStatistics', 'DTFileStatistics', 'NoneScreenStatistics', 'NoneFileStatistics', 'ECSaver'};
 % surrogateParams.observers = {'NoneScreenStatistics'};
 surrogateParams.modelType = 'gp';
 surrogateParams.evoControlRestrictedParam = 0.05;
@@ -47,14 +47,14 @@ surrogateParams.modelOpts.covBounds       = [ [-2;-2], [25;25] ];
 surrogateParams.modelOpts.likBounds       = log([1e-6, 10]);
 
 % EC Saver parameters
-surrogateParams.maxArchSaveLen = 10^6;
+surrogateParams.maxArchSaveLen = 1e6;
 
 % CMA-ES parameters
 
 cmaesParams.PopSize = '(8 + floor(6*log(N)))';
 cmaesParams.Restarts = 4;
 cmaesParams.DispModulo = 50;
-cmaesParams.EvalInitialX = true; % false;
+cmaesParams.EvalInitialX = true;
 cmaesParams.EvalFinalMeanBeforeRestart = false;
 cmaesParams.SaveVariables = 'on';
 cmaesParams.SaveFilename = '[datapath filesep surrogateParams.exp_id ''_cmaesvars_'' surrogateParams.expFileID ''.mat'']';
