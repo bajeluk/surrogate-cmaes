@@ -106,6 +106,9 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   exp_settings.id           = id;
   exp_settings.trackname    = bbcompParams.trackname;
 
+  % CMA-ES saving settings
+  cmaesParams.SaveFilename = eval(cmaesParams.SaveFilename);
+
   % Matlab should have been called from a SCRACHDIR
   startup;
 

@@ -11,7 +11,7 @@ classdef ECSaver < Observer
   methods
     function obj = ECSaver(params)
       obj@Observer();
-      obj.datapath = defopts(params, 'dapath', '/tmp');
+      obj.datapath = defopts(params, 'datapath', '/tmp');
       obj.exp_id    = defopts(params, 'exp_id', datestr(now,'yyyy-mm-dd_HHMMSS'));
       obj.expFileID = defopts(params, 'expFileID', '');
       obj.file  = [obj.datapath filesep obj.exp_id '_eclog_' obj.expFileID '.mat'];
