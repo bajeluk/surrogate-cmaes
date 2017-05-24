@@ -23,6 +23,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
 
   stopFlagHistoryLength = 3;    % history of CMA-ES restart suggestions
   persistent stopFlagHistory;   %
+  persistent modelRMSEforRestart;       % RMSE threshold for suggesting the CMA-ES to restart
 
   % TODO: make an array with all the status variables from each generation
   
@@ -107,13 +108,14 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     ec = ECFactory.createEC(surrogateOpts);
     [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
     stopFlagHistory = false(1, stopFlagHistoryLength);
+    modelRMSEforRestart = defopts(surrogateOpts, 'modelRMSEforRestart', sDefaults.modelRMSEforRestart);
   end
 
   if (countiter == 1 && (counteval >= 2))
     % Restart inside CMA-ES just happend
     disp('== Restart inside CMA-ES ==');
     % disable restart suggesting after the first restart
-    surrogateOpts.modelRMSEforRestart = 0.0;
+    modelRMSEforRestart = 0.0;
   end
   
   % run one generation according to evolution control
@@ -123,7 +125,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   % STOPFLAGS -- update and check for new stopflag suggestions
   stopFlagHistory = circshift(stopFlagHistory, [0, 1]);
   % suggest restart if RMSE < 5e-10
-  if (surrogateOpts.modelRMSEforRestart > 0 && isprop(ec, 'stats') ...
+  if (modelRMSEforRestart > 0 && isprop(ec, 'stats') ...
       && isfield(ec.stats, 'rmseReeval') ...
       && ~isempty(ec.stats.rmseReeval) && ec.stats.rmseReeval < surrogateOpts.modelRMSEforRestart)
     fprintf(2, 'S-CMA-ES is suggesting CMA-ES to restart due to low RMSE on re-evaled point(s).\n');
