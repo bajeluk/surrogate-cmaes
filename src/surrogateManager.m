@@ -52,6 +52,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   sDefaults.evoControlSwitchTime             = inf;
   sDefaults.modelType = '';                         % gp | rf
   sDefaults.modelOpts = [];                         % model specific options
+  sDefaults.modelRMSEforRestart           = 5e-10;  % RMSE threshold for suggesting the CMA-ES to restart
 
   surrogateStats = [];
   origEvaled = false(1, lambda);
@@ -101,9 +102,18 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   % Note: independent restarts of the whole CMA-ES still clears the archive
   archive = defopts(inOpts, 'archive', Archive(dim));
   if (countiter == 1 && (isempty(ec) || (counteval < ec.counteval)))
+    % Restart outside CMA-ES just happend
+    disp('==== Restart outside CMA-ES ====');
     ec = ECFactory.createEC(surrogateOpts);
     [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
     stopFlagHistory = false(1, stopFlagHistoryLength);
+  end
+
+  if (countiter == 1 && (counteval >= 2))
+    % Restart inside CMA-ES just happend
+    disp('== Restart inside CMA-ES ==');
+    % disable restart suggesting after the first restart
+    surrogateOpts.modelRMSEforRestart = 0.0;
   end
   
   % run one generation according to evolution control
@@ -113,8 +123,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   % STOPFLAGS -- update and check for new stopflag suggestions
   stopFlagHistory = circshift(stopFlagHistory, [0, 1]);
   % suggest restart if RMSE < 5e-10
-  if (isprop(ec, 'stats') && isfield(ec.stats, 'rmseReeval') ...
-      && ~isempty(ec.stats.rmseReeval) && ec.stats.rmseReeval < 5e-10)
+  if (surrogateOpts.modelRMSEforRestart > 0 && isprop(ec, 'stats') ...
+      && isfield(ec.stats, 'rmseReeval') ...
+      && ~isempty(ec.stats.rmseReeval) && ec.stats.rmseReeval < surrogateOpts.modelRMSEforRestart)
     fprintf(2, 'S-CMA-ES is suggesting CMA-ES to restart due to low RMSE on re-evaled point(s).\n');
     stopFlagHistory(1) = true;
   else
