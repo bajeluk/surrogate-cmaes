@@ -14,7 +14,7 @@ classdef NoneScreenStatistics < Observer
       % get the interesting data and process them
 
       if (~ isfield(ec.surrogateOpts.modelOpts, 'bbob_func'))
-        ec.surrogateOpts.fopt = min(ec.archive.y);
+        ec.surrogateOpts.fopt = 0;
       end
       if (mod(ec.cmaesState.countiter, 10) == 1)
       %           #####  iter /evals(or:p,b) | Dopt |rmseR | rnkR | rnk2 |rnkVal * | Mo nD nDiR |sigm^2| aErr |smooEr| orRat| aGain|

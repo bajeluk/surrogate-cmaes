@@ -11,7 +11,7 @@ classdef ECFactory
         case 'multitrained'
           obj = MultiTrainedEC(surrogateOpts);
         case 'none'
-          obj = NoneEC();
+          obj = NoneEC(surrogateOpts);
         otherwise
           warning(['ECFactory.createEC: ', surrogateOpts.evoControl, ' -- no such evolution control available']);
           obj = [];

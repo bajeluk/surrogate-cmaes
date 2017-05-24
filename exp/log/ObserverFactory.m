@@ -25,22 +25,33 @@ classdef ObserverFactory
 
         switch observerName
           case 'dtscreenstatistics'
-            observers{i} = DTScreenStatistics(params);
-            ec = observers{i}.registerObservable(ec);
+            if isa(ec, 'DoubleTrainedEC')
+              observers{i} = DTScreenStatistics(params);
+              ec = observers{i}.registerObservable(ec);
+            end
           case 'dtfilestatistics'
-            params.datapath  = surrogateOpts.datapath;
-            params.exp_id    = surrogateOpts.exp_id;
-            params.expFileID = surrogateOpts.expFileID;
-            params.instance  = surrogateOpts.instance;
-            observers{i} = DTFileStatistics(params);
-            ec = observers{i}.registerObservable(ec);
+            if isa(ec, 'DoubleTrainedEC')
+              params.datapath  = surrogateOpts.datapath;
+              params.exp_id    = surrogateOpts.exp_id;
+              params.expFileID = surrogateOpts.expFileID;
+              params.instance  = surrogateOpts.instance;
+              observers{i} = DTFileStatistics(params);
+              ec = observers{i}.registerObservable(ec);
+            end
           case 'dtmodelsaver'
-            params.datapath  = surrogateOpts.datapath;
-            params.exp_id    = surrogateOpts.exp_id;
-            params.expFileID = surrogateOpts.expFileID;
-            params.instance  = surrogateOpts.instance;
-            observers{i} = DTModelSaver(params);
-            ec = observers{i}.registerObservable(ec);
+            if isa(ec, 'DoubleTrainedEC')
+              params.datapath  = surrogateOpts.datapath;
+              params.exp_id    = surrogateOpts.exp_id;
+              params.expFileID = surrogateOpts.expFileID;
+              params.instance  = surrogateOpts.instance;
+              observers{i} = DTModelSaver(params);
+              ec = observers{i}.registerObservable(ec);
+            end
+          case 'nonescreenstatistics'
+            if isa(ec, 'NoneEC')
+              observers{i} = NoneScreenStatistics(params);
+              ec = observers{i}.registerObservable(ec);
+            end
           case 'ecsaver'
             params.datapath       = surrogateOpts.datapath;
             params.exp_id         = surrogateOpts.exp_id;

@@ -92,13 +92,13 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
       if k <= orig_lambda  % regular samples (not the re-evaluation-samples)
         arz(:,k) = randn(N,1); % (re)sample
 
-        if flgDiagonalOnly  
+        if flgDiagonalOnly
           arx(:,k) = xmean + sigma * diagD .* arz(:,k);              % Eq. (1)
         else
           arx(:,k) = xmean + sigma * (BD * arz(:,k));                % Eq. (1)
         end
       else % re-evaluation solution with index > lambda
-        if flgDiagonalOnly  
+        if flgDiagonalOnly
           arx(:,k) = arx(:,k-orig_lambda) + (noiseEpsilon * sigma) * diagD .* randn(N,1);
         else
           arx(:,k) = arx(:,k-orig_lambda) + (noiseEpsilon * sigma) * (BD * randn(N,1));
@@ -123,7 +123,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
         [isAlreadySaved, idx] = archive.isInArchive(arxvalid(:,k)');
         if (isAlreadySaved)
           fitness_raw(k) = archive.y(idx);
-          newCounteval = newCounteval - 1;
+          counteval = counteval - 1;
           break;
         end
       end
@@ -147,7 +147,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaesOnlyFitness(a
       else
         % Mock fitness for points after the limit of MaxEvals
         fitness_raw(k) = Inf;
-        newCounteval = newCounteval - 1;
+        counteval = counteval - 1;
         break;
       end
     end
