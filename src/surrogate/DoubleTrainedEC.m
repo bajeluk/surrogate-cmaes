@@ -29,6 +29,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     modelAge                    % age of model in the number of generations (0 == current model)
     oldModelAgeForStatistics    % age of model for gathering statistics of old models
     isTrainSuccess
+    trainRange 
     origPointsRoundFcn          % function computing number of original-evaluated points from origRatio
     nBestPoints                 % the number of points with the best predicted f-value to take every generation
     usedBestPoints              % how many best-predicted points was really orig-evaluated
@@ -55,6 +56,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % other initializations:
       obj.acceptedModelAge = defopts(surrogateOpts, 'evoControlAcceptedModelAge', 2);
       obj.origPointsRoundFcn = str2func(defopts(surrogateOpts, 'evoControlOrigPointsRoundFcn', 'ceil'));
+      obj.trainRange = defopts(surrogateOpts, 'evoControlTrainRange', 10);
 
       % Adaptive DTS parameters
       surrogateOpts.updaterType = defopts(surrogateOpts, 'updaterType', 'none');
@@ -117,6 +119,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.modelAge = 0;
       obj.isTrainSuccess = false;
       obj.usedBestPoints = 0;
+      if (ischar(obj.trainRange))
+        obj.trainRange = round(myeval(obj.trainRange));
+      end
 
       % prepare the final population to be returned to CMA-ES
       obj.pop = Population(lambda, dim);
@@ -141,7 +146,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
         nArchivePoints = myeval(obj.surrogateOpts.evoControlTrainNArchivePoints);
         [xTrain, yTrain, nData] = obj.archive.getDataNearPoint(nArchivePoints, ...
-            obj.cmaesState.xmean', obj.surrogateOpts.evoControlTrainRange, ...
+            obj.cmaesState.xmean', obj.trainRange, ...
             obj.cmaesState.sigma, obj.cmaesState.BD);
         obj.stats.nDataInRange = nData;
 
