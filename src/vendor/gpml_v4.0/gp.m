@@ -125,10 +125,11 @@ catch err
     % warning('GP:InferenceFailed','Inference method failed [%s] .. attempting to continue',msgstr)
     global modelTrainNErrors;
     if (~isempty(modelTrainNErrors) && modelTrainNErrors > 20)
+      fprintf(2, '  gp(): Inference method failed (%d).\n', modelTrainNErrors);
       % Too many errors, give it up
       throw(err);
     end
-    fprintf(2, '  gp(): Inference method failed (%d) .. attempting to continue.\n', modelTrainNErrors);
+    % fprintf(2, '  gp(): Inference method failed (%d) .. attempting to continue.\n', modelTrainNErrors);
     dnlZ = struct('cov',0*hyp.cov, 'mean',0*hyp.mean, 'lik',0*hyp.lik);
     varargout = {NaN, dnlZ}; return                    % continue with a warning
   end

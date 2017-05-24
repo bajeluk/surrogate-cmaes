@@ -45,10 +45,12 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   opts.exppath = [exppath_short filesep exp_id];
   RESULTSFILE = [opts.exppath '/' exp_id '_results_' num2str(id) '.mat'];
   if (isempty(getenv('SCRATCHDIR')))
-    OUTPUTDIR = '/tmp/job_output';     % set OUTPUTDIR empty if $SCRATCHDIR var does not exist
+    username = getenv('USER');
+    OUTPUTDIR = sprintf('/tmp/%s_%d/job_output', username, id);;     % set OUTPUTDIR empty if $SCRATCHDIR var does not exist
   else
     OUTPUTDIR = [getenv('SCRATCHDIR') filesep 'job_output'];
   end
+  [~, ~] = mkdir(OUTPUTDIR);
 
   % datapath is typically on the computing node in   $SCRATCHDIR/job_output/bbcomp_output:
   datapath = [OUTPUTDIR filesep 'bbcomp_output'];
