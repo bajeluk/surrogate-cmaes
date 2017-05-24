@@ -41,6 +41,13 @@ classdef ObserverFactory
             params.instance  = surrogateOpts.instance;
             observers{i} = DTModelSaver(params);
             ec = observers{i}.registerObservable(ec);
+          case 'ecsaver'
+            params.datapath       = surrogateOpts.datapath;
+            params.exp_id         = surrogateOpts.exp_id;
+            params.expFileID      = surrogateOpts.expFileID;
+            params.maxArchSaveLen = surrogateOpts.maxArchSaveLen;
+            observers{i} = ECSaver(params);
+            ec = observers{i}.registerObservable(ec);
         end
       end
 

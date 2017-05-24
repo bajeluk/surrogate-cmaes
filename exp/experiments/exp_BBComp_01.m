@@ -4,7 +4,7 @@ exp_description = 'Surrogate CMA-ES settings for BBComp 1-OBJ task, DTS with pre
 % Surrogate manager parameters
 
 surrogateParams.evoControl = 'doubletrained';
-surrogateParams.observers = {'DTScreenStatistics', 'DTFileStatistics'};
+surrogateParams.observers = {'DTScreenStatistics', 'DTFileStatistics', 'ECSaver'};
 % surrogateParams.observers = {'NoneScreenStatistics'};
 surrogateParams.modelType = 'gp';
 surrogateParams.evoControlRestrictedParam = 0.05;
@@ -45,6 +45,9 @@ surrogateParams.modelOpts.hyp.lik         = log(0.01);
 surrogateParams.modelOpts.hyp.cov         = log([0.5; 2]);
 surrogateParams.modelOpts.covBounds       = [ [-2;-2], [25;25] ];
 surrogateParams.modelOpts.likBounds       = log([1e-6, 10]);
+
+% EC Saver parameters
+surrogateParams.maxArchSaveLen = 10^6;
 
 % CMA-ES parameters
 
