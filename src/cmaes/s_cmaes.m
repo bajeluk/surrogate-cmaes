@@ -667,6 +667,10 @@ else % flgresume
     fitness.hist(1)=feval(fitfun, xmean, varargin{:}); 
     fitness.histsel(1)=fitness.hist(1);
     counteval = counteval + 1;
+    % save initial point to the archive (if the archive exists)
+    if isfield(surrogateOpts, 'archive') && isa(surrogateOpts.archive, 'Archive')
+      surrogateOpts.archive = surrogateOpts.archive.save(xmean', fitness.hist(1), 0);
+    end
     if fitness.hist(1) < out.solutions.bestever.f 
 	out.solutions.bestever.x = xmean;
 	out.solutions.bestever.f = fitness.hist(1);

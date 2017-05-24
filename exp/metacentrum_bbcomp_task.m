@@ -126,7 +126,15 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
 
   surrogateParams.archive = Archive(dim);
   surrogateParams.startTime = tic;
-  xstart = 'cmaesRestartPoint(surrogateOpts.archive)';
+  xstart = sprintf(['cmaesRestartPoint(surrogateOpts.archive, ', ...
+                    '''NumSamples'', %d, ', ...
+                    '''DistanceRatio'', 1/10, ', ...
+                    '''LBound'', %s, ', ...
+                    '''UBound'', %s ', ...
+                    ')'], ...
+                   ceil(100*sqrt(dim)), ...
+                   printStructure(0.1*ones(dim, 1), 'Format', 'value'), ...
+                   printStructure(0.9*ones(dim, 1), 'Format', 'value'));
   fmin = Inf;
   yeRestarts = [];
   y_evals = cell(0);
@@ -179,6 +187,13 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
     exp_results.y_evals          = y_evals;
     exp_results.time             = exp_results.time + elapsedTime;
     exp_results.remainingEvals   = remainingEvals;
+    
+    % warn if the archive contains Inf f-values
+    infYArchive = isinf(archive.y);
+    if any(infYArchive)
+      warning('The archive contains %d infinite function values on id = %s.', ...
+               sum(infYArchive), printStructure(find(infYArchive), 'Format', 'value'))
+    end
     
     save(RESULTSFILE, 'exp_id', 'archive', 'exp_settings', 'exp_results', 'surrogateParams', 'cmaesParams', 'y_evals', 'bbcompParams')
 
