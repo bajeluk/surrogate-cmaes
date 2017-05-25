@@ -70,9 +70,9 @@ function [paramSignificance, p, tb, stats] = promisingParam(evals, dataSettings,
   paramSignificance = cell(1, nFields);
   for par = 1:nFields
     if isnumeric(dValues{par, 1})
-      paramSignificance{par} = zeros(1, length(unique([dValues{par, :}])));
+      paramSignificance{par} = zeros(length(unique([dValues{par, :}])), nFunc);
     else
-      paramSignificance{par} = zeros(1, length(unique(dValues(par, :))));
+      paramSignificance{par} = zeros(length(unique(dValues(par, :))), nFunc);
     end
   end
   
@@ -114,16 +114,18 @@ function [paramSignificance, p, tb, stats] = promisingParam(evals, dataSettings,
             signifID = find(signifID');
             for id = signifID
               [mult_c, mult_mat] = multcompare(stats{f, d, e}, ...
-                'Dimension', id, 'Display', 'off');
+                'Dimension', id, 'Display', 'on');
               [~, bestParId] = min(mult_mat(:, 1));
+              % add values comparable with the best
               comparableValues = mult_c(mult_c(:, 6) >  alpha ...
                                     & ((mult_c(:, 1) == bestParId) ...
                                     |  (mult_c(:, 2) == bestParId)), 1:2);
-              comparableValues = comparableValues(comparableValues ~= bestParId);
-              % increase the number of significant functions
-              paramSignificance{id}(bestParId) = paramSignificance{id}(bestParId) + 1;
-              if ~isempty(comparableValues)
-                paramSignificance{id}(comparableValues) = paramSignificance{id}(comparableValues) + 1;
+              bestParId = [bestParId; comparableValues(comparableValues ~= bestParId)];
+              % mark significant values in function f if not all values are
+              % significant
+              if length(bestParId) < size(mult_mat, 1)
+                paramSignificance{id}(bestParId, f) = 1;
+                paramSignificance{id}(~ismember(1:size(mult_mat, 1), bestParId), f) = -1;
               end
             end
           end
