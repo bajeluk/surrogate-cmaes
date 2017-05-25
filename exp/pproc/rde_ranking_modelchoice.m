@@ -14,6 +14,12 @@ multiFieldNames = { 'covFcn', 'trainsetType', 'trainRange', 'trainsetSizeMax', '
 
 %% Model choice settings
 
+disp('##################################');
+disp('for noisy, use:');
+disp('load(''exp/experiments/exp_GPtest_02_noisy/modelStatistics_noisy.mat'');');
+disp('maeRankingOpts.maxRank = {10, 20};');
+disp('##################################');
+
 % maximal allowed rank for choosing the model for the function/snapshot
 rdeRankingOpts.maxRank = {25, 35};
 % index of the statistic by which the ranking is done, 1 = mean, 2 = 75%-quantile

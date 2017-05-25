@@ -2,7 +2,7 @@
 load('exp/experiments/exp_GPtest_01/modelStatistics.mat');
 
 % NOISY modelStatistics
-% load('exp/experiments/exp_GPtest_02_noisy/modelStatistics.mat');
+% load('exp/experiments/exp_GPtest_02_noisy/modelStatistics_noisy.mat');
 
 %% Core settings
 % dimensions = [2];
@@ -13,6 +13,12 @@ snapshots = [3, 9];
 multiFieldNames = { 'covFcn', 'trainsetType', 'trainRange', 'trainsetSizeMax', 'meanFcn' };
 
 %% Model choice settings
+
+disp('##################################');
+disp('for noisy, use:');
+disp('load(''exp/experiments/exp_GPtest_02_noisy/modelStatistics_noisy.mat'');');
+disp('maeRankingOpts.maxRank = {10, 20};');
+disp('##################################');
 
 % maximal allowed rank for choosing the model for the function/snapshot
 maeRankingOpts.maxRank = {25, 35};
@@ -111,6 +117,7 @@ end
 maeRankingResults.Properties.VariableNames = maeRankingResults_header;
 
 %% output results
+fprintf('\n==== %d D ==== \n\n', dimensions);
 fprintf(['\nBest sets of settings according to the average MAE\n'...
     'of covered fuctions/snapshot:\n\n']);
 tmp = sortrows(maeRankingResults, 'avg_covrd_MAE');
