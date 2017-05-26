@@ -83,6 +83,10 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     eclog = load(resumefilename);
     ec = eclog.ec;
     archive = ec.archive;
+
+    [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
+    stopFlagHistory = false(1, stopFlagHistoryLength);
+    modelRMSEforRestart = defopts(surrogateOpts, 'modelRMSEforRestart', sDefaults.modelRMSEforRestart);
   else
     archive = defopts(inOpts, 'archive', Archive(dim));
   end
