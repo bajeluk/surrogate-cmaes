@@ -209,6 +209,8 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   if (~isempty(OUTPUTDIR) && ~strcmpi(OUTPUTDIR, opts.exppath) && isunix)
     % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
     system(['cp -pR ' OUTPUTDIR '/* ' opts.exppath '/']);
+    logfiles = [eval(bbcompParams.logfilepath) filesep '*log'];
+    system(['bzip2 -z ' logfiles]);
   end
 
   status = 0;
@@ -242,6 +244,8 @@ function [bbc_client, dim, maxfunevals, flgresume] = init_bbc_client(bbcompParam
     try
       logfilepath = eval(bbcompParams.logfilepath);
       [~, ~] = mkdir(logfilepath);
+      logfiles = [logfilepath filesep '*log.bz2'];
+      system(['bzip2 -d ' logfiles]);
       bbc_client.configure(bbcompParams.loghistory, logfilepath);
       bbc_client.login();
       bbc_client.setTrack(bbcompParams.trackname);
