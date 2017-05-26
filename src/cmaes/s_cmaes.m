@@ -410,15 +410,24 @@ if ~flgresume % not resuming a former run
     insigma = 0.5 * (insigma(:,2) - insigma(:,1));
   end
 else % flgresume is true, do resume former run
-  tmp = whos('-file', opts.SaveFilename);
+  try
+    resumeFiles = eval('ls([opts.SaveFilename ''*''])');
+  catch ME
+    error('No recovery files found.');
+  end
+
+  resumeFiles = strsplit(strtrim(resumeFiles), '\n');
+  resumeFilename = resumeFiles{end};
+  
+  tmp = whos('-file', resumeFilename);
   for i = 1:length(tmp)
-    if strcmp(tmp(i).name, 'localopts');
+    if strcmp(tmp(i).name, 'localopts')
       error('Saved variables include variable "localopts", please remove');
     end
   end
   local.opts = opts; % keep stopping and display options
   local.varargin = varargin;
-  load(opts.SaveFilename); 
+  load(resumeFilename); 
   varargin = local.varargin;
   flgresume = 1;
 
@@ -840,7 +849,7 @@ while isempty(stopflag)
   else
     % hand over the control to surrogateManager()
     surrogateOpts.sampleOpts = sampleOpts;
-    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled, newStopFlag, archive] = surrogateManager(cmaesState, surrogateOpts, sampleOpts, counteval, varargin{:});
+    [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled, newStopFlag, archive] = surrogateManager(cmaesState, surrogateOpts, sampleOpts, counteval, flgresume, varargin{:});
     if (~isempty(newStopFlag))
       stopflag(end+1) = { newStopFlag };
     end
@@ -1500,7 +1509,7 @@ while isempty(stopflag)
   out.solutions.recentworst.x = arxvalid(:, fitness.idx(end));
   out.solutions.recentworst.f = fitness.raw(end);
   out.solutions.recentworst.evals = counteval + fitness.idx(end) - lambda;
-  if fitness.hist(1) < out.solutions.bestever.f
+  if ~isfield(out.solutions, 'bestever') || fitness.hist(1) < out.solutions.bestever.f
     out.solutions.bestever.x = arxvalid(:, fitness.idx(1));
     out.solutions.bestever.f = fitness.hist(1);
     out.solutions.bestever.evals = counteval + fitness.idx(1) - lambda;
@@ -1707,18 +1716,47 @@ while isempty(stopflag)
 
   % save everything
   time.t3 = clock;
-  if ~isempty(stopflag) || time.saving < 0.05 * time.nonoutput || countiter == 100
+  if true %~isempty(stopflag) || time.saving < 0.05 * time.nonoutput || countiter == 100
     xmin = arxvalid(:, fitness.idx(1));
     fmin = fitness.raw(1);
-    if flgsaving && countiter > 2
+
+    if flgsaving
       clear idx; % prevents error under octave
       % -v6 : non-compressed non-unicode for version 6 and earlier
       if ~isempty(strsaving) && ~isoctave
 	save('-mat', strsaving, opts.SaveFilename); % for inspection and possible restart	
-      else 
-	save('-mat', opts.SaveFilename); % for inspection and possible restart
+      else
+        surrogateOpts_backup = rmfield(surrogateOpts, 'archive');
+        varsToSave = who('B', 'BD', 'C', 'N', 'OCT', 'arpos', 'arrEqualFunvals', 'arx', 'arxvalid', 'arz', 'bestever', 'bnd', ...
+          'cc', 'ccov1', 'ccovmu', 'chiN', 'cmaVersion', 'cmaesState', 'cmean', 'counteval', 'countevalNaN', 'countiter', 'cs', ...
+          'damps', 'dd', 'definput', 'defopts', 'diagC', 'diagD', ...
+          'f_name', 'fid', 'filenameprefix', 'fitness', ...
+          'flgActiveCMA', 'flgDiagonalOnly', 'flgEvalParallel', ...
+          'flgWarnOnEqualFunctionValues', 'flg_future_setting', ...
+          'flgdisplay', 'flgplotting', 'flgreadsignals', 'flgresume', 'flgsaving', 'flgsavingfinal', 'flgscience', ...
+          'fmean', 'fmin', ...
+          'hsig', 'i', 'iGeneration', 'inopts', 'input', 'insigma', 'irun', ...
+          'l', 'lambda', 'lambda0', 'lambda_hist', 'lambda_last', 'lbounds', ...
+          'maxdx', 'maxstd', 'maxstdidx', 'message', 'mindx', 'minstd', 'minstdidx', 'mu', 'mueff', ...
+          'neg', 'newStopFlag', 'noiseAlphaEvals', 'noiseCallback', 'noiseHandling', 'noiseMinMaxEvals', 'noiseReevals', 'numberofvariables', ...
+          'opts', 'origEvaled', 'outiter', ...
+          'pc', 'popsize', 'ps', ...
+          'sampleOpts', 'savemodulo', 'savetime', 'sigma', 'startseed', ...
+          'stopFitness', 'stopFunEvals', 'stopIter', 'stopMaxFunEvals', 'stopMaxIter', ...
+          'stopOnEqualFunctionValues', 'stopOnStagnation', 'stopOnWarnings', ...
+          'stopTolFun', 'stopTolHistFun', 'stopTolUpX', 'stopTolX', 'stopflag', 'strrun', 'strsaving', ...
+          'strstop', 'strw', 'surrogateOpts_backup', 'surrogateStats', ...
+          'ti', 'time', 'tmp', 'tx', 'ubounds', 'val', 'varargin', 'verbosemodulo', ...
+          'weights', 'xmean', 'xmin', 'xold', 'xstart', 'y_eval', 'zmean');
+        save([opts.SaveFilename '_' num2str(countiter)] , varsToSave{:});
       end
       time.saving = time.saving + time.c * max(0,etime(clock, time.t3)); 
+
+      if countiter > 2
+        delete_cmd = ['delete ' eval('[opts.SaveFilename ''_'' num2str(countiter-2) ''.mat'']')];
+        eval(delete_cmd);
+      end
+
     end
   end
   time.t0 = clock;

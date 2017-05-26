@@ -75,3 +75,4 @@ bbcompParams.proxyTimeout = 10;
 bbcompParams.proxyConnectTimeout = 10;
 bbcompParams.maxTrials = 1e2; % maximum no. of trials for network operations
 bbcompParams.loginDelay = 2; % delay after each login retrial in seconds
+bbcompParams.tryRecovery = true; % set to false to disable recovery

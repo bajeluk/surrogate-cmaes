@@ -1,10 +1,11 @@
-function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled, newStopFlag, archive] = surrogateManager(cmaesState, inOpts, sampleOpts, counteval, varargin)
+function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled, newStopFlag, archive] = surrogateManager(cmaesState, inOpts, sampleOpts, counteval, flgresume, varargin)
 % surrogateManager  controls sampling of new solutions and using a surrogate model
 %
 % @xmean, @sigma, @lambda, @BD, @diagD -- CMA-ES internal variables
 % @countiter            the number of the current generation
 % @fitfun_handle        handle to fitness function (CMA-ES uses string name of the function)
 % @inOpts               options/settings for surrogate modelling
+% @flgresume            resume run from a file
 % @varargin             arguments for the fitness function (varargin from CMA-ES)
 %
 % returns:
@@ -72,6 +73,20 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   cmaesState.dim = dim;
   cmaesState.thisGenerationMaxevals = cmaesState.maxfunevals - counteval;
 
+  % resume an interrupted EC
+  if flgresume
+    resumefilename = [inOpts.datapath filesep inOpts.exp_id '_eclog_' inOpts.expFileID '_' num2str(countiter-1) '.mat'];
+    if ~exist(resumefilename, 'file')
+      error('Recovery file ''%s'' not found.', resumefilename);
+    end
+
+    eclog = load(resumefilename);
+    ec = eclog.ec;
+    archive = ec.archive;
+  else
+    archive = defopts(inOpts, 'archive', Archive(dim));
+  end
+
   % switching evolution control
   % TODO: consider removing this completely
   if ~isempty(surrogateOpts.evoControlSwitchMode)
@@ -99,9 +114,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     cmaesState.lambda = lambda;
   end
 
-  % construct Archive, EvolutionControl and its Observers
+  % construct EvolutionControl and its Observers
   % Note: independent restarts of the whole CMA-ES still clears the archive
-  archive = defopts(inOpts, 'archive', Archive(dim));
   if (countiter == 1 && (isempty(ec) || (counteval < ec.counteval)))
     % Restart outside CMA-ES just happend
     disp('==== Restart outside CMA-ES ====');
