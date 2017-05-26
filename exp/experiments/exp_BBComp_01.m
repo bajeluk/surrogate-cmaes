@@ -59,13 +59,15 @@ cmaesParams.EvalFinalMeanBeforeRestart = false;
 cmaesParams.SaveVariables = 'on';
 cmaesParams.SaveFilename = '[datapath filesep surrogateParams.exp_id ''_cmaesvars_'' surrogateParams.expFileID ''.mat'']';
 
-% BBCOMP client
+% BBCOMP client parameters
 
 bbcompParams.libpath = 'exp/vendor/bbcomp/library/';
 bbcompParams.libname = 'libbbcomp';
 bbcompParams.libhfile = 'exp/vendor/bbcomp/client_matlab/bbcomplib.h';
 bbcompParams.username = 'FILLME';
 bbcompParams.password = 'FILLME';
+bbcompParams.loghistory = 1; % set to 0 to disable history
+bbcompParams.logfilepath = '[datapath filesep ''proxy_logs'']';
 bbcompParams.trackname = 'trial';
 bbcompParams.proxyHostname = 'localhost';
 bbcompParams.proxyPort = 20000;

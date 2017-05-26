@@ -73,7 +73,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   end
 
   try
-    [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams, id);
+    [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams, datapath, id);
   catch ME
     fields = strsplit(ME.identifier, ':');
     if strcmp(fields{1}, 'BbcClient')
@@ -83,7 +83,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
       rethrow(ME);
     end
   end
-  
+
   % DEBUG
 %   FUN = @frosen;
 %   dim = 2;
@@ -224,7 +224,7 @@ function out = parseCmdParam(name, value, defaultValue)
   end
 end
 
-function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams, id)
+function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams, datapath, id)
   % initialization of the BBCOMP client
   % addpath(bbcompParams.libpath); % needed for the dynamic library
 
@@ -239,6 +239,9 @@ function [bbc_client, dim, maxfunevals] = init_bbc_client(bbcompParams, id)
   trial = 1;
   while trial < bbcompParams.maxTrials
     try
+      logfilepath = eval(bbcompParams.logfilepath);
+      [~, ~] = mkdir(logfilepath);
+      bbc_client.configure(bbcompParams.loghistory, logfilepath);
       bbc_client.login();
       bbc_client.setTrack(bbcompParams.trackname);
       numProblems = bbc_client.getNumberOfProblems();

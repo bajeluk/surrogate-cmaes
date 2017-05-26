@@ -44,7 +44,7 @@ classdef BbcClientShLib < BbcClient
       nin = length(varargin);
 
       switch method
-        case 'login'
+        case {'login', 'configure'}
           if nin ~= 2
             obj.throwCallException(2, method, nin);
           else

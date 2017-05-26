@@ -28,6 +28,14 @@ classdef BbcClient < BbcClientBase
       end
     end
 
+    function configure(obj, history, logfilepath)
+      result = obj.call('configure', uint8(history), logfilepath);
+      if ~result
+        throw(MException('BbcClient:configure', ...
+          'configure failed with message: %s', obj.errorMessage()));
+      end
+    end
+
     function safeLogin(obj, delay)
       trial = 1;
       while trial <= obj.maxTrials

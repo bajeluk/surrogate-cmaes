@@ -6,6 +6,7 @@ classdef (Abstract) BbcClientBase < handle
   end
 
   methods (Abstract)
+    configure(obj, history, logfilepath);
     login(obj);
     numProblems = getNumberOfProblems(obj);
     setProblem(obj, problemID);

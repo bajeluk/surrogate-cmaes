@@ -51,7 +51,7 @@ classdef BbcClientTcp < BbcClient
       end
 
       switch method
-        case 'login'
+        case {'login', 'configure'}
           if nin ~= 2
             obj.throwCallException(2, method, nin);
           end
@@ -128,7 +128,7 @@ classdef BbcClientTcp < BbcClient
       end
 
       switch method
-        case {'login', 'setTrack', 'setProblem', 'numberOfTracks', ...
+        case {'login', 'configure', 'setTrack', 'setProblem', 'numberOfTracks', ...
           'numberOfProblems', 'dimension', 'budget', 'evaluations'}
           if nargout
             varargout{1} = str2double(response{1});
@@ -145,9 +145,11 @@ classdef BbcClientTcp < BbcClient
               varargout{3} = str2double(response{2});
             end
           end
+
           if nargout >= 2
             varargout{2} = [];
           end
+
           if nargout >= 1
             varargout{1} = str2double(response{1});
           end
