@@ -21,7 +21,12 @@ cd "$CWD/.."
 if [ ! -d "$CWD/../../../$DLIB_DEST_DIR" ]; then
   # Download the installation
   if [ ! -f "dlib-$DLIB_VER.tar.bz2" ]; then
+    echo "Trying to download Dlib library..."
     wget "$DLIB_INSTALL"
+    if [ $? -ne 0 ]; then
+      echo "Error: Dlib cannot be downloaded nor it exists. Exitting."
+      exit 1
+    fi
   fi
 
   # Extract Dlib
@@ -30,23 +35,26 @@ if [ ! -d "$CWD/../../../$DLIB_DEST_DIR" ]; then
   rm -rf dlib-${DLIB_VER}
 else
   echo "Directory ${DLIB_DEST_DIR} already exists."
-  exit 0
 fi
 
 cp bobyqa/dlib_bobyqa.cpp dlib/matlab/
-patch -p1 < bobyqa/optimization_bobyqa.h.patch
+patch -N -r- -p1 < bobyqa/optimization_bobyqa.h.patch
 if ! grep -q dlib_bobyqa dlib/matlab/CMakeLists.txt; then
+  sed -i 's/^[^#].*example_mex.*/# \0/' dlib/matlab/CMakeLists.txt
   echo "add_mex_function(dlib_bobyqa dlib)" >> dlib/matlab/CMakeLists.txt
 fi
 
 # Make Dlib
-mkdir dlib/matlab/build
+mkdir -p dlib/matlab/build
 cd dlib/matlab/build
-cmake ..
-cmake --build . --config release
+cmake .. && cmake --build . --config release
 
-# Install BOBYQA
-# TODO
-
-# Finalize
-cd "$last_dir"
+# Deploy BOBYQA to the right place
+if [ $? -eq 0 ]; then
+  cd "$CWD/.."
+  cp dlib/matlab/build/dlib_bobyqa.mex* bobyqa/
+else
+  echo ""
+  echo "Dlib or BOBYQA is not sucessfully compiled. Exitting with error."
+  exit 1
+fi

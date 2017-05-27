@@ -30,3 +30,4 @@ exp_*.e[0-9][0-9][0-9]*
 exp/vendor/bbcomp/proxy/proxy
 exp/vendor/bbcomp/proxy/*.so
 exp/vendor/bbcomp/proxy/logfile*
+exp/vendor/bobyqa/dlib_bobyqa.mex*

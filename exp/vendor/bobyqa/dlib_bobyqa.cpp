@@ -32,26 +32,27 @@ double optfunc( const function_handle& f, const column_vector& x )
 class cObj
 {
 public:
-    cObj ( const std::string sFunName )
+    cObj ( const function_handle& matlabFun )
     {
-        mfunc = sFunName;
+        mfunc = &matlabFun;
     }
 
     double operator() ( const column_vector& x ) const
     {
         double result;
 
-        call_matlab(mfunc, x, returns(result));
+        call_matlab(*mfunc, x, returns(result));
         return result;
     }
 
 private:
-    std::string mfunc;
+    const function_handle * mfunc;
 };
 
 
 void mex_function (
-    const std::string fname,
+    // const std::string fname,
+    const function_handle& fhandle,
     const column_vector& xstart,
     const int nPoints,
     const column_vector& lb,
@@ -59,18 +60,17 @@ void mex_function (
     const double rho_beg,
     const double rho_end,
     const long maxfunevals,
-    // const function_handle& f,
     double& fopt,
     column_vector& xopt) 
 {
 
-    // The f argument to this function is a function handle passed from MATLAB.  To
-    // call it we use the following syntax:
-    // call_matlab(f, A, returns(result));
+    // If argument 'f' to this function is a function handle passed from MATLAB,
+    // it can be called using the syntax:
+    //   call_matlab(f, A, returns(result));
     // This is equivalent to result = f(A). Therefore, the returns(variable) syntax 
     // is used to indicate which variables are outputs of the function.
   
-    const cObj fObj = cObj(fname);
+    const cObj fObj = cObj(fhandle);
 
     column_vector my_start = xstart;
 
@@ -84,10 +84,9 @@ void mex_function (
                     maxfunevals   // max number of objective function evaluations
                     );
 
-    // fopt = fObj(xstart);
     xopt = my_start;
 
-    cout << "bestvalue: \n" << fopt << endl;
+    // cout << "bestvalue: \n" << fopt << endl;
 }
 
 // #including this brings in all the mex boiler plate needed by MATLAB.

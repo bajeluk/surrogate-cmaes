@@ -2,6 +2,8 @@ function [nF_opt, vX_opt] = bobyqa(sObjFunName, vX_opt, vX_l, vX_u, svOptions)
 % The BOBYQA algorithm for bound constrained optimization without
 % derivatives by M.J.D. Powell
 % 
+% This is a sligtly modified version by Lukas Bajer, 2017 (the modifications
+% are licensed under CC license). For the original version, see below:
 % 
 % ==== License ====
 % 
@@ -18,15 +20,6 @@ function [nF_opt, vX_opt] = bobyqa(sObjFunName, vX_opt, vX_l, vX_u, svOptions)
 % 
 %   * The above copyright notice and this permission notice shall be
 %     included in all copies or substantial portions of the Software.
-% 
-% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-% OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-% MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-% NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-% DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-% OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-% USE OR OTHER DEALINGS IN THE SOFTWARE.
-% 
 % 
 % ==== Preparation ====
 % 
@@ -151,11 +144,12 @@ try
             vX_u =  1e100*ones(nN,1);
         end
         
-        if isa(sObjFunName, 'function_handle')
-            sObjFunName = func2str(sObjFunName);
-        end
-        if ~exist(sObjFunName, 'file')
-            error('bobyqa:UnknownFunction', 'The function %s is not a file', sObjFunName);
+        if isstr(sObjFunName)
+            if exist(sObjFunName, 'file')
+                sObjFunName = str2func(sObjFunName);
+            else
+                error('bobyqa:UnknownFunction', 'The function %s is not a file', sObjFunName);
+            end
         end
         
         % Call mex function
@@ -172,9 +166,9 @@ try
         end
         
     else
-        %% Evaluate ojective function if called by BOBYQA_ALG
+        %% Evaluate objective function if called by BOBYQA_ALG
         if nargout < 2 && nargin == 2
-            fhObjFun = str2func(sObjFunName);
+            % fhObjFun = str2func(sObjFunName);
             nF_opt = fhObjFun(vX_opt);
             status_display()
             return;
