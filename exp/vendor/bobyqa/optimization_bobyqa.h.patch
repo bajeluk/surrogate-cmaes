@@ -1,0 +1,68 @@
+--- a/dlib/optimization/optimization_bobyqa.h	2017-03-07 23:19:46.000000000 +0100
++++ a/dlib/optimization/optimization_bobyqa.h	2017-05-27 21:09:58.725802442 +0200
+@@ -390,8 +399,8 @@
+             }
+             fsave = fval[1];
+             if (nf < npt) {
+-                throw bobyqa_failure("Return from BOBYQA because the objective function has been called max_f_evals times.");
+-                //goto L720;
++                // throw bobyqa_failure("Return from BOBYQA because the objective function has been called max_f_evals times.");
++                goto L720;
+             }
+             kbase = 1;
+ 
+@@ -656,8 +665,8 @@
+             }
+             if (nf < 0) {
+                 nf = maxfun;
+-                throw bobyqa_failure("Return from BOBYQA because the objective function has been called max_f_evals times.");
+-                //goto L720;
++                // throw bobyqa_failure("Return from BOBYQA because the objective function has been called max_f_evals times.");
++                goto L720;
+             }
+             nresc = nf;
+             if (nfsav < nf) {
+@@ -780,8 +789,8 @@
+                     if (nf > nresc) {
+                         goto L190;
+                     }
+-                    throw bobyqa_failure("Return from BOBYQA because of much cancellation in a denominator.");
+-                    //goto L720;
++                    // throw bobyqa_failure("Return from BOBYQA because of much cancellation in a denominator.");
++                    goto L720;
+                 }
+ 
+                 /*     Alternatively, if NTRITS is positive, then set KNEW to the index of */
+@@ -841,8 +850,8 @@
+                     if (nf > nresc) {
+                         goto L190;
+                     }
+-                    throw bobyqa_failure("Return from BOBYQA because of much cancellation in a denominator.");
+-                    //goto L720;
++                    // throw bobyqa_failure("Return from BOBYQA because of much cancellation in a denominator.");
++                    goto L720;
+                 }
+             }
+ 
+@@ -870,8 +879,8 @@
+                 /* L380: */
+             }
+             if (nf >= maxfun) {
+-                throw bobyqa_failure("Return from BOBYQA because the objective function has been called max_f_evals times.");
+-                //goto L720;
++                // throw bobyqa_failure("Return from BOBYQA because the objective function has been called max_f_evals times.");
++                goto L720;
+             }
+             ++nf;
+             f = calfun(mat(&x[1], n));
+@@ -919,8 +928,8 @@
+ 
+             if (ntrits > 0) {
+                 if (vquad >= zero) {
+-                    throw bobyqa_failure("Return from BOBYQA because a trust region step has failed to reduce Q.");
+-                    //goto L720;
++                    // throw bobyqa_failure("Return from BOBYQA because a trust region step has failed to reduce Q.");
++                    goto L720;
+                 }
+                 ratio = (f - fopt) / vquad;
+                 if (ratio <= tenth) {
