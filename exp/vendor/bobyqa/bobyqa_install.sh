@@ -1,17 +1,25 @@
 #!/bin/bash
 #
-# bobyqa_install.sh -- Install the BOBYQA
+# bobyqa_install.sh -- Compile and install the BOBYQA algorithm
+#
+# BOBYQA is a quadratic-approximation optimizer by J. Powell's (2009).
+# This is a installation script which downloads the Dlib C++ machine-learning
+# library (which contains BOBYQA) and compiles it (after a minor patch). After
+# that, Matlab MEX file dlib_bobyqa.cpp is compiled via GCC in order to
+# be used in Matlab.
 #
 # Requirements (Debian/Ubuntu packages in brackets)
 # - GCC (gcc)
 # - Fortran95/GCC (gfortran)
 # - CMake (cmake)
 # - BLAS library (libblas3)
+# - dlib_bobyqa.cpp Matlab/C++ MEX file
+#
+# (CC) Lukas Bajer, 2017
 
 DLIB_VER=19.4
 DLIB_INSTALL="http://dlib.net/files/dlib-$DLIB_VER.tar.bz2"
 DLIB_DEST_DIR="exp/vendor/dlib"
-
 
 last_addr=`pwd`
 # CWD = Directory of this particular file
@@ -19,7 +27,7 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 cd "$CWD/.."
 
 if [ ! -d "$CWD/../../../$DLIB_DEST_DIR" ]; then
-  # Download the installation
+  # Download the Dlib's installation package
   if [ ! -f "dlib-$DLIB_VER.tar.bz2" ]; then
     echo "Trying to download Dlib library..."
     wget "$DLIB_INSTALL"
@@ -29,7 +37,7 @@ if [ ! -d "$CWD/../../../$DLIB_DEST_DIR" ]; then
     fi
   fi
 
-  # Extract Dlib
+  # Extract only the directory 'dlib/' form Dlib's package
   tar xjf dlib-${DLIB_VER}.tar.bz2 --wildcards "dlib-${DLIB_VER}/dlib/"
   mv dlib-${DLIB_VER}/dlib .
   rm -rf dlib-${DLIB_VER}
