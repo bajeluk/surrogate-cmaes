@@ -207,10 +207,12 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
 
   % copy the bbcomp results onto persistant storage if outside EXPPATH
   if (~isempty(OUTPUTDIR) && ~strcmpi(OUTPUTDIR, opts.exppath) && isunix)
-    % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
-    system(['cp -pR ' OUTPUTDIR '/* ' opts.exppath '/']);
+    % compress proxy logs
     logfiles = [eval(bbcompParams.logfilepath) filesep '*log'];
     system(['bzip2 -z ' logfiles]);
+
+    % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
+    system(['cp -pR ' OUTPUTDIR '/* ' opts.exppath '/']);
   end
 
   status = 0;
