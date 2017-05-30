@@ -128,6 +128,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     stopFlagHistory = false(1, stopFlagHistoryLength);
     modelRMSEforRestart = defopts(surrogateOpts, 'modelRMSEforRestart', sDefaults.modelRMSEforRestart);
   end
+  
+  % save the initial point to the archive if it was evaluated
+  if (countiter == 1 && ~isnan(cmaesState.fxstart))
+    archive = archive.save(xmean', cmaesState.fxstart, countiter);
+  end
 
   if (countiter == 1 && (counteval >= 2))
     % Restart inside CMA-ES just happend
