@@ -29,7 +29,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     modelAge                    % age of model in the number of generations (0 == current model)
     oldModelAgeForStatistics    % age of model for gathering statistics of old models
     isTrainSuccess
-    origPointsRoundFcn % function computing number of original-evaluated points from origRatio
+    trainRange 
+    origPointsRoundFcn          % function computing number of original-evaluated points from origRatio
     nBestPoints                 % the number of points with the best predicted f-value to take every generation
     usedBestPoints              % how many best-predicted points was really orig-evaluated
     preselectionPopRatio        % how many times larger population should be used for preselection
@@ -55,6 +56,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % other initializations:
       obj.acceptedModelAge = defopts(surrogateOpts, 'evoControlAcceptedModelAge', 2);
       obj.origPointsRoundFcn = str2func(defopts(surrogateOpts, 'evoControlOrigPointsRoundFcn', 'ceil'));
+      obj.trainRange = defopts(surrogateOpts, 'evoControlTrainRange', 10);
 
       % Adaptive DTS parameters
       surrogateOpts.updaterType = defopts(surrogateOpts, 'updaterType', 'none');
@@ -117,6 +119,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.modelAge = 0;
       obj.isTrainSuccess = false;
       obj.usedBestPoints = 0;
+      if (ischar(obj.trainRange))
+        obj.trainRange = round(myeval(obj.trainRange));
+      end
 
       % prepare the final population to be returned to CMA-ES
       obj.pop = Population(lambda, dim);
@@ -129,7 +134,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         if (~ok)
           % model could not be created nor older is usable :(. Use the standard CMA-ES.
           [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-              = obj.finalizeGeneration(sampleOpts, varargin);
+              = obj.finalizeGeneration(sampleOpts, varargin{:});
           return;
         end
       end
@@ -141,7 +146,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
         nArchivePoints = myeval(obj.surrogateOpts.evoControlTrainNArchivePoints);
         [xTrain, yTrain, nData] = obj.archive.getDataNearPoint(nArchivePoints, ...
-            obj.cmaesState.xmean', obj.surrogateOpts.evoControlTrainRange, ...
+            obj.cmaesState.xmean', obj.trainRange, ...
             obj.cmaesState.sigma, obj.cmaesState.BD);
         obj.stats.nDataInRange = nData;
 
@@ -158,7 +163,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           [obj, ok] = obj.tryOldModel();
           if (~ok)
             [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-                = obj.finalizeGeneration(sampleOpts, varargin);
+                = obj.finalizeGeneration(sampleOpts, varargin{:});
             return;
           end
         end
@@ -167,6 +172,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % sample new population of lambda points out of which will be chosen
       % later in this generation
       nLambdaRest = lambda - obj.nPresampledPoints;
+      maxevals = defopts(cmaesState, 'thisGenerationMaxevals', lambda);
+      maxevals = maxevals - obj.nPresampledPoints;
       [xExtend, xExtendValid, zExtend] = ...
           sampleCmaesNoFitness(obj.cmaesState.sigma, nLambdaRest, obj.cmaesState, sampleOpts);
       % add these points into Population without valid f-value (marked as notEvaluated)
@@ -185,7 +192,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           if (~ok)
             % model cannot be trained :( -- return with orig-evaluated population
             [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-                = obj.finalizeGeneration(sampleOpts, varargin);
+                = obj.finalizeGeneration(sampleOpts, varargin{:});
             return;
           end
         end
@@ -202,15 +209,18 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       % the number of points to orig-evaluate
       nPoints = obj.origPointsRoundFcn(nLambdaRest * obj.restrictedParam);
+      nPoints = min(nPoints, maxevals);
 
       % Preselection: orig-evaluate the best predicted point(s)
       % out of 'obj.preselectionPopRatio*lambda' sampled points
       % (if obj.nBestPoints > 0).
       % Already saves the really used number of preselected points into 
       % 'obj.usedBestPoints'  and the points into  'obj.Population'
-      [obj, yBestOrig, xBest, xBestValid, zBest] = obj.preselection( ...
-          obj.nBestPoints, nPoints, sampleOpts, varargin{:});
-      nPoints = nPoints - obj.usedBestPoints;
+      if (nPoints > 0)
+        [obj, yBestOrig, xBest, xBestValid, zBest] = obj.preselection( ...
+            obj.nBestPoints, nPoints, sampleOpts, varargin{:});
+        nPoints = nPoints - obj.usedBestPoints;
+      end
 
       % evaluate the population's not-original f-values with the (first) model
       % TODO: save this first model's prediction for later use
@@ -312,10 +322,6 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             obj.usedUpdaterState.err = obj.origRatioUpdater.historyErr(obj.cmaesState.countiter);
             obj.usedUpdaterState.gain = obj.origRatioUpdater.gain;
             obj.usedUpdaterState.smoothedErr = obj.origRatioUpdater.historySmoothedErr(obj.cmaesState.countiter);
-          else
-            % update the model predicted f-values with the first model's prediction
-            [notEvaledX, notEvaledZ] = obj.pop.getNotOrigEvaledX();
-            [modelOutput, yModel] = obj.model.getModelOutput(notEvaledX');
           end
 
           nPoints = nPoints - nToReeval;
@@ -340,7 +346,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       % save the resulting re-evaluated population as the returning parameters
       [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-          = obj.finalizeGeneration(sampleOpts, varargin);
+          = obj.finalizeGeneration(sampleOpts, varargin{:});
     end
 
 
@@ -418,7 +424,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     function [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] = finalizeGeneration(obj, sampleOpts, varargin)
       % fill the rest of the population with original evaluations
       [obj, fitness_raw, arx, arxvalid, arz, counteval] = ...
-          obj.fillPopWithOrigFitness(sampleOpts, varargin);
+          obj.fillPopWithOrigFitness(sampleOpts, varargin{:});
       origEvaled = obj.pop.origEvaled;
 
       % calculate statistics
@@ -649,11 +655,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     %
     % lastModel -- return the last valid model (either first or second)
 
-      rmse = NaN; kendall = NaN; errRank = NaN;
-      % do we have access to the original BBOB fitness?
-      if (~ isfield(obj.surrogateOpts.modelOpts, 'bbob_func'))
-        return;
-      end
+      rmse = NaN; kendall = NaN; errRank = NaN; lastModel = [];
       if (~isempty(obj.retrainedModel) && obj.retrainedModel.isTrained())
         % statistics according to the retrained model
         lastModel = obj.retrainedModel;
@@ -662,6 +664,11 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         lastModel = obj.model;
       else
         % we do not have any valid model
+        return;
+      end
+
+      % do we have access to the original BBOB fitness?
+      if (~ isfield(obj.surrogateOpts.modelOpts, 'bbob_func'))
         return;
       end
 
