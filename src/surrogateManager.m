@@ -93,7 +93,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   end
   
   % save the initial point to the archive if it was evaluated
-  if (countiter == 1 && ~isnan(cmaesState.fxstart))
+  if (countiter == 1 && ~isempty(cmaesState.fxstart))
     archive = archive.save(xmean', cmaesState.fxstart, countiter);
   end
   
