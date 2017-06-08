@@ -109,6 +109,17 @@ classdef GpModel < Model
       obj.dimReduction = defopts(modelOptions, 'dimReduction', 1);      % 1.0 == no dimensionality reduction
     end
 
+    function obj = clone(obj, obj2)
+    % Take all fields except function handles from obj2
+      fnames = fieldnames(obj2);
+      for i = 1:length(fnames)
+        ff = fnames{i};
+        if (isempty(strfind(ff, 'Fcn')))
+          obj.(ff) = obj2.(ff);
+        end
+      end
+    end
+
     function nData = getNTrainData(obj)
       % returns the required number of data for training the model
       % TODO: *write this* properly according to dimension and
@@ -125,24 +136,26 @@ classdef GpModel < Model
 
       assert(size(xMean,1) == 1, '  GpModel.train(): xMean is not a row-vector.');
       obj.trainMean = xMean;
-      obj.dataset.X = X;
-      obj.dataset.y = y;
+      if (~isempty(X) && ~isempty(y))
+        obj.dataset.X = X;
+        obj.dataset.y = y;
+      end
 
       % normalize y if specified, @meanZero, or if large y-scale
       % (at least for CMA-ES hyperparameter optimization)
       if (~obj.options.normalizeY ...
-          && (isequal(obj.meanFcn, @meanZero) || (max(y) - min(y)) > 1e4))
+          && (isequal(obj.meanFcn, @meanZero) || (max(obj.dataset.y) - min(obj.dataset.y)) > 1e4))
         fprintf(2, 'Y-Normalization is switched ON for @meanZero covariance function of large Y-scale.\n');
         obj.options.normalizeY = true;
       end
       if (obj.options.normalizeY)
-        obj.shiftY = mean(y);
-        obj.stdY  = std(y);
-        yTrain = (y - obj.shiftY) / obj.stdY;
+        obj.shiftY = mean(obj.dataset.y);
+        obj.stdY  = std(obj.dataset.y);
+        yTrain = (obj.dataset.y - obj.shiftY) / obj.stdY;
       else
         obj.shiftY = 0;
         obj.stdY  = 1;
-        yTrain = y;
+        yTrain = obj.dataset.y;
       end
 
       % set the mean hyperparameter if is needed
