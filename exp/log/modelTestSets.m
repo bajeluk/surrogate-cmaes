@@ -1,5 +1,5 @@
 function ds = modelTestSets(exp_id, fun, dim, inst, opts)
-% ds = modelTestSets(exp_id, fun, dim) creates/loads dataset from 
+% ds = modelTestSets(exp_id, fun, dim) creates/loads dataset from
 % experiment.
 %
 % Input:
@@ -36,6 +36,9 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
   % dataset for ModelPool testing needs additional data
   opts.isForModelPool = defopts(opts, 'isForModelPool', false);
   opts.nPreviousGenerations = defopts(opts, 'nPreviousGenerations', 0);
+  opts.loadModels     = defopts(opts, 'loadModels', false);
+  opts.nIDsPerFunction = defopts(opts, 'nIDsPerFunction', 1);
+  opts.nInstancesPerID = defopts(opts, 'nIDsPerFunction', 15);
 
   % set random seed due to reproducibility of default dataset
   rng(opts.maxEval)
@@ -55,11 +58,13 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
     exp_par = load(opts.paramsMatFile);
     exp_dim = cell2mat(exp_par.bbParamDef(strcmp({exp_par.bbParamDef.name}, 'dimensions')).values);
     exp_fun = cell2mat(exp_par.bbParamDef(strcmp({exp_par.bbParamDef.name}, 'functions')).values);
-    exp_inst = cell2mat(exp_par.bbParamDef(strcmp({exp_par.bbParamDef.name}, 'instances')).values); 
+    exp_inst_cell = exp_par.bbParamDef(strcmp({exp_par.bbParamDef.name}, 'instances')).values;
+    exp_inst = cell2mat(exp_inst_cell);
   else
     warning('No scmaes_params.mat found in %s directory. Using default fun and dim settings.', opts.exppath)
     exp_dim = 2;
     exp_fun = 1;
+    exp_inst_cell = { 1 };
     exp_inst = 1;
   end
 
@@ -67,6 +72,7 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
   dim = restricToDataset(dim, exp_dim, 'Dimensions');
   fun = restricToDataset(fun, exp_fun, 'Functions');
   inst = restricToDataset(inst, exp_inst, 'Instances');
+  IDsPerFunction = max(opts.nIDsPerFunction, length(exp_inst_cell));
 
   assert(~isempty(inst), 'There are no instances to process. Exitting.');
 
@@ -98,8 +104,6 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
     % function loop
     for fi = 1:length(fun)
       f_exp = find(fun(fi) == exp_fun, 1);
-      id = (d_exp-1)*length(exp_fun) + f_exp;
-      fprintf('#### f%d in %dD (id=%d) ####\n', fun(fi), dim(di), id);
 
       % check whether if we have some instances loaded
       instancesDone = false(1, length(inst));
@@ -122,20 +126,34 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
         end
       end
 
-      % load dataset from saved modellog/cmaes_out of the corresponding instance
-      ds_actual = datasetFromInstances(opts, opts.nSnapshotsPerRun, ...
-          fun(fi), dim(di), inst(~instancesDone), id, opts.isForModelPool, opts.nPreviousGenerations);
+      % instances loop
+      for ii_cell = 1:length(exp_inst_cell)
+        instancesInThisID = exp_inst_cell{ii_cell};
 
-      ds(fi, di, ~instancesDone) = ds_actual;
+        id = (d_exp-1)*length(exp_fun)*IDsPerFunction + (f_exp-1)*IDsPerFunction + ii_cell;
+        fprintf('#### f%d in %dD (id=%d) ####\n', fun(fi), dim(di), id);
 
-    % function loop end  
-    end
-  % dimension loop end
-  end
+        % load dataset from saved modellog/cmaes_out of the corresponding instance
+        [~, instanceIndicesToProcess] = ismember(instancesInThisID, inst);
+        instanceIndicesToProcess(instanceIndicesToProcess == 0) = [];
+        instancesToProcess = intersect(inst(instanceIndicesToProcess), inst(~instancesDone));
+        [~, instanceIndicesToProcess] = ismember(instancesToProcess, inst);
+        if (~isempty(instancesToProcess))
+          ds_actual = datasetFromInstances(opts, opts.nSnapshotsPerRun, ...
+              fun(fi), dim(di), inst(instanceIndicesToProcess), id, ...
+              opts.isForModelPool, opts.nPreviousGenerations, opts.loadModels);
+          ds(fi, di, instanceIndicesToProcess) = ds_actual;
+        end
+      end  % instances loop end
+
+    end  % function loop end
+
+  end  % dimension loop end
 
   % save the dataset
   maxEval = opts.maxEval;
-  save(opts.datasetFile, 'ds', 'fun', 'dim', 'inst', 'maxEval')
+  nSnapshotsPerRun = opts.nSnapshotsPerRun;
+  save(opts.datasetFile, 'ds', 'fun', 'dim', 'inst', 'maxEval', 'nSnapshotsPerRun', 'opts');
 end
 
 function [intToTest] = restricToDataset(intToTest, dataInt, identifier)

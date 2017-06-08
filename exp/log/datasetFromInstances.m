@@ -1,4 +1,4 @@
-function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, isForModelPool, nPreviousGenerations)
+function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, isForModelPool, nPreviousGenerations, loadModels)
 %DATASETFROMINSTANCE - generates datasets for specified dim and #fun for offline model tunning
 
 % Generates datasets for offline model tunning from the DTS-CMA-ES
@@ -19,10 +19,21 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
   end
   exp_id = opts.inputExp_id;
 
+  % start processing result on generation where this number of FE/D is
+  % achieved
+  opts.startEval = defopts(opts, 'startEval', 1);
+  % process the results only until this number of evalutions per dimension
   opts.maxEval = defopts(opts, 'maxEval', 250);
+  % make multiple testcases per generation even if there is more snapshots 
+  % than generations to test
+  opts.uniqueGenerations = defopts(opts, 'uniqueGenerations', false);
+
   if ~exist('isForModelPool', 'var')
     isForModelPool = false;
     nPreviousGenerations = 0;
+  end
+  if (~exist('loadModels', 'var') || ~islogical(loadModels))
+    loadModels = false;
   end
   % prepare output variable
   nInstances = length(inst);
@@ -30,12 +41,16 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
 
   % load data from S-CMA-ES log files
   scmaesOutFile = sprintf('%s/%s_results_%d_%dD_%d.mat', opts.exppath, exp_id, fun, dim, id);
-  if exist(scmaesOutFile, 'file')
+  try
     SF = load(scmaesOutFile, 'cmaes_out', 'exp_settings', 'surrogateParams');
     cmaes_out = SF.cmaes_out;
     exp_settings = SF.exp_settings;
     exp_instances = SF.exp_settings.instances;
-  else
+    if (loadModels)
+      modellogOutFile = sprintf('%s/bbob_output/%s_modellog_%d_%dD_%d.mat', opts.exppath, exp_id, fun, dim, id);
+      MF = load(modellogOutFile, 'models', 'models2');
+    end
+  catch
     warning('Model file or scmaes output file is missing in f%d %dD (id %d).', fun, dim, id)
     return
   end
@@ -52,6 +67,34 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
       % and skip this instance if not
       continue;
     end
+
+    % BBOB fitness initialization
+    fgeneric('initialize', exp_settings.bbob_function, instanceNo, '/tmp/bbob_output/');
+
+    % identify snapshot generations
+    % TODO: make exponential gaps between snapshot generations
+    %       to have higher density at start of optim. run
+    %
+    cmo = cmaes_out{expInstanceId}{1};
+    % first, identify the first maxEval*dim orig-evaluated points
+    origEvaledIdStart = find(cmo.origEvaled, opts.startEval*dim, 'first');
+    lastOrigEvaledIdStart = origEvaledIdStart(end);
+    origEvaledIdMax = find(cmo.origEvaled, opts.maxEval*dim, 'first');
+    lastOrigEvaledIdMax = origEvaledIdMax(end);
+    % second, identify its generation
+    firstGeneration = cmo.generations(lastOrigEvaledIdStart);
+    lastGeneration = cmo.generations(lastOrigEvaledIdMax);
+    if (loadModels)
+      lastGeneration = min(lastGeneration, length(MF.models));
+    end
+    if (opts.uniqueGenerations)
+      % do not save the same generation multiple times, take only available
+      % number of snapshots
+      nSnapshots = min(nSnapshots, lastGeneration - firstGeneration + 1);
+      % gens = unique(gens);
+    end
+    % third place the snapshot generations equdistant in generations...
+    gens = floor(linspace(firstGeneration, lastGeneration, nSnapshots));
 
     % prepare output fields
     dataset{i_inst} = struct();
@@ -71,24 +114,6 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
       dataset{i_inst}.BDs      = cell(1, nSnapshots);
       dataset{i_inst}.cmaesStates = cell(1, nSnapshots);
     end
-
-    % BBOB fitness initialization
-    fgeneric('initialize', exp_settings.bbob_function, instanceNo, '/tmp/bbob_output/');
-
-    % identify snapshot generations
-    % TODO: make exponential gaps between snapshot generations
-    %       to have higher density at start of optim. run
-    %
-    cmo = cmaes_out{expInstanceId}{1};
-    % first, identify the first maxEval*dim orig-evaluated points
-    origEvaledId = find(cmo.origEvaled, opts.maxEval*dim, 'first');
-    lastOrigEvaledId = origEvaledId(end);
-    % second, identify its generation
-    lastGeneration = cmo.generations(lastOrigEvaledId);
-    % third place the snapshot generations equdistant in generations...
-    gens = floor(linspace(2, lastGeneration, nSnapshots+1));
-    % ...but do not start at the beginning
-    gens(1) = [];
 
     % Dataset generation
 
@@ -153,12 +178,26 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
           dataset{i_inst}.sampleOpts{sni} = sampleOpts;
         end
 
+        % save models if required
+        if (loadModels)
+          if (length(MF.models) >= g)
+            dataset{i_inst}.models{sni}  = MF.models{g};
+          else
+            dataset{i_inst}.models{sni}  = [];
+          end
+          if (length(MF.models2) >= g)
+            dataset{i_inst}.models2{sni} = MF.models2{g};
+          else
+            dataset{i_inst}.models{sni}  = [];
+          end
+        end
+
       end % generationShift loop
     end  % snapshots loop
 
     % create the Archive of with the original-evaluated points
     archive = Archive(dim);
-    orig_id = logical(cmo.origEvaled(1:lastOrigEvaledId));
+    orig_id = logical(cmo.origEvaled(1:lastOrigEvaledIdMax));
     X_orig = cmo.arxvalids(:,orig_id)';
     y_orig = cmo.fvalues(orig_id)';
     archive.save(X_orig, y_orig, cmo.generations(orig_id));
