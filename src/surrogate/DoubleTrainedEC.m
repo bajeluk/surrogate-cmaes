@@ -211,6 +211,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
       % Validation Generation -- raise the number of orig. evaluated points
       % once in several (opts.validationGenerationPeriod) generations
+      obj.validationPopSize = myeval(obj.validationPopSize);
       if (obj.validationPopSize > 0 && mod(obj.cmaesState.countiter, obj.validationGenerationPeriod) == 0)
         obj.restrictedParam = max(min(1, obj.validationPopSize/nLambdaRest), obj.restrictedParam);
       end
