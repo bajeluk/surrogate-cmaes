@@ -64,7 +64,7 @@ function [stats, meanRanks] = multCompStatsTable(data, varargin)
     for e = 1:nEvals
       fValData = cell2mat(arrayfun(@(x) values{x, d}(e, :), BBfunc, 'UniformOutput', false)');
       [~, mr] = postHocTest(fValData, 'friedman');
-      [~, stat] = multipleComparisonTest(fValData, 'iman');
+      [p, stat] = multipleComparisonTest(fValData, 'iman');
       meanRanks{d, e} = mr;
       stats{d, e} = stat;
     end
@@ -117,7 +117,7 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
 
   % dimensionality header
   fprintf(FID, 'Dim');
-  fprintf(FID, sprintf('& \\\\multicolumn{2}{c}{%dD}', dims));
+  fprintf(FID, sprintf('& \\\\multicolumn{2}{c}{$%d\\\\dm$}', dims));
   fprintf(FID, '\\\\\n');
 
   fprintf(FID, '\\cmidrule(lr){1-1}\n');
@@ -126,12 +126,22 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
   end
 
   % evaluations header
-  fprintf(FID, '{\\LARGE\\sfrac{\\nbFEs}{$\\text{min}(%s, %s)$}} & ', ...
-    bestSymbol, maxFunEvalsSymbol);
+  fprintf(FID, '{\\LARGE\\sfrac{\\nbFEs}{%s}} & ', bestSymbol);
   fprintf(FID, strjoin(repmat(evaluationsString, 1, nDims), ' & '));
   fprintf(FID, '\\\\\n');
   
   fprintf(FID, '\\midrule\n');
+
+  mins = cell(nDims, nEvals);
+  mins(1:nDims, 1:nEvals) = {Inf};
+
+  for d = 1:nDims
+    for e = 1:nEvals
+      r = meanRanks{d, e};
+      [~, ind] = min(r);
+      mins{d, e} = ind;
+    end
+  end
   
   % rows
   for i = 1:numOfData
@@ -141,7 +151,11 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
     for d = 1:nDims
       for e = 1:nEvals
         mr = meanRanks{d, e};
-        fprintf(FID, ' & %.2f', mr(i));
+        if i == mins{d, e}
+          fprintf(FID, ' & $\\bm{%.2f}$', mr(i));
+        else
+          fprintf(FID, ' & $%.2f$', mr(i));
+        end
       end
     end
     fprintf(FID, '\\\\\n');
@@ -156,7 +170,7 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
   fprintf(FID, statsSymbol);
   for d = 1:nDims
     for e = 1:nEvals
-      fprintf(FID, ' & %.2f', stats{d, e});
+      fprintf(FID, ' & $%.2f$', stats{d, e});
     end
   end
 

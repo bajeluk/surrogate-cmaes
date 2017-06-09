@@ -7,7 +7,9 @@ function [pv, summary] = postHocTest(data, varargin)
 %   Input:
 %     data - a table with benchmarking function as rows and algorithms as
 %            variables containing best achieved fitness values
-%     posthoc_test - 'Friedman' (default) | 'Quade' | 'FriedmanAlignedRanks'
+%     posthoc_test - 'friedman' (default) | 'quade' | 'aligned ranks'
+%     (Friedman Aligned Ranks)
+%     correction - 'bergmann' (default) | 'shaffer' | 'bonferroni'
 %
 %   Output:
 %     pv      - a table of adjusted p-values with algorithms in columns and
@@ -25,20 +27,31 @@ function [pv, summary] = postHocTest(data, varargin)
 
   if nargin >= 2
     if ismember(varargin{1}, ...
-      {'friedman', 'quade', 'aligned ranks'})
+      {'friedman', 'wilcoxon', 'quade', 'aligned ranks'})
       test = varargin{1};
     else
-      error('Unrecognized test ''%s''', varargin{1});
+      error('Unrecognized test: ''%s''', varargin{1});
     end
   else
     test = 'friedman';
   end
 
+  if nargin >= 3
+    if ismember(varargin{2}, ...
+      {'bergmann', 'shaffer', 'bonferroni'})
+      corr = varargin{2};
+    else
+      error('Unrecognized correction type: ''%s''', varargin{2});
+    end
+  else
+    corr = 'bergmann';
+  end
+
   % write the input file with floats in scientific notation
   dlmwrite(fin, data, 'precision', '%e', 'delimiter', ',');
 
-  args = sprintf(' -i "%s" -p "%s" -s "%s" --posthoc_test "%s"', ...
-    fin, fout_pv, fout_sum, test);
+  args = sprintf(' -i "%s" -p "%s" -s "%s" -t "%s" -c "%s"', ...
+    fin, fout_pv, fout_sum, test, corr);
   cmd = [fullfile(Rpath, Rscript), args];
 
   % execute the script and check exit code

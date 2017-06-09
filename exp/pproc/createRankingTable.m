@@ -113,7 +113,7 @@ function [rankTable, ranks, values] = createRankingTable(data, varargin)
       actualData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}, notEmptyData, 'UniformOutput', false));
       % return ranks in specific evaluations
       if strcmp(tableMode, 'evaluations')
-        if all(evaluations) <= 1
+        if all(evaluations <= 1)
           actualEvals = ceil(evaluations*size(actualData, 1));
         else
           actualEvals = evaluations;
