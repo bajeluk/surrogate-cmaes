@@ -57,15 +57,15 @@ cmaesParams.DispModulo = 50;
 cmaesParams.EvalInitialX = true;
 cmaesParams.EvalFinalMeanBeforeRestart = false;
 cmaesParams.SaveVariables = 'on';
-cmaesParams.SaveFilename = '[datapath filesep surrogateParams.exp_id ''_cmaesvars_'' surrogateParams.expFileID ''.mat'']';
+cmaesParams.SaveFilename = '[datapath filesep surrogateParams.exp_id ''_cmaesvars_'' surrogateParams.expFileID]';
 
 % BBCOMP client parameters
 
 bbcompParams.libpath = 'exp/vendor/bbcomp/library/';
 bbcompParams.libname = 'libbbcomp';
 bbcompParams.libhfile = 'exp/vendor/bbcomp/client_matlab/bbcomplib.h';
-bbcompParams.username = 'FILLME';
-bbcompParams.password = 'FILLME';
+bbcompParams.username = 'bajer';
+bbcompParams.password = 'FFvcwa43IKGVgS7OvIx8sAs';
 bbcompParams.loghistory = 1; % set to 0 to disable history
 bbcompParams.logfilepath = '[datapath filesep ''proxy_logs'']';
 bbcompParams.trackname = 'trial'; % 'BBComp2017-1OBJ';

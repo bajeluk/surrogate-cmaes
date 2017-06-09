@@ -57,7 +57,7 @@ cmaesParams.DispModulo = 50;
 cmaesParams.EvalInitialX = true;
 cmaesParams.EvalFinalMeanBeforeRestart = false;
 cmaesParams.SaveVariables = 'on';
-cmaesParams.SaveFilename = '[datapath filesep surrogateParams.exp_id ''_cmaesvars_'' surrogateParams.expFileID ''.mat'']';
+cmaesParams.SaveFilename = '[datapath filesep surrogateParams.exp_id ''_cmaesvars_'' surrogateParams.expFileID]';
 
 % BBCOMP client parameters
 
