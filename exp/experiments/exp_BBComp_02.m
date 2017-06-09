@@ -59,6 +59,13 @@ cmaesParams.EvalFinalMeanBeforeRestart = false;
 cmaesParams.SaveVariables = 'on';
 cmaesParams.SaveFilename = '[datapath filesep surrogateParams.exp_id ''_cmaesvars_'' surrogateParams.expFileID]';
 
+% BOBYQA parameters
+
+bobyqaParams.rho_beg = 0.3;
+bobyqaParams.rho_end = 1e-7;
+bobyqaParams.LBounds = 0;
+bobyqaParams.UBounds = 1;
+
 % BBCOMP client parameters
 
 bbcompParams.libpath = 'exp/vendor/bbcomp/library/';

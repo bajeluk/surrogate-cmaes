@@ -160,13 +160,23 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
     t = tic;
     
     %
-    % optimize bbcomp function using scmaes
+    % optimize bbcomp function using scmaes or bobyqa depending on budget
     %
-    [x, ye, stopflag, archive, varargout] = opt_s_cmaes_bbcomp(FUN, dim, ...
-        remainingEvals, cmaesParams, surrogateParams, xstart);
+    if maxfunevals / dim <= 15
+      [x, ye, stopflag, archive, varargout] = opt_bobyqa_bbcomp(FUN, dim, ...
+          remainingEvals, bobyqaParams, xstart);
 
-    remainingEvals = remainingEvals - varargout.evals;
-    surrogateParams.archive = archive;
+      evals = bbc_client.getEvaluations();
+      archive.X = zeros(evals, dim);
+      archive.y = zeros(evals, 1);
+      remainingEvals = maxfunevals - evals;
+    else
+      [x, ye, stopflag, archive, varargout] = opt_s_cmaes_bbcomp(FUN, dim, ...
+          remainingEvals, cmaesParams, surrogateParams, xstart);
+
+      remainingEvals = remainingEvals - varargout.evals;
+      surrogateParams.archive = archive;
+    end
     
     % #FE restart correction
     if (fmin < Inf)
