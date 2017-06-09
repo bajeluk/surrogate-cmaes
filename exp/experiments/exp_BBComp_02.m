@@ -1,4 +1,4 @@
-exp_id = 'exp_BBComp_01';
+exp_id = 'exp_BBComp_02';
 exp_description = 'Surrogate CMA-ES settings for BBComp 1-OBJ task, DTS with preselection(1pt), DTIterations={2}, Valid.Gen.Period/PopSz=4/2, PreSampleSize=0.75, PoI criterion, 2pop';
 
 % Surrogate manager parameters
@@ -14,14 +14,14 @@ surrogateParams.evoControlTrainNArchivePoints = '10*dim'; % will be myeval()'ed,
 surrogateParams.updaterType = 'rankDiff';
 surrogateParams.DTAdaptive_updateRate = 0.3;
 surrogateParams.DTAdaptive_updateRateDown = 0.6;
-surrogateParams.DTAdaptive_maxRatio = 0.9;
+surrogateParams.DTAdaptive_maxRatio = 0.8;
 surrogateParams.DTAdaptive_minRatio = 0.04;
 surrogateParams.DTAdaptive_lowErr = 0.15;
 surrogateParams.DTAdaptive_highErr = 0.40;
 surrogateParams.DTAdaptive_defaultErr = 0.10;
 
 surrogateParams.evoControlSwitchMode = 'none';
-surrogateParams.evoControlSwitchTime = 300; % 7*24*3600;
+surrogateParams.evoControlSwitchTime = 1*3600; % 7*24*3600;
 surrogateParams.evoControlMaxDoubleTrainIterations = 2;
 surrogateParams.evoControlPreSampleSize = 0.75;
 surrogateParams.evoControlNBestPoints = [0.2 1.0];
@@ -68,7 +68,7 @@ bbcompParams.username = 'FILLME';
 bbcompParams.password = 'FILLME';
 bbcompParams.loghistory = 1; % set to 0 to disable history
 bbcompParams.logfilepath = '[datapath filesep ''proxy_logs'']';
-bbcompParams.trackname = 'trial';
+bbcompParams.trackname = 'trial'; % 'BBComp2017-1OBJ';
 bbcompParams.proxyHostname = 'localhost';
 bbcompParams.proxyPort = 20000;
 bbcompParams.proxyTimeout = 10;

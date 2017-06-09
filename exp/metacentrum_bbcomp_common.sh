@@ -48,15 +48,17 @@ if [ "$HELP" = 1 ]; then
 fi
 
 if [ "$useMCR" = 1 ]  &&  ! make -q $MATLAB_FCN; then
-  echo "Warning: the binary $METACENTRUM_MODEL_BINARY"
-  echo "         is out of date."
-  echo "         Running MCR compilation (make model) in 5 sec..."
+  echo "Warning: the binary $METACENTRUM_BINARY"
+  echo "         is out of date:"
+  ls -l "$METACENTRUM_BINARY"
+  echo "         Running MCR compilation (make $MATLAB_FCN) in 5 sec..."
   sleep 5
-  make model
+  make "$MATLAB_FCN"
 else
   echo "###############################################################"
-  echo "Warning: the binary $METACENTRUM_MODEL_BINARY"
+  echo "Warning: the binary $METACENTRUM_BINARY"
   echo "         seems to be up-to-date."
+  ls -l "$METACENTRUM_BINARY"
   echo "         No compilation will happen now."
   echo "###############################################################"
   sleep 3
