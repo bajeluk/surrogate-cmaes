@@ -11,5 +11,5 @@ opts.testOrigRatio = 0.25;
 opts.dataset    = 'DTS_005_25_models';
 opts.saveModels = true;
 
-% opts.scratch = '/tmp/bajeluk';
-% [~, ~] = mkdir(opts.scratch);
+opts.scratch = [getenv('SCRATCH') '/tmp/bajeluk'];
+[~, ~] = mkdir(opts.scratch);
