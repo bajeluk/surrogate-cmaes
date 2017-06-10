@@ -161,6 +161,11 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 
           BBOB_DIR = [opts.scratch '/bbob_output'];
           fgeneric('initialize', fun, inst, BBOB_DIR);
+          % Info about tested BBOB function
+          bbob_handlesF = benchmarks('handles');
+          noisyHandles = benchmarksnoisy('handles');
+          bbob_handlesF(100+(1:length(noisyHandles))) = noisyHandles;
+          opts.bbob_func = bbob_handlesF{fun};
 
           % train & test the model on the 'dataNSnapshots' datasets
           % from the current instance

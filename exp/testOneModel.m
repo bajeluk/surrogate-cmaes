@@ -142,7 +142,7 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
         stats.(fname)(i) = predictionStats(y, y_models{i}, opts.statistics{st});
       end
       % calculate RDE statistic on independent populations
-      stats.rdeValid(i) = validationRDE(m, ds.cmaesStates{i}, 10);
+      stats.rdeValid(i) = validationRDE(m, ds.cmaesStates{i}, 10, opts.bbob_func);
 
       if (isfield(stats, 'mse') && isfield(stats, 'kendall') && isfield(stats, 'rde'))
         fprintf('Model (gen. # %3d, %3d pts) MSE = %e, Kendall = %.2f, rankDiffErr = %.2f\n', ...
@@ -191,7 +191,7 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
           stats.rde2models(i) = errRankMu(y_models{i}, y_models2{i}, m2.stateVariables.mu);
           stats.rde2(i) = errRankMu(y_models2{i}, y, m2.stateVariables.mu);
           % calculate RDE statistic on independent populations
-          stats.rdeValid2(i) = validationRDE(m2, ds.cmaesStates{i}, 10);
+          stats.rdeValid2(i) = validationRDE(m2, ds.cmaesStates{i}, 10, opts.bbob_func);
         else
           fprintf('Model2 (gen. # %3d) is not trained\n', g);
           y_models2{i} = [];
@@ -226,14 +226,19 @@ function dataset = mergeNewPoints(dataset, model, newPointsX, newPointsY, tolX)
   end
 end
 
-function rde = validationRDE(model, cmaesState, nRepeats)
+function rde = validationRDE(model, cmaesState, nRepeats, bbob_func_handle)
   % RDE on multiple validation test sets
   rdeValid = NaN(1, nRepeats);
   for rep = 1:nRepeats
     [~, xValidTest, ~] = sampleCmaesNoFitness(model.trainSigma, cmaesState.lambda, ...
         cmaesState, model.sampleOpts);
+
     try
-      preciseModel = ModelFactory.createModel('bbob', model.options, model.trainMean);
+      preciseOpts = model.options;
+      if (~isfield(preciseOpts, 'bbob_func'))
+        preciseOpts.bbob_func = bbob_func_handle;
+      end
+      preciseModel = ModelFactory.createModel('bbob', preciseOpts, model.trainMean);
       yTest = preciseModel.predict(xValidTest');
       yPredict = model.predict(xValidTest');
     catch err
