@@ -141,6 +141,9 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
         fname = opts.statistics{st};
         stats.(fname)(i) = predictionStats(y, y_models{i}, opts.statistics{st});
       end
+      % calculate RDE statistic on independent populations
+      stats.rdeValid(i) = validationRDE(m, ds.cmaesStates{i}, 10);
+
       if (isfield(stats, 'mse') && isfield(stats, 'kendall') && isfield(stats, 'rde'))
         fprintf('Model (gen. # %3d, %3d pts) MSE = %e, Kendall = %.2f, rankDiffErr = %.2f\n', ...
             g, size(m.getDataset_y(), 1), stats.mse(i), stats.kendall(i), stats.rde(i));
@@ -185,15 +188,22 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
         end
         if (m2.isTrained())
           y_models2{i} = m2.predict(ds.testSetX{i});
-          stats.rnk2Models(i) = errRankMu(y_models{i}, y_models2{i}, m2.stateVariables.mu);
+          stats.rde2models(i) = errRankMu(y_models{i}, y_models2{i}, m2.stateVariables.mu);
+          stats.rde2(i) = errRankMu(y_models2{i}, y, m2.stateVariables.mu);
+          % calculate RDE statistic on independent populations
+          stats.rdeValid2(i) = validationRDE(m2, ds.cmaesStates{i}, 10);
         else
+          fprintf('Model2 (gen. # %3d) is not trained\n', g);
           y_models2{i} = [];
-          stats.rnk2Models(i) = NaN;
+          stats.rde2models(i) = NaN;
+          stats.rde(i) = NaN;
+          stats.rdeValid2(i) = NaN;
         end
         models2{i} = m2;
       end
     else
       fprintf('Model (gen. # %3d) is not trained\n', g);
+      stats.rdeValid(i) = NaN;
     end
 
     models{i} = m;
@@ -215,3 +225,26 @@ function dataset = mergeNewPoints(dataset, model, newPointsX, newPointsY, tolX)
     end
   end
 end
+
+function rde = validationRDE(model, cmaesState, nRepeats)
+  % RDE on multiple validation test sets
+  rdeValid = NaN(1, nRepeats);
+  for rep = 1:nRepeats
+    [~, xValidTest, ~] = sampleCmaesNoFitness(model.trainSigma, cmaesState.lambda, ...
+        cmaesState, model.sampleOpts);
+    try
+      preciseModel = ModelFactory.createModel('bbob', model.options, model.trainMean);
+      yTest = preciseModel.predict(xValidTest');
+      yPredict = model.predict(xValidTest');
+    catch err
+      warning('BBOB precise model cannot be used: %s', err.message);
+      rde = NaN;
+      return;
+    end
+    % kendallValid(i) = corr(yPredict, yTest, 'type', 'Kendall');
+    % rmseValid(i) = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
+    rdeValid(rep) = errRankMu(yPredict, yTest, cmaesState.mu);
+  end
+  rde = nanmean(rdeValid);
+end
+

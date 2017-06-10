@@ -159,6 +159,9 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
           i_data = find(inst == dataInst, 1);
           fprintf('-- instance %2d --\n', inst);
 
+          BBOB_DIR = [opts.scratch '/bbob_output'];
+          fgeneric('initialize', fun, inst, BBOB_DIR);
+
           % train & test the model on the 'dataNSnapshots' datasets
           % from the current instance
           if (~isfield(opts, 'trySecondModel') || ~opts.trySecondModel)
@@ -178,6 +181,9 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
               modelsVarString(end+(1:2)) = { 'models', 'models2' };
             end
           end
+
+          % finalize BBOB function settings
+          fgeneric('finalize');
 
           % save results into output variables
           for st = 1:length(opts.statistics)
