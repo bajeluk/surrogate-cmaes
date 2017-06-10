@@ -28,19 +28,19 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 
   % Default input parameters settings
   if nargin < 5
-    instToTest = [1];
+    instToTest = 1;
     if nargin < 4
-      dimsToTest = [2];
+      dimsToTest = 2;
       if nargin < 3
-        funcToTest = [1];
+        funcToTest = 1;
       end
     end
   end
 
   % Ensure input parameters as cell arrays
   modelType = opts.modelType;
-  if ~iscell(modelType)         modelType = {modelType}; end
-  if ~iscell(modelOptions)      modelOptions = {modelOptions}; end
+  if ~iscell(modelType),        modelType = {modelType}; end
+  if ~iscell(modelOptions),     modelOptions = {modelOptions}; end
   nModel = length(modelOptions);
   if length(modelType) == 1 && nModel > 1
     modelType = modelType(ones(nModel, 1));
@@ -95,7 +95,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 
       % Check that we really have this data
       if (isempty(data{f_data, d_data}))
-        warning(sprintf('Data of func %d in dim %d is missing in the dataset!', dataFunc(f_data), dataDims(d_data)));
+        warning('Data of func %d in dim %d is missing in the dataset!', dataFunc(f_data), dataDims(d_data));
         continue;
       end
 
@@ -119,7 +119,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
             end
             finishedInstances = ismember(instToTest, oldResults.instances);
           catch err
-            warning('File %s is corrupted. Will be rewritten.', modelFile);
+            warning('File %s is corrupted. Will be rewritten. Error: %s', modelFile, err.message);
           end
           if (all(finishedInstances))
             fprintf('All instances in %s already calculated. Skipping model testing.\n', modelFile);
@@ -161,9 +161,23 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 
           % train & test the model on the 'dataNSnapshots' datasets
           % from the current instance
-          [new_stats, thisModels, y_models(ii, :)] = ...
-              testOneModel(modelType{m}, modelOptions{m}, ...
-              data{f_data, d_data, i_data}, dataNSnapshots, opts);
+          if (~isfield(opts, 'trySecondModel') || ~opts.trySecondModel)
+            [new_stats, thisModels, y_models(ii, :)] = ...
+                testOneModel(modelType{m}, modelOptions{m}, ...
+                data{f_data, d_data, i_data}, dataNSnapshots, opts);
+            modelsVarString = { 'y_models' };
+            if (opts.saveModels)
+              modelsVarString(end+1) = 'models';
+            end
+          else
+            [new_stats, thisModels, y_models(ii, :), thisModels2, y_models2(ii, :)] = ...
+                testOneModel(modelType{m}, modelOptions{m}, ...
+                data{f_data, d_data, i_data}, dataNSnapshots, opts);
+            modelsVarString = { 'y_models', 'y_models2' };
+            if (opts.saveModels)
+              modelsVarString(end+(1:2)) = { 'models', 'models2' };
+            end
+          end
 
           % save results into output variables
           for st = 1:length(opts.statistics)
@@ -175,10 +189,11 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
           instances = instToTest(1:ii);
           if (opts.saveModels)
             models(ii, :) = thisModels;
-            save(modelFile, 'stats', 'models', 'y_models', 'instances', 'modelOptions', 'fun', 'dim')
-          else
-            save(modelFile, 'stats', 'y_models', 'instances', 'modelOptions', 'fun', 'dim')
+            if (isfield(opts, 'trySecondModel') && opts.trySecondModel)
+              models2(ii, :) = thisModels2;
+            end
           end
+          save(modelFile, 'stats', modelsVarString{:}, 'instances', 'modelOptions', 'fun', 'dim')
         end  % instance loop
       end  % model loop
     end  % function loop

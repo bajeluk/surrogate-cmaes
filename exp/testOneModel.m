@@ -63,7 +63,7 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
       thisArchive = ds.archive.duplicate();
       thisArchive = thisArchive.restrictToGenerations(1:(g-1));
 
-      % prepare the testing population
+      % prepare the population for 1st model training, with no points orig-evaluated
       thisPopulation = Population(lambda, dim);
       thisPopulation = thisPopulation.addPoints(ds.testSetX{i}', zeros(size(ds.testSetY{i}')), ...
           ds.testSetX{i}', NaN(size(ds.testSetX{i}')), 0);
@@ -109,8 +109,12 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
       % there IS some model in the dataset, so use it
       m = ModelFactory.createModel(modelType, ds.models{i}.options, ds.means{i});
       m = m.clone(ds.models{i});
-      
-      % prepare archive just as it was for the model
+    end
+
+
+    if m.isTrained()
+      % prepare archive just as it was in the model's generation after
+      % its training
       thisArchive = ds.archive.duplicate();
       thisArchive = thisArchive.restrictToGenerations(1:(g));
 
@@ -126,11 +130,8 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
       % supplied from dataset 'ds'
       thisX = ds.testSetX{i}(nOrigPoints+1:end,:);
       thisPopulation = thisPopulation.addPoints(thisX', NaN(1,lambda - nOrigPoints), ...
-          thisX', NaN(size(thisX')), 0, 4);      
-    end
+          thisX', NaN(size(thisX')), 0, 4);
 
-
-    if m.isTrained()
       % get the (first) model prediction
       y = ds.testSetY{i};
       y_models{i} = m.predict(ds.testSetX{i});
@@ -151,7 +152,7 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
           m2 = ModelFactory.createModel(modelType, ds.models2{i}.options, ds.means{i});
           m2 = m2.clone(ds.models2{i});
         else
-          assert(all(m.trainMean == ds.means{i}), 'trainMean is not actual');
+          % assert(all(m.trainMean == ds.means{i}), 'trainMean is not actual');
           m2 = ModelFactory.createModel(modelType, m.options, m.trainMean);
           m2 = m2.clone(m);
           % add such points to the re-trained models' dataset which were
