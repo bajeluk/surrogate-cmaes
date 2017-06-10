@@ -69,7 +69,10 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
     end
 
     % BBOB fitness initialization
-    fgeneric('initialize', exp_settings.bbob_function, instanceNo, '/tmp/bbob_output/');
+    user = getenv('USER');
+    BBOB_PATH = ['/tmp/' user '/bbob_output'];
+    [~, ~] = mkdir(BBOB_PATH);
+    fgeneric('initialize', exp_settings.bbob_function, instanceNo, BBOB_PATH);
 
     % identify snapshot generations
     % TODO: make exponential gaps between snapshot generations
@@ -184,13 +187,27 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
 
         % save models if required
         if (loadModels)
-          if (length(MF.models) >= (g-1))
-            dataset{i_inst}.models{sni}  = MF.models{(g-1)};
-          else
-            dataset{i_inst}.models{sni}  = [];
-          end
-          if (length(MF.models2) >= g)
-            dataset{i_inst}.models2{sni} = MF.models2{(g-1)};
+          % save only models from within one generation from current generation 'g'
+          if (length(MF.models) >= g && ~isempty(MF.models{g}) ...
+              && MF.models{g}.isTrained() && abs(MF.models{g}.trainGeneration - g) <= 1)
+            % Sometimes it happens that we have saved a model one generation younger...
+            if (MF.models{g}.trainGeneration - g == 1)
+              thisG = g-1;
+            else
+              thisG = g;
+            end
+            if (MF.models{thisG}.isTrained())
+              dataset{i_inst}.models{sni}  = MF.models{thisG};
+            else
+              dataset{i_inst}.models{sni}  = [];
+            end
+            % Try to save also the second model, if it is from that generation
+            if (length(MF.models2) >= thisG && ~isempty(MF.models2{thisG}) ...
+                && MF.models2{thisG}.isTrained() && MF.models2{thisG}.trainGeneration == g)
+              dataset{i_inst}.models2{sni} = MF.models2{thisG};
+            else
+              dataset{i_inst}.models2{sni}  = [];
+            end
           else
             dataset{i_inst}.models{sni}  = [];
           end

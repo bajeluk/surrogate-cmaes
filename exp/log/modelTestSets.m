@@ -148,12 +148,12 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
 
     end  % function loop end
 
-  end  % dimension loop end
+    % save the dataset
+    maxEval = opts.maxEval;
+    nSnapshotsPerRun = opts.nSnapshotsPerRun;
+    save(opts.datasetFile, 'ds', 'fun', 'dim', 'inst', 'maxEval', 'nSnapshotsPerRun', 'opts');
 
-  % save the dataset
-  maxEval = opts.maxEval;
-  nSnapshotsPerRun = opts.nSnapshotsPerRun;
-  save(opts.datasetFile, 'ds', 'fun', 'dim', 'inst', 'maxEval', 'nSnapshotsPerRun', 'opts');
+  end  % dimension loop end
 end
 
 function [intToTest] = restricToDataset(intToTest, dataInt, identifier)
