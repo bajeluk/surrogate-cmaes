@@ -4,6 +4,7 @@
 # It is expected to be located in exp/experiments/
 
 export EXPID='exp_DTSadapt_01'
+export DATASET="DTS_005_25_models"
 
 # Enable this option for using Matlab MCR compilated binaries:
 export useMCR=1
@@ -45,8 +46,14 @@ OPTS=""
 
 INST="[1 2 3 4 5]"
 
-ID=23
-DIM="[2 3]"
+ID=2
+DIM=2
+QUEUE="4:00:00"
+FUNC="[`seq -s' ' 1 24`]"
+subtask
+
+ID=3
+DIM=3
 QUEUE="4:00:00"
 FUNC="[`seq -s' ' 1 24`]"
 subtask
