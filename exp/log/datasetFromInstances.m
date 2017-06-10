@@ -156,8 +156,12 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
           'xintobounds', @xintobounds, ...
           'origPopSize', lambda);
 
-        % Generate fresh CMA-ES' \lambda offsprings
-        [~, arxvalid, ~] = sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
+        if (isfield(cmo, 'arxvalids') && ~isempty(cmo.arxvalids))
+          arxvalid = cmo.arxvalids(:, cmo.generations == g);
+        else
+          % Generate fresh CMA-ES' \lambda offsprings
+          [~, arxvalid, ~] = sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
+        end
 
         % Save everything needed
         if (isForModelPool)
@@ -180,13 +184,13 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
 
         % save models if required
         if (loadModels)
-          if (length(MF.models) >= g)
-            dataset{i_inst}.models{sni}  = MF.models{g};
+          if (length(MF.models) >= (g-1))
+            dataset{i_inst}.models{sni}  = MF.models{(g-1)};
           else
             dataset{i_inst}.models{sni}  = [];
           end
           if (length(MF.models2) >= g)
-            dataset{i_inst}.models2{sni} = MF.models2{g};
+            dataset{i_inst}.models2{sni} = MF.models2{(g-1)};
           else
             dataset{i_inst}.models{sni}  = [];
           end
@@ -209,7 +213,7 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
     dataset{i_inst}.id        = id;
     dataset{i_inst}.instance  = instanceNo;
     dataset{i_inst}.maxEval   = opts.maxEval;
-
+    
     fgeneric('finalize');
   end  % instances loop
 end

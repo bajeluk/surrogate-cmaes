@@ -151,7 +151,9 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
           m2 = ModelFactory.createModel(modelType, ds.models2{i}.options, ds.means{i});
           m2 = m2.clone(ds.models2{i});
         else
-          m2 = m;
+          assert(all(m.trainMean == ds.means{i}), 'trainMean is not actual');
+          m2 = ModelFactory.createModel(modelType, m.options, m.trainMean);
+          m2 = m2.clone(m);
           % add such points to the re-trained models' dataset which were
           % really orig-evaluated in this generation
           origPointsIdx = (ds.archive.gens == g);
@@ -163,7 +165,7 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
             % the experiment, so add new points into the population
             % Note: don't forget to erase 'model2' from the dataset 'ds'
             %       if you want the second model retrain!
-            nOrigPoints = opts.testOrigRatio * lambda;
+            nOrigPoints = ceil(opts.testOrigRatio * lambda);
             nNewOrigPoints = max(0, nOrigPoints - sum(thisArchive.gens == g));
 
             if (nNewOrigPoints > 1)
@@ -172,6 +174,7 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
               newY = ds.testSetY{i}(nUsedOrigPoints + (1:nNewOrigPoints));
               phase = 1;
               thisPopulation = thisPopulation.updateYValue(newX', newY', nNewOrigPoints, phase);
+              m2.dataset = mergeNewPoints(m2.dataset, m2, newX, newY, opts.tolX);
             end
           end
 
@@ -205,7 +208,7 @@ function dataset = mergeNewPoints(dataset, model, newPointsX, newPointsY, tolX)
 
   for i = 1:size(newPointsX, 1)
     d = bsxfun(@minus, dataset.X, XT(i,:));
-    if (~all(abs(d) <= tolX))
+    if (~all(min(abs(d), [], 1) <= tolX))
       dataset.X = [dataset.X; XT(i, :)];
       dataset.y = [dataset.y; newPointsY(i)];
     end
