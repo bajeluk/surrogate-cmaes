@@ -48,13 +48,13 @@ INST="[1 2 3 4 5]"
 
 ID=2
 DIM=2
-QUEUE="4:00:00"
+QUEUE="24:00:00"
 FUNC="[`seq -s' ' 1 24`]"
 subtask
 
 ID=3
 DIM=3
-QUEUE="4:00:00"
+QUEUE="24:00:00"
 FUNC="[`seq -s' ' 1 24`]"
 subtask
 

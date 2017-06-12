@@ -20,9 +20,9 @@ MATLAB_BINARY_CALL="exp/metacentrum_testmodels"
 if [ -z "$DATASET" ]; then
   DATASET="$EXPPATH_SHORT/$EXPID/dataset/DTS_005.mat"
   echo "There was no dataset, setting the dataset to default: $DATASET"
-elif ! grep -q '^/' <<< "$DATASET"; then
-  DATASET="$EXPPATH_SHORT/$EXPID/dataset/$DATASET"
-  echo "There was no absolute path for the dataset, setting to: $DATASET"
+elif ! grep -q '/.*\.mat$' <<< "$DATASET"; then
+  DATASET="$EXPPATH_SHORT/$EXPID/dataset/${DATASET}.mat"
+  echo "There was no path for the dataset, setting to: $DATASET"
 fi
 
 export SCRATCHDIR

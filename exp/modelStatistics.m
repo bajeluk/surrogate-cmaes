@@ -55,7 +55,7 @@ function [aggRDE_table, aggMSE_table, RDEs, MSEs] = modelStatistics(modelFolders
   assert(isnumeric(functions), '''funcToTest'' has to be integer')
   assert(isnumeric(dimensions), '''dimsToTest'' has to be integer')
   assert(isnumeric(instances), '''instToTest'' has to be integer')
-  assert(isnumeric(snapshots), '''instToTest'' has to be integer')
+  assert(isnumeric(snapshots), '''snpsToTest'' has to be integer')
 
   % take all *model_* directories in the given directory if not directories
   % *model_* given
