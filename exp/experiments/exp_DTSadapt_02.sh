@@ -71,7 +71,7 @@ FUNC="[`seq -s' ' 1 8`]"
 subtask
 FUNC="[`seq -s' ' 9 16`]"
 subtask
-FUNC="[`seq -s' ' 19 24`]"
+FUNC="[`seq -s' ' 17 24`]"
 subtask
 
 ID=20

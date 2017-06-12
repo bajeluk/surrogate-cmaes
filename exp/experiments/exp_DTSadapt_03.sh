@@ -46,6 +46,14 @@ OPTS=""
 
 INST="[1 2 3 4 5]"
 
+ID=13
+DIM=10
+QUEUE="24:00:00"
+FUNC="[17 18]"
+subtask
+
+exit 0
+
 ID=2
 DIM=2
 QUEUE="24:00:00"
@@ -71,7 +79,7 @@ FUNC="[`seq -s' ' 1 8`]"
 subtask
 FUNC="[`seq -s' ' 9 16`]"
 subtask
-FUNC="[`seq -s' ' 19 24`]"
+FUNC="[`seq -s' ' 17 24`]"
 subtask
 
 ID=20
