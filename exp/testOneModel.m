@@ -65,7 +65,7 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
 
       % prepare the population for 1st model training, with no points orig-evaluated
       thisPopulation = Population(lambda, dim);
-      thisPopulation = thisPopulation.addPoints(ds.testSetX{i}', zeros(size(ds.testSetY{i}')), ...
+      thisPopulation = thisPopulation.addPoints(ds.testSetX{i}', [], ...
           ds.testSetX{i}', NaN(size(ds.testSetX{i}')), 0);
 
       % Default options for generating trainsets
@@ -91,8 +91,9 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
             fprintf('Empty ds.testSetX{%d, %d}, not training ModelPool',i, j);
             continue;
           end
+          % prepare the population, with no points orig-evaluated
           thisPopulation = Population(lambda, dim);
-          thisPopulation = thisPopulation.addPoints(ds.testSetX{i, j}', zeros(size(ds.testSetY{i, j}')), ...
+          thisPopulation = thisPopulation.addPoints(ds.testSetX{i, j}', [], ...
           ds.testSetX{i,j}', NaN(size(ds.testSetX{i,j}')), 0);
 
           thisArchive = ds.archive.duplicate();
@@ -192,12 +193,22 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
           stats.rde2(i) = errRankMu(y_models2{i}, y, m2.stateVariables.mu);
           % calculate RDE statistic on independent populations
           stats.rdeValid2(i) = validationRDE(m2, ds.cmaesStates{i}, 10, opts.bbob_func);
+          y_m1_replace = y_models{i};
+          y_m1_replace(thisPopulation.origEvaled) = y(thisPopulation.origEvaled);
+          stats.rdeM1_M1WReplace(i) = errRankMu(y_models{i}, y_m1_replace, m.stateVariables.mu);
+          y_m2_replace = y_models2{i};
+          y_m2_replace(thisPopulation.origEvaled) = y(thisPopulation.origEvaled);
+          stats.rdeM1_M2WReplace(i) = errRankMu(y_models{i}, y_m2_replace, m.stateVariables.mu);
+          stats.rdeM2_M2WReplace(i) = errRankMu(y_models2{i}, y_m2_replace, m2.stateVariables.mu);
         else
           fprintf('Model2 (gen. # %3d) is not trained\n', g);
           y_models2{i} = [];
           stats.rde2models(i) = NaN;
           stats.rde(i) = NaN;
           stats.rdeValid2(i) = NaN;
+          stats.rdeM1_M1WReplace(i) = NaN;
+          stats.rdeM1_M2WReplace(i) = NaN;
+          stats.rdeM2_M2WReplace(i) = NaN;
         end
         models2{i} = m2;
       end
