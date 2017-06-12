@@ -12,9 +12,11 @@ function [paramSignificance, p, tb, stats] = promisingParam(evals, dataSettings,
 %   settings - pairs of property (string) and value or struct with 
 %              properties as fields:
 %
-%     'Alpha'     - anovan and multcompare significance level
-%     'EvalRatio' - fractions of best-data evaluations to be computed
-%     'Target'    - target distance to the fitness function optimum
+%     'Alpha'       - anovan and multcompare significance level
+%     'EvalRatio'   - fractions of best-data evaluations to be computed
+%     'Evaluations' - number of evaluations used from data
+%     'Instances'   - number of instances used for analysis
+%     'Target'      - target distance to the fitness function optimum
 %
 % Output:
 %   paramSignificance - number of functions, where the parameter value was
@@ -37,10 +39,11 @@ function [paramSignificance, p, tb, stats] = promisingParam(evals, dataSettings,
   targetValue = defopts(settings, 'Target', 1e-8);
   evalRatio = defopts(settings, 'EvalRatio', 1);
   alpha = defopts(settings, 'Alpha', 0.05);
+  nInstances = defopts(settings, 'Instances', 15);
+  nEvals = defopts(settings, 'Evaluations', 250);
   
   % important sizes
   [nFunc, nDims, nSettings] = size(evals);
-  [nEvals, nInstances] = size(evals{1,1,1});
   nEvalNumbers = length(evalRatio);
   
   % identify settings differences
@@ -81,7 +84,12 @@ function [paramSignificance, p, tb, stats] = promisingParam(evals, dataSettings,
   for f = 1:nFunc
     for d = 1:nDims
       for i = 1:nInstances
-        actualEvals = cellfun(@(x) x(:, i), evals(f, d, :), 'UniformOutput', false);
+        emptyEvals = cellfun(@isempty, evals(f, d, :));
+        % empty function f in dimension d
+        if all(emptyEvals)
+          break
+        end
+        actualEvals = cellfun(@(x) x(:, i), evals(f, d, ~emptyEvals), 'UniformOutput', false);
         actualEvals = permute(actualEvals, [1, 3, 2]);
         actualEvals = [actualEvals{:}];
         % number of evaluations needed by the best data to reach the
@@ -92,17 +100,23 @@ function [paramSignificance, p, tb, stats] = promisingParam(evals, dataSettings,
         % get function values in evalNumbers and save them for each
         % settings and instance
         for e = 1:nEvalNumbers
-          anovaEvals{e}(i, :) = actualEvals(evalNumbers(e), :);
+          anovaEvals{e}(i, :) = actualEvals(evalNumbers(e), ~emptyEvals);
         end
       end
       
       % perform anova for each number of evaluations
       for e = 1:nEvalNumbers
         % reshape evaluations to vector
-        actualAnovaEvals = reshape(anovaEvals{e}, [1, nInstances*nSettings]);
+        actualAnovaEvals = reshape(anovaEvals{e}, [1, numel(anovaEvals{e})]);
+        % test data normality
+        % ***************************************************************
+        % TODO: There was supposed to be a normality test. However,
+        % distance from the function optimum in a specific number of
+        % function evaluations has not normal distribution in general.
+        % ***************************************************************
         % anova input cannot contain NaN value if it does, omit it from
         % significance computation
-        if ~any(any(isnan(actualAnovaEvals)))
+        if (~isempty(actualAnovaEvals) && ~any(any(isnan(actualAnovaEvals))))
           % perform anova
           [p{f, d, e}, tb{f, d, e}, stats{f, d, e}] = ...
             anovan(actualAnovaEvals, difFieldVals, ...
@@ -114,7 +128,7 @@ function [paramSignificance, p, tb, stats] = promisingParam(evals, dataSettings,
             signifID = find(signifID');
             for id = signifID
               [mult_c, mult_mat] = multcompare(stats{f, d, e}, ...
-                'Dimension', id, 'Display', 'on');
+                'Dimension', id, 'Display', 'off');
               [~, bestParId] = min(mult_mat(:, 1));
               % add values comparable with the best
               comparableValues = mult_c(mult_c(:, 6) >  alpha ...

@@ -32,18 +32,16 @@ end
 % path settings
 exppath = fullfile('exp', 'experiments');
 
-dts_path = fullfile(exppath, 'DTS-CMA-ES_05_2pop');
-maes_path = fullfile(exppath, 'exp_maesEC_14_2_10_cmaes_20D');
+adts_path = fullfile(exppath, 'DTS-CMA-ES_05_2pop');
+dts_path = fullfile(exppath, 'exp_doubleEC_23');
 
 cmaes_path = fullfile(exppath, 'CMA-ES');
 saacmes_path = fullfile(exppath, 'BIPOP-saACM-k');
 lmm_path = fullfile(exppath, 'lmm-CMA-ES');
 
 % load data
-dataFolders = {gen_path; ...
-               gen_path20D; ...
+dataFolders = {adts_path; ...
                dts_path; ...
-               maes_path; ...
                cmaes_path; ...
                saacmes_path; ...
                lmm_path};
@@ -51,19 +49,13 @@ dataFolders = {gen_path; ...
 [evals, settings] = catEvalSet(dataFolders, funcSet);
 
 % find ids in settings
-clear findSet
-findSet.modelType = 'gp';
-findSet.evoControlModelGenerations = 5;
-gp_Id = getStructIndex(settings, findSet);
 
-findSet.modelType = 'rf';
-findSet.evoControlModelGenerations = 1;
-rf_Id = getStructIndex(settings, findSet);
+% adaptive DTS settings id
 
 clear findSet
-findSet.evoControl = 'maes';
-findSet.modelOpts.predictionType = 'fvalues';
-ma_Id = getStructIndex(settings, findSet);
+findSet.evoControlRestrictedParam = 0.05;
+findSet.modelOpts.predictionType = 'sd2';
+dts_Id = getStructIndex(settings, findSet);
 
 clear findSet
 findSet.algName = 'CMA-ES';
@@ -72,22 +64,14 @@ findSet.algName = 'BIPOP-saACM-k';
 saacm_Id = getStructIndex(settings, findSet);
 findSet.algName = 'lmm-CMA-ES';
 lmm_Id = getStructIndex(settings, findSet);
-findSet.algName = 'DTS-CMA-ES_05_2pop';
-dts_Id = getStructIndex(settings, findSet);
              
 % extract data
-scmaes_gp_data = evals(:, :, gp_Id);
-scmaes_rf_data = evals(:, :, rf_Id);
 cmaes_data     = evals(:, :, cma_Id);
-maes_data      = evals(:, :, ma_Id);
 saacmes_data   = evals(:, :, saacm_Id);
 dtscmaes_data  = evals(:, :, dts_Id);
 lmmcmaes_data  = evals(:, :, lmm_Id);
 
 % color settings
-scmaes_rfCol = getAlgColors(2);
-scmaes_gpCol = getAlgColors('scmaes');
-maesCol      = getAlgColors(3);
 cmaesCol     = getAlgColors('cmaes');
 saacmesCol   = getAlgColors('saacmes');
 dtsCol       = getAlgColors('dtscmaes');
@@ -95,16 +79,13 @@ lmmCol       = getAlgColors('lmmcmaes');
 
 % aggregate data & settings
 data = {cmaes_data, ...
-        maes_data, ...
         lmmcmaes_data, ...
         saacmes_data, ...
-        scmaes_gp_data, ...
-        scmaes_rf_data, ...
         dtscmaes_data};
 
-datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', '{}^{s*}ACMES-k', 'S-CMA-ES GP', 'S-CMA-ES RF', 'DTS-CMA-ES'};
+datanames = {'CMA-ES', 'lmm-CMA-ES', '{}^{s*}ACMES-k', 'DTS-CMA-ES'};
 
-colors = [cmaesCol; maesCol; lmmCol; saacmesCol; scmaes_gpCol; scmaes_rfCol; dtsCol]/255;
+colors = [cmaesCol; lmmCol; saacmesCol; dtsCol]/255;
 
 if (~exist(tmpFName, 'file'))
   save(tmpFName);
@@ -112,7 +93,7 @@ end
 
 end
 
-%% Algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES  
+%% Algorithm comparison: CMA-ES, lmm-CMA-ES, saACMES, DTS-CMA-ES  
 % Scaled function values of f1-f24 in dimension 5.
 
 plotFuns = 1:24;
@@ -141,7 +122,7 @@ han = relativeFValuesPlot(data, ...
                             
 print2pdf(han, pdfNames, 1)
 
-%% Algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES  
+%% Algorithm comparison: CMA-ES, lmm-CMA-ES, saACMES, DTS-CMA-ES  
 % Scaled function values of f1-f24 in dimension 20.
 
 plotFuns = 1:24;
@@ -170,7 +151,7 @@ han = relativeFValuesPlot(data, ...
                             
 print2pdf(han, pdfNames, 1)
 
-%% Aggregated algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES  
+%% Aggregated algorithm comparison: CMA-ES, lmm-CMA-ES, saACMES, DTS-CMA-ES  
 % Aggregated  scaled function values in dimensions 5 and 20.
 
 plotFuns = 1:24;
@@ -205,21 +186,14 @@ tableFunc = funcSet.BBfunc;
 tableDims = [5, 20];
 
 resultDuelTable = fullfile(tableFolder, 'duelTable.tex');
-resultStatsTable = fullfile(tableFolder, 'statsTable.tex');
 
-datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', '\\saACMES-k', 'S-CMA-ES GP', 'S-CMA-ES RF', 'DTS-CMA-ES'};
+datanames = {'CMA-ES', 'lmm-CMA-ES', '\\saACMES-k', 'DTS-CMA-ES'};
 
 [table, ranks] = duelTable(data, 'DataNames', datanames, ...
                             'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
                             'TableFuns', tableFunc, 'TableDims', tableDims, ...
                             'Evaluations', [1/3 1], ...
                             'ResultFile', resultDuelTable);
-
-[stats, meanRanks] = multCompStatsTable(data, 'DataNames', datanames, ...
-                       'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
-                       'TableFuns', tableFunc, 'TableDims', tableDims, ...
-                       'Evaluations', [1/3 1], ...
-                       'ResultFile', resultStatsTable);
 
 %% final clearing
 close all
