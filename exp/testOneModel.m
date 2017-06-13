@@ -153,40 +153,50 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
       if (opts.trySecondModel)
         % Try also the second (retrained) model
         if (isfield(ds, 'models2') && length(ds.models2) >= i && ~isempty(ds.models2{i}))
+          % clone the loaded model
           m2 = ModelFactory.createModel(modelType, ds.models2{i}.options, ds.means{i});
           m2 = m2.clone(ds.models2{i});
         else
-          % assert(all(m.trainMean == ds.means{i}), 'trainMean is not actual');
+          % clone the first model (M1)
           m2 = ModelFactory.createModel(modelType, m.options, m.trainMean);
           m2 = m2.clone(m);
-          % add such points to the re-trained models' dataset which were
-          % really orig-evaluated in this generation
-          origPointsIdx = (ds.archive.gens == g);
-          m2.dataset = mergeNewPoints(m2.dataset, m2, ds.archive.X(origPointsIdx,:), ...
-              ds.archive.y(origPointsIdx), opts.tolX);
-          
-          if (opts.testOrigRatio > 0)
-            % the testing origRatio is (probably) different to the used in
-            % the experiment, so add new points into the population
-            % Note: don't forget to erase 'model2' from the dataset 'ds'
-            %       if you want the second model retrain!
-            nOrigPoints = ceil(opts.testOrigRatio * lambda);
-            nNewOrigPoints = max(0, nOrigPoints - sum(thisArchive.gens == g));
+        end
+        retrainM2 = ~ m2.isTrained();
 
-            if (nNewOrigPoints > 1)
-              nUsedOrigPoints = length(thisPopulation.getOriginalY());
-              newX = ds.testSetX{i}(nUsedOrigPoints + (1:nNewOrigPoints), :);
-              newY = ds.testSetY{i}(nUsedOrigPoints + (1:nNewOrigPoints));
-              phase = 1;
-              thisPopulation = thisPopulation.updateYValue(newX', newY', nNewOrigPoints, phase);
-              m2.dataset = mergeNewPoints(m2.dataset, m2, newX, newY, opts.tolX);
-            end
-          end
+        % add such points to the re-trained models' dataset which were
+        % really orig-evaluated in this generation
+        origPointsIdx = (thisArchive.gens == g);
+        loadedM2DatasetSize = length(m2.dataset.y);
+        m2.dataset = mergeNewPoints(m2.dataset, m2, thisArchive.X(origPointsIdx,:), ...
+            thisArchive.y(origPointsIdx), opts.tolX);
+        if (loadedM2DatasetSize < length(m2.dataset.y))
+          % retrain the M2 model if the dataset has just enlarged
+          retrainM2 = true;
+        end
 
+        nRequiredOrigPoints = ceil(opts.testOrigRatio * lambda);
+        nRequiredNewOrigPoints = max(0, nRequiredOrigPoints - sum(origPointsIdx));
+
+        if (nRequiredNewOrigPoints >= 1)
+          % the testing origRatio is (probably) different to the used in
+          % the experiment, so add new points into the population
+          % Note: don't forget to erase 'model2' from the dataset 'ds'
+          %       if you want the second model retrain!
+          nOrigPointsInPop = length(thisPopulation.getOriginalY());
+          newX = ds.testSetX{i}(nOrigPointsInPop + (1:nRequiredNewOrigPoints), :);
+          newY = ds.testSetY{i}(nOrigPointsInPop + (1:nRequiredNewOrigPoints));
+          phase = 1;
+          thisPopulation = thisPopulation.updateYValue(newX', newY', nRequiredNewOrigPoints, phase);
+          m2.dataset = mergeNewPoints(m2.dataset, m2, newX, newY, opts.tolX);
+          retrainM2 = true;
+        end
+
+        if (retrainM2)
           % train the retrained model
           m2 = m2.train([], [], ds.cmaesStates{i}, ds.sampleOpts{i}, ...
               thisArchive, thisPopulation);
         end
+
         if (m2.isTrained())
           y_models2{i} = m2.predict(ds.testSetX{i});
           stats.rde2models(i) = errRankMu(y_models{i}, y_models2{i}, m2.stateVariables.mu);
