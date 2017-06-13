@@ -62,14 +62,14 @@ for idDim = dim_chosen
     % This is for loading errors from modelStatistics.mat file:
     rnkValid{f, idDim} = rAll{rAll.dim == dim & rAll.fun == f, 'rdeValid2'};
     rnkValid{f, idDim} = rnkValid{f, idDim}(~isnan(rnkValid{f, idDim}));
-    rnkMeasured{f, idDim} = rAll{rAll.dim == dim & rAll.fun == f, 'rde2'};
+    rnkMeasured{f, idDim} = rAll{rAll.dim == dim & rAll.fun == f, 'rdeM1_M2WReplace'};
     rnkMeasured{f, idDim} = rnkMeasured{f, idDim}(~isnan(rnkMeasured{f, idDim}));
   end
 
   fig1 = figure();
   fig1.Name = [num2str(dim) 'D'];
-  fig1.Position(3) = 1100;
-  fig1.Position(4) = 800;
+  fig1.Position(3) = 600;
+  fig1.Position(4) = 1200;
 
   i = 1;
   for idFun = 1:length(functions)

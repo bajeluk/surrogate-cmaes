@@ -112,6 +112,8 @@ function [resultTableAll, resultTableAgg] = modelStatisticsAdaptation(modelFolde
             % load the model testing results
             data = load(fileName);
             data_instances = ismember(data.instances, instances);
+            max_instance = min(size(data.stats.mse, 1), find(~all(isnan(data.stats.mse), 2), 1, 'last'));
+            data_instances((max_instance+1):end) = false;
 
             % set up correct modelOptions
             if (isempty(folderModelOptions{i_model}))
@@ -208,7 +210,8 @@ function [resultTableAll, resultTableAgg] = modelStatisticsAdaptation(modelFolde
       for i_func = 1:length(functions)
         func = functions(i_func);
 
-        for i_instance = 1:length(instances)
+        max_instance = min(size(results.mse{i_model, i_func, i_dim}, 1), find(~all(isnan(results.mse{i_model, i_func, i_dim}), 2), 1, 'last'));
+        for i_instance = 1:max_instance
           inst = instances(i_instance);
 
           for i_snapshot = 1:length(snapshots)
@@ -219,7 +222,7 @@ function [resultTableAll, resultTableAgg] = modelStatisticsAdaptation(modelFolde
           end
         end
 
-        thisRows = lastFilledRow + (1:length(instances)*length(snapshots));
+        thisRows = lastFilledRow + (1:max_instance*length(snapshots));
         lastFilledRow = thisRows(end);
         for i_stat = 1:length(opts.statistics)
           stat = opts.statistics{i_stat};
