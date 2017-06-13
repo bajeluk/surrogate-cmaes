@@ -17,10 +17,14 @@ dim_chosen = [1:5];
 if ~exist('nInstances', 'var')
   nInstances = 3; end
 % Saving pictures
+plotPic = false;
 savePNG = true;
 
 rnkValid = { };
+rnkValidColname = 'rdeValid2';
 rnkMeasured = { };
+rnkMeasuredColname = 'rdeM1_M2WReplace';
+% rnkMeasuredColname = 'rde';
 tab = {};
 qtab = table([], [], [], [], [], 'VariableNames', {'dim', 'fun', 'Q1', 'Q2', 'Q3'});
 
@@ -58,12 +62,16 @@ for idDim = dim_chosen
     rnkValid{f, idDim} = tab{f}.rnkValid(tab{f}.totEvals > minEvals & moreThanQuarter & ~isnan(tab{f}.rnkMeasured));
     rnkMeasured{f, idDim} = tab{f}.rnkMeasured(tab{f}.totEvals > minEvals & moreThanQuarter & ~isnan(tab{f}.rnkMeasured));
     %}
-    
+
     % This is for loading errors from modelStatistics.mat file:
-    rnkValid{f, idDim} = rAll{rAll.dim == dim & rAll.fun == f, 'rdeValid2'};
+    rnkValid{f, idDim} = rAll{rAll.dim == dim & rAll.fun == f, rnkValidColname};
     rnkValid{f, idDim} = rnkValid{f, idDim}(~isnan(rnkValid{f, idDim}));
-    rnkMeasured{f, idDim} = rAll{rAll.dim == dim & rAll.fun == f, 'rdeM1_M2WReplace'};
+    rnkMeasured{f, idDim} = rAll{rAll.dim == dim & rAll.fun == f, rnkMeasuredColname};
     rnkMeasured{f, idDim} = rnkMeasured{f, idDim}(~isnan(rnkMeasured{f, idDim}));
+  end
+
+  if (~plotPic)
+    continue;
   end
 
   fig1 = figure();
@@ -118,11 +126,13 @@ for idDim = dim_chosen
   end
 end
 
-disp(qtab);
-disp('Average quartiles of RDE from functions 2 and 8 in 2--20D');
-mean(table2array(qtab((qtab.fun == 2 | qtab.fun == 8) & qtab.dim < 40, :)))
-disp('Average quartiles of RDE from function 6 in 2--20D');
-mean(table2array(qtab((qtab.fun == 6) & qtab.dim < 40, :)))
+if (plotPic)
+  disp(qtab);
+  disp('Average quartiles of RDE from functions 2 and 8 in 2--20D');
+  mean(table2array(qtab((qtab.fun == 2 | qtab.fun == 8) & qtab.dim < 40, :)))
+  disp('Average quartiles of RDE from function 6 in 2--20D');
+  mean(table2array(qtab((qtab.fun == 6) & qtab.dim < 40, :)))
+end
 
 %% Calculate ordering of functions based on median validation RDE
 tabRnkValidOrdering = table();
@@ -141,7 +151,7 @@ end
 
 %% Calculate median RDE from best functions and worst functions acc. to ValidRDE
 
-nBest = 6;
+nBest = 5;
 bestFcn = @(x) quantile(x, 0.5);
 % bestFcn = @(x) mean(x);
 nWorst = 6;
@@ -156,7 +166,9 @@ for idDim = dim_chosen
   dim = dimensions(idDim);
   colTab = ['D' num2str(dim)];
   sortedFcns = tabRnkValidOrdering{:, colTab};
-  bestFcns{idDim} = sortedFcns(2:nBest+1);
+  % Omit f5 (it has no error at all...)
+  sortedFcns(sortedFcns == 5) = [];
+  bestFcns{idDim} = sortedFcns(1:nBest);
   worstFcns{idDim} = sortedFcns((end-nWorst+1):end);
   
   rnk2Best{idDim} = cellfun(bestFcn, rnkMeasured(bestFcns{idDim}, idDim));

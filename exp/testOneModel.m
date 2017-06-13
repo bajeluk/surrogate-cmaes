@@ -204,7 +204,7 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
           fprintf('Model2 (gen. # %3d) is not trained\n', g);
           y_models2{i} = [];
           stats.rde2models(i) = NaN;
-          stats.rde(i) = NaN;
+          stats.rde2(i) = NaN;
           stats.rdeValid2(i) = NaN;
           stats.rdeM1_M1WReplace(i) = NaN;
           stats.rdeM1_M2WReplace(i) = NaN;
