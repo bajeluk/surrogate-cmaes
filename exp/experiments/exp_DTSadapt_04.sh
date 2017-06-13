@@ -3,7 +3,7 @@
 # Job-submitting experiment for the first 10D GP model testing
 # It is expected to be located in exp/experiments/
 
-export EXPID='exp_DTSadapt_03'
+export EXPID='exp_DTSadapt_04'
 export DATASET="DTS_005_25_models"
 
 # Enable this option for using Matlab MCR compilated binaries:
