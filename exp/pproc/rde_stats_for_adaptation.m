@@ -20,9 +20,9 @@ if ~exist('nInstances', 'var')
 plotPic = false;
 savePNG = true;
 
-rnkValid = { };
+rnkValid = {};
 rnkValidColname = 'rdeValid2';
-rnkMeasured = { };
+rnkMeasured = {};
 rnkMeasuredColname = 'rdeM1_M2WReplace';
 % rnkMeasuredColname = 'rde';
 tab = {};
@@ -141,53 +141,72 @@ for idDim = dim_chosen
   dim = dimensions(idDim);
   medRnkValid = cellfun(@median, rnkValid(:, idDim));
   [~, sortedFunctions] = sort(medRnkValid);
-  tmpTable = array2table(sortedFunctions);
-  tmpTable.Properties.VariableNames = { ['D' num2str(dim)] };
+  tmpTable = array2table([sortedFunctions, medRnkValid(sortedFunctions)]);
+  tmpTable.Properties.VariableNames = { ['D' num2str(dim)], ['RDEvalid_D' num2str(dim)] };
   % tmpTable = array2table([sortedFunctions, medRnkValid(sortedFunctions)]);
   % tmpTable.Properties.VariableNames = { ['D' num2str(dim) '_rank'], ['D' num2str(dim) '_err'] };  
   tmpTable.Properties.RowNames = arrayfun(@(x) { num2str(x) }, functions);
   tabRnkValidOrdering = [tabRnkValidOrdering, tmpTable];
 end
 
-%% Calculate median RDE from best functions and worst functions acc. to ValidRDE
+% Calculate median RDE from best functions and worst functions acc. to ValidRDE
 
-nBest = 5;
-bestFcn = @(x) quantile(x, 0.5);
-% bestFcn = @(x) mean(x);
+nBest = 6;
+bestFcn = {@(x) quantile(x, 0.5), @(x) quantile(x, 0.75)};
 nWorst = 6;
 worstFcn = @(x) quantile(x, 0.5);
-% worstFcn = @(x) mean(x);
 bestFcns = {};
 worstFcns = {};
-bestRDEthreshold = NaN(1, length(dim_chosen));
+bestRDEthreshold = NaN(length(bestFcn), length(dim_chosen));
 worstRDEthreshold = NaN(1, length(dim_chosen));
+bestAggregationFcn = @weightedRankAverage;
+worstAggregationFcn = @(x) weightedRankAverage(x, 'reverse');
 
 for idDim = dim_chosen
   dim = dimensions(idDim);
   colTab = ['D' num2str(dim)];
   sortedFcns = tabRnkValidOrdering{:, colTab};
-  % Omit f5 (it has no error at all...)
-  sortedFcns(sortedFcns == 5) = [];
   bestFcns{idDim} = sortedFcns(1:nBest);
   worstFcns{idDim} = sortedFcns((end-nWorst+1):end);
   
-  rnk2Best{idDim} = cellfun(bestFcn, rnkMeasured(bestFcns{idDim}, idDim));
-  if (any(isnan(rnk2Best{idDim})))
-    warning('Best functions'' rnkMeasured error is NaN for some function');
-  end
-  bestRDEthreshold(idDim) = weightedRankAverage(rnk2Best{idDim});
+  for iBestFcn = 1:length(bestFcn)
+    tabColName = ['RDEmeasured_D' num2str(dim) '_' num2str(iBestFcn)];
+    rnk2Best{iBestFcn, idDim} = cellfun(bestFcn{iBestFcn}, rnkMeasured(bestFcns{idDim}, idDim));
+    warning('off');
+    tabRnkValidOrdering{1:nBest, tabColName} = rnk2Best{iBestFcn, idDim};
+    warning('on');
+    if (any(isnan(rnk2Best{iBestFcn, idDim})))
+      warning('Best functions'' rnkMeasured error is NaN for some function');
+    end
+    % Omit f5 (it has almost no error at all...)
+    bestRDEthreshold(iBestFcn, idDim) = bestAggregationFcn(rnk2Best{iBestFcn, idDim}(2:end));
 
-  rnk2Worst{idDim} = cellfun(worstFcn, rnkMeasured(worstFcns{idDim}, idDim));
-  if (any(isnan(rnk2Worst{idDim})))
-    warning('Worst functions'' rnkMeasured error is NaN for some function');
+    rnk2Worst{idDim} = cellfun(worstFcn, rnkMeasured(worstFcns{idDim}, idDim));
+    warning('off');
+    tabRnkValidOrdering{(end-nWorst+1):end, tabColName} = rnk2Worst{idDim};
+    warning('on');
+    if (any(isnan(rnk2Worst{idDim})))
+      warning('Worst functions'' rnkMeasured error is NaN for some function');
+    end
+    worstRDEthreshold(idDim) = worstAggregationFcn(rnk2Worst{idDim});
   end
-  worstRDEthreshold(idDim) = weightedRankAverage(rnk2Worst{idDim}, 'reverse');
 end
 disp([bestRDEthreshold; worstRDEthreshold]);
 
+if (~exist('tabRDEThresholds', 'var')), tabRDEThresholds = table(); end
+for iBestFcn = 1:length(bestFcn)
+  tabVarName = [EXPID '_best_' num2str(iBestFcn)];
+  tabRDEThresholds(:, tabVarName) = num2cell(bestRDEthreshold(iBestFcn,:)');
+end
+tabVarName = [EXPID '_worst'];
+tabRDEThresholds(:, tabVarName) = num2cell(worstRDEthreshold');
+
 % Let's see, that the RDE quartiles are not possible to express in terms of
 % sipmle linear regression of dimension
-lmBest = fitlm(log(dimensions), bestRDEthreshold, 'linear');
+lmBest = {};
+for iBestFcn = 1:length(bestFcn)
+  lmBest{iBestFcn} = fitlm(log(dimensions), bestRDEthreshold(iBestFcn, :), 'linear');
+end
 lmWorst = fitlm(log(dimensions), worstRDEthreshold, 'linear');
 
 %% take RDE quartiles separately for function best and worst functions
