@@ -122,7 +122,17 @@ classdef (Abstract) OrigRatioUpdaterAbstractError < OrigRatioUpdater
       end
 
       % transform the smoothed error into the ratio using linear transfer function
-      obj.gain = min(max(0, smoothedErr - obj.lowErr), (obj.highErr - obj.lowErr)) / (obj.highErr - obj.lowErr);
+      if (isa(obj.lowErr, 'function_handle'))
+        lowErr = obj.lowErr([dim, obj.lastRatio]);
+      else
+        lowErr = obj.lowErr;
+      end
+      if (isa(obj.highErr, 'function_handle'))
+        highErr = obj.highErr([dim, obj.lastRatio]);
+      else
+        highErr = obj.highErr;
+      end
+      obj.gain = min(max(0, smoothedErr - lowErr), (highErr - lowErr)) / (highErr - lowErr);
       ratio = obj.minRatio + obj.gain * (obj.maxRatio - obj.minRatio);
 
       % save the calculated ratio into history
@@ -138,12 +148,13 @@ classdef (Abstract) OrigRatioUpdaterAbstractError < OrigRatioUpdater
       obj.surrogateOpts = parameters;
 
       % default parameter settings
-      obj.lowErr     = defopts(obj.surrogateOpts, 'DTAdaptive_lowErr',     0.15);
-      obj.highErr    = defopts(obj.surrogateOpts, 'DTAdaptive_highErr',    0.40);
+      obj.lowErr     = myeval(defopts(obj.surrogateOpts, 'DTAdaptive_lowErr',  0.15));
+      obj.highErr    = myeval(defopts(obj.surrogateOpts, 'DTAdaptive_highErr', 0.40));
       obj.updateRate = defopts(obj.surrogateOpts, 'DTAdaptive_updateRate', 0.40);
       obj.maxRatio   = defopts(obj.surrogateOpts, 'DTAdaptive_maxRatio',   1.00);
       obj.minRatio   = defopts(obj.surrogateOpts, 'DTAdaptive_minRatio',   0.05);
       obj.defaultErr = myeval(defopts(obj.surrogateOpts, 'DTAdaptive_defaultErr', 0.20));
+      obj.lastRatio  = obj.minRatio;    % start conservatively...
 
       % for negative updates, use the same rate as positive rate as default;
       % this default is used also if [] is supplied in experiment definition

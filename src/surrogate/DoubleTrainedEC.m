@@ -3,6 +3,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 % TODO:
 % [ ] remove updaterParams and use DTAdaptive_* parameters instead
 % [ ] rename 'restrictedParam' to 'origRatio'
+% [ ] when preselection, remove not the first points, but be a bit more clever (e.g. the worst predicted points...?)
 %
   properties
     model
@@ -315,15 +316,11 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
             % origRatio adaptivity (ratio will be used for the next iteration
             % of the while cycle or for the next generation of CMA-ES)
-            firstModelY = obj.model.predict(obj.pop.x');
-            % referenceY = firstModelY;
-            % referenceY(obj.pop.origEvaled) = obj.pop.y(obj.pop.origEvaled);
+            modelY = obj.model.predict(obj.pop.x');
             referenceY  = obj.retrainedModel.predict(obj.pop.x');
-            firstModelY(obj.pop.phase == 0) = [];
-            referenceY(obj.pop.phase == 0) = [];
-
+            referenceY(obj.pop.origEvaled) = obj.pop.y(obj.pop.origEvaled)';
             obj.restrictedParam = obj.origRatioUpdater.update(...
-                firstModelY', referenceY', dim, lambda, obj.cmaesState.countiter, obj);
+                modelY', referenceY', dim, lambda, obj.cmaesState.countiter, obj);
 
             nNewEvals = floor(lambda * obj.restrictedParam) - nPoints;
             if (nNewEvals > 0)
@@ -337,7 +334,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             obj.usedUpdaterState.smoothedErr = obj.origRatioUpdater.historySmoothedErr(obj.cmaesState.countiter);
 
             % DEBUG
-            % fprintf('Updating restrictedParam = %.2f, RDE=%.2f, gain=%.2f (so far %d points origevaled)\n', obj.restrictedParam, errRankMu(firstModelY', referenceY, obj.cmaesState.mu), obj.origRatioUpdater.gain, size(obj.pop.getOriginalY(), 2));
+            % fprintf('Updating restrictedParam = %.2f, RDE=%.2f, gain=%.2f (so far %d points origevaled)\n', obj.restrictedParam, errRankMu(modelY', referenceY, obj.cmaesState.mu), obj.origRatioUpdater.gain, size(obj.pop.getOriginalY(), 2));
           end
 
           remainingOrigEvals = remainingOrigEvals - nToReeval;
@@ -746,7 +743,12 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
             'Archive', obj.archive, varargin{:});
         % and save them into the Population
         phase = 1;        % this is the first orig-evaluated point
-        obj.pop = obj.pop.removeNotOrigEvaluated(obj.usedBestPoints); % remove this number of non-evaluated points
+        % remove this number of non-evaluated points
+        %
+        % TODO: remove not the first points (which are effectively random points),
+        %       but be a bit more clever! e.g. the worst predicted points...?
+        %
+        obj.pop = obj.pop.removeNotOrigEvaluated(obj.usedBestPoints);
         obj.pop = obj.pop.addPoints(xBestValid, yBestOrig, xBest, zBest, obj.usedBestPoints, phase);
         obj.archive.save(xBestValid', yBestOrig', obj.cmaesState.countiter);
       else
