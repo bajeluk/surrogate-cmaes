@@ -673,7 +673,10 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     % lastModel -- return the last valid model (either first or second)
 
       rmse = NaN; kendall = NaN; errRank = NaN; lastModel = [];
-      if (~isempty(obj.model) && obj.model.isTrained())
+      if (~isempty(obj.retrainedModel) && obj.retrainedModel.isTrained())
+        % statistics according to the retrained model
+        lastModel = obj.retrainedModel;
+      elseif (~isempty(obj.model) && obj.model.isTrained())
         % statistics according to the first model
         lastModel = obj.model;
       else
