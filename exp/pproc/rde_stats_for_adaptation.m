@@ -154,11 +154,11 @@ end
 nBest = 6;
 bestFcn = {@(x) quantile(x, 0.5), @(x) quantile(x, 0.75)};
 nWorst = 6;
-worstFcn = @(x) quantile(x, 0.5);
+worstFcn = {@(x) quantile(x, 0.5), @(x) quantile(x, 0.75)};
 bestFcns = {};
 worstFcns = {};
 bestRDEthreshold = NaN(length(bestFcn), length(dim_chosen));
-worstRDEthreshold = NaN(1, length(dim_chosen));
+worstRDEthreshold = NaN(length(worstFcn), length(dim_chosen));
 bestAggregationFcn = @weightedRankAverage;
 worstAggregationFcn = @(x) weightedRankAverage(x, 'reverse');
 
@@ -180,15 +180,18 @@ for idDim = dim_chosen
     end
     % Omit f5 (it has almost no error at all...)
     bestRDEthreshold(iBestFcn, idDim) = bestAggregationFcn(rnk2Best{iBestFcn, idDim}(2:end));
+  end
 
-    rnk2Worst{idDim} = cellfun(worstFcn, rnkMeasured(worstFcns{idDim}, idDim));
+  for iWorstFcn = 1:length(worstFcn)
+    tabColName = ['RDEmeasured_D' num2str(dim) '_' num2str(iWorstFcn)];
+    rnk2Worst{iWorstFcn, idDim} = cellfun(worstFcn{iWorstFcn}, rnkMeasured(worstFcns{idDim}, idDim));
     warning('off');
-    tabRnkValidOrdering{(end-nWorst+1):end, tabColName} = rnk2Worst{idDim};
+    tabRnkValidOrdering{(end-nWorst+1):end, tabColName} = rnk2Worst{iWorstFcn, idDim};
     warning('on');
-    if (any(isnan(rnk2Worst{idDim})))
+    if (any(isnan(rnk2Worst{iWorstFcn, idDim})))
       warning('Worst functions'' rnkMeasured error is NaN for some function');
     end
-    worstRDEthreshold(idDim) = worstAggregationFcn(rnk2Worst{idDim});
+    worstRDEthreshold(iWorstFcn, idDim) = worstAggregationFcn(rnk2Worst{iWorstFcn, idDim});
   end
 end
 disp([bestRDEthreshold; worstRDEthreshold]);
@@ -198,8 +201,10 @@ for iBestFcn = 1:length(bestFcn)
   tabVarName = [EXPID '_best_' num2str(iBestFcn)];
   tabRDEThresholds(:, tabVarName) = num2cell(bestRDEthreshold(iBestFcn,:)');
 end
-tabVarName = [EXPID '_worst'];
-tabRDEThresholds(:, tabVarName) = num2cell(worstRDEthreshold');
+for iWorstFcn = 1:length(worstFcn)
+  tabVarName = [EXPID '_worst_' num2str(iWorstFcn)];
+  tabRDEThresholds(:, tabVarName) = num2cell(worstRDEthreshold(iWorstFcn,:)');
+end
 
 % Let's see, that the RDE quartiles are not possible to express in terms of
 % sipmle linear regression of dimension
@@ -207,7 +212,9 @@ lmBest = {};
 for iBestFcn = 1:length(bestFcn)
   lmBest{iBestFcn} = fitlm(log(dimensions), bestRDEthreshold(iBestFcn, :), 'linear');
 end
-lmWorst = fitlm(log(dimensions), worstRDEthreshold, 'linear');
+for iWorstFcn = 1:length(worstFcn)
+  lmWorst{iWorstFcn} = fitlm(log(dimensions), worstRDEthreshold(iWorstFcn, :), 'linear');
+end
 
 %% take RDE quartiles separately for function best and worst functions
 %{
