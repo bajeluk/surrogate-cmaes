@@ -81,7 +81,7 @@ DIM=20
 QUEUE="24:00:00"
 for FUNC in `seq 1 24`; do
   subtask
-end
+done
 
 exit 0
 
