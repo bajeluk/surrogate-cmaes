@@ -75,7 +75,10 @@ classdef (Abstract) OrigRatioUpdaterAbstractError < OrigRatioUpdater
       % - if update() is not called in any particular generation(s),
       %   it results in NaN entries in historyErr for that generation(s)
 
-      if (nargin >= 7) obj.ec = varargin{1}; end
+      RATIO_TOLERANCE = 0.05;
+      MAX_RATIO_ITERATES = 100;
+
+      if (nargin >= 7), obj.ec = varargin{1}; end
       obj.historyErr((obj.lastUpdateGeneration+1):(countiter-1)) = NaN;
       obj.historySmoothedErr((obj.lastUpdateGeneration+1):(countiter-1)) = NaN;
       obj.historyRatios((obj.lastUpdateGeneration+1):(countiter-1)) = NaN;
@@ -122,18 +125,33 @@ classdef (Abstract) OrigRatioUpdaterAbstractError < OrigRatioUpdater
       end
 
       % transform the smoothed error into the ratio using linear transfer function
-      if (isa(obj.lowErr, 'function_handle'))
-        lowErr = obj.lowErr([dim, obj.lastRatio]);
-      else
-        lowErr = obj.lowErr;
+      % Note: the while cycle is due to the possible dependence of lowErr/highErr
+      %       on the ratio, which should be the current ratio (not from the last generation)
+      prevRatio = -1;
+      ratio = obj.lastRatio;
+      iterates = 0;
+      while (abs(prevRatio - ratio) > RATIO_TOLERANCE)
+        if (isa(obj.lowErr, 'function_handle'))
+          lowErrValue = obj.lowErr([dim, ratio]);
+        else
+          lowErrValue = obj.lowErr;
+        end
+        if (isa(obj.highErr, 'function_handle'))
+          highErrValue = obj.highErr([dim, ratio]);
+        else
+          highErrValue = obj.highErr;
+        end
+        obj.gain = min(max(0, smoothedErr - lowErrValue), ...
+            (highErrValue - lowErrValue)) / (highErrValue - lowErrValue);
+        prevRatio = ratio;
+        ratio = obj.minRatio + obj.gain * (obj.maxRatio - obj.minRatio);
+
+        iterates = iterates + 1;
+        if (iterates >= MAX_RATIO_ITERATES)
+          warning('OrigRatioUpdate: ratio calculation diverges!');
+          break;
+        end
       end
-      if (isa(obj.highErr, 'function_handle'))
-        highErr = obj.highErr([dim, obj.lastRatio]);
-      else
-        highErr = obj.highErr;
-      end
-      obj.gain = min(max(0, smoothedErr - lowErr), (highErr - lowErr)) / (highErr - lowErr);
-      ratio = obj.minRatio + obj.gain * (obj.maxRatio - obj.minRatio);
 
       % save the calculated ratio into history
       obj.lastRatio = ratio;
