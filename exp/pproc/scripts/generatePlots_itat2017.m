@@ -14,7 +14,7 @@ else
   
 % needed function and dimension settings
 funcSet.BBfunc = 1:24;
-funcSet.dims = [2, 5, 10, 20];
+funcSet.dims = [2, 3, 5, 10, 20];
 maxEvals = 250;
   
 % folder for results
@@ -56,9 +56,12 @@ dataFolders = {adts_he50_path; ...
 
 % adaptive DTS settings id
 clear findSet
+findSet.DTAdaptive_updateRateDown = 'obj.updateRate';
+findSet.DTAdaptive_maxRatio = 1;
+
 % quantiles: lowErr 0.5, highErr 0.5
-findSet.DTAdaptive_lowErr = 0.5;
-findSet.DTAdaptive_highErr = 0.5;
+findSet.DTAdaptive_lowErr = '@(x) [ones(size(x,1),1) log(x(:,1)) x(:,2) log(x(:,1)).*x(:,2) x(:,2).^2] * [0.11; -0.0092; -0.13; 0.044; 0.14]';
+findSet.DTAdaptive_highErr = '@(x) [ones(size(x,1),1) x(:,1) x(:,2) x(:,1).*x(:,2) x(:,2).^2] * [0.18; -0.0027; 0.44; 0.0032; -0.14]';
 findSet.DTAdaptive_updateRate = 0.3;
 adts_le50_he50_ur3_Id = getStructIndex(settings, findSet);
 
@@ -69,8 +72,8 @@ findSet.DTAdaptive_updateRate = 0.5;
 adts_le50_he50_ur5_Id = getStructIndex(settings, findSet);
 
 % quantiles: lowErr 0.5, highErr 0.75
-findSet.DTAdaptive_lowErr = 0.5;
-findSet.DTAdaptive_highErr = 0.75;
+findSet.DTAdaptive_lowErr = '@(x) [ones(size(x,1),1) log(x(:,1)) x(:,2) log(x(:,1)).*x(:,2) x(:,2).^2] * [0.11; -0.0092; -0.13; 0.044; 0.14]';
+findSet.DTAdaptive_highErr = '@(x) [ones(size(x,1),1) log(x(:,1)) x(:,2) log(x(:,1)).*x(:,2) x(:,2).^2] * [0.35; -0.047; 0.44; 0.044; -0.19]';
 findSet.DTAdaptive_updateRate = 0.3;
 adts_le50_he75_ur3_Id = getStructIndex(settings, findSet);
 
@@ -81,8 +84,8 @@ findSet.DTAdaptive_updateRate = 0.5;
 adts_le50_he75_ur5_Id = getStructIndex(settings, findSet);
 
 % quantiles: lowErr 0.75, highErr 0.5
-findSet.DTAdaptive_lowErr = 0.75;
-findSet.DTAdaptive_highErr = 0.5;
+findSet.DTAdaptive_lowErr = '@(x) [ones(size(x,1),1) x(:,1) x(:,2) x(:,1).*x(:,2) x(:,2).^2] * [0.17; -0.00067; -0.095; 0.0087; 0.15]';
+findSet.DTAdaptive_highErr = '@(x) [ones(size(x,1),1) x(:,1) x(:,2) x(:,1).*x(:,2) x(:,2).^2] * [0.18; -0.0027; 0.44; 0.0032; -0.14]';
 findSet.DTAdaptive_updateRate = 0.3;
 adts_le75_he50_ur3_Id = getStructIndex(settings, findSet);
 
@@ -93,8 +96,8 @@ findSet.DTAdaptive_updateRate = 0.5;
 adts_le75_he50_ur5_Id = getStructIndex(settings, findSet);
 
 % quantiles: lowErr 0.75, highErr 0.75
-findSet.DTAdaptive_lowErr = 0.75;
-findSet.DTAdaptive_highErr = 0.75;
+findSet.DTAdaptive_lowErr = '@(x) [ones(size(x,1),1) x(:,1) x(:,2) x(:,1).*x(:,2) x(:,2).^2] * [0.17; -0.00067; -0.095; 0.0087; 0.15]';
+findSet.DTAdaptive_highErr = '@(x) [ones(size(x,1),1) log(x(:,1)) x(:,2) log(x(:,1)).*x(:,2) x(:,2).^2] * [0.35; -0.047; 0.44; 0.044; -0.19]';
 findSet.DTAdaptive_updateRate = 0.3;
 adts_le75_he75_ur3_Id = getStructIndex(settings, findSet);
 
@@ -106,7 +109,8 @@ adts_le75_he75_ur5_Id = getStructIndex(settings, findSet);
 
 % DTS settings id
 clear findSet
-findSet.DTAdaptive_defaultErr = [];
+findSet.modelOpts.inputFraction = 1;
+findSet.modelOpts.predictionType = 'sd2';
 dts_Id = getStructIndex(settings, findSet);
 
 % CMA-ES, saACMES, lmm-CMA-ES settings id
@@ -146,31 +150,52 @@ saacmesCol   = getAlgColors('saacmes');
 dtsCol       = getAlgColors('dtscmaes');
 lmmCol       = getAlgColors('lmmcmaes');
 
-adts_le50_he50_ur3_col = getAlgColors(1);
+adts_le50_he50_ur3_col = getAlgColors(3);
 adts_le50_he50_ur4_col = getAlgColors(2);
-adts_le50_he50_ur5_col = getAlgColors(3);
+adts_le50_he50_ur5_col = getAlgColors(1);
 
-adts_le50_he75_ur3_col = getAlgColors(4);
+adts_le50_he75_ur3_col = getAlgColors(6);
 adts_le50_he75_ur4_col = getAlgColors(5);
-adts_le50_he75_ur5_col = getAlgColors(6);
+adts_le50_he75_ur5_col = getAlgColors(4);
 
-adts_le75_he50_ur3_col = getAlgColors(7);
+adts_le75_he50_ur3_col = getAlgColors(9);
 adts_le75_he50_ur4_col = getAlgColors(8);
-adts_le75_he50_ur5_col = getAlgColors(9);
+adts_le75_he50_ur5_col = getAlgColors(7);
 
-adts_le75_he75_ur3_col = getAlgColors(10);
+adts_le75_he75_ur3_col = getAlgColors(12);
 adts_le75_he75_ur4_col = getAlgColors(11);
-adts_le75_he75_ur5_col = getAlgColors(12);
+adts_le75_he75_ur5_col = getAlgColors(10);
 
 % aggregate data & settings
-data = {cmaes_data, ...
-        lmmcmaes_data, ...
-        saacmes_data, ...
-        dtscmaes_data};
+data = {...
+  adts_le50_he50_ur3_data, ...
+  adts_le50_he75_ur3_data, ...
+  adts_le75_he50_ur3_data, ...
+  adts_le75_he75_ur3_data, ...
+  cmaes_data, ...
+  lmmcmaes_data, ...
+  saacmes_data, ...
+  dtscmaes_data};
 
-datanames = {'CMA-ES', 'lmm-CMA-ES', '{}^{s*}ACMES-k', 'DTS-CMA-ES'};
+datanames = {...
+  'aDTS \epsilon_{min} Q_2 \epsilon_{max} Q_2', ... 'aDTS le50 he50 ur3', ...
+  'aDTS \epsilon_{min} Q_2 \epsilon_{max} Q_3', ... 'aDTS le50 he75 ur3', ...
+  'aDTS \epsilon_{min} Q_3 \epsilon_{max} Q_2', ... 'aDTS le75 he50 ur3', ...
+  'aDTS \epsilon_{min} Q_3 \epsilon_{max} Q_3', ... 'aDTS le75 he75 ur3', ...
+  'CMA-ES', ...
+  'lmm-CMA-ES', ...
+  '{}^{s*}ACMES', ...
+  'DTS-CMA-ES'};
 
-colors = [cmaesCol; lmmCol; saacmesCol; dtsCol]/255;
+colors = [...
+  adts_le50_he50_ur3_col; ...
+  adts_le50_he75_ur3_col; ...
+  adts_le75_he50_ur3_col; ...
+  adts_le75_he75_ur3_col; ...
+  cmaesCol; ...
+  lmmCol; ...
+  saacmesCol; ...
+  dtsCol]/255;
 
 if (~exist(tmpFName, 'file'))
   save(tmpFName);
@@ -196,23 +221,36 @@ set_data = {adts_le50_he50_ur3_data, ...
             adts_le75_he75_ur4_data, ...
             adts_le75_he75_ur5_data};
 
-set_datanames = {'$\\err_\\text{min}$, $\\err_\\text{max}$'};
+set_datanames = {
+  '$\lowErrMed$, $\highErrMed$, $\uRate = 0.3$',...
+  '$\lowErrMed$, $\highErrMed$, $\uRate = 0.4$',...
+  '$\lowErrMed$, $\highErrMed$, $\uRate = 0.5$',...
+  '$\lowErrMed$, $\highErrQrt$, $\uRate = 0.3$',...
+  '$\lowErrMed$, $\highErrQrt$, $\uRate = 0.4$',...
+  '$\lowErrMed$, $\highErrQrt$, $\uRate = 0.5$',...
+  '$\lowErrQrt$, $\highErrMed$, $\uRate = 0.3$',...
+  '$\lowErrQrt$, $\highErrMed$, $\uRate = 0.4$',...
+  '$\lowErrQrt$, $\highErrMed$, $\uRate = 0.5$',...
+  '$\lowErrQrt$, $\highErrQrt$, $\uRate = 0.3$',...
+  '$\lowErrQrt$, $\highErrQrt$, $\uRate = 0.4$',...
+  '$\lowErrQrt$, $\highErrQrt$, $\uRate = 0.5$'};
 
 tableFunc = funcSet.BBfunc;
-tableDims = funcSet.dims;
+tableDims = [2, 3, 5, 10];
 
 resultTable = fullfile(tableFolder, 'rankTable.tex');
       
 [table, ranks] = rankingTable(set_data, 'DataNames', set_datanames, ...
                            'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
                            'TableFuns', tableFunc, 'TableDims', tableDims,...
-                           'Evaluations', [20 40 80], ...
-                           'ResultFile', resultTable);
+                           'Evaluations', [25, 50, 100, 200], ...
+                           'ResultFile', resultTable, ...
+                           'Mode', 'evaluations');
 
 %% Algorithm comparison: CMA-ES, lmm-CMA-ES, saACMES, DTS-CMA-ES  
 % Scaled function values of f1-f24 in dimension 5.
 
-plotFuns = 1:24;
+plotFuns = 1:24;%:24;
 plotDims = 5;
 
 clear pdfNames
@@ -231,7 +269,7 @@ han = relativeFValuesPlot(data, ...
                               'AggregateDims', false, 'OneFigure', false, ...
                               'Statistic', @median, 'AggregateFuns', false, ...
                               'LineSpecification', {'-', '-', '-', '-', '-', '-', '-'}, ...
-                              'LegendOption', 'first', 'MaxEval', maxEvals, ...
+                              'LegendOption', 'split', 'MaxEval', maxEvals, ...
                               'FunctionNames', true);
 
                               
@@ -239,10 +277,10 @@ han = relativeFValuesPlot(data, ...
 print2pdf(han, pdfNames, 1)
 
 %% Algorithm comparison: CMA-ES, lmm-CMA-ES, saACMES, DTS-CMA-ES  
-% Scaled function values of f1-f24 in dimension 20.
+% Scaled function values of f1-f24 in dimension 10.
 
 plotFuns = 1:24;
-plotDims = 20;
+plotDims = 10;
 
 clear pdfNames
 pdfNames = {};
@@ -260,7 +298,7 @@ han = relativeFValuesPlot(data, ...
                               'AggregateDims', false, 'OneFigure', false, ...
                               'Statistic', @median, 'AggregateFuns', false, ...
                               'LineSpecification', {'-', '-', '-', '-', '-', '-', '-'}, ...
-                              'LegendOption', 'first', 'MaxEval', maxEvals, ...
+                              'LegendOption', 'split', 'MaxEval', maxEvals, ...
                               'FunctionNames', true);
 
                               
@@ -271,7 +309,7 @@ print2pdf(han, pdfNames, 1)
 % Aggregated  scaled function values in dimensions 5 and 20.
 
 plotFuns = 1:24;
-plotDims = [5, 20];
+plotDims = [5, 10];
 
 clear pdfNames
 pdfNames = {};
@@ -299,11 +337,16 @@ print2pdf(han, pdfNames, 1)
 close all
 
 tableFunc = funcSet.BBfunc;
-tableDims = [5, 20];
+tableDims = [5, 10];
 
 resultDuelTable = fullfile(tableFolder, 'duelTable.tex');
 
-datanames = {'CMA-ES', 'lmm-CMA-ES', '\\saACMES-k', 'DTS-CMA-ES'};
+datanames = {...
+  '$\\lowErrMed$, $\\highErrMed$',...
+  '$\\lowErrMed$, $\\highErrQrt$',...
+  '$\\lowErrQrt$, $\\highErrMed$',...
+  '$\\lowErrQrt$, $\\highErrQrt$',...
+  'CMA-ES', 'lmm-CMA-ES', '\\saACMES', 'DTS-CMA-ES'};
 
 [table, ranks] = duelTable(data, 'DataNames', datanames, ...
                             'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...

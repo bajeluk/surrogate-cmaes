@@ -10,6 +10,10 @@ function [rankTable, ranks, values] = createRankingTable(data, varargin)
 %     'DataDims'    - dimensions of data
 %     'DataFuns'    - functions of data
 %     'Evaluations' - evaluations chosen to count
+%     'Mode'        - mode of computing displayed evaluations:
+%                       'evaluations' - number of evaluations is fixed
+%                       'target'      - numbers are computed according to
+%                                       reaching the target value
 %     'Rank'        - rank of resulting table or 'sum' to sum all ranks
 %     'Ranking'     - type of ranking (see example below)
 %                       'tolerant' - equal rank independence
@@ -20,6 +24,7 @@ function [rankTable, ranks, values] = createRankingTable(data, varargin)
 %                       @median)
 %     'TableDims'   - dimensions chosen to count
 %     'TableFuns'   - functions chosen to count
+%     'Target'      - target value
 %
 % Output:
 %   table  - table of rankings

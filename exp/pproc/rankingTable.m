@@ -12,6 +12,10 @@ function [rankTable, ranks] = rankingTable(data, varargin)
 %     'DataFuns'    - functions of data
 %     'Evaluations' - evaluations chosen to count
 %     'Format'      - table format | ('tex', 'figure')
+%     'Mode'        - mode of computing displayed evaluations:
+%                       'evaluations' - number of evaluations is fixed
+%                       'target'      - numbers are computed according to
+%                                       reaching the target value
 %     'Ranking'     - type of ranking (see help createRankingTable)
 %                       'tolerant' - equal rank independence
 %                       'precise'  - equal ranks shift following ranks
@@ -21,6 +25,7 @@ function [rankTable, ranks] = rankingTable(data, varargin)
 %     'Statistic'   - statistic of data | string or handle (@mean, @median)
 %     'TableDims'   - dimensions chosen to count
 %     'TableFuns'   - functions chosen to count
+%     'Target'      - target value
 %
 % Output:
 %   rankTable - table of rankings
@@ -57,7 +62,6 @@ function [rankTable, ranks] = rankingTable(data, varargin)
   extraFields = {'DataNames', 'ResultFile'};
   fieldID = isfield(settings, extraFields);
   createSettings = rmfield(settings, extraFields(fieldID));
-  createSettings.Mode = 'target';
   [rankTable, ranks] = createRankingTable(data, createSettings);
   
   % print table
@@ -118,13 +122,14 @@ function printTableTex(FID, table, dims, evaluations, datanames, nFunc)
   nDims = length(dims);
   nEvals = length(evaluations);
   
-  fprintf(FID, '\\begin{table}\n');
+  fprintf(FID, '\\begin{table*}\n');
   fprintf(FID, '\\centering\n');
+  fprintf(FID, '\\resizebox{\\linewidth}{!} {\n');
   fprintf(FID, '\\begin{tabular}[pos]{ l %s }\n', repmat([' |', repmat(' c', 1, nEvals)], 1, nDims+1));
   fprintf(FID, '\\hline\n');
   fprintf(FID, '{} ');
   for d = 1:nDims
-    fprintf(FID, '& \\multicolumn{%d}{c|}{%dD} ', nEvals, dims(d));
+    fprintf(FID, '& \\multicolumn{%d}{c|}{\\textbf{$%d\\dm$}} ', nEvals, dims(d));
   end
   fprintf(FID, '& \\multicolumn{%d}{c}{$\\sum$} \\\\\n', nEvals);
   printString = '';
@@ -133,7 +138,7 @@ function printTableTex(FID, table, dims, evaluations, datanames, nFunc)
       printString = [printString, ' & ', num2str(evaluations(e))];
     end
   end
-  fprintf(FID, 'FE/D %s \\\\\n', printString);
+  fprintf(FID, '$\\FED$ %s \\\\\n', printString);
   fprintf(FID, '\\hline\n');
   % make datanames equally long
   datanames = sameLength(datanames);
@@ -156,6 +161,7 @@ function printTableTex(FID, table, dims, evaluations, datanames, nFunc)
   end
   fprintf(FID, '\\hline\n');
   fprintf(FID, '\\end{tabular}\n');
+  fprintf(FID, '}\n');
   % evaluation numbers
   evalString = arrayString(evaluations, ',');
   % dimension numbers 
@@ -163,13 +169,13 @@ function printTableTex(FID, table, dims, evaluations, datanames, nFunc)
   % caption printing
   fprintf(FID, '\\vspace{1mm}\n');
   fprintf(FID, ['\\caption{Counts of the 1st ranks from %d benchmark functions according to the lowest achieved ', ...
-                '$\\Delta_f^\\text{med}$ for different FE/D = \\{%s\\} and dimensions D = \\{%s\\}. ', ...
+                '$\\Delta_f^\\text{med}$ for different $\\FED = \\{%s\\}$ and dimensions $\\dm = \\{%s\\}$. ', ...
                 'Ties of the 1st ranks are counted for all respective algorithms. ', ...
-                'The ties often occure when $\\Delta f_T = 10^{-8}$ is reached (mostly on f1 and f5).}\n'], ...
+                'The ties often occure when $\\Delta f_T = 10^{-8}$ is reached (mostly on $\\fn{1}$ and $\\fn{5}$).}\n'], ...
                 nFunc, evalString, dimString);
                
   fprintf(FID, '\\label{tab:fed}\n');
-  fprintf(FID, '\\end{table}\n');
+  fprintf(FID, '\\end{table*}\n');
   
 end
 
