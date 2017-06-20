@@ -76,21 +76,28 @@ submit() {
   else
     JOBNAME_SUFFIX=""
   fi
+  if [ -n "$2" ]; then
+    MEMORY="$2"
+  elif [ -z "$MEMORY" ]; then
+    MEMORY="2000mb"
+  fi
+
+  MY_PBS_PARAMS="-l select=1:ncpus=1:mem=$MEMORY:scratch_local=5gb"
 
   if [ "$useMCR" = 1 ]; then
     echo "MCR binary submit: INST=$INST : OPTS=$OPTS"
     if [ "$DRY_RUN" = 0 ]; then
-      qsub -N "${EXPID}__${INST}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v INST,OPTS,EXPID,EXPPATH_SHORT "$METACENTRUM_BBCOMP_TASK_SHELL" && echo "submitted ok."
+      qsub -N "${EXPID}__${INST}${JOBNAME_SUFFIX}" $MY_PBS_PARAMS -l "walltime=$QUEUE" -v INST,OPTS,EXPID,EXPPATH_SHORT "$METACENTRUM_BBCOMP_TASK_SHELL" && echo "submitted ok."
     else
-      echo qsub -N "${EXPID}__${INST}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,OPTS,EXPID,EXPPATH_SHORT "$METACENTRUM_BBCOMP_TASK_SHELL"
+      echo qsub -N "${EXPID}__${INST}${JOBNAME_SUFFIX}" $MY_PBS_PARAMS -l "walltime=$QUEUE" -v FUNC,DIM,INST,OPTS,EXPID,EXPPATH_SHORT "$METACENTRUM_BBCOMP_TASK_SHELL"
     fi
 
   else
     echo "INST=$INST : MATLAB_FCN=$MATLAB_FCN : OPTS=$OPTS"
     if [ "$DRY_RUN" = 0 ]; then
-      qsub -N "${EXPID}__${INST}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v INST,OPTS,MATLAB_FCN,EXPID,EXPPATH_SHORT "$METACENTRUM_BBCOMP_TASK_SHELL" && echo "submitted ok."
+      qsub -N "${EXPID}__${INST}${JOBNAME_SUFFIX}" $MY_PBS_PARAMS -l "walltime=$QUEUE" -v INST,OPTS,MATLAB_FCN,EXPID,EXPPATH_SHORT "$METACENTRUM_BBCOMP_TASK_SHELL" && echo "submitted ok."
     else
-      echo qsub -N "${EXPID}__${INST}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v INST,OPTS,MATLAB_FCN,EXPID,EXPPATH_SHORT "$METACENTRUM_BBCOMP_TASK_SHELL"
+      echo qsub -N "${EXPID}__${INST}${JOBNAME_SUFFIX}" $MY_PBS_PARAMS -l "walltime=$QUEUE" -v INST,OPTS,MATLAB_FCN,EXPID,EXPPATH_SHORT "$METACENTRUM_BBCOMP_TASK_SHELL"
     fi
   fi
   ID=$((ID+1))

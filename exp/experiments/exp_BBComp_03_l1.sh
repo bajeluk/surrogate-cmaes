@@ -25,6 +25,7 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 # critical characters has to be replaced in $OPTS:
 # '|' with ',' and "%" with "'"
 OPTS=""
+MEMORY=""
 
 QUEUE="24:00:00"
 for INST in `seq 11 20` `seq 111 120` `seq 211 220`; do
@@ -37,7 +38,13 @@ for INST in `seq 311 320` `seq 411 420`; do
 done
 
 QUEUE="168:00:00"
-for INST in `seq 511 520` `seq 611 620` `seq 711 720` `seq 811 820` `seq 911 920`; do
+for INST in `seq 511 520` `seq 611 620` `seq 711 720`; do
+  submit
+done
+
+MEMORY="4048mb"
+QUEUE="168:00:00"
+for INST in `seq 811 820` `seq 911 920`; do
   submit
 done
 

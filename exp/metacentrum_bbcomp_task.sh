@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -l select=1:ncpus=1:mem=1500mb:scratch_local=5gb
+#PBS -l select=1:ncpus=1:mem=2000mb:scratch_local=5gb
 
 # it suppose the following variables set:
 #
