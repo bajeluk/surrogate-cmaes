@@ -84,6 +84,15 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
     end
   end
 
+  % copy log files from the previous run
+  localDatapathPrev = [opts.exppath filesep 'bbcomp_output'];
+  if (exist(localDatapathPrev, 'file'))
+    system(['cp -pR ' localDatapathPrev '/proxy_logs' ...
+      localDatapathPrev filesep sprintf('%s_{log,eclog,cmaesvars}_%dD_%d*', exp_id, dim, id) ...
+      datapath ...
+    ]);
+  end
+
   % DEBUG
 %   FUN = @frosen;
 %   dim = 2;
