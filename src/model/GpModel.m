@@ -62,7 +62,7 @@ classdef GpModel < Model
       obj.options.trainAlgorithm = defopts(obj.options, 'trainAlgorithm', 'fmincon');
       if (strcmpi(obj.options.trainAlgorithm, 'fmincon') ...
           && ~license('checkout', 'optimization_toolbox'))
-        fprintf(2, 'GpModel: Optimization Toolbox license not available. Switching to minimize().\n');
+        fprintf('GpModel: Optimization Toolbox license not available. Switching to minimize().\n');
         obj.options.trainAlgorithm = 'minimize';
       end
 

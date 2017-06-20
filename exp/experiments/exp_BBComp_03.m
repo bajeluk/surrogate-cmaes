@@ -16,17 +16,19 @@ surrogateParams.DTAdaptive_updateRate = 0.3;
 surrogateParams.DTAdaptive_updateRateDown = 0.6;
 surrogateParams.DTAdaptive_maxRatio = 0.8;
 surrogateParams.DTAdaptive_minRatio = 0.04;
-surrogateParams.DTAdaptive_lowErr = 0.15;
-surrogateParams.DTAdaptive_highErr = 0.40;
-surrogateParams.DTAdaptive_defaultErr = 0.10;
+% surrogateParams.DTAdaptive_lowErr = 0.15;
+% surrogateParams.DTAdaptive_highErr = 0.40;
+surrogateParams.DTAdaptive_lowErr = '@(x) [ones(size(x,1),1) x(:,1) x(:,2) x(:,1).*x(:,2) x(:,2).^2] * [0.17; -0.00067; -0.095; 0.0087; 0.15]';
+surrogateParams.DTAdaptive_highErr = '@(x) [ones(size(x,1),1) log(x(:,1)) x(:,2) log(x(:,1)).*x(:,2) x(:,2).^2] * [0.35; -0.047; 0.44; 0.044; -0.19]';
+surrogateParams.DTAdaptive_defaultErr = 0.05;
 
 surrogateParams.evoControlSwitchMode = 'none';
 surrogateParams.evoControlSwitchTime = 4*24*3600; % 7*24*3600;
-surrogateParams.evoControlMaxDoubleTrainIterations = 2;
+surrogateParams.evoControlMaxDoubleTrainIterations = 1;
 surrogateParams.evoControlPreSampleSize = 0.75;
-surrogateParams.evoControlNBestPoints = [0.2 1.0];
-surrogateParams.evoControlValidationGenerationPeriod = 4;
-surrogateParams.evoControlValidationPopSize = 2;
+% surrogateParams.evoControlNBestPoints = [0.2 1.0];
+% surrogateParams.evoControlValidationGenerationPeriod = 4;
+surrogateParams.evoControlValidationPopSize = 0;
 surrogateParams.evoControlOrigPointsRoundFcn = 'ceil'; % 'ceil', 'getProbNumber'
 
 surrogateParams.evoControlIndividualExtension = [];    % will be multip. by lambda

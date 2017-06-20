@@ -141,6 +141,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     modelRMSEforRestart = 0.0;
   end
   
+  % save the initial point to the archive if it was evaluated
+  if (countiter == 1 && ~isempty(cmaesState.fxstart))
+    archive = archive.save(xmean', cmaesState.fxstart, countiter);
+  end
+  
   % run one generation according to evolution control
   [ec, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = ...
     ec.runGeneration(cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin{:});
