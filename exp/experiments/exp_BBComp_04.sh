@@ -24,7 +24,7 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 minutes_to_hours() {
   H=$(((MINS+$1)/60)); M=$(((MINS+$1)%60));
-  TIME=`printf '%02d%02d' $((HOURS+H)) $M`
+  TIME=`printf '%02d%02d' $(((HOURS+H)%24)) $M`
 }
 
 # critical characters has to be replaced in $OPTS:
