@@ -3,6 +3,7 @@ classdef (Abstract) BbcClientBase < handle
   %   Detailed explanation goes here
 
   properties
+    dim
   end
 
   methods (Abstract)
@@ -17,6 +18,7 @@ classdef (Abstract) BbcClientBase < handle
     value = evaluate(obj, point);
     value = safeEvaluate(obj, point, problemID, trackname);
     value = truncate2bounds(obj, value);
+    [point, value] = history(obj, index);
   end
 end
 

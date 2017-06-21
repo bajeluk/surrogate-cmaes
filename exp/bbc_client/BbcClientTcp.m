@@ -55,7 +55,7 @@ classdef BbcClientTcp < BbcClient
           if nin ~= 2
             obj.throwCallException(2, method, nin);
           end
-        case {'setTrack', 'trackName', 'setProblem', 'evaluate'}
+        case {'setTrack', 'trackName', 'setProblem', 'evaluate', 'history'}
           if nin ~= 1
             obj.throwCallException(1, method, nin);
           end
@@ -153,6 +153,10 @@ classdef BbcClientTcp < BbcClient
           if nargout >= 1
             varargout{1} = str2double(response{1});
           end
+        case 'history'
+          varargout{1} = str2double(response{1});
+          varargout{2} = str2num(response{2});
+          varargout{3} = str2double(response{3});
       end
     end
 

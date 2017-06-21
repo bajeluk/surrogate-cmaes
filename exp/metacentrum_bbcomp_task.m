@@ -225,6 +225,16 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
 
   end  % === independent RESTARTS cycle ===
 
+  % print history
+  fprintf('Historical fitness values:\n');
+  if maxfunevals / dim <= 15
+    evals = bbc_client.getEvaluations();
+    for i = 0:(evals-1)
+      [~, value] = bbc_client.history(i);
+      fprintf('%d: %e\n', i, value);
+    end
+  end
+
   bbc_client.cleanup();
   clear bbc_client;
 

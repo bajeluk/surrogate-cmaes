@@ -86,6 +86,20 @@ classdef BbcClientShLib < BbcClient
               varargout{1} = val1;
             end
           end
+        case 'history'
+          if nin ~= 2
+            obj.throwCallException(2, method, nin);
+          else
+            [val1, val2, val3] = calllib(obj.libname, method, ...
+              varargin{1}, varargin{2});
+            if nargout >= 3
+              varargout{3} = val3;
+            elseif nargout >= 2
+              varargout{2} = val2;
+            elseif nargout >= 1
+              varargout{1} = val1;
+            end
+          end
         otherwise
           throw(MException('BbcClient:call', 'Unknown method ''%s''', method));
       end

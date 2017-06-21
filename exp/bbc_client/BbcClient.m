@@ -13,6 +13,7 @@ classdef BbcClient < BbcClientBase
       obj.username = username;
       obj.password = password;
       obj.maxTrials = maxTrials;
+      obj.dim = NaN;
     end
 
     function login(obj)
@@ -33,6 +34,17 @@ classdef BbcClient < BbcClientBase
       if ~result
         throw(MException('BbcClient:configure', ...
           'configure failed with message: %s', obj.errorMessage()));
+      end
+    end
+
+    function [point, value] = history(obj, index)
+      value = libpointer('doublePtr', 1e+100);
+      point = libpointer('doublePtr', zeros(1,obj.dim));
+      [result, point, value] = obj.call('history', uint16(index), point, value);
+
+      if ~result
+        throw(MException('BbcClient:history', ...
+          'history failed with message: %s', obj.errorMessage()));
       end
     end
 
@@ -187,6 +199,7 @@ classdef BbcClient < BbcClientBase
 
     function dim = getDimension(obj)
       dim = obj.call('dimension');
+      obj.dim = dim;
       if ~dim
         throw(MException('BbcClient:getDimension', ...
           'dimension failed with message: %s', obj.errorMessage()));
