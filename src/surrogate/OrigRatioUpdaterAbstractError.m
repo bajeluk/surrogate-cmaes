@@ -76,7 +76,7 @@ classdef (Abstract) OrigRatioUpdaterAbstractError < OrigRatioUpdater
       %   it results in NaN entries in historyErr for that generation(s)
 
       RATIO_TOLERANCE = 0.05;
-      MAX_RATIO_ITERATES = 100;
+      MAX_RATIO_ITERATES = 500;
 
       if (nargin >= 7), obj.ec = varargin{1}; end
       obj.historyErr((obj.lastUpdateGeneration+1):(countiter-1)) = NaN;
