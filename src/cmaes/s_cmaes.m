@@ -427,10 +427,12 @@ else % flgresume is true, do resume former run
   end
   local.opts = opts; % keep stopping and display options
   local.varargin = varargin;
-  load(resumeFilename);
+  load(resumeFilename); 
   opts.SaveFilename = local.opts.SaveFilename;
   varargin = local.varargin;
   flgresume = 1;
+  
+  counteval = local.opts.counteval;
 
   % Overwrite old stopping and display options
   opts.StopFitness = local.opts.StopFitness;
@@ -1753,7 +1755,7 @@ while isempty(stopflag)
       end
       time.saving = time.saving + time.c * max(0,etime(clock, time.t3));
 
-      if countiter > 2
+      if countiter > 2 && ~any(isinf(fitness.raw))
         delete_cmd = ['delete ' eval('[opts.SaveFilename ''_'' num2str(countiter-2) ''.mat'']')];
         eval(delete_cmd);
       end

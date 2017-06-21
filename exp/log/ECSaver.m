@@ -40,7 +40,7 @@ classdef ECSaver < Observer
       save([obj.file '_' num2str(countiter)], '-struct', 'eclog');
       if countiter > 2
         oldfilename = eval('[obj.file ''_'' num2str(countiter-2) ''.mat'']');
-        if exist(oldfilename, 'file')
+        if exist(oldfilename, 'file') && ~any(isinf(ec.pop.y))
           delete_cmd = ['delete ' oldfilename];
           eval(delete_cmd);
         end
