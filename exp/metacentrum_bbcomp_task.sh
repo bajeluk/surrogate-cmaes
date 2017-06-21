@@ -15,7 +15,7 @@
 . $EXPPATH_SHORT/../bash_settings.sh
 
 MATLAB_BINARY_CALL="exp/metacentrum_bbcomp_task"
-BBCOMP_PROXY_STARTPORT=20000
+BBCOMP_PROXY_STARTPORT=`sed -n 's/bbcompParams.proxyPort \?= \?\([0-9]\+\)[^0-9]*/\1/p' $EXPPATH_SHORT/${EXPID}.m`
 
 run_proxy() {
   PROXY_PID=`ps x | sed -n "s/\(^[0-9]\+\).*proxy ${1}$/\1/p"`
