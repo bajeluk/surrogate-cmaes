@@ -82,7 +82,7 @@ submit() {
     MEMORY="2000mb"
   fi
 
-  MY_PBS_PARAMS="-l select=1:ncpus=1:mem=$MEMORY:scratch_local=5gb"
+  MY_PBS_PARAMS="$SUBMIT_PBS_PARAMS -l select=1:ncpus=1:mem=$MEMORY:scratch_local=5gb"
 
   if [ "$useMCR" = 1 ]; then
     echo "MCR binary submit: INST=$INST : OPTS=$OPTS"
