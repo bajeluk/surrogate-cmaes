@@ -205,6 +205,7 @@ defopts.StopOnStagnation = 'on  % stop when fitness stagnates for a long time';
 % defopts.StopOnStagnation = '[120 30*N/popsize 0.2 2e5]  % [min const rel_iter max] measuring period';
 defopts.StopOnWarnings = 'yes  % ''no''==''off''==0, ''on''==''yes''==1 ';
 defopts.StopOnEqualFunctionValues = '2 + N/3  % number of iterations';
+defopts.counteval = '0';
 
 % Options defaults: Other
 defopts.DiffMaxChange = 'Inf  % maximal variable change(s), can be Nx1-vector';
