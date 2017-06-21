@@ -27,7 +27,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   persistent modelRMSEforRestart;       % RMSE threshold for suggesting the CMA-ES to restart
 
   % TODO: make an array with all the status variables from each generation
-  
+
   % CMA-ES state variables
   xmean = cmaesState.xmean;
   lambda = cmaesState.lambda;
@@ -84,6 +84,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     ec = eclog.ec;
     archive = ec.archive;
 
+    ec.observers = [];
     [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
     stopFlagHistory = false(1, stopFlagHistoryLength);
     modelRMSEforRestart = defopts(surrogateOpts, 'modelRMSEforRestart', sDefaults.modelRMSEforRestart);
@@ -111,7 +112,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
       [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
     end
   end
-  
+
   % switching population size
   if ((sampleOpts.origPopSize == lambda) && (counteval >= surrogateOpts.evoControlSwitchPopBound*dim))
     lambda = ceil(surrogateOpts.evoControlSwitchPopulation * lambda);
@@ -128,7 +129,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     stopFlagHistory = false(1, stopFlagHistoryLength);
     modelRMSEforRestart = defopts(surrogateOpts, 'modelRMSEforRestart', sDefaults.modelRMSEforRestart);
   end
-  
+
   % save the initial point to the archive if it was evaluated
   if (countiter == 1 && ~isnan(cmaesState.fxstart))
     archive = archive.save(xmean', cmaesState.fxstart, countiter);
@@ -140,12 +141,12 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     % disable restart suggesting after the first restart
     modelRMSEforRestart = 0.0;
   end
-  
+
   % save the initial point to the archive if it was evaluated
   if (countiter == 1 && ~isempty(cmaesState.fxstart))
     archive = archive.save(xmean', cmaesState.fxstart, countiter);
   end
-  
+
   % run one generation according to evolution control
   [ec, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = ...
     ec.runGeneration(cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin{:});

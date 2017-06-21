@@ -37,7 +37,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
     end
   end
 
-  % EXPID -- unique experiment identifier (directory in where 
+  % EXPID -- unique experiment identifier (directory in where
   %          the results are expected to be placed)
   opts.exp_id     = exp_id;
   % EXPPATH_SHORT
@@ -86,11 +86,14 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
 
   % copy log files from the previous run
   localDatapathPrev = [opts.exppath filesep 'bbcomp_output'];
-  if (exist(localDatapathPrev, 'file'))
-    system(['cp -pR ' localDatapathPrev '/proxy_logs' ...
-      localDatapathPrev filesep sprintf('%s_{log,eclog,cmaesvars}_%dD_%d*', exp_id, dim, id) ...
+  if (exist(localDatapathPrev, 'file') && ~strcmp(datapath, localDatapathPrev))
+    cmd = ['cp -pR ' localDatapathPrev '/proxy_logs ' ...
+      localDatapathPrev filesep sprintf('%s_{log,eclog,cmaesvars}_%dD_%d* ', exp_id, dim, id) ...
       datapath ...
-    ]);
+    ];
+    fprintf('Copying files from the previous run: \n');
+    fprintf(cmd);
+    system(cmd);
   end
 
   % DEBUG
@@ -128,7 +131,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   % Initialize random number generator
   exp_settings.seed = myeval(defopts(cmd_opts, 'seed', 'floor(sum(100 * clock()))'));
   rng(exp_settings.seed);
-  
+
   %
   %
   % the computation itself
@@ -151,7 +154,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   yeRestarts = [];
   y_evals = cell(0);
   restarts = -1;
-  
+
   exp_results.evals = [];
   exp_results.restarts = [];
   exp_results.fbests = [];
@@ -167,7 +170,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
 
     restarts = restarts + 1;
     t = tic;
-    
+
     %
     % optimize bbcomp function using scmaes or bobyqa depending on budget
     %
@@ -186,7 +189,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
       remainingEvals = remainingEvals - varargout.evals;
       surrogateParams.archive = archive;
     end
-    
+
     % #FE restart correction
     if (fmin < Inf)
         ye(:, 1) = min([ye(:, 1) repmat(fmin, size(ye, 1), 1)], [], 2);
@@ -194,7 +197,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
     end
     fmin = min([ye(:, 1); fmin]);
     yeRestarts = [yeRestarts; ye];
-    
+
     elapsedTime = toc(t);
     y_evals = cat(1,y_evals,yeRestarts);
 
@@ -209,14 +212,14 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
     exp_results.y_evals          = y_evals;
     exp_results.time             = exp_results.time + elapsedTime;
     exp_results.remainingEvals   = remainingEvals;
-    
+
     % warn if the archive contains Inf f-values
     infYArchive = isinf(archive.y);
     if any(infYArchive)
       warning('The archive contains %d infinite function values on id = %s.', ...
                sum(infYArchive), printStructure(find(infYArchive), 'Format', 'value'))
     end
-    
+
     save(RESULTSFILE, 'exp_id', 'archive', 'exp_settings', 'exp_results', 'surrogateParams', 'cmaesParams', 'y_evals', 'bbcompParams')
 
   end  % === independent RESTARTS cycle ===
@@ -286,9 +289,11 @@ function [bbc_client, dim, maxfunevals, flgresume] = init_bbc_client(bbcompParam
       if evals
         flgresume = bbcompParams.tryRecovery;
         if flgresume
-          warning('%d / %d evaluations already consumed, attempting recovery.');
+          warning('%d / %d evaluations already consumed, attempting recovery.', ...
+            evals, maxfunevals);
         else
-          error('%d / %d evaluations already consumed, giving up.');
+          error('%d / %d evaluations already consumed, giving up.', ...
+            evals, maxfunevals);
         end
       else
         flgresume = false;
