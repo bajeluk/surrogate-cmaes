@@ -23,8 +23,8 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 #     submits a job with current-set $INST and $OPTS
 
 minutes_to_hours() {
-  H=$(($1/60)); M=$(($1%60));
-  TIME=`printf '%02d%02d' $((HOURS+H)) $((MINS+M))`
+  H=$(((MINS+$1)/60)); M=$(((MINS+$1)%60));
+  TIME=`printf '%02d%02d' $((HOURS+H)) $M`
 }
 
 # critical characters has to be replaced in $OPTS:
