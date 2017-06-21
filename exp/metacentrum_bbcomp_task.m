@@ -73,7 +73,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   end
 
   try
-    [bbc_client, dim, maxfunevals, flgresume] = init_bbc_client(bbcompParams, datapath, id);
+    [bbc_client, dim, maxfunevals, loadedevals, flgresume] = init_bbc_client(bbcompParams, datapath, id);
   catch ME
     fields = strsplit(ME.identifier, ':');
     if strcmp(fields{1}, 'BbcClient')
@@ -123,6 +123,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   % CMA-ES saving & resume settings
   cmaesParams.SaveFilename = eval(cmaesParams.SaveFilename);
   cmaesParams.Resume = flgresume;
+  cmaesParams.counteval = loadedevals;
 
   % Matlab should have been called from a SCRACHDIR
   startup;
@@ -251,7 +252,7 @@ function out = parseCmdParam(name, value, defaultValue)
   end
 end
 
-function [bbc_client, dim, maxfunevals, flgresume] = init_bbc_client(bbcompParams, datapath, id)
+function [bbc_client, dim, maxfunevals, evals, flgresume] = init_bbc_client(bbcompParams, datapath, id)
   % initialization of the BBCOMP client
   % addpath(bbcompParams.libpath); % needed for the dynamic library
 
