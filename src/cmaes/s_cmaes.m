@@ -876,6 +876,7 @@ while isempty(stopflag)
     % hand over the control to surrogateManager()
     surrogateOpts.sampleOpts = sampleOpts;
     [fitness.raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, origEvaled, newStopFlag, archive] = surrogateManager(cmaesState, surrogateOpts, sampleOpts, counteval, flgresume, varargin{:});
+    flgresume = false;
     if (~isempty(newStopFlag))
       stopflag(end+1) = { newStopFlag };
     end

@@ -631,8 +631,10 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % model was trained)
       rmse = NaN; kCorr = NaN; normKendall = NaN; age = NaN; nData = 0;
 
-      [oldModel, age] = obj.getOldModel(obj.oldModelAgeForStatistics);
-      if (~isempty(oldModel))
+      [oldModel_, age] = obj.getOldModel(obj.oldModelAgeForStatistics);
+      if (~isempty(oldModel_))
+        oldModel = ModelFactory.createModel(obj.surrogateOpts.modelType, oldModel_.options, oldModel_.trainMean);
+        oldModel = oldModel.clone(oldModel_);
         countiter = obj.cmaesState.countiter;
         oldModelGeneration = oldModel.trainGeneration;
         testGenerations = [(oldModel.trainGeneration+1):countiter];

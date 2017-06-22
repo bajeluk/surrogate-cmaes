@@ -104,6 +104,17 @@ classdef GpModel < Model
       obj.dimReduction = defopts(modelOptions, 'dimReduction', 1);      % 1.0 == no dimensionality reduction
     end
 
+    function obj = clone(obj, obj2)
+    % Take all fields except function handles from obj2
+      fnames = fieldnames(obj2);
+      for i = 1:length(fnames)
+        ff = fnames{i};
+        if (isempty(strfind(ff, 'Fcn')))
+          obj.(ff) = obj2.(ff);
+        end
+      end
+    end
+    
     function nData = getNTrainData(obj)
       % returns the required number of data for training the model
       % TODO: *write this* properly according to dimension and
