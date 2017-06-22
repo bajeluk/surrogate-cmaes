@@ -412,28 +412,50 @@ if ~flgresume % not resuming a former run
   end
 else % flgresume is true, do resume former run
   try
-    resumeFiles = eval('ls([opts.SaveFilename ''*''])');
+    % list all saved files, the newest will be the first
+    resumeFiles = eval('ls(''-t'', [opts.SaveFilename ''*.mat''])');
   catch ME
     error('No recovery files found.');
   end
 
   resumeFiles = strsplit(strtrim(resumeFiles), '\n');
-  resumeFilename = resumeFiles{end};
 
-  tmp = whos('-file', resumeFilename);
-  for i = 1:length(tmp)
-    if strcmp(tmp(i).name, 'localopts')
-      error('Saved variables include variable "localopts", please remove');
+  % keep stopping and display options
+  local.opts = opts;
+  local.varargin = varargin;
+  loadSuccess = false;
+
+  % go through available cmaesvars files...
+  for iResumeFile = 1:length(resumeFiles)
+    resumeFilename = resumeFiles{iResumeFile};
+    tmp = whos('-file', resumeFilename);
+    for i = 1:length(tmp)
+      if strcmp(tmp(i).name, 'localopts')
+        error('Saved variables include variable "localopts", please remove');
+      end
+    end
+
+    % check, that there are not any Inf f-values in the stored fitnesses
+    thisVars = load(resumeFilename);
+    if (~any(isinf(thisVars.fitness.raw)))
+      % We've got the most recent cmaesvars logfile
+      % without Inf's in f-values, so use it!
+      load(resumeFilename);
+      loadSuccess = true;
+      break;
     end
   end
-  local.opts = opts; % keep stopping and display options
-  local.varargin = varargin;
-  load(resumeFilename); 
+  if (~loadSuccess)
+    error('Loading CMA-ES previous run failed: all files include Inf''s in f-values');
+  end
+
   opts.SaveFilename = local.opts.SaveFilename;
   varargin = local.varargin;
   flgresume = 1;
   
+  % load these from options supplied settings in 'inopts'
   counteval = local.opts.counteval;
+  opts.MaxFunEvals = local.opts.MaxFunEvals;
 
   % Overwrite old stopping and display options
   opts.StopFitness = local.opts.StopFitness;

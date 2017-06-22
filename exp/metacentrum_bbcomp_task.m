@@ -164,7 +164,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   exp_results.f075 = [];
   exp_results.stopflags = {};
   exp_results.time = 0;
-  remainingEvals = maxfunevals;
+  remainingEvals = maxfunevals - loadedevals;
 
   % === independent RESTARTS cycle ===
   while remainingEvals > 0
@@ -184,10 +184,25 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
       archive.y = zeros(evals, 1);
       remainingEvals = maxfunevals - evals;
     else
+      if (restarts == 0)
+        % this is needed due to loading of interrupted CMA-ES state
+        % from _cmaesvars_ log file
+        thisRestartMaxFunEvals = maxfunevals;
+      else
+        thisRestartMaxFunEvals = remainingEvals;
+      end
       [x, ye, stopflag, archive, varargout] = opt_s_cmaes_bbcomp(FUN, dim, ...
-          remainingEvals, cmaesParams, surrogateParams, xstart);
+          thisRestartMaxFunEvals, cmaesParams, surrogateParams, xstart);
 
       remainingEvals = remainingEvals - varargout.evals;
+
+      % this is needed due to loading of interrupted CMA-ES state:
+      cmaesParams.counteval = 0;
+      % other option here is:
+      %   cmaesParams.counteval = varargout.evals;
+      % but it will fool surrogateManager and maybe CMA-ES as well
+      % since the next restart of the CMA-ES would not start 
+      % with counteval == 0
       surrogateParams.archive = archive;
     end
 
