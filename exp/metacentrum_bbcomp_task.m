@@ -196,7 +196,8 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
       [x, ye, stopflag, archive, varargout] = opt_s_cmaes_bbcomp(FUN, dim, ...
           thisRestartMaxFunEvals, cmaesParams, surrogateParams, xstart);
 
-      remainingEvals = remainingEvals - varargout.evals;
+      remainingEvals = remainingEvals - (varargout.evals - loadedevals);
+      loadedevals = 0;
 
       % this is needed due to loading of interrupted CMA-ES state:
       cmaesParams.counteval = 0;
