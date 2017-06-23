@@ -200,6 +200,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
 
       % this is needed due to loading of interrupted CMA-ES state:
       cmaesParams.counteval = 0;
+      cmaesParams.Resume = false;
       % other option here is:
       %   cmaesParams.counteval = varargout.evals;
       % but it will fool surrogateManager and maybe CMA-ES as well
@@ -236,7 +237,13 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
     if any(infYArchive)
       warning('The archive contains %d infinite function values on id = %s.', ...
                sum(infYArchive), printStructure(find(infYArchive), 'Format', 'value'))
+      archive = archive.delete(infYArchive);
     end
+    % MAX_ARCHIVE_LENGTH = 4000;
+    % if (length(archive.y) > MAX_ARCHIVE_LENGTH)
+    %   fprintf('Archive is too big. Cropping only to %d points\n', MAX_ARCHIVE_LENGTH);
+    %   archive = archive.delete(1:(length(archive.y) - MAX_ARCHIVE_LENGTH));
+    % end
 
     save(RESULTSFILE, 'exp_id', 'archive', 'exp_settings', 'exp_results', 'surrogateParams', 'cmaesParams', 'y_evals', 'bbcompParams')
 

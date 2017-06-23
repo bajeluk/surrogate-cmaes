@@ -66,6 +66,9 @@ classdef Archive < handle
       % if (n == 0), all the available data are returned
       % returns:
       %   nData -- the number of all available data in the specified range
+
+      MAX_POINTS_FOR_KMEANS = 1000;
+
       nData = length(obj.y);
       X = []; y = [];
 
@@ -90,18 +93,27 @@ classdef Archive < handle
         closerDataX = xTransf(isInRange,:);
         closerDataY = obj.y(isInRange);
         closerThan2SigmaIdx = find(isInRange);
-        try
-          [~, ~, ~, D] = kmeans(closerDataX, n);
-          % D = ('n' x 'k') distances to the clusters' centroids
-          % find the points nearest to the clusters' centers
-          [~, closestToCentroid] = min(D, [], 1);
-          for closestIdx = closestToCentroid
-            % return the original coordinates, not the transformed
-            X = [X; obj.X(closerThan2SigmaIdx(closestIdx),:)];
-            y = [y; closerDataY(closestIdx)];
+        if (length(closerThan2SigmaIdx) <= MAX_POINTS_FOR_KMEANS)
+          % Use k-means clustering if not too much points to choose from
+          useClustering = true;
+          try
+            [~, ~, ~, D] = kmeans(closerDataX, n);
+            % D = ('n' x 'k') distances to the clusters' centroids
+            % find the points nearest to the clusters' centers
+            [~, closestToCentroid] = min(D, [], 1);
+            for closestIdx = closestToCentroid
+              % return the original coordinates, not the transformed
+              X = [X; obj.X(closerThan2SigmaIdx(closestIdx),:)];
+              y = [y; closerDataY(closestIdx)];
+            end
+          catch err
+            warning('Archive.getDataNearPoint(): %s\n', err.message);
+            useClustering = false;
           end
-        catch err
-          warning('Archive.getDataNearPoint(): %s\n', err.message);
+        else
+          useClustering = false;
+        end
+        if (~useClustering)
           randp = randperm(length(closerThan2SigmaIdx));
           X = [X; obj.X(closerThan2SigmaIdx(randp(1:n)),:)];
           y = [y; closerDataY(randp(1:n))];

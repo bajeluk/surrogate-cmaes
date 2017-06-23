@@ -200,6 +200,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           [obj, ok] = obj.tryOldModel();
           if (~ok)
             % model cannot be trained :( -- return with orig-evaluated population
+            obj.model = [];
             [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
                 = obj.finalizeGeneration(sampleOpts, varargin{:});
             return;

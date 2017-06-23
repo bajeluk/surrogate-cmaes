@@ -446,7 +446,12 @@ else % flgresume is true, do resume former run
     end
   end
   if (~loadSuccess)
-    error('Loading CMA-ES previous run failed: all files include Inf''s in f-values');
+    warning('Loading CMA-ES previous run failed: all files include Inf''s in f-values');
+    if (exist(resumeFilename, 'file'))
+      fprintf('Resuming with the last file ''%s'' and setting FEbudget = 2\n', resumeFilename);
+      load(resumeFilename);
+      local.opts.MaxFunEvals = local.opts.counteval + 2;
+    end
   end
 
   opts.SaveFilename = local.opts.SaveFilename;

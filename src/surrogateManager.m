@@ -83,6 +83,9 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     eclog = load(resumefilename);
     ec = eclog.ec;
     archive = ec.archive;
+    % remove Inf's from the archive
+    infY = find(isinf(archive.y));
+    archive = archive.delete(infY);
 
     ec.observers = [];
     [ec, observers] = ObserverFactory.createObservers(ec, surrogateOpts);
