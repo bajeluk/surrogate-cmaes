@@ -75,6 +75,11 @@ else
   exit 0;
 fi
 
+trap 'bzip2 -z $SCRATCHDIR/job_output/bbcomp_output/proxy_logs/*.log; cp -pR $SCRATCHDIR/job_output/* $EXPPATH_SHORT/$EXPID/' TERM
+# This is more friendly for Metacentrum, as it deletes the files after successful copying
+# trap 'clean_scratch' TERM EXIT
+# trap 'bzip2 -z $SCRATCHDIR/job_output/bbcomp_output/proxy_logs/*.log; cp -pR $SCRATCHDIR/job_output/* $EXPPATH_SHORT/$EXPID/ && clean_scratch' TERM
+
 echo ''
 echo '##############'
 echo Will be called: $MATLAB_BINARY_CALL \"$EXPID\" \"$EXPPATH_SHORT\" \"$INST\" \"$OPTS\"

@@ -74,6 +74,8 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
 
   try
     [bbc_client, dim, maxfunevals, loadedevals, flgresume] = init_bbc_client(bbcompParams, datapath, id);
+    % Wait 5 mins due to the CPU limit for the job
+    pause(360);
   catch ME
     fields = strsplit(ME.identifier, ':');
     if strcmp(fields{1}, 'BbcClient')
@@ -87,7 +89,7 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   % copy log files from the previous run
   localDatapathPrev = [opts.exppath filesep 'bbcomp_output'];
   if (exist(localDatapathPrev, 'file') && ~strcmp(datapath, localDatapathPrev))
-    cmd = ['cp -pR ' localDatapathPrev '/proxy_logs ' ...
+    cmd = ['cp -pR ' localDatapathPrev '/proxy_logs/*_' num2str(id-1) '.log* ' ...
       localDatapathPrev filesep sprintf('%s_{log,eclog,cmaesvars}_%dD_%d* ', exp_id, dim, id) ...
       datapath ...
     ];
@@ -256,8 +258,9 @@ function status = metacentrum_bbcomp_task(exp_id, exppath_short, problemID_str, 
   % copy the bbcomp results onto persistant storage if outside EXPPATH
   if (~isempty(OUTPUTDIR) && ~strcmpi(OUTPUTDIR, opts.exppath) && isunix)
     % compress proxy logs
-    logfiles = [eval(bbcompParams.logfilepath) filesep '*log'];
-    system(['bzip2 -z ' logfiles]);
+    logfiles = [eval(bbcompParams.logfilepath) filesep '*_' num2str(id-1) '.log'];
+    system(['rename ''s/.bzip2/.bak.bzip2/'' ' logfiles '.bzip2']);
+    system(['echo ' logfiles ' | grep -q ''\*'' || bzip2 -z ' logfiles]);
 
     % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
     system(['cp -pR ' OUTPUTDIR '/* ' opts.exppath '/']);
@@ -294,8 +297,8 @@ function [bbc_client, dim, maxfunevals, evals, flgresume] = init_bbc_client(bbco
     try
       logfilepath = eval(bbcompParams.logfilepath);
       [~, ~] = mkdir(logfilepath);
-      logfiles = [logfilepath filesep '*log.bz2'];
-      system(['bzip2 -d ' logfiles]);
+      logfiles = [logfilepath filesep '*_' num2str(id-1) '.log.bz2'];
+      system(['echo ' logfiles ' | grep -q ''\*'' || bzip2 -d ' logfiles]);
       bbc_client.configure(bbcompParams.loghistory, logfilepath);
       bbc_client.login();
       bbc_client.setTrack(bbcompParams.trackname);
