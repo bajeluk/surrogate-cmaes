@@ -30,6 +30,7 @@ surrogateParams.evoControlPreSampleSize = 0.75;
 % surrogateParams.evoControlValidationGenerationPeriod = 4;
 surrogateParams.evoControlValidationPopSize = 0;
 surrogateParams.evoControlOrigPointsRoundFcn = 'ceil'; % 'ceil', 'getProbNumber'
+surrogateParams.evoControlAcceptedModelAge = 1;        % 1 generation back maximal
 
 surrogateParams.evoControlIndividualExtension = [];    % will be multip. by lambda
 surrogateParams.evoControlBestFromExtension = [];      % ratio of expanded popul.

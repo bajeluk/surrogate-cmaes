@@ -187,7 +187,8 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     origEvaled((end-length(yNew)+1):end) = true;
   end
 
-  assert(min(fitness_raw) >= min(archive.y), 'Assertion failed: minimal predicted fitness < min in archive by %e', min(archive.y) - min(fitness_raw));
+  % Disable this assertion in BBComp production
+  % assert(min(fitness_raw) >= min(archive.y), 'Assertion failed: minimal predicted fitness < min in archive by %e', min(archive.y) - min(fitness_raw));
 
   % check that the resulting points in arxvalid are inside bound
   % constraints
