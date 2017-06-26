@@ -121,26 +121,28 @@ classdef Archive < handle
         trainRange=Inf;
       end
 
-      if (nData > n)
-        % there are more data than 'n'
-        lambda = size(xInput,1);
+      lambda = size(xInput,1);
 
-        indicesToReturn = false(1, nData);
+      indicesToReturn = false(nData, 1);
 
-        distanceOrderMatrix = zeros(lambda, nData);
-        % compute coordinates in the (sigma*BD)-basis
-        BDinv = inv(sigma*BD);
+      distanceOrderMatrix = zeros(lambda, nData);
+      % compute coordinates in the (sigma*BD)-basis
+      BDinv = inv(sigma*BD);
 
-        % for each point from xInput:
-        for i = 1:lambda
-          xTransf = ( BDinv * (obj.X - repmat(xInput(i,:),nData,1))' )';
-          diff2 = sum(xTransf.^2, 2);
-          diff2Rank = ranking(diff2);
-          isInRange = diff2 < (trainRange ^ 2);
-          % fill the ranking of distances to the archive points from this xInput
-          distanceOrderMatrix(i,isInRange) = diff2Rank(isInRange)';
-        end
+      % for each point from xInput:
+      for i = 1:lambda
+        xTransf = ( BDinv * (obj.X - repmat(xInput(i,:),nData,1))' )';
+        diff2 = sum(xTransf.^2, 2);
+        diff2Rank = ranking(diff2);
+        isInRange = diff2 < (trainRange ^ 2);
+        % fill the ranking of distances to the archive points from this xInput
+        distanceOrderMatrix(i,isInRange) = diff2Rank(isInRange)';
+      end
 
+      nInRange = sum(any(distanceOrderMatrix > 0));
+      if (nInRange > n)
+        % there are more data than 'n' in the specified trainRange
+        
         % initialize 
         nNearestPerXInput = floor(n / lambda);
         indicesToReturn(any( ...
@@ -168,7 +170,7 @@ classdef Archive < handle
           indicesToReturn = newIndicesToReturn;
         end
       else
-        indicesToReturn = true(nData,1);
+        indicesToReturn(any(distanceOrderMatrix > 0)) = true;
       end
 
       % return the final points
@@ -187,29 +189,30 @@ classdef Archive < handle
         return;
       end
 
-      if (nData > n)
-        % there are more data than 'n'
-        indicesToReturn = false(size(obj.y,1),1);
+      indicesToReturn = false(size(obj.y,1),1);
 
-        % compute coordinates in the (sigma*BD)-basis
-        BDinv = inv(sigma*BD);
-        % for each point from population:
-        for i = 1:size(population.x,2)
-          xTransf = ( BDinv * (obj.X - repmat(population.x(:,i)',nData,1))' )';
-          if i==1
-            diff2 = sum(xTransf.^2, 2);
-          else
-            diff2 = min(diff2, sum(xTransf.^2, 2));
-          end
+      % compute coordinates in the (sigma*BD)-basis
+      BDinv = inv(sigma*BD);
+      % for each point from population:
+      for i = 1:size(population.x,2)
+        xTransf = ( BDinv * (obj.X - repmat(population.x(:,i)',nData,1))' )';
+        if i==1
+          diff2 = sum(xTransf.^2, 2);
+        else
+          diff2 = min(diff2, sum(xTransf.^2, 2));
         end
-        % take up to 'n' closest points
-        isInRange = diff2 < (trainRange ^ 2);
-        [~, closest] = sort(diff2);
+      end
+      % take up to 'n' closest points
+      isInRange = find(diff2 < (trainRange ^ 2));
+
+      if (length(isInRange) > n)
+        % there are more data than 'n'
+        [~, closest] = sort(diff2(isInRange));
         closest((n+1):end) = [];
         % take only points that are in trainRange
-        indicesToReturn(closest) = true;
+        indicesToReturn(isInRange(closest)) = true;
       else
-        indicesToReturn = true(size(obj.y,1),1);
+        indicesToReturn(isInRange) = true;
       end
 
       % return the final points
@@ -223,10 +226,14 @@ classdef Archive < handle
       % convert the number to the metric value
       if (isnumeric(trainRange) && trainRange >= 0.9 && trainRange <= 1.0)
         trainRange = sqrt(chi2inv(trainRange, obj.dim));
+      % if the trainRange is specified as small number
+      % convert the number to multiple of 0.99 quantile of sqrt(Chi2 distribution)
+      elseif (isnumeric(trainRange) && trainRange > 1.0 && trainRange <= 4.0)
+        trainRange = trainRange * sqrt(chi2inv(0.99, obj.dim));
       end
 
       switch lower(trainsetType)
-        case 'allpoints'
+        case { 'allpoints', 'recent' }
           %get all data in range (0 as first parameter)
           [X, y] = obj.getDataNearPoint(0, xMean, trainRange, sigma, BD);
           if size(X,1)> trainsetSizeMax
