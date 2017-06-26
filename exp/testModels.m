@@ -15,6 +15,8 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 %       .statistics     - cell-array of statistics' names | cell array of strings
 %       .rewrite_results - whether to rewrite already saved results | bool
 %       .saveModels     - whether the models should be saved, too, default FALSE | bool
+%       .alwaysRetrain  - let always be the models be retrained (efectively
+%                         deletes models in the 'data')
 %   funcToTest         - functions to test | array of integers
 %   dimsToTest         - dimensions to test | array of integers
 %   instToTest         - dimensions to test | array of integers
@@ -153,6 +155,9 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
           y_models = cell(length(instToTest), dataNSnapshots);
         end
 
+        % print what you are going to test
+        printStructure(modelOptions{m});
+
         % instances loop
         for ii = startInstanceIdx:length(instToTest)
           inst = instToTest(ii);
@@ -166,6 +171,16 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
           noisyHandles = benchmarksnoisy('handles');
           bbob_handlesF(100+(1:length(noisyHandles))) = noisyHandles;
           opts.bbob_func = bbob_handlesF{fun};
+
+          % delete the saved models from the dataset to be always retrained
+          if (isfield(opts, 'alwaysRetrain') && opts.alwaysRetrain)
+            if (isfield(data{f_data, d_data, i_data}, 'models'))
+              data{f_data, d_data, i_data}.models = cell(size(data{f_data, d_data, i_data}.models));
+            end
+            if (isfield(data{f_data, d_data, i_data}, 'models2'))
+              data{f_data, d_data, i_data}.models2 = cell(size(data{f_data, d_data, i_data}.models2));
+            end
+          end
 
           % train & test the model on the 'dataNSnapshots' datasets
           % from the current instance
