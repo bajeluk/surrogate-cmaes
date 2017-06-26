@@ -24,6 +24,7 @@ surrogateParams.DTAdaptive_defaultErr = 0.05;
 
 surrogateParams.evoControlSwitchMode = 'none';
 surrogateParams.evoControlSwitchTime = 4*24*3600; % 7*24*3600;
+surrogateParams.evoControlSwitchBound = 1; % switch to pure CMA-ES when countevals >= 1 * dim
 surrogateParams.evoControlMaxDoubleTrainIterations = 1;
 surrogateParams.evoControlPreSampleSize = 0.75;
 % surrogateParams.evoControlNBestPoints = [0.2 1.0];
