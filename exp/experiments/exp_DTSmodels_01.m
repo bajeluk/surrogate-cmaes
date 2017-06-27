@@ -22,5 +22,8 @@ opts.testOrigRatio      = 0.05;
 opts.dataset            = 'DTS_005_25_models';
 opts.saveModels         = true;
 
+opts.aggFunction        = @(x) nanmedian(reshape(x, [], 1));
+opts.aggSnapshots       = { 1:3, 4:6 };
+
 opts.scratch = [getenv('SCRATCH') '/tmp/bajeluk'];
 [~, ~] = mkdir(opts.scratch);

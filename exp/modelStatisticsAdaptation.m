@@ -45,10 +45,16 @@ function [resultTableAll, resultTableAgg] = modelStatisticsAdaptation(modelFolde
   if (~exist('exp_id', 'var') || isempty(exp_id))
     exp_id = 'exp_GPtest_01'; warning('Using default exp_id = %s !', exp_id); end
 
-  opts = settings2struct(varargin{:});
+  if (~isempty(varargin) && ~isempty(varargin{1}) && isstruct(varargin{1}))
+    opts = varargin{1};
+  else
+    opts = settings2struct(varargin{:});
+  end
   opts.savedModelStatistics = defopts(opts, 'savedModelStatistics', []);
   opts.statistics = defopts(opts, 'statistics', { 'mse', 'rde', 'rdeValid'});
   opts.aggFunction = defopts(opts, 'aggFunction', @nanmean);
+  % group of snapshots which should be aggregated together
+  opts.aggSnapshots = defopts(opts, 'aggSnapshots', {snapshots});
 
   % opts.firstStatistic = defopts(opts, 'firstStatistic', @mean);
   % opts.firstStatisticName = defopts(opts, 'firstStatisticName', func2str(opts.firstStatistic));
@@ -186,7 +192,7 @@ function [resultTableAll, resultTableAgg] = modelStatisticsAdaptation(modelFolde
   end
 
   descrColNamesAll = {'hash', 'dim', 'fun', 'inst', 'snapshot'};
-  descrColNamesAgg = {'hash', 'dim', 'fun'};
+  descrColNamesAgg = {'hash', 'dim', 'fun', 'snpGroup'};
 
   resultCellAll = cell(1, length(descrColNamesAll));
   resultMatAll  = NaN(1, length(opts.statistics) + 2);
@@ -239,22 +245,27 @@ function [resultTableAll, resultTableAgg] = modelStatisticsAdaptation(modelFolde
           resultMatAll(thisRows, i_stat) = reshape(results.isTrained2{i_model, i_func, i_dim}, [], 1);
         end
 
-        aggRow = aggRow + 1;
-        resultRowNamesAgg{aggRow} = sprintf('%s_%s_%dD_f%d', modelName, hash, dim, func);
-        resultCellAgg(aggRow, 1:length(descrColNamesAgg)) = {hash, dim, func};
-        for i_stat = 1:length(opts.statistics)
-          stat = opts.statistics{i_stat};
-          resultMatAgg(aggRow, i_stat) = opts.aggFunction(reshape(results.(stat){i_model, i_func, i_dim}, 1, []));
-        end
-        i_stat = length(opts.statistics)+1;
-        if (~isempty(results.isTrained{i_model, i_func, i_dim}))
-          resultMatAgg(aggRow, i_stat) = sum(sum(results.isTrained{i_model, i_func, i_dim}));
-        else
-          resultMatAgg(aggRow, i_stat) = sum(sum(~isnan(results.mse{i_model, i_func, i_dim})));
-        end
-        i_stat = i_stat + 1;
-        if (isfield(results, 'isTrained2'))
-          resultMatAgg(aggRow, i_stat) = sum(sum(results.isTrained2{i_model, i_func, i_dim}));
+        for agSnap = 1:length(opts.aggSnapshots)
+          i_stat = 0;
+          thisAggSnapshots = opts.aggSnapshots{agSnap};
+          aggRow = aggRow + 1;
+          resultRowNamesAgg{aggRow} = sprintf('%s_%s_%dD_f%d_a%d', modelName, hash, dim, func, agSnap);
+          resultCellAgg(aggRow, 1:length(descrColNamesAgg)) = {hash, dim, func, agSnap};
+          for is = 1:length(opts.statistics)
+            i_stat = i_stat + 1;
+            stat = opts.statistics{i_stat};
+            resultMatAgg(aggRow, i_stat) = opts.aggFunction(results.(stat){i_model, i_func, i_dim}(:,thisAggSnapshots));
+          end
+          i_stat = i_stat + 1;
+          if (~isempty(results.isTrained{i_model, i_func, i_dim}))
+            resultMatAgg(aggRow, i_stat) = sum(sum(results.isTrained{i_model, i_func, i_dim}(:,thisAggSnapshots)));
+          else
+            resultMatAgg(aggRow, i_stat) = sum(sum(~isnan(results.mse{i_model, i_func, i_dim}(:,thisAggSnapshots))));
+          end
+          i_stat = i_stat + 1;
+          if (isfield(results, 'isTrained2'))
+            resultMatAgg(aggRow, i_stat) = sum(sum(results.isTrained2{i_model, i_func, i_dim}(:,thisAggSnapshots)));
+          end
         end
 
       end  % for functions
