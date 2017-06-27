@@ -178,6 +178,8 @@ function [resultTableAll, resultTableAgg] = modelStatisticsAdaptation(modelFolde
       end
     end
 
+    save(fullfile(exppath_short, exp_id, ['modelResults_' datestr(now(), 'yyyy-mm-dd') '.mat']), 'results', 'folderModelOptions', 'modelFolders', 'functions', 'dimensions', 'snapshots', 'instances');
+
   else  % if (isempty(opts.savedModelStatistics))
     try
       fprintf(['Trying to load the model training/testing statistics from the file\n' ...
