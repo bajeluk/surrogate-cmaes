@@ -52,6 +52,8 @@ classdef BbcClient < BbcClientBase
       trial = 1;
       while trial <= obj.maxTrials
         try
+%           fprintf('Debug: login trial %d / %d\n', ...
+%             trial, obj.maxTrials);
           obj.login();
           break;
         catch ME
@@ -90,7 +92,7 @@ classdef BbcClient < BbcClientBase
           if strcmp(ME.identifier, 'BbcClient:setTrack')
             warning('setTrack in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
-            obj.safeLogin(obj.maxTrials, 1);
+            obj.safeLogin(1);
             trial = trial + 1;
           else
             rethrow(ME);
@@ -183,7 +185,7 @@ classdef BbcClient < BbcClientBase
           if strcmp(ME.identifier, 'BbcClient:setProblem')
             warning('setProblem in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
-            obj.safeSetTrack(trackname, obj.maxTrials);
+            obj.safeSetTrack(trackname);
             trial = trial + 1;
           else
             rethrow(ME);
@@ -216,7 +218,7 @@ classdef BbcClient < BbcClientBase
           if strcmp(ME.identifier, 'BbcClient:getDimension')
             warning('getDimension in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
-            obj.safeSetProblem(problemID, trackname, obj.maxTrials);
+            obj.safeSetProblem(problemID, trackname);
             trial = trial + 1;
           else
             rethrow(ME);
@@ -242,13 +244,13 @@ classdef BbcClient < BbcClientBase
       trial = 1;
       while trial <= obj.maxTrials
         try
-          bud = obj.getDimension();
+          bud = obj.getBudget();
           break;
         catch ME
           if strcmp(ME.identifier, 'BbcClient:getBudget')
             warning('getBudget in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
-            obj.safeSetProblem(problemID, trackname, obj.maxTrials);
+            obj.safeSetProblem(problemID, trackname);
             trial = trial + 1;
           else
             rethrow(ME);
@@ -280,7 +282,7 @@ classdef BbcClient < BbcClientBase
           if strcmp(ME.identifier, 'BbcClient:getEvaluations')
             warning('getEvaluations in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
-            obj.safeSetProblem(problemID, trackname, obj.maxTrials);
+            obj.safeSetProblem(problemID, trackname);
             trial = trial + 1;
           else
             rethrow(ME);
@@ -303,7 +305,13 @@ classdef BbcClient < BbcClientBase
       [result, ~, value] = obj.call('evaluate', point, value);
 
       if ~result
-        value = Inf;
+        msg = obj.errorMessage();
+        if strcmp(msg, 'evaluation budget exceeded')
+          value = Inf;
+        else
+          throw(MException('BbcClient:getEvaluations', ...
+            'evaluations failed with message: %s', obj.errorMessage()));
+        end
       end
     end
 
@@ -318,7 +326,7 @@ classdef BbcClient < BbcClientBase
           if strcmp(fields{1}, 'BbcClient')
             warning('evaluate in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
-            obj.safeSetProblem(problemID, trackname, obj.maxTrials);
+            obj.safeSetProblem(problemID, trackname);
             trial = trial + 1;
           else
             rethrow(ME);

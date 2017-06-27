@@ -308,21 +308,21 @@ function [bbc_client, dim, maxfunevals, evals, flgresume] = init_bbc_client(bbco
       logfiles = [logfilepath filesep '*_' num2str(id-1) '.log.bz2'];
       system(['echo ' logfiles ' | grep -q ''\*'' || bzip2 -d ' logfiles]);
       bbc_client.configure(bbcompParams.loghistory, logfilepath);
-      bbc_client.login();
-      bbc_client.setTrack(bbcompParams.trackname);
+      bbc_client.safeLogin(5);
+      bbc_client.safeSetTrack(bbcompParams.trackname);
       numProblems = bbc_client.getNumberOfProblems();
 
       if (id > numProblems)
         error('Input problem id is %d, but maximum number of BBCOMP problems is %d', ...
           id, numProblems);
       else
-        bbc_client.setProblem(id);
+        bbc_client.safeSetProblem(id, bbcompParams.trackname);
       end
 
       dim = bbc_client.getDimension();
-      maxfunevals = bbc_client.getBudget();
+      maxfunevals = bbc_client.safeGetBudget(id, bbcompParams.trackname);
 
-      evals = bbc_client.getEvaluations();
+      evals = bbc_client.safeGetEvaluations(id, bbcompParams.trackname);
       if evals
         flgresume = bbcompParams.tryRecovery;
         if flgresume
