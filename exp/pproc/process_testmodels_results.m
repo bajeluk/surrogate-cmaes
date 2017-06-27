@@ -13,7 +13,8 @@ if (~exist('resultTableAgg', 'var'))
 end
 run(['exp/experiments/' expid '.m']);
 
-% Clear the non-interesting settings: trainRange == 1.5 OR trainsetSizeMax == 5*dim
+% Clear-out the non-interesting settings:
+%   trainRange == 1.5 OR trainsetSizeMax == 5*dim
 modelOptions.trainRange(1) = [];
 modelOptions.trainsetSizeMax(1) = [];
 
@@ -31,11 +32,6 @@ for mi = 1:length(hashes)
     modelsSettings{mi, 2+mf} = modelOptions_fullfact{mi}.(multiFieldNames{mf});
   end
 end
-
-tModelsSettings = cell2table(modelsSettings, 'VariableNames', [{'id', 'hash'}, multiFieldNames]);
-settingsToDelete = tModelsSettings{ ...
-    tModelsSettings.trainRange == 1.5 | strcmpi(tModelsSettings.trainsetSizeMax, '5*dim'), ...
-    'hash'};
 
 % Initialization
 modelErrorRanksPerFS = cell(length(dimensions), 1);
@@ -135,14 +131,14 @@ end
 woF5 = [1:8, 11:48];
 for di = 1:length(dimensions)
   for col = woF5
-    modelErrorRanksPerFS{di}(:, col) = ranking(modelErrorsPerFS{di}(:, col));
+    modelErrorRanksPerFS{di}(:, col) = medianRank(modelErrorsPerFS{di}(:, col));
   end
   modelErrors(:, di) = nansum(modelErrorsPerFS{di}(:, woF5), 2) ./ (length(woF5));
   modelErrorRanks(:, di) = nansum(modelErrorRanksPerFS{di}(:, woF5), 2) ./ (length(woF5));
-  modelErrorsDivSuccess(:, di) = nansum(modelErrorsPerFS{di}(:, woF5) ...
-      ./ trainSuccessPerFS{di}(:, woF5), 2) ./ (length(woF5));
-  modelErrorDivSuccessRanks(:, di) = nansum(modelErrorRanksPerFS{di}(:, woF5) ...
-      ./ trainSuccessPerFS{di}(:, woF5), 2) ./ (length(woF5));  
+  modelErrorsDivSuccess(:, di) = nansum( modelErrorsPerFS{di}(:, woF5) ...
+      ./ trainSuccessPerFS{di}(:, woF5), 2 ) ./ (length(woF5));
+  modelErrorDivSuccessRanks(:, di) = nansum( modelErrorRanksPerFS{di}(:, woF5) ...
+      ./ trainSuccessPerFS{di}(:, woF5), 2 ) ./ (length(woF5));  
   % Normlize to (0, 1)
   % modelErrors(:, di) = (modelErrors(:, di) - min(modelErrors(:, di))) ./ (max(modelErrors(:, di)) - min(modelErrors(:, di)));
   [~, bestModelNumbers(:, di)] = sort(modelErrorsDivSuccess(:, di));
@@ -173,9 +169,45 @@ if (plotImages)
   xlabel('dimension');
 end
 
+%% Anova-n
 % Prepare Anova-n categorical predictors
 categorical = { modelsSettings(:, 3), cell2mat(modelsSettings(:, 4)), ...
     cellfun(@(x) str2num(regexprep(x, '\*.*', '')), ...
     modelsSettings(:, 5)), modelsSettings(:, 6)};
 
-% [p,tbl,stats,terms] = anovan(modelErrors(:, 1), categorical, 'model', 1, 'varnames', multiFieldNames);
+p = {};
+stats = {};
+for di = 1:length(dimensions)
+  [p{di},tbl,stats{di},terms] = anovan(modelErrorsDivSuccess(:, di), categorical, 'model', 1, 'varnames', multiFieldNames, 'display', 'off');
+end
+
+%% Multcompare
+mstd = {};
+for di = 1:length(dimensions)
+  fprintf('==== %d D ====\n', dimensions(di));
+  for i = 1:length(multiFieldNames)
+    fprintf('==   predictor: %s   ==\n', multiFieldNames{i});
+    
+    % Do the multi-comparison
+    [c,mstd{di, i},h,nms] = multcompare(stats{di}, 'Dimension', i, 'display', 'off');
+    mltc{di, i} = c;
+    
+    % Identify the lowest estimated mean
+    [minMean, iMinMean] = min(mstd{di, i}(:, 1));
+    
+    % Find other values which are not statistically different
+    otherLowMat = c((c(:,6) >= 0.05) & (ismember(c(:,1), iMinMean) | ismember(c(:,2), iMinMean)), 1:2);
+    otherLowIdx = [];
+    for j = 1:size(otherLowMat,1)
+      otherLowIdx(j) = otherLowMat(j, ~ismember(otherLowMat(j,:), iMinMean));
+    end
+    fprintf('Lowest mean is for %s.\n', nms{iMinMean});
+
+    if (any(otherLowIdx))
+      fprintf('All lowest are:\n\n');
+      disp(nms(otherLowIdx));
+    else
+      fprintf('No other low values.\n\n');
+    end
+  end
+end
