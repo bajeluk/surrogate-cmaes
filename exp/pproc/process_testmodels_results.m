@@ -54,13 +54,17 @@ for fi = 1:length(functions)
 end
 
 % Loading errors from the table
-if (~exist('modelErrorsPerFS', 'var'))
+if (~exist('modelErrorsPerFS', 'var') || ~exist('modelsSettingsFSI', 'var'))
   modelErrorsPerFS = cell(length(dimensions), 1);
 
   for di = 1:length(dimensions)
     dim = dimensions(di);
     fprintf('%dD: ', dim);
     modelErrorsPerFS{di} = zeros(length(hashes), length(functions) * nSnapshotGroups);
+    modelErrorsDivSuccessFSI{di} = [];
+    modelsSettingsFSI{di} = cell(0, size(modelsSettings, 2));
+    funDimSngFSI{di}   = zeros(0, 3);
+    rowFSI = 0;
 
     for mi = 1:length(hashes)
       hash = hashes{mi};
@@ -78,12 +82,23 @@ if (~exist('modelErrorsPerFS', 'var'))
           %     &  resultTableAgg.dim == dim ...
           %     &  resultTableAgg.fun == fun ...
           %     &  resultTableAgg.snpGroup == si, errorCol};
-
-          modelErrorsPerFS{di}(mi, iCol) = aggFcn(resultTableAll{ ...
+          thisErrors = resultTableAll{ ...
               strcmpi(resultTableAll.hash, hash) ...
               &  ismember(resultTableAll.snapshot, snapshotGroups{si}) ...
               &  resultTableAll.dim == dim ...
-              &  resultTableAll.fun == fun, errorCol});
+              &  resultTableAll.fun == fun, errorCol};
+          nErrors = sum(~isnan(thisErrors));
+
+          modelErrorsPerFS{di}(mi, iCol) = aggFcn(thisErrors);
+          modelErrorsDivSuccessFSI{di}(rowFSI + (1:nErrors), 1) = ...
+              thisErrors(~isnan(thisErrors)) ...
+              * (nErrors / (length(snapshotGroups{si})*length(instances)));
+          [~, thisSettingsIdx] = ismember(hash, hashes);
+          modelsSettingsFSI{di}(rowFSI + (1:nErrors), :) = ...
+              repmat(modelsSettings(thisSettingsIdx, :), nErrors, 1);
+          funDimSngFSI{di}(rowFSI + (1:nErrors), :) = ...
+              repmat([fun, dim, si], nErrors, 1);
+          rowFSI = rowFSI + nErrors;
         end  % for snapshotGroups
 
       end  % for functions
@@ -170,19 +185,29 @@ if (plotImages)
 end
 
 %% Anova-n
-% Prepare Anova-n categorical predictors
-categorical = { modelsSettings(:, 3), cell2mat(modelsSettings(:, 4)), ...
-    cellfun(@(x) str2num(regexprep(x, '\*.*', '')), ...
-    modelsSettings(:, 5)), modelsSettings(:, 6)};
-
 p = {};
 stats = {};
 for di = 1:length(dimensions)
-  [p{di},tbl,stats{di},terms] = anovan(modelErrorsDivSuccess(:, di), categorical, 'model', 1, 'varnames', multiFieldNames, 'display', 'off');
+  if (exist('modelsSettingsFSI', 'var'))
+    % Prepare Anova-n y's and categorical predictors
+    categorical = { modelsSettingsFSI{di}(:, 3), cell2mat(modelsSettingsFSI{di}(:, 4)), ...
+        cellfun(@(x) str2num(regexprep(x, '\*.*', '')), modelsSettingsFSI{di}(:, 5)), ...
+        modelsSettingsFSI{di}(:, 6) };
+    y = modelErrorsDivSuccessFSI{di};
+  else
+    % Prepare Anova-n y's and categorical predictors
+    categorical = { modelsSettings(:, 3), cell2mat(modelsSettings(:, 4)), ...
+        cellfun(@(x) str2num(regexprep(x, '\*.*', '')), modelsSettings(:, 5)), ...
+        modelsSettings(:, 6) };
+    y = modelErrorsDivSuccess(:, di);
+  end
+  % Anova-n itself:
+  [p{di},tbl,stats{di},terms] = anovan(y, categorical, 'model', 1, 'varnames', multiFieldNames, 'display', 'off');
 end
 
 %% Multcompare
 mstd = {};
+mltc = {};
 for di = 1:length(dimensions)
   fprintf('==== %d D ====\n', dimensions(di));
   for i = 1:length(multiFieldNames)
