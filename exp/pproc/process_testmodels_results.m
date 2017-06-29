@@ -279,6 +279,7 @@ for di = 1:length(dimensions)
         fprintf('No other statistically lowest values.\n\n');
       end
     end
+    cellBestValues(end+1, :) = [{[], []}, num2cell(p{idx}')];
     cellBestValues((rowStart+1):end, 1:2) = repmat({dimensions(di), si}, ...
         size(cellBestValues,1)-rowStart, 1);
   end
