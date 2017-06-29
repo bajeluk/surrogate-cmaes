@@ -4,7 +4,7 @@ expid = 'exp_DTSmodels_01';
 snapshotGroups = { [5,6,7], [18,19,20] };
 errorCol = 'rde2'; % 'rdeM1_M2WReplace'; % 'rdeValid';
 nTrainedCol = 'nTrained2';
-plotImages = true;
+plotImages = 'mean';  % 'off', 'rank'
 aggFcn = @(x) quantile(x, 0.75);
 
 % Loading the data
@@ -31,16 +31,6 @@ for mi = 1:length(hashes)
   for mf = 1:length(multiFieldNames)
     modelsSettings{mi, 2+mf} = modelOptions_fullfact{mi}.(multiFieldNames{mf});
   end
-end
-
-% Initialization
-modelErrorRanksPerFS = cell(length(dimensions), 1);
-modelErrorRanks = zeros(length(hashes), length(dimensions));
-modelErrors = zeros(length(hashes), length(dimensions));
-bestModelNumbers = zeros(length(hashes), length(dimensions));
-bestModelRankNumbers = zeros(length(hashes), length(dimensions));
-for di = 1:length(dimensions)
-  modelErrorRanksPerFS{di} = zeros(length(hashes), length(functions) * nSnapshotGroups);  
 end
 
 % Column names
@@ -142,97 +132,156 @@ if (~exist('trainSuccessPerFS', 'var'))
 end
 
 
-% Summarizing results
-woF5 = [1:8, 11:48];
+%% Summarizing results
+% Initialization
+modelErrorRanks = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
+modelErrors     = zeros(length(hashes), length(dimensions*nSnapshotGroups));
+bestModelNumbers = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
+bestModelRankNumbers = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
+modelErrorsDivSuccess = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
+modelErrorDivSuccessRanks = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
+modelErrorRanksPerFS = cell(length(dimensions), 1);
 for di = 1:length(dimensions)
-  for col = woF5
-    modelErrorRanksPerFS{di}(:, col) = medianRank(modelErrorsPerFS{di}(:, col));
+  modelErrorRanksPerFS{di} = zeros(length(hashes), length(functions) * nSnapshotGroups);  
+end
+
+for di = 1:length(dimensions)
+  for si = 1:nSnapshotGroups
+    idx = ((di - 1) * nSnapshotGroups) + si;
+
+    woF5 = ((setdiff(functions, 5) - 1) * nSnapshotGroups) + si;
+    for col = woF5
+      modelErrorRanksPerFS{di}(:, col) = medianRank(modelErrorsPerFS{di}(:, col));
+    end
+    modelErrors(:, idx) = nansum(modelErrorsPerFS{di}(:, woF5), 2) ./ (length(woF5));
+    modelErrorRanks(:, idx) = nansum(modelErrorRanksPerFS{di}(:, woF5), 2) ./ (length(woF5));
+    modelErrorsDivSuccess(:, idx) = nansum( modelErrorsPerFS{di}(:, woF5) ...
+        ./ trainSuccessPerFS{di}(:, woF5), 2 ) ./ (length(woF5));
+    modelErrorDivSuccessRanks(:, idx) = nansum( modelErrorRanksPerFS{di}(:, woF5) ...
+        ./ trainSuccessPerFS{di}(:, woF5), 2 ) ./ (length(woF5));  
+    % Normlize to (0, 1)
+    % modelErrors(:, idx) = (modelErrors(:, idx) - min(modelErrors(:, idx))) ./ (max(modelErrors(:, idx)) - min(modelErrors(:, idx)));
+    [~, bestModelNumbers(:, idx)] = sort(modelErrorsDivSuccess(:, idx));
+    [~, bestModelRankNumbers(:, idx)] = sort(modelErrorDivSuccessRanks(:, idx));
   end
-  modelErrors(:, di) = nansum(modelErrorsPerFS{di}(:, woF5), 2) ./ (length(woF5));
-  modelErrorRanks(:, di) = nansum(modelErrorRanksPerFS{di}(:, woF5), 2) ./ (length(woF5));
-  modelErrorsDivSuccess(:, di) = nansum( modelErrorsPerFS{di}(:, woF5) ...
-      ./ trainSuccessPerFS{di}(:, woF5), 2 ) ./ (length(woF5));
-  modelErrorDivSuccessRanks(:, di) = nansum( modelErrorRanksPerFS{di}(:, woF5) ...
-      ./ trainSuccessPerFS{di}(:, woF5), 2 ) ./ (length(woF5));  
-  % Normlize to (0, 1)
-  % modelErrors(:, di) = (modelErrors(:, di) - min(modelErrors(:, di))) ./ (max(modelErrors(:, di)) - min(modelErrors(:, di)));
-  [~, bestModelNumbers(:, di)] = sort(modelErrorsDivSuccess(:, di));
-  [~, bestModelRankNumbers(:, di)] = sort(modelErrorDivSuccessRanks(:, di));
 end  % for dimensions
 
-if (plotImages)
+
+%% Plot images
+woF5 = repelem((setdiff(functions, 5) - 1) * nSnapshotGroups, 1, nSnapshotGroups) ...
+       +  repmat(1:nSnapshotGroups, 1, length(setdiff(functions, 5)));
+if (~strcmpi(plotImages, 'off'))
   for di = 1:length(dimensions)
     dim = dimensions(di);
     figure();
-    image(modelErrorsPerFS{di}(:, woF5) ./ trainSuccessPerFS{di}(:, woF5), 'CDataMapping', 'scaled');
+    switch lower(plotImages)
+      case 'mean'
+        image(modelErrorsPerFS{di}(:, woF5) ./ trainSuccessPerFS{di}(:, woF5), 'CDataMapping', 'scaled');
+      case 'rank'
+        image(modelErrorRanksPerFS{di}(:, woF5) ./ trainSuccessPerFS{di}(:, woF5), 'CDataMapping', 'scaled');
+      otherwise
+        warning('plot style not known: %s', plotImages)
+    end
     colorbar;
     ax = gca();
-    ax.XTick = 1:2:length(woF5);
-    ax.XTickLabel = ceil(woF5(1:2:end) ./ nSnapshotGroups);
+    ax.XTick = 1:nSnapshotGroups:size(modelErrorsPerFS{di}, 2);
+    ax.XTickLabel = setdiff(functions, 5); % ceil(woF5(1:2:end) ./ nSnapshotGroups);
     % ax.XTickLabel = cellfun(@(x) regexprep(x, '_.*', ''), modelErrorsColNames(woF5), 'UniformOutput', false);
     title([num2str(dim) 'D']);
     xlabel('functions and snapshot groups');
   end
   
   figure();
-  image(modelErrorsDivSuccess, 'CDataMapping', 'scaled');
+  switch lower(plotImages)
+    case 'mean'
+      image(modelErrorsDivSuccess, 'CDataMapping', 'scaled');
+    case 'rank'
+      image(modelErrorDivSuccessRanks, 'CDataMapping', 'scaled');
+  end
   colorbar;
   ax = gca();
-  ax.XTick = 1:length(dimensions);
+  ax.XTick = 1:2:size(modelErrorsDivSuccess, 2);
   ax.XTickLabel = dimensions;
-  title('Average normalized RDE');
-  xlabel('dimension');
+  title('RDE averaged across functions');
+  xlabel('dimension, snapshotGroup');
 end
 
 %% Anova-n
 p = {};
 stats = {};
+snapshotGroupCol = 3;
 for di = 1:length(dimensions)
-  if (exist('modelsSettingsFSI', 'var'))
-    % Prepare Anova-n y's and categorical predictors
-    categorical = { modelsSettingsFSI{di}(:, 3), cell2mat(modelsSettingsFSI{di}(:, 4)), ...
-        cellfun(@(x) str2num(regexprep(x, '\*.*', '')), modelsSettingsFSI{di}(:, 5)), ...
-        modelsSettingsFSI{di}(:, 6) };
-    y = modelErrorsDivSuccessFSI{di};
-  else
-    % Prepare Anova-n y's and categorical predictors
-    categorical = { modelsSettings(:, 3), cell2mat(modelsSettings(:, 4)), ...
-        cellfun(@(x) str2num(regexprep(x, '\*.*', '')), modelsSettings(:, 5)), ...
-        modelsSettings(:, 6) };
-    y = modelErrorsDivSuccess(:, di);
+  for si = 1:nSnapshotGroups
+    idx = ((di - 1) * nSnapshotGroups) + si;
+    if (exist('modelsSettingsFSI', 'var'))
+      % Prepare Anova-n y's and categorical predictors
+      thisSNG = funDimSngFSI{di}(:,snapshotGroupCol) == si;
+      categorical = { modelsSettingsFSI{di}(thisSNG, 3), cell2mat(modelsSettingsFSI{di}(thisSNG, 4)), ...
+          cellfun(@(x) str2num(regexprep(x, '\*.*', '')), modelsSettingsFSI{di}(thisSNG, 5)), ...
+          modelsSettingsFSI{di}(thisSNG, 6) };
+      y = modelErrorsDivSuccessFSI{di}(thisSNG, 1);
+    else
+      % Prepare Anova-n y's and categorical predictors
+      categorical = { modelsSettings(:, 3), cell2mat(modelsSettings(:, 4)), ...
+          cellfun(@(x) str2num(regexprep(x, '\*.*', '')), modelsSettings(:, 5)), ...
+          modelsSettings(:, 6) };
+      y = modelErrorsDivSuccess(:, idx);
+    end
+    % Anova-n itself:
+    [p{idx},tbl,stats{idx},terms] = anovan(y, categorical, 'model', 1, 'varnames', multiFieldNames, 'display', 'off');
   end
-  % Anova-n itself:
-  [p{di},tbl,stats{di},terms] = anovan(y, categorical, 'model', 1, 'varnames', multiFieldNames, 'display', 'off');
 end
 
 %% Multcompare
+cellBestValues = cell(0, 2+length(multiFieldNames));
 mstd = {};
 mltc = {};
 for di = 1:length(dimensions)
-  fprintf('==== %d D ====\n', dimensions(di));
-  for i = 1:length(multiFieldNames)
-    fprintf('==   predictor: %s   ==\n', multiFieldNames{i});
-    
-    % Do the multi-comparison
-    [c,mstd{di, i},h,nms] = multcompare(stats{di}, 'Dimension', i, 'display', 'off');
-    mltc{di, i} = c;
-    
-    % Identify the lowest estimated mean
-    [minMean, iMinMean] = min(mstd{di, i}(:, 1));
-    
-    % Find other values which are not statistically different
-    otherLowMat = c((c(:,6) >= 0.05) & (ismember(c(:,1), iMinMean) | ismember(c(:,2), iMinMean)), 1:2);
-    otherLowIdx = [];
-    for j = 1:size(otherLowMat,1)
-      otherLowIdx(j) = otherLowMat(j, ~ismember(otherLowMat(j,:), iMinMean));
-    end
-    fprintf('Lowest mean is for %s.\n', nms{iMinMean});
+  for si = 1:nSnapshotGroups
+    idx = ((di - 1) * nSnapshotGroups) + si;
 
-    if (any(otherLowIdx))
-      fprintf('All lowest are:\n\n');
-      disp(nms(otherLowIdx));
-    else
-      fprintf('No other low values.\n\n');
+    fprintf('==== %d D, snapshotG: %d ====\n', dimensions(di), si);
+    rowStart = size(cellBestValues, 1);
+
+    for i = 1:length(multiFieldNames)
+      fprintf('==   predictor: %s   ==\n', multiFieldNames{i});
+
+      % Do the multi-comparison
+      [c,mstd{idx, i},h,nms] = multcompare(stats{idx}, 'Dimension', i, 'display', 'off');
+      nValues = size(nms, 1);
+      mltc{idx, i} = c;
+
+      % Identify the lowest estimated mean (and sort them, too)
+      [~, sortedMeansId] = sort(mstd{idx, i}(:, 1));
+      iMinMean = sortedMeansId(1);
+      fprintf('Lowest mean f-value for this predictor is for %s.\n', nms{iMinMean});
+
+      % Find other values which are not statistically different from the
+      % lowest
+      otherLowRows = (c(:,6) >= 0.05) & (ismember(c(:,1), iMinMean) | ismember(c(:,2), iMinMean));
+      otherLowMat = c(otherLowRows, 1:2);
+      otherLowBool = false(nValues, 1);
+      for j = 1:size(otherLowMat,1)
+        otherLowBool(otherLowMat(j, ~ismember(otherLowMat(j,:), iMinMean))) = true;
+      end
+      otherLowIdx = find(otherLowBool);
+      isOtherInSorted = ismember(sortedMeansId, otherLowIdx);
+      otherLowSorted = sortedMeansId(isOtherInSorted);
+
+      bestValues = cellfun(@(x) regexprep(x, '^.*=', ''), ...
+          nms([iMinMean; otherLowSorted]), 'UniformOutput', false);
+      cellBestValues(rowStart + (1:length(bestValues)), 2+i) = bestValues;
+
+      if (any(otherLowBool))
+        fprintf('Other statistically also low are:\n\n');
+        disp(nms(otherLowSorted));
+      else
+        fprintf('No other statistically lowest values.\n\n');
+      end
     end
+    cellBestValues((rowStart+1):end, 1:2) = repmat({dimensions(di), si}, ...
+        size(cellBestValues,1)-rowStart, 1);
   end
 end
+tBestValues = cell2table(cellBestValues, ...
+    'VariableNames', [{'dim', 'snG' }, multiFieldNames]);
