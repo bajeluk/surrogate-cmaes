@@ -6,6 +6,8 @@ errorCol = 'rde2'; % 'rdeM1_M2WReplace'; % 'rdeValid';
 nTrainedCol = 'nTrained2';
 plotImages = 'mean';  % 'off', 'rank'
 aggFcn = @(x) quantile(x, 0.75);
+rankTol = 0.01;   % tolerance for considering the RDE equal
+nBestModels = 5;
 
 % Loading the data
 if (~exist('resultTableAgg', 'var'))
@@ -15,8 +17,10 @@ run(['exp/experiments/' expid '.m']);
 
 % Clear-out the non-interesting settings:
 %   trainRange == 1.5 OR trainsetSizeMax == 5*dim
-modelOptions.trainRange(1) = [];
-modelOptions.trainsetSizeMax(1) = [];
+modelOptions.trainRange = {2, 4};
+modelOptions.trainsetSizeMax = {'10*dim', '15*dim', '20*dim'};
+modelOptions.trainsetType = {'nearest', 'recent'};
+modelOptions.covFcn = {'{@covSEiso}'  '{@covMaterniso, 5}'  '{@covMaterniso, 3}'};
 
 % Processing model options
 nSnapshotGroups = length(snapshotGroups);
@@ -151,7 +155,7 @@ for di = 1:length(dimensions)
 
     woF5 = ((setdiff(functions, 5) - 1) * nSnapshotGroups) + si;
     for col = woF5
-      modelErrorRanksPerFS{di}(:, col) = medianRank(modelErrorsPerFS{di}(:, col));
+      modelErrorRanksPerFS{di}(:, col) = preciseRank(modelErrorsPerFS{di}(:, col), rankTol);
     end
     modelErrors(:, idx) = nansum(modelErrorsPerFS{di}(:, woF5), 2) ./ (length(woF5));
     modelErrorRanks(:, idx) = nansum(modelErrorRanksPerFS{di}(:, woF5), 2) ./ (length(woF5));
@@ -286,3 +290,28 @@ for di = 1:length(dimensions)
 end
 tBestValues = cell2table(cellBestValues, ...
     'VariableNames', [{'dim', 'snG' }, multiFieldNames]);
+
+%% Models for ModelPool
+nModels = length(hashes);
+nCombs = nchoosek(nModels, nBestModels);
+worstBestRanks = cell(length(dimensions), 1);
+
+if (nCombs <= 1e6)
+  combs = combnk(1:nModels, nBestModels);
+
+  % DEBUG
+  nCombs = 200;
+  combs = combs(1:nCombs, :);
+
+  for di = 1:length(dimensions)
+    worstBestRanks{di} = zeros(nCombs, 1);
+    for iComb = 1:nCombs
+      thisComb = combs(iComb, :);
+      worstBestRanks{di}(iComb) = max( min( ...
+          modelErrorRanksPerFS{di}(thisComb, :) ) );
+    end
+  end  
+else
+  fprintf('There''s too many combinations of settings: %d\n', nCombs);
+
+end
