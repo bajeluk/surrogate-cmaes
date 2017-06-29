@@ -7,7 +7,7 @@ nTrainedCol = 'nTrained2';
 plotImages = 'mean';  % 'off', 'rank'
 aggFcn = @(x) quantile(x, 0.75);
 rankTol = 0.01;   % tolerance for considering the RDE equal
-nBestModels = 5;
+nModelpoolModels = 5; % # of models to choose into ModelPool
 
 % Loading the data
 if (~exist('resultTableAgg', 'var'))
@@ -21,6 +21,8 @@ modelOptions.trainRange = {2, 4};
 modelOptions.trainsetSizeMax = {'10*dim', '15*dim', '20*dim'};
 modelOptions.trainsetType = {'nearest', 'recent'};
 modelOptions.covFcn = {'{@covSEiso}'  '{@covMaterniso, 5}'  '{@covMaterniso, 3}'};
+disp('Using only this restricted set of modelOpts:');
+printStructure(modelOptions);
 
 % Processing model options
 nSnapshotGroups = length(snapshotGroups);
@@ -193,6 +195,7 @@ if (~strcmpi(plotImages, 'off'))
     % ax.XTickLabel = cellfun(@(x) regexprep(x, '_.*', ''), modelErrorsColNames(woF5), 'UniformOutput', false);
     title([num2str(dim) 'D']);
     xlabel('functions and snapshot groups');
+    ylabel('model settings');
   end
   
   figure();
@@ -207,7 +210,8 @@ if (~strcmpi(plotImages, 'off'))
   ax.XTick = 1:2:size(modelErrorsDivSuccess, 2);
   ax.XTickLabel = dimensions;
   title('RDE averaged across functions');
-  xlabel('dimension, snapshotGroup');
+  xlabel('dimension, snapshot group');
+  ylabel('model settings');
 end
 
 %% Anova-n
@@ -290,26 +294,62 @@ for di = 1:length(dimensions)
 end
 tBestValues = cell2table(cellBestValues, ...
     'VariableNames', [{'dim', 'snG' }, multiFieldNames]);
+disp(tBestValues)
 
 %% Models for ModelPool
 nModels = length(hashes);
-nCombs = nchoosek(nModels, nBestModels);
+nCombs = nchoosek(nModels, nModelpoolModels);
 worstBestRanks = cell(length(dimensions), 1);
+maxMinRank = zeros(length(dimensions), 1);
+bestCombinations = cell(length(dimensions), 1);
+theBestCombs = cell(length(dimensions), 1);
+selectedFcnsErrors = cell(length(dimensions), 1);
+
+selectedFcns = [1 2 3 6 8 12 17 21];
+cols = repelem((selectedFcns - 1) * nSnapshotGroups, 1, nSnapshotGroups) ...
+    +  repmat(1:nSnapshotGroups, 1, length(selectedFcns));
 
 if (nCombs <= 1e6)
-  combs = combnk(1:nModels, nBestModels);
+  combs = combnk(1:nModels, nModelpoolModels);
 
   % DEBUG
-  nCombs = 200;
-  combs = combs(1:nCombs, :);
+  % nCombs = 200;
+  % combs = combs(1:nCombs, :);
 
   for di = 1:length(dimensions)
     worstBestRanks{di} = zeros(nCombs, 1);
     for iComb = 1:nCombs
       thisComb = combs(iComb, :);
       worstBestRanks{di}(iComb) = max( min( ...
-          modelErrorRanksPerFS{di}(thisComb, :) ) );
+          modelErrorRanksPerFS{di}(thisComb, :) ./ trainSuccessPerFS{di}(thisComb, :) ...
+          ) );
     end
+    maxMinRank(di) = min(worstBestRanks{di});
+    bestCombinations{di} = find(worstBestRanks{di} == maxMinRank(di));
+    fprintf('%d D: There are %d combinations with rank <= %d.\n', ...
+        dimensions(di), length(bestCombinations{di}), maxMinRank(di));
+
+    selectedFcnsErrors{di} = zeros(length(bestCombinations{di}), ...
+        nSnapshotGroups * length(selectedFcns));
+    for ci = 1:length(bestCombinations{di})
+      thisComb = combs(bestCombinations{di}(ci), :);
+      selectedFcnsErrors{di}(ci, :) = min(modelErrorsPerFS{di}(thisComb, cols));
+    end
+
+    % Display one of the best settings with the lowest mean RDE
+    % on selected functions
+    [~, iBestBestCombination] = min(mean(selectedFcnsErrors{di}, 2));
+    theBestCombs{di} = combs(bestCombinations{di}(iBestBestCombination), :);
+    disp([repelem(selectedFcns, nSnapshotGroups); ...
+        modelErrorRanksPerFS{di}(theBestCombs{di}, cols) ./ trainSuccessPerFS{di}(theBestCombs{di}, cols) ...
+        ]);
+    disp(modelsSettings(theBestCombs{di}, :));
+    
+    % % Display all best settings
+    % disp(combs(bestCombinations{di}, :));
+    % disp([0 repelem(selectedFcns, nSnapshotGroups); ...
+    %     mean(selectedFcnsErrors{di}, 2), selectedFcnsErrors{di}]);
+    disp('--------------------------------');
   end  
 else
   fprintf('There''s too many combinations of settings: %d\n', nCombs);
