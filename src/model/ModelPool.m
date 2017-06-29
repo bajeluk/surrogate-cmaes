@@ -100,7 +100,11 @@ classdef ModelPool < Model
       obj.nTrainData = Inf;
       for i=1:obj.modelsCount
         % create the models, calculate needed properties
-        modelOptions = obj.modelPoolOptions.parameterSets(i);
+        if (isstruct(obj.modelPoolOptions.parameterSets))
+          modelOptions = obj.modelPoolOptions.parameterSets(i);
+        elseif (iscell(obj.modelPoolOptions.parameterSets))
+          modelOptions = obj.modelPoolOptions.parameterSets{i};
+        end
         % now obsolete:
         % obj.modelPoolOptions.parameterSets(i).calculatedTrainRange = ModelPool.calculateTrainRange(modelOptions.trainRange, obj.dim);
         obj.models{i,1} = obj.createGpModel(i, xMean);
@@ -179,7 +183,11 @@ classdef ModelPool < Model
 
   methods (Access = protected)
     function gpModel = createGpModel(obj, modelIndex, xMean)
-      newModelOptions = obj.modelPoolOptions.parameterSets(modelIndex);
+      if (isstruct(obj.modelPoolOptions.parameterSets))
+        newModelOptions = obj.modelPoolOptions.parameterSets(modelIndex);
+      elseif (iscell(obj.modelPoolOptions.parameterSets))
+        newModelOptions = obj.modelPoolOptions.parameterSets{modelIndex};
+      end
       newModelOptions.predictionType = obj.predictionType;
       newModelOptions.transformCoordinates = obj.transformCoordinates;
       newModelOptions.dimReduction = obj.dimReduction;

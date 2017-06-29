@@ -15,6 +15,17 @@ classdef ModelFactory
           if (nargin > 3 && ~isempty(oldModel) && isa(oldModel, 'ModelPool'))
             obj = oldModel;
           else
+            if (isfield(modelOptions, 'parameterSets_fullfact') ...
+                && isnumeric(modelOptions.parameterSets))
+              % Identify the right settings according to current dimension.
+              % Dimensions for which we have exact parameterSets are
+              % saved in 'modelOptions.parameterSets_dimensions'
+              dim = size(xMean, 2);
+              [~, fullfactIndex] = min(abs( ...
+                  modelOptions.parameterSets_dimensions - dim ));
+              modelOptions.parameterSets = modelOptions.parameterSets_fullfact( ...
+                  modelOptions.parameterSets(fullfactIndex, :) );
+            end
             obj = ModelPool(modelOptions, xMean);
           end
         otherwise
