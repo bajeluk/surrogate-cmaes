@@ -74,7 +74,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
       [~, ~] = mkdir(datapath);
       cmaes_out = [];
 
-      [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath, localDatapath, false);
+      [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(bbParams.opt_function, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath, localDatapath, false, surrogateParams, cmaesParams, bbParams);
 
       y_evals = exp_results.y_evals;
 
@@ -157,9 +157,25 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   end
 end
 
-function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_function, id, exp_settings, datapath, opt, maxrestarts, maxfunevals, minfunevals, t0, exppath, localDatapath, isPureCmaes)
+function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_function, id, exp_settings, datapath, opt, maxrestarts, maxfunevals, minfunevals, t0, exppath, localDatapath, isPureCmaes, varargin)
   y_evals = cell(0);
   cmaes_out = cell(0);
+
+  if (length(varargin) > 2)
+    bbParams = varargin{3};
+  else
+    bbParams = struct();
+  end
+  if (length(varargin) > 1)
+    cmaesParams = varargin{2};
+  else
+    cmaesParams = struct();
+  end
+  if (length(varargin) > 0)
+    surrogateParams = varargin{1};
+  else
+    surrogateParams = struct();
+  end
 
   exp_results.evals = [];
   exp_results.restarts = [];
@@ -171,10 +187,10 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
   exp_results.time = 0;
   evalsRestartCorrection = 0;
 
-  tmpFile = [exppath filesep exp_settings.exp_id '_tmp_' num2str(id) '.mat'];
+  [datapathRoot, expFileID] = fileparts(datapath);
+  tmpFile = [exppath filesep exp_settings.exp_id '_tmp_' expFileID '.mat'];
 
   % load interrupted "_tmp" results if exp_settings.resume is set
-  [datapathRoot, expFileID] = fileparts(datapath);
   if (~isPureCmaes && exp_settings.resume && ~isempty(localDatapath) ...
       && exist([localDatapath filesep expFileID], 'dir') ...
       && exist(tmpFile, 'file'))
@@ -255,7 +271,7 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
     exp_id = exp_settings.exp_id;
     if (~isPureCmaes)
       exp_results.rngState = rng();
-      save(tmpFile, 'exp_settings', 'exp_id', 'y_evals', 'exp_results', 'cmaes_out');
+      save(tmpFile, 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams', 'bbParams', 'cmaes_out');
     end
 
     % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
