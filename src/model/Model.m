@@ -287,7 +287,7 @@ classdef (Abstract) Model
 
       if (isempty(X))
         XtransfReduce = [];
-        if (isempty(obj.dataset.X))
+        if (~isfield(dataset, 'X') || isempty(obj.dataset.X))
           warning('Model.train() - empty trainset.');
         end
       else
@@ -311,9 +311,10 @@ classdef (Abstract) Model
         else
           XtransfReduce=XTransf;
         end
+
+        obj = trainModel(obj, XtransfReduce, y, xMean, generation);
       end
 
-      obj = trainModel(obj, XtransfReduce, y, xMean, generation);
 
       if (obj.isTrained())
         % Test that we don't have a constant model
