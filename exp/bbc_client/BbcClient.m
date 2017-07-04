@@ -276,7 +276,7 @@ classdef BbcClient < BbcClientBase
       trial = 1;
       while trial <= obj.maxTrials
         try
-          evals = obj.getDimension();
+          evals = obj.getEvaluations();
           break;
         catch ME
           if strcmp(ME.identifier, 'BbcClient:getEvaluations')
