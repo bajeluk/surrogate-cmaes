@@ -296,7 +296,7 @@ function [bbc_client, dim, maxfunevals, evals, flgresume] = init_bbc_client(bbco
     bbcompParams.proxyPort + id, ...
     bbcompParams.username, bbcompParams.password, ...
     bbcompParams.proxyTimeout, bbcompParams.proxyConnectTimeout, ...
-    bbcompParams.maxTrials);
+    bbcompParams.maxTrials, bbcompParams.loginDelay);
 
   % some robustness to network failures is achived by retrying
   % initialization
@@ -308,7 +308,7 @@ function [bbc_client, dim, maxfunevals, evals, flgresume] = init_bbc_client(bbco
       logfiles = [logfilepath filesep '*_' num2str(id-1) '.log.bz2'];
       system(['echo ' logfiles ' | grep -q ''\*'' || bzip2 -d ' logfiles]);
       bbc_client.configure(bbcompParams.loghistory, logfilepath);
-      bbc_client.safeLogin(5);
+      bbc_client.safeLogin();
       bbc_client.safeSetTrack(bbcompParams.trackname);
       numProblems = bbc_client.getNumberOfProblems();
 

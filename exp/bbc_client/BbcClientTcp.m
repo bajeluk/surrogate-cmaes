@@ -11,9 +11,9 @@ classdef BbcClientTcp < BbcClient
 
   methods (Access = public)
     function obj = BbcClientTcp(hostname, port, username, password, ...
-        timeout, connectTimeout, maxTrials)
+        timeout, connectTimeout, maxTrials, delay)
       % initialization
-      obj@BbcClient(username, password, maxTrials);
+      obj@BbcClient(username, password, maxTrials, delay);
 
       obj.hostname = hostname;
       obj.port = port;

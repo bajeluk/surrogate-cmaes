@@ -5,15 +5,17 @@ classdef BbcClient < BbcClientBase
     username
     password
     maxTrials
+    delay
   end % properties
 
   methods (Access = public)
-    function obj = BbcClient(username, password, maxTrials)
+    function obj = BbcClient(username, password, maxTrials, delay)
       % initialization
       obj.username = username;
       obj.password = password;
       obj.maxTrials = maxTrials;
       obj.dim = NaN;
+      obj.delay = delay;
     end
 
     function login(obj)
@@ -48,7 +50,7 @@ classdef BbcClient < BbcClientBase
       end
     end
 
-    function safeLogin(obj, delay)
+    function safeLogin(obj)
       trial = 1;
       while trial <= obj.maxTrials
         try
@@ -60,7 +62,7 @@ classdef BbcClient < BbcClientBase
           if strcmp(ME.identifier, 'BbcClient:login')
             warning('Login in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
-            pause(delay);
+            pause(obj.delay);
             trial = trial + 1;
           else
             rethrow(ME);
@@ -92,7 +94,8 @@ classdef BbcClient < BbcClientBase
           if strcmp(ME.identifier, 'BbcClient:setTrack')
             warning('setTrack in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
-            obj.safeLogin(1);
+            pause(obj.delay);
+            obj.safeLogin();
             trial = trial + 1;
           else
             rethrow(ME);
@@ -153,7 +156,8 @@ classdef BbcClient < BbcClientBase
           if strcmp(ME.identifier, 'BbcClient:getNumberOfProblems')
             warning('getNumberOfProblems in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
-            obj.safeLogin(obj.maxTrials, 1);
+            pause(obj.delay);
+            obj.safeLogin();
             trial = trial + 1;
           else
             rethrow(ME);
@@ -185,6 +189,7 @@ classdef BbcClient < BbcClientBase
           if strcmp(ME.identifier, 'BbcClient:setProblem')
             warning('setProblem in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
+            pause(obj.delay);
             obj.safeSetTrack(trackname);
             trial = trial + 1;
           else
@@ -218,6 +223,7 @@ classdef BbcClient < BbcClientBase
           if strcmp(ME.identifier, 'BbcClient:getDimension')
             warning('getDimension in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
+            pause(obj.delay);
             obj.safeSetProblem(problemID, trackname);
             trial = trial + 1;
           else
@@ -250,6 +256,7 @@ classdef BbcClient < BbcClientBase
           if strcmp(ME.identifier, 'BbcClient:getBudget')
             warning('getBudget in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
+            pause(obj.delay);
             obj.safeSetProblem(problemID, trackname);
             trial = trial + 1;
           else
@@ -282,6 +289,7 @@ classdef BbcClient < BbcClientBase
           if strcmp(ME.identifier, 'BbcClient:getEvaluations')
             warning('getEvaluations in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
+            pause(obj.delay);
             obj.safeSetProblem(problemID, trackname);
             trial = trial + 1;
           else
@@ -326,6 +334,7 @@ classdef BbcClient < BbcClientBase
           if strcmp(fields{1}, 'BbcClient')
             warning('evaluate in trial %d / %d failed with message: %s.', ...
               trial, obj.maxTrials, ME.message);
+            pause(obj.delay);
             obj.safeSetProblem(problemID, trackname);
             trial = trial + 1;
           else

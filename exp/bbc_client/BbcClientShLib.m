@@ -7,9 +7,10 @@ classdef BbcClientShLib < BbcClient
   end % properties
 
   methods (Access = public)
-    function obj = BbcClientShLib(libname, libhfile, username, password, maxTrials)
+    function obj = BbcClientShLib(libname, libhfile, username, password, ...
+        maxTrials, delay)
       % initialization
-      obj@BbcClient(username, password, maxTrials)
+      obj@BbcClient(username, password, maxTrials, delay)
       
       obj.libname = libname;
       obj.libhfile = libhfile;
