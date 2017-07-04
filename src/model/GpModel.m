@@ -96,12 +96,28 @@ classdef GpModel < Model
       % GP hyperparameter bounds
       obj.covBounds = defopts(obj.options, 'covBounds', ...
           [-2*ones(size(obj.hyp.cov)), 25*ones(size(obj.hyp.cov))]);
+      % expand also covariance Bounds if they do not respect ARD covariance
+      if ((size(obj.covBounds,1) == 2) && (isequal(covfcn, @covSEard) ...
+          || isequal(covfcn, @covMaternard)))
+        obj.covBounds = [repmat(obj.covBounds(1,:), obj.dim, 1); obj.covBounds(2:end,:)];
+      end
       obj.likBounds = defopts(obj.options, 'likBounds', log([1e-6, 10]));
 
       % general model prediction options
       obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
       obj.transformCoordinates = defopts(modelOptions, 'transformCoordinates', true);
       obj.dimReduction = defopts(modelOptions, 'dimReduction', 1);      % 1.0 == no dimensionality reduction
+    end
+
+    function obj = clone(obj, obj2)
+    % Take all fields except function handles from obj2
+      fnames = fieldnames(obj2);
+      for i = 1:length(fnames)
+        ff = fnames{i};
+        if (isempty(strfind(ff, 'Fcn')))
+          obj.(ff) = obj2.(ff);
+        end
+      end
     end
 
     function nData = getNTrainData(obj)
@@ -120,30 +136,35 @@ classdef GpModel < Model
 
       assert(size(xMean,1) == 1, '  GpModel.train(): xMean is not a row-vector.');
       obj.trainMean = xMean;
-      obj.dataset.X = X;
-      obj.dataset.y = y;
+      if (~isempty(X) && ~isempty(y))
+        obj.dataset.X = X;
+        obj.dataset.y = y;
+      end
 
       % normalize y if specified, @meanZero, or if large y-scale
       % (at least for CMA-ES hyperparameter optimization)
       if (~obj.options.normalizeY ...
-          && (isequal(obj.meanFcn, @meanZero) || (max(y) - min(y)) > 1e4))
+          && (isequal(obj.meanFcn, @meanZero) || (max(obj.dataset.y) - min(obj.dataset.y)) > 1e4))
         fprintf(2, 'Y-Normalization is switched ON for @meanZero covariance function of large Y-scale.\n');
         obj.options.normalizeY = true;
       end
       if (obj.options.normalizeY)
-        obj.shiftY = mean(y);
-        obj.stdY  = std(y);
-        yTrain = (y - obj.shiftY) / obj.stdY;
+        obj.shiftY = mean(obj.dataset.y);
+        obj.stdY  = std(obj.dataset.y);
+        yTrain = (obj.dataset.y - obj.shiftY) / obj.stdY;
       else
         obj.shiftY = 0;
         obj.stdY  = 1;
-        yTrain = y;
+        yTrain = obj.dataset.y;
       end
 
       % set the mean hyperparameter if is needed
-      if (~isequal(obj.meanFcn, @meanZero))
+      if (isequal(obj.meanFcn, @meanConst))
         obj.hyp.mean = median(yTrain);
+      elseif (isequal(obj.meanFcn, @meanLinear))
+        obj.hyp.mean = median(yTrain) / obj.dim * ones(obj.dim,1);
       end
+      
 
       alg = obj.options.trainAlgorithm;
 
@@ -164,7 +185,7 @@ classdef GpModel < Model
         l_cov = length(obj.hyp.cov);
 
         % lower and upper bounds
-        [lb_hyp, ub_hyp] = obj.getLUBounds(yTrain);
+        [lb_hyp, ub_hyp] = obj.getLUBounds(yTrain, obj.hyp);
         lb = unwrap(lb_hyp)';
         ub = unwrap(ub_hyp)';
         opt = [];
@@ -272,7 +293,7 @@ classdef GpModel < Model
       end
       if isnan(initial)
         % the initial point is not valid
-        % fprintf('  GpModel.train(): fmincon -- initial point is not valid.\n');
+        fprintf('  GpModel.train(): fmincon -- initial point is not valid.\n');
         trainErr = true;
       else
         % training itself
@@ -380,7 +401,7 @@ classdef GpModel < Model
       end
     end
 
-    function [lb_hyp, ub_hyp] = getLUBounds(obj, yTrain)
+    function [lb_hyp, ub_hyp] = getLUBounds(obj, yTrain, startHyp)
       % return lower/upper bounds for GP model hyperparameter training
       %
       lb_hyp.cov = obj.covBounds(:,1);
@@ -393,6 +414,22 @@ classdef GpModel < Model
         maxY = max(yTrain);
         lb_hyp.mean = minY - 2*(maxY - minY);
         ub_hyp.mean = minY + 2*(maxY - minY);
+      elseif (isequal(obj.meanFcn, @meanLinear))
+        min_y = min(yTrain);
+        max_y = max(yTrain);
+        lb_hyp.mean = zeros(size(startHyp.mean));
+        ub_hyp.mean = zeros(size(startHyp.mean));
+        for i=1:obj.dim
+          % max_x -- max of each dimension from dataset_X
+          dataset_X = obj.getDataset_X();
+          max_x = max(dataset_X(:,i));
+          min_x = min(dataset_X(:,i));
+          max_tg = (max_y - min_y) / (max_x - min_x);
+          lb_hyp.mean(i) = -5 * max_tg;
+          ub_hyp.mean(i) = 5 * max_tg;
+        end
+        lb_hyp.mean = min(lb_hyp.mean, startHyp.mean);
+        ub_hyp.mean = max(ub_hyp.mean, startHyp.mean);
       end
     end
   end

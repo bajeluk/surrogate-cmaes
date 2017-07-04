@@ -30,7 +30,16 @@ classdef (Abstract) Model
     % returns empty @y on error
   end
 
-  methods  
+  methods
+    function obj2 = clone(obj, obj2)
+    % Take all fields except function handles from obj2
+      for ff = fieldnames(obj)
+        if (strfind(ff{1}, 'Fcn') == 0)
+          obj2.(ff{1}) = obj.(ff{1});
+        end
+      end
+    end
+
     function trained = isTrained(obj)
     % check whether the model is already trained
       trained = (obj.trainGeneration >= 0);
@@ -60,7 +69,7 @@ classdef (Abstract) Model
       invShiftedY = predict(obj, invShiftedDataset);
       % set the vector of the shift (this has to be after calling
       % predict()!!!)
-      obj.shiftMean = xMean - obj.trainMean; 
+      obj.shiftMean = xMean - obj.trainMean;
       % estimate the shift in the new position of the model
       % it is a pair-wise comparison, TODO: is this formula ok?
       obj.shiftY = median(obj.getDataset_y() - invShiftedY);
@@ -79,13 +88,13 @@ classdef (Abstract) Model
     % returns:
     %   @obj       -- is empty if the model is not sufficient for prediction
     %   @counteval -- the number of used original evaluations (non NaN)
-    %   @newX      -- new evaluated points (starting from the second, 
+    %   @newX      -- new evaluated points (starting from the second,
     %                 they should be copied from xValid)
     %   @newY      -- f-values of the new evaluated points
     %   @newZ      -- correspoing vectors from normal N(0,1), the first row, which
     %                 corresponds to the shifted archive point, will not be computed!
     %
-    % FUTURE WORK: 
+    % FUTURE WORK:
     % * TODO more points to reevaluate because of conrolling the model precision
     %        (@nOrigEvals parameter)
     % * TODO add a feedback if the model is not sufficiently precise
@@ -171,7 +180,7 @@ classdef (Abstract) Model
         end
       end
     end
-    
+
     function [y, sd2] = predict(obj, X)
     % Predicts the function values in new points X.
 
@@ -183,7 +192,7 @@ classdef (Abstract) Model
       else
         XTransf = X;
       end
-      
+
       % dimensionality reduction
       if (isprop(obj, 'dimReduction') && (obj.dimReduction ~= 1))
         cntDimension = ceil(obj.dim * obj.dimReduction);
@@ -197,34 +206,34 @@ classdef (Abstract) Model
       [y, sd2] = modelPredict(obj,XtransfReduce);
 
     end
-    
+
     function [output, y] = getModelOutput(obj,X)
-    % Predicts the function values, the variance, the probability of 
+    % Predicts the function values, the variance, the probability of
     % improvement, the expected improvement or the least confidence bound
-    % in new points X. Values of PoI  and EI can be transformed to last 
+    % in new points X. Values of PoI  and EI can be transformed to last
     % known fvalue range.
-      
+
       [y, sd2] = obj.predict(X);
       fmin = min(obj.getDataset_y());
       fmax = max(obj.getDataset_y());
-      
+
       switch lower(obj.predictionType)
         case 'fvalues' % mean function values
           output = y;
-          
+
         case 'sd2' % variance
           output = sd2;
-          
+
         case 'poi' % probability of improvement
           target = fmin - 0.05 * (fmax - fmin);
           output = getPOI(X, y, sd2, target);
-        
+
         case 'ei' % expected improvement
           output = getEI(X, y, sd2, fmin);
-          
+
         case 'lcb' % lower confidence bound
           output = y - 2 * sqrt(sd2);
-        
+
         case 'fpoi' % PoI scaled using function values
           target = fmin - 0.05 * (fmax - fmin);
           poi = getPOI(X, y, sd2, target);
@@ -232,7 +241,7 @@ classdef (Abstract) Model
           poiMin = min(poi);
           % map the higest PoI to the smallest function value and vice versa
           output = (fmax-fmin)*(poiMax - poi)/(poiMax-poiMin)+fmin;
-        
+
         case 'fei' % EI scaled using function values
           ei = getEI(X, y, sd2, fmin);
           eiMax = max(ei);
@@ -245,49 +254,67 @@ classdef (Abstract) Model
       end
 
     end
-    
-    function obj = train(obj, X, y, stateVariables, sampleOpts)
+
+    function obj = train(obj, X, y, stateVariables, sampleOpts, archive, population)
     % train the model based on the data (X,y)
-    
+    % if archive is passed and trainsetType is not 'parameters',
+    % X and y are ignored and new values for X, y are retrieved from archive
+    % according to the model settings
+
       xMean = stateVariables.xmean';
       generation = stateVariables.countiter;
       sigma = stateVariables.sigma;
       lambda = stateVariables.lambda;
       BD = stateVariables.BD;
       obj.sampleOpts = sampleOpts;
+      obj.trainMean = xMean;
+      obj.stateVariables = stateVariables;
 
+      trainsetType = defopts(obj.options, 'trainsetType', 'parameters');
+      obj.options.trainsetSizeMax = defopts(obj.options, 'trainsetSizeMax', 15*obj.dim);
+      obj.options.trainRange = defopts(obj.options, 'trainRange', 1);
+      if (~strcmpi(trainsetType, 'parameters') && exist('archive','var'))
+        [X, y] = obj.generateDataset(archive, population);
+      end
+
+      obj.trainSigma = sigma;
+      obj.trainBD = BD;
       % minimal difference between minimal and maximal returned
       % value to regard the model as trained; otherwise, the
       % constant response is mark of a badly trained model
       % and therefor it is marked as untrained
       MIN_RESPONSE_DIFFERENCE = min(1e-8, 0.05 * (max(y) - min(y)));
 
-      % transform input variables using Mahalanobis distance
-      if obj.transformCoordinates
-        % compute coordinates in the (sigma*BD)-basis
-        obj.trainSigma = sigma;
-        obj.trainBD = BD;
-        XTransf =( (sigma * BD) \ X')';
+      if (isempty(X))
+        XtransfReduce = [];
+        if (~isfield(dataset, 'X') || isempty(obj.dataset.X))
+          warning('Model.train() - empty trainset.');
+        end
       else
-        XTransf = X;
-      end
-      obj.trainMean = xMean;
-      obj.stateVariables = stateVariables;
+        % transform input variables using Mahalanobis distance
+        if obj.transformCoordinates
+          % compute coordinates in the (sigma*BD)-basis
+          XTransf = ( (sigma * BD) \ X')';
+        else
+          XTransf = X;
+        end
 
-      % dimensionality reduction
-      if (isprop(obj, 'dimReduction') && (obj.dimReduction ~= 1))
-        cntDimension = ceil(obj.dim * obj.dimReduction);
-        obj.shiftMean = obj.shiftMean(1:cntDimension);
-        changeMatrix = (eye(obj.dim) / BD);
-        changeMatrix = changeMatrix(1:cntDimension,:);
-        obj.reductionMatrix = changeMatrix;
-        XtransfReduce = changeMatrix * XTransf';
-        XtransfReduce = XtransfReduce';
-      else
-        XtransfReduce=XTransf;
+        % dimensionality reduction
+        if (isprop(obj, 'dimReduction') && (obj.dimReduction ~= 1))
+          cntDimension = ceil(obj.dim * obj.dimReduction);
+          obj.shiftMean = obj.shiftMean(1:cntDimension);
+          changeMatrix = (eye(obj.dim) / BD);
+          changeMatrix = changeMatrix(1:cntDimension,:);
+          obj.reductionMatrix = changeMatrix;
+          XtransfReduce = changeMatrix * XTransf';
+          XtransfReduce = XtransfReduce';
+        else
+          XtransfReduce=XTransf;
+        end
+
+        obj = trainModel(obj, XtransfReduce, y, xMean, generation);
       end
 
-      obj = trainModel(obj, XtransfReduce, y, xMean, generation);
 
       if (obj.isTrained())
         % Test that we don't have a constant model
@@ -298,13 +325,14 @@ classdef (Abstract) Model
           obj.trainGeneration = -1;
         end
       end
+
     end
   end
 
   methods (Access = protected)
     function [x, datasetIdx] = getNearMean(obj, xMean, deniedIdxs)
     % Returns a point @x from the training dataset (with datasetIdx) near the
-    % @trainMean, possibly in the direction of the new @xMean. 
+    % @trainMean, possibly in the direction of the new @xMean.
     % This point is to be evaluated and used for generationUpdate()
     % @deniedIdxs       vector of indices to the @database which are not
     %                   allowed to use
@@ -329,6 +357,17 @@ classdef (Abstract) Model
 
       datasetIdx = allowedIdxs(datasetIdx);
       x = dataset_X(datasetIdx, :);
+    end
+
+
+    function [X,y] = generateDataset(obj, archive, population)
+      xMean = obj.stateVariables.xmean';
+      sigma = obj.stateVariables.sigma;
+      BD = obj.stateVariables.BD;
+      dim = obj.dim;
+      [X,y] = archive.getTrainsetData(obj.options.trainsetType,...
+          myeval(obj.options.trainsetSizeMax), xMean, obj.options.trainRange,...
+          sigma, BD, population);
     end
   end
 end

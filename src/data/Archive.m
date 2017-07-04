@@ -25,7 +25,12 @@ classdef Archive < handle
       end
       obj.X = [obj.X; X(isNotYetSaved,:)];
       obj.y = [obj.y; y(isNotYetSaved,:)];
-      obj.gens = [obj.gens; generation * ones(sum(isNotYetSaved),1)];
+      if (length(generation) == 1)
+        obj.gens = [obj.gens; generation * ones(sum(isNotYetSaved),1)];
+      else
+        generation = generation(:);     % ensure column vector
+        obj.gens = [obj.gens; generation(isNotYetSaved)];
+      end
     end
 
     function [X, y] = getDataFromGenerations(obj, generations)
@@ -43,20 +48,22 @@ classdef Archive < handle
       % if (n == 0), all the available data are returned
       % returns:
       %   nData -- the number of all available data in the specified range
+
+      MAX_POINTS_FOR_KMEANS = 1000;
+
       nData = length(obj.y);
       X = []; y = [];
-      
+
       if (nData == 0)
         return;
       end
 
       % compute coordinates in the (sigma*BD)-basis
-      BDinv = inv(sigma*BD);
-      xTransf = ( BDinv * (obj.X - repmat(x,nData,1))' )';
-      
+      xTransf = ( (sigma * BD) \ (obj.X - repmat(x,nData,1))' )';
+
       % take the points closer than *rangeSigma*
-      diff = sum(xTransf.^2, 2);
-      isInRange = diff < (rangeSigma ^ 2);
+      diff2 = sum(xTransf.^2, 2);
+      isInRange = diff2 < (rangeSigma ^ 2);
       nData = sum(isInRange);
 
       if (nData <= n  ||  n <= 0)
@@ -67,60 +74,194 @@ classdef Archive < handle
         closerDataX = xTransf(isInRange,:);
         closerDataY = obj.y(isInRange);
         closerThan2SigmaIdx = find(isInRange);
-        try
-          [~, ~, ~, D] = kmeans(closerDataX, n);
-          % D = ('n' x 'k') distances to the clusters' centroids
-          % find the points nearest to the clusters' centers
-          [~, closestToCentroid] = min(D, [], 1);
-          for closestIdx = closestToCentroid
-            % return the original coordinates, not the transformed
-            X = [X; obj.X(closerThan2SigmaIdx(closestIdx),:)];
-            y = [y; closerDataY(closestIdx)];
+        if (length(closerThan2SigmaIdx) <= MAX_POINTS_FOR_KMEANS)
+          % Use k-means clustering if not too much points to choose from
+          useClustering = true;
+          try
+            [~, ~, ~, D] = kmeans(closerDataX, n);
+            % D = ('n' x 'k') distances to the clusters' centroids
+            % find the points nearest to the clusters' centers
+            [~, closestToCentroid] = min(D, [], 1);
+            for closestIdx = closestToCentroid
+              % return the original coordinates, not the transformed
+              X = [X; obj.X(closerThan2SigmaIdx(closestIdx),:)];
+              y = [y; closerDataY(closestIdx)];
+            end
+          catch err
+            warning('Archive.getDataNearPoint(): %s\n', err.message);
+            useClustering = false;
           end
-        catch err
-          warning('Archive.getDataNearPoint(): %s\n', err.message);
+        else
+          useClustering = false;
+        end
+        if (~useClustering)
           randp = randperm(length(closerThan2SigmaIdx));
           X = [X; obj.X(closerThan2SigmaIdx(randp(1:n)),:)];
           y = [y; closerDataY(randp(1:n))];
         end
       end
     end
-    
-    function [X, y] = getClosestDataFromPoints(obj, n, xInput, sigma, BD)
-      % returns union of 'n'-tuples of points which are closest to each 
+
+    function [X, y] = getClosestDataFromPoints(obj, n, xInput, sigma, BD, trainRange)
+      % returns union of points which are closest to each
       % of data points from the points in 'xInput'
       % using (sigma*BD)-metric
+      % at least  floor(n/size(xInput,1))  closest points are returned
+      % from each point in xInput, maybe more
+      %
       % if (n == 0), all the available data are returned
       nData = length(obj.y);
       X = []; y = [];
-      
+
       if (nData == 0)
         return;
       end
-      
-      if (nData > n)
-        % there are more data than 'n'
-        indicesToReturn = false(size(obj.y,1),1);
 
-        % compute coordinates in the (sigma*BD)-basis
-        BDinv = inv(sigma*BD);
-        % for each point from xInput:
-        for i = 1:size(xInput,1)
-          xTransf = ( BDinv * (obj.X - repmat(xInput(i,:),nData,1))' )';
-          diff = sum(xTransf.^2, 2);
-          % take up to 'n' closest points from current point xInput(i,:)
-          [~, closest] = sort(diff);
-          closest((n+1):end) = [];
-          % union these points with the previous points
-          indicesToReturn(closest) = true;
+      if (~exist('trainRange','var'))
+        trainRange=Inf;
+      end
+
+      lambda = size(xInput,1);
+
+      indicesToReturn = false(nData, 1);
+
+      distanceOrderMatrix = zeros(lambda, nData);
+      % compute coordinates in the (sigma*BD)-basis
+      BDinv = inv(sigma*BD);
+
+      % for each point from xInput:
+      for i = 1:lambda
+        xTransf = ( BDinv * (obj.X - repmat(xInput(i,:),nData,1))' )';
+        diff2 = sum(xTransf.^2, 2);
+        diff2Rank = ranking(diff2);
+        isInRange = diff2 < (trainRange ^ 2);
+        % fill the ranking of distances to the archive points from this xInput
+        distanceOrderMatrix(i,isInRange) = diff2Rank(isInRange)';
+      end
+
+      nInRange = sum(any(distanceOrderMatrix > 0));
+      if (nInRange > n)
+        % there are more data than 'n' in the specified trainRange
+        
+        % initialize 
+        nNearestPerXInput = floor(n / lambda);
+        indicesToReturn(any( ...
+            distanceOrderMatrix > 0 & distanceOrderMatrix <= nNearestPerXInput, 1)) ...
+            = true;
+        % increase the number of nearest points per xInput points
+        % until we get enough points (ie. 'n' points) chosen
+        while (sum(indicesToReturn) < n)
+          nNearestPerXInput = nNearestPerXInput + 1;
+          newIndicesToReturn = indicesToReturn;
+          newIndicesToReturn(any( ...
+              distanceOrderMatrix > 0 & distanceOrderMatrix <= nNearestPerXInput, 1)) ...
+              = true;
+          if (sum(newIndicesToReturn) > n)
+            % we have got more points than we need, so choose
+            % the ones with the best fitness
+            nRest = n - sum(indicesToReturn);
+            % choose from the set-diff of the last and current choice
+            chooseFrom = find(newIndicesToReturn & ~indicesToReturn);
+            yDiff = obj.y(chooseFrom);
+            [~, syDiff] = sort(yDiff);
+            indicesToReturn(chooseFrom(syDiff(1:nRest))) = true;
+            break;
+          end
+          indicesToReturn = newIndicesToReturn;
         end
       else
-        indicesToReturn = true(size(obj.y,1),1);
+        indicesToReturn(any(distanceOrderMatrix > 0)) = true;
       end
-      
+
       % return the final points
       X = obj.X(indicesToReturn,:);
       y = obj.y(indicesToReturn);
+    end
+
+    function [X, y] = getClosestDataFromPopulation(obj, n, population, trainRange, sigma, BD)
+      % returns points form Archive which are closest to any of
+      % the points from 'population' using (sigma*BD)-metric
+      % if (n == 0), all the available data are returned
+      nData = length(obj.y);
+      X = []; y = [];
+
+      if (nData == 0)
+        return;
+      end
+
+      indicesToReturn = false(size(obj.y,1),1);
+
+      % compute coordinates in the (sigma*BD)-basis
+      BDinv = inv(sigma*BD);
+      % for each point from population:
+      for i = 1:size(population.x,2)
+        xTransf = ( BDinv * (obj.X - repmat(population.x(:,i)',nData,1))' )';
+        if i==1
+          diff2 = sum(xTransf.^2, 2);
+        else
+          diff2 = min(diff2, sum(xTransf.^2, 2));
+        end
+      end
+      % take up to 'n' closest points
+      isInRange = find(diff2 < (trainRange ^ 2));
+
+      if (length(isInRange) > n)
+        % there are more data than 'n'
+        [~, closest] = sort(diff2(isInRange));
+        closest((n+1):end) = [];
+        % take only points that are in trainRange
+        indicesToReturn(isInRange(closest)) = true;
+      else
+        indicesToReturn(isInRange) = true;
+      end
+
+      % return the final points
+      X = obj.X(indicesToReturn,:);
+      y = obj.y(indicesToReturn);
+    end
+
+    function [X, y] = getTrainsetData(obj, trainsetType, trainsetSizeMax, xMean, trainRange, sigma, BD, population)
+
+      % if the trainRange is specified as quantile from Chi2,
+      % convert the number to the metric value
+      if (isnumeric(trainRange) && trainRange >= 0.9 && trainRange <= 1.0)
+        trainRange = sqrt(chi2inv(trainRange, obj.dim));
+      % if the trainRange is specified as small number
+      % convert the number to multiple of 0.99 quantile of sqrt(Chi2 distribution)
+      elseif (isnumeric(trainRange) && trainRange > 1.0 && trainRange <= 4.0)
+        trainRange = trainRange * sqrt(chi2inv(0.99, obj.dim));
+      end
+
+      switch lower(trainsetType)
+        case { 'allpoints', 'recent' }
+          %get all data in range (0 as first parameter)
+          [X, y] = obj.getDataNearPoint(0, xMean, trainRange, sigma, BD);
+          if size(X,1)> trainsetSizeMax
+            X = X(end-trainsetSizeMax+1:end,:);
+            y = y(end-trainsetSizeMax+1:end,:);
+            %remove elements from the beginning
+          end
+        case 'clustering'
+          [X, y] = obj.getDataNearPoint(trainsetSizeMax, xMean, trainRange, sigma, BD);
+        case 'nearest'
+          [X, y] = obj.getClosestDataFromPoints(trainsetSizeMax, population.x', sigma, BD, trainRange);
+        case 'nearesttopopulation'
+          [X, y] = obj.getClosestDataFromPopulation(trainsetSizeMax, population, trainRange, sigma, BD);
+      end
+    end
+
+    function obj2 = duplicate(obj)
+      obj2 = Archive(obj.dim);
+      obj2.X = obj.X;
+      obj2.y = obj.y;
+      obj2.gens = obj.gens;
+    end
+
+    function obj = restrictToGenerations(obj, toGens)
+      id_gens = ismember(obj.gens, toGens);
+      obj.X = obj.X(id_gens, :);
+      obj.y = obj.y(id_gens, :);
+      obj.gens = obj.gens(id_gens);
     end
   end
 end
