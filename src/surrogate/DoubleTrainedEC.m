@@ -49,7 +49,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       obj.surrogateOpts = surrogateOpts;
 
       % DTS parameters
-      obj.restrictedParam = defopts(surrogateOpts, 'evoControlRestrictedParam', 0.1);
+      obj.restrictedParam = defopts(surrogateOpts, 'evoControlRestrictedParam', 0.05);
       obj.useDoubleTraining = defopts(surrogateOpts, 'evoControlUseDoubleTraining', true);
       obj.maxDoubleTrainIterations = defopts(surrogateOpts, 'evoControlMaxDoubleTrainIterations', 1);
       obj.minPointsForExpectedRank = defopts(surrogateOpts, 'evoControlMinPointsForExpectedRank', 4);
@@ -136,7 +136,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % obj.restrictedParam = obj.origRatioUpdater.update([], [], dim, lambda, obj.cmaesState.countiter, obj);
       obj.origRatioUpdater.update([], [], dim, lambda, obj.cmaesState.countiter, obj);
 
-      obj.newModel = ModelFactory.createModel(obj.surrogateOpts.modelType, obj.surrogateOpts.modelOpts, obj.cmaesState.xmean');
+      obj.newModel = ModelFactory.createModel(obj.surrogateOpts.modelType, obj.surrogateOpts.modelOpts, obj.cmaesState.xmean', obj.model);
 
       if (isempty(obj.newModel))
         [obj, ok] = obj.tryOldModel();
@@ -193,7 +193,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         % (first) model training
         X_tr = [xTrain; obj.pop.getOriginalX()'];
         y_tr = [yTrain; obj.pop.getOriginalY()'];
-        obj.newModel = obj.newModel.train(X_tr, y_tr, obj.cmaesState, sampleOpts); % , obj.archive, obj.pop);
+        obj.newModel = obj.newModel.train(X_tr, y_tr, obj.cmaesState, sampleOpts, obj.archive, obj.pop);
         if (obj.newModel.isTrained())
           obj = obj.updateModelArchive(obj.newModel, obj.modelAge);
         else
@@ -304,7 +304,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           % re-train the model again with the new original-evaluated points
           X_tr = [xTrain; obj.pop.getOriginalX()'];
           y_tr = [yTrain; obj.pop.getOriginalY()'];
-          obj.retrainedModel = obj.model.train(X_tr, y_tr, obj.cmaesState, sampleOpts); % , obj.archive, obj.pop);
+          obj.retrainedModel = obj.model.train(X_tr, y_tr, obj.cmaesState, sampleOpts, obj.archive, obj.pop);
 
           if (obj.retrainedModel.isTrained())
             lastModel = obj.retrainedModel;
