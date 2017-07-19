@@ -65,6 +65,7 @@ function [dTable, ranks] = duelTable(data, varargin)
   [~, ranks, values] = createRankingTable(data, createSettings);
 
   nDim = length(dims);
+  nFuns = length(BBfunc);
   nEvals = length(evaluations);
 
   % if there is R-package for computation of p-values
@@ -77,7 +78,7 @@ function [dTable, ranks] = duelTable(data, varargin)
   for d = 1:nDim
     for e = 1:nEvals
       if countPVal
-        fValData = cell2mat(arrayfun(@(x) values{x, d}(e, :), BBfunc, 'UniformOutput', false)');
+        fValData = cell2mat(arrayfun(@(x) values{x, d}(e, :), 1:nFuns, 'UniformOutput', false)');
         [pv, meanRanks] = postHocTest(fValData, 'friedman');
         pValData{d, e} = pv;
         meanRanksData{d, e} = meanRanks;
@@ -89,7 +90,7 @@ function [dTable, ranks] = duelTable(data, varargin)
         end
         pValDataBon{d, e} = pv;
       end
-      rankData = cell2mat(arrayfun(@(x) ranks{x, d}(e, :), BBfunc, 'UniformOutput', false)');
+      rankData = cell2mat(arrayfun(@(x) ranks{x, d}(e, :), 1:nFuns, 'UniformOutput', false)');
       dTable{d, e} = createDuelTable(rankData);
     end
   end

@@ -6,6 +6,8 @@
 
 %% load data
 
+fprintf('Loading data...\n')
+
 % checkout file containing all loaded data
 tmpFName = fullfile('/tmp', 'itat2017_data.mat');
 if (exist(tmpFName', 'file'))
@@ -197,6 +199,15 @@ colors = [...
   saacmesCol; ...
   dtsCol]/255;
 
+testFunctions_2D  = [ 3,  4,  9, 12, 13, 14, ...
+                     15, 16, 17, 21, 22, 23];
+testFunctions_3D  = [ 3,  4, 11, 12, 13, 14, ...
+                     16, 17, 18, 19, 21, 22];
+testFunctions_5D  = [ 3,  8, 12, 13, 14, 15, ...
+                     16, 17, 18, 19, 21, 22];
+testFunctions_10D = [ 3,  4, 11, 12, 13, 14, ...
+                     15, 17, 18, 19, 22, 24];
+                  
 if (~exist(tmpFName, 'file'))
   save(tmpFName);
 end
@@ -204,7 +215,7 @@ end
 end
 
 %% ADTS-CMA-ES settings comparison: lowErr, highErr, updateRate
-% Aggregation of function values across dimensions 2, 3, 5, 10, 20.
+% Ranking of function values in dimensions 2, 3, 5, 10.
 
 close all
 
@@ -235,22 +246,68 @@ set_datanames = {
   '$\lowErrQrt$, $\highErrQrt$, $\uRate = 0.4$',...
   '$\lowErrQrt$, $\highErrQrt$, $\uRate = 0.5$'};
 
-tableFunc = funcSet.BBfunc;
-tableDims = [2, 3, 5, 10];
+% 2D
 
-resultTable = fullfile(tableFolder, 'rankTable.tex');
+tableFunc = testFunctions_2D;
+tableDims = 2;           
+           
+resultTable = fullfile(tableFolder, 'rankTable_2D.tex');
       
-[table, ranks] = rankingTable(set_data, 'DataNames', set_datanames, ...
+[table_2D, ranks] = rankingTable(set_data, 'DataNames', set_datanames, ...
                            'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
                            'TableFuns', tableFunc, 'TableDims', tableDims,...
                            'Evaluations', [25, 50, 100, 200], ...
                            'ResultFile', resultTable, ...
                            'Mode', 'evaluations');
+                         
+% 3D
 
+tableFunc = testFunctions_3D;
+tableDims = 3;
+
+resultTable = fullfile(tableFolder, 'rankTable_3D.tex');
+      
+[table_3D, ranks] = rankingTable(set_data, 'DataNames', set_datanames, ...
+                           'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
+                           'TableFuns', tableFunc, 'TableDims', tableDims,...
+                           'Evaluations', [25, 50, 100, 200], ...
+                           'ResultFile', resultTable, ...
+                           'Mode', 'evaluations');
+                         
+% 5D
+
+tableFunc = testFunctions_5D;
+tableDims = 5;
+
+resultTable = fullfile(tableFolder, 'rankTable_5D.tex');
+      
+[table_5D, ranks] = rankingTable(set_data, 'DataNames', set_datanames, ...
+                           'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
+                           'TableFuns', tableFunc, 'TableDims', tableDims,...
+                           'Evaluations', [25, 50, 100, 200], ...
+                           'ResultFile', resultTable, ...
+                           'Mode', 'evaluations');
+                         
+% 10D
+
+tableFunc = testFunctions_10D;
+tableDims = 10;
+
+resultTable = fullfile(tableFolder, 'rankTable_10D.tex');
+      
+[table_10D, ranks] = rankingTable(set_data, 'DataNames', set_datanames, ...
+                           'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
+                           'TableFuns', tableFunc, 'TableDims', tableDims,...
+                           'Evaluations', [25, 50, 100, 200], ...
+                           'ResultFile', resultTable, ...
+                           'Mode', 'evaluations');
+                         
+overall_table = table_2D(:, 1:4) + table_3D(:, 1:4) + table_5D(:, 1:4) + table_10D(:, 1:4);
+                         
 %% Algorithm comparison: CMA-ES, lmm-CMA-ES, saACMES, DTS-CMA-ES  
 % Scaled function values of f1-f24 in dimension 5.
 
-plotFuns = 1:24;%:24;
+plotFuns = 1:24;
 plotDims = 5;
 
 clear pdfNames
@@ -306,10 +363,35 @@ han = relativeFValuesPlot(data, ...
 print2pdf(han, pdfNames, 1)
 
 %% Aggregated algorithm comparison: CMA-ES, lmm-CMA-ES, saACMES, DTS-CMA-ES  
-% Aggregated  scaled function values in dimensions 5 and 20.
+% Aggregated  scaled function values in dimensions 5.
 
-plotFuns = 1:24;
-plotDims = [5, 10];
+plotFuns = testFunctions_5D;
+plotDims = [5, 10]; % both dimensions are generated because of legend split
+
+clear pdfNames
+pdfNames = {};
+for d = plotDims
+  pdfNames{end+1} = fullfile(plotResultsFolder, sprintf('alg_%dD', d));
+end
+
+close all
+han = relativeFValuesPlot(data, ...
+                              'DataNames', datanames, 'DataDims', funcSet.dims, ...
+                              'DataFuns', funcSet.BBfunc, 'Colors', colors, ...
+                              'PlotFuns', plotFuns, 'PlotDims', plotDims, ...
+                              'AggregateDims', false, 'OneFigure', false, ...
+                              'Statistic', @median, 'AggregateFuns', true, ...
+                              'LineSpecification', {'-', '-', '-', '-', '-', '-', '-'}, ...
+                              'LegendOption', 'split', 'MaxEval', maxEvals, ...
+                              'FunctionNames', true);   
+                            
+print2pdf(han{1}, pdfNames{1}, 1)
+
+%% Aggregated algorithm comparison: CMA-ES, lmm-CMA-ES, saACMES, DTS-CMA-ES  
+% Aggregated  scaled function values in dimensions 10.
+
+plotFuns = testFunctions_10D;
+plotDims = [5, 10]; % both dimensions are generated because of legend split
 
 clear pdfNames
 pdfNames = {};
@@ -327,17 +409,15 @@ han = relativeFValuesPlot(data, ...
                               'LineSpecification', {'-', '-', '-', '-', '-', '-', '-'}, ...
                               'LegendOption', 'split', 'MaxEval', maxEvals, ...
                               'FunctionNames', true);
-
-                              
                             
-print2pdf(han, pdfNames, 1)
+print2pdf(han{2}, pdfNames{2}, 1)
 
 %% Multiple comparison of algorithms with a statistical posthoc test.
 
 close all
 
-tableFunc = funcSet.BBfunc;
-tableDims = [5, 10];
+tableFunc = testFunctions_10D;
+tableDims = 10;
 
 resultDuelTable = fullfile(tableFolder, 'duelTable.tex');
 
