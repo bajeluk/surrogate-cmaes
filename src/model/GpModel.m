@@ -285,7 +285,7 @@ classdef GpModel < Model
       trainErr = false;
       opt = [];
 
-      [fminconOpts, nonlnc] = obj.defaultFminconOpts();
+      [fminconOpts, nonlnc] = obj.defaultFminconOpts(lb, ub);
       try
         initial = f(linear_hyp');
       catch err
@@ -377,7 +377,7 @@ classdef GpModel < Model
     end
 
 
-    function [opts, nonlnc] = defaultFminconOpts(obj)
+    function [opts, nonlnc] = defaultFminconOpts(obj, lb, ub)
       % return the optimization parameters for fmincon()
       %
       opts = optimset('fmincon');
@@ -390,8 +390,8 @@ classdef GpModel < Model
         'Display', 'off' ...
         );
       covarianceDim = length(obj.hyp.cov) - 1;
-      if (covarianceDim > 1)
-        % ARD
+      if (covarianceDim > 1 || any(lb == ub))
+        % ARD or a parameter with fixed value
         opts = optimset(opts, 'Algorithm', 'interior-point');
         nonlnc = @nonlincons;
       else
