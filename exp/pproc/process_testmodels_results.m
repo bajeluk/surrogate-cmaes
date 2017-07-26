@@ -19,7 +19,7 @@ run(['exp/experiments/' expid '.m']);
 %   trainRange == 1.5 OR trainsetSizeMax == 5*dim
 modelOptions.trainRange = {2, 4};
 modelOptions.trainsetSizeMax = {'10*dim', '15*dim', '20*dim'};
-modelOptions.trainsetType = {'nearest', 'recent'};
+modelOptions.trainsetType = {'recent', 'nearest', 'clustering', 'nearestToPopulation'};
 modelOptions.covFcn = {'{@covSEiso}'  '{@covMaterniso, 5}'  '{@covMaterniso, 3}'};
 disp('Using only this restricted set of modelOpts:');
 printStructure(modelOptions);
