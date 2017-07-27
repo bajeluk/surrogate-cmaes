@@ -5,6 +5,7 @@ snapshotGroups = { [5,6,7], [18,19,20] };
 errorCol = 'rde2'; % 'rdeM1_M2WReplace'; % 'rdeValid';
 nTrainedCol = 'nTrained2';
 plotImages = 'mean';  % 'off', 'rank'
+savePDF = true;
 aggFcn = @(x) quantile(x, 0.75);
 rankTol = 0.01;   % tolerance for considering the RDE equal
 nModelpoolModels = 5; % # of models to choose into ModelPool
@@ -176,6 +177,9 @@ end  % for dimensions
 %% Plot images
 woF5 = repelem((setdiff(functions, 5) - 1) * nSnapshotGroups, 1, nSnapshotGroups) ...
        +  repmat(1:nSnapshotGroups, 1, length(setdiff(functions, 5)));
+% this is including f5:
+% woF5 = repelem((functions - 1) * nSnapshotGroups, 1, nSnapshotGroups) ...
+%        +  repmat(1:nSnapshotGroups, 1, length(functions));
 if (~strcmpi(plotImages, 'off'))
   for di = 1:length(dimensions)
     dim = dimensions(di);
@@ -188,14 +192,35 @@ if (~strcmpi(plotImages, 'off'))
       otherwise
         warning('plot style not known: %s', plotImages)
     end
+    % separating lines
+    hold on;
+    nModels = length(hashes);
+    % dashed lines after each trainRange change
+    yLines = linspace(0.5, nModels+0.5, length(modelOptions.trainsetType)*length(modelOptions.trainRange)+1);
+    yLines = yLines(2:(end-1));
+    yLines(length(modelOptions.trainRange):length(modelOptions.trainRange):end) = [];
+    plot(repmat([0.5; (length(functions)*nSnapshotGroups)+0.5],1,length(yLines)), ...
+        repmat(yLines,2,1), 'k--');
+    % solid lines after each TSS (training set selection methods)
+    yLines = linspace(0.5, nModels+0.5, length(modelOptions.trainsetType)+1);
+    yLines = yLines(2:(end-1));
+    plot(repmat([0.5; (length(functions)*nSnapshotGroups)+0.5],1,length(yLines)), ...
+        repmat(yLines,2,1), 'k-');
+    hold off;
+
+    % colormap(hot);
     colorbar;
     ax = gca();
     ax.XTick = 1:nSnapshotGroups:size(modelErrorsPerFS{di}, 2);
     ax.XTickLabel = setdiff(functions, 5); % ceil(woF5(1:2:end) ./ nSnapshotGroups);
     % ax.XTickLabel = cellfun(@(x) regexprep(x, '_.*', ''), modelErrorsColNames(woF5), 'UniformOutput', false);
     title([num2str(dim) 'D']);
-    xlabel('functions and snapshot groups');
-    ylabel('model settings');
+    xlabel('COCO/BBOB functions');
+    ylabel('parameter sets');
+    if (savePDF)
+      pause(0.1);
+      print(['gpoffline_' num2str(dim) 'D.pdf'], '-dpdf');
+    end
   end
   
   figure();
@@ -209,7 +234,7 @@ if (~strcmpi(plotImages, 'off'))
   ax = gca();
   ax.XTick = 1:2:size(modelErrorsDivSuccess, 2);
   ax.XTickLabel = dimensions;
-  title('RDE averaged across functions');
+  title('Q3 of RDE / success rate, averaged across functions');
   xlabel('dimension, snapshot group');
   ylabel('model settings');
 end
