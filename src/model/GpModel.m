@@ -103,6 +103,10 @@ classdef GpModel < Model
       end
       obj.likBounds = defopts(obj.options, 'likBounds', log([1e-6, 10]));
 
+      % wrap the starting point for hyperparameters inside corresponding bounds
+      obj.hyp.cov = min(obj.covBounds(:, 2), max(obj.covBounds(:,1), obj.hyp.cov));
+      obj.hyp.lik = min(obj.likBounds(2), max(obj.likBounds(1), obj.hyp.lik));
+
       % general model prediction options
       obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
       obj.transformCoordinates = defopts(modelOptions, 'transformCoordinates', true);
