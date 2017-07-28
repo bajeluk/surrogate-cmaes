@@ -45,6 +45,51 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 OPTS=""
 
 INST="[1 2 3 4 5]"
+N_MODELS=8
+
+ID=251
+DIM=2
+QUEUE="4:00:00"
+for FUNC in `seq 1 24`; do
+  # subtask
+  submit_sequence 5 4 $N_MODELS
+done
+
+ID=351
+DIM=3
+QUEUE="4:00:00"
+for FUNC in `seq 1 24`; do
+  # subtask
+  submit_sequence 5 4 $N_MODELS
+done
+
+ID=551
+DIM=5
+QUEUE="4:00:00"
+for FUNC in `seq 1 24`; do
+  # subtask
+  submit_sequence 5 4 $N_MODELS
+done
+
+ID=1051
+DIM=10
+QUEUE="4:00:00"
+for FUNC in `seq 1 24`; do
+  # subtask
+  submit_sequence 5 4 $N_MODELS
+done
+
+ID=2501
+DIM=20
+QUEUE="24:00:00"
+for FUNC in `seq 1 24`; do
+  # submit_sequence 1 2 $N_MODELS
+  submit_sequence 5 2 $N_MODELS
+done
+
+exit 0
+
+# THIS IS FORMER SETTINGS WITH ONLY 4 models
 N_MODELS=4
 
 ID=201
@@ -63,7 +108,7 @@ done
 
 ID=501
 DIM=5
-QUEUE="24:00:00"
+QUEUE="4:00:00"
 for FUNC in `seq 1 24`; do
   subtask
 done
