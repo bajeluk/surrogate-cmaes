@@ -399,6 +399,15 @@ if all(size(xmean) > 1)
 elseif size(xmean, 2) > 1
   xmean = xmean';
 end
+if (flgresume)
+  try
+    % list all saved files, the newest will be the first
+    resumeFiles = eval('ls(''-t'', [opts.SaveFilename ''*.mat''])');
+  catch ME
+    warning('No recovery files found.');
+    flgresume = false;
+  end
+end
 if ~flgresume % not resuming a former run
   % Assign settings from input parameters and options for myeval...
   N = size(xmean, 1); numberofvariables = N;
@@ -411,13 +420,6 @@ if ~flgresume % not resuming a former run
     insigma = 0.5 * (insigma(:,2) - insigma(:,1));
   end
 else % flgresume is true, do resume former run
-  try
-    % list all saved files, the newest will be the first
-    resumeFiles = eval('ls(''-t'', [opts.SaveFilename ''*.mat''])');
-  catch ME
-    error('No recovery files found.');
-  end
-
   resumeFiles = strsplit(strtrim(resumeFiles), '\n');
 
   % keep stopping and display options
