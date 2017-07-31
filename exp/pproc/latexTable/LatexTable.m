@@ -208,12 +208,48 @@ classdef LatexTable < handle
       this.formats = repmat(colFormats, this.nRows, 1);
     end
     
-    function setFormatXY(this, i, j, format)
+    function setFormatXY(this, i, j, formatStr)
       % set the printf-like format for the coordinates x,y
-      if (~ischar(format))
+      if (~ischar(formatStr))
         error('Format has to be a string');
       end
-      this.formats{i,j} = format;
+      this.formats{i,j} = formatStr;
+    end
+    
+    function prependFormatXY(this, i, j, formatStr)
+      % prepend the printf-like format at the coordinates x,y
+      if (isempty(this.formats{i,j}))
+        if (isnumeric(this.data{i,j}))
+          this.formats{i,j} = this.opts.numericFormat;
+        else
+          this.formats{i,j} = '%s';
+        end
+      end
+      this.formats{i,j} = [formatStr, ' ', this.formats{i,j}];
+    end
+
+    function appendFormatXY(this, i, j, formatStr)
+      % prepend the printf-like format at the coordinates x,y
+      if (isempty(this.formats{i,j}))
+        if (isnumeric(this.data{i,j}))
+          this.formats{i,j} = this.opts.numericFormat;
+        else
+          this.formats{i,j} = '%s';
+        end
+      end
+      this.formats{i,j} = [this.formats{i,j}, ' ', formatStr];
+    end
+    
+    function colorizeSubMatrixInGray(this, values, row, col, minGray, maxGray)
+      minValue = min( min( values ) );
+      maxValue = max( max( values ) );
+      for i = 1:size(values,1)
+        for j = 1:size(values,2)
+          grayValue = ((values(i,j) - minValue) / (maxValue-minValue)) ...
+              * (maxGray - minGray) + minGray;
+          this.prependFormatXY(row+i-1, col+j-1, ['\\cellcolor[gray]{' sprintf('%.4f', grayValue) '}']);
+        end
+      end
     end
 
     function stringTable = toStringTable(this)
@@ -309,11 +345,19 @@ classdef LatexTable < handle
       % generate the table line-by-line
       for i = 1:size(stringTable, 1)
         thisRow = '';
-        for j = 1:size(stringTable, 2)
+        skip = 0;
+        nCols = size(stringTable, 2);
+        
+        for j = 1:nCols
+          [~, multiCols] = regexp(stringTable{i,j}, '\\multicolumn{([0-9]+)}', 'match', 'tokens');
           thisRow = [thisRow sprintf(['%' num2str(colWidths(j)) 's'], stringTable{i,j})];
-          if j < size(stringTable, 2)
-            thisRow = [thisRow, ' & '];
+          if (~isempty(multiCols) && str2num(multiCols{1}{1}) > 1)
+            skip = skip + (str2num(multiCols{1}{1}) - 1);
           end
+          if (j >= nCols - skip)
+            break;
+          end
+          thisRow = [thisRow, ' & '];
         end
         latex{end+1} = [thisRow ' \\'];
 
