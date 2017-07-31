@@ -219,6 +219,10 @@ function [resultTableAll, resultTableAgg] = modelStatisticsAdaptation(modelFolde
         func = functions(i_func);
 
         max_instance = min(size(results.mse{i_model, i_func, i_dim}, 1), find(~all(isnan(results.mse{i_model, i_func, i_dim}), 2), 1, 'last'));
+        if (isempty(max_instance))
+          continue;
+        end
+
         for i_instance = 1:max_instance
           inst = instances(i_instance);
 
