@@ -5,7 +5,7 @@ snapshotGroups = { [5,6,7], [18,19,20] };
 errorCol = 'rde2'; % 'rdeM1_M2WReplace'; % 'rdeValid';
 nTrainedCol = 'nTrained2';
 plotImages = 'mean';  % 'off', 'rank'
-aggFcn = @nanmean; % @(x) quantile(x, 0.75);
+aggFcn = @(x) quantile(x, 0.75); % @nanmean;
 rankTol = 0.01;   % tolerance for considering the RDE equal
 nModelpoolModels = 5; % # of models to choose into ModelPool
 
