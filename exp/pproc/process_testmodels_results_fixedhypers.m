@@ -5,7 +5,7 @@ snapshotGroups = { [5,6,7], [18,19,20] };
 errorCol = 'rde2'; % 'rdeM1_M2WReplace'; % 'rdeValid';
 nTrainedCol = 'nTrained2';
 plotImages = 'mean';  % 'off', 'rank'
-aggFcn = @(x) quantile(x, 0.75); % @nanmean;
+aggFcn = {@nanmean, @nanstd}; % @(x) quantile(x, 0.75);
 rankTol = 0.01;   % tolerance for considering the RDE equal
 nModelpoolModels = 5; % # of models to choose into ModelPool
 
@@ -49,6 +49,8 @@ for fi = 1:length(functions)
   end
 end
 
+nAggFcns = length(aggFcn);
+
 % Loading errors from the table
 if (~exist('modelErrorsPerFS', 'var') || ~exist('modelsSettingsFSI', 'var'))
   modelErrorsPerFS = cell(length(dimensions), 1);
@@ -56,7 +58,7 @@ if (~exist('modelErrorsPerFS', 'var') || ~exist('modelsSettingsFSI', 'var'))
   for di = 1:length(dimensions)
     dim = dimensions(di);
     fprintf('%dD: ', dim);
-    modelErrorsPerFS{di} = zeros(length(hashes), length(functions) * nSnapshotGroups);
+    modelErrorsPerFS{di} = zeros(length(hashes), length(functions) * nSnapshotGroups, nAggFcns);
     modelErrorsDivSuccessFSI{di} = [];
     modelsSettingsFSI{di} = cell(0, size(modelsSettings, 2));
     funDimSngFSI{di}   = zeros(0, 3);
@@ -85,7 +87,9 @@ if (~exist('modelErrorsPerFS', 'var') || ~exist('modelsSettingsFSI', 'var'))
               &  resultTableAll.fun == fun, errorCol};
           nErrors = sum(~isnan(thisErrors));
 
-          modelErrorsPerFS{di}(mi, iCol) = aggFcn(thisErrors);
+          for fcni = 1:length(aggFcn)
+            modelErrorsPerFS{di}(mi, iCol, fcni) = aggFcn{fcni}(thisErrors);
+          end
           modelErrorsDivSuccessFSI{di}(rowFSI + (1:nErrors), 1) = ...
               thisErrors(~isnan(thisErrors)) ...
               * ((length(snapshotGroups{si})*length(instances)) / nErrors);
@@ -146,10 +150,10 @@ end
 %% Summarizing results
 % Initialization
 modelErrorRanks = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
-modelErrors     = zeros(length(hashes), length(dimensions*nSnapshotGroups));
+modelErrors     = zeros(length(hashes), length(dimensions*nSnapshotGroups), nAggFcns);
 bestModelNumbers = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
 bestModelRankNumbers = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
-modelErrorsDivSuccess = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
+modelErrorsDivSuccess = zeros(length(hashes), length(dimensions)*nSnapshotGroups, nAggFcns);
 modelErrorDivSuccessRanks = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
 modelErrorRanksPerFS = cell(length(dimensions), 1);
 for di = 1:length(dimensions)
@@ -162,17 +166,19 @@ for di = 1:length(dimensions)
 
     woF5 = ((setdiff(functions, 5) - 1) * nSnapshotGroups) + si;
     for col = woF5
-      modelErrorRanksPerFS{di}(:, col) = preciseRank(modelErrorsPerFS{di}(:, col), rankTol);
+      modelErrorRanksPerFS{di}(:, col) = preciseRank(modelErrorsPerFS{di}(:, col, 1), rankTol);
     end
-    modelErrors(:, idx) = nansum(modelErrorsPerFS{di}(:, woF5), 2) ./ (length(woF5));
+    for fcni = 1:length(aggFcn)
+      modelErrors(:, idx, fcni) = nansum(modelErrorsPerFS{di}(:, woF5, fcni), 2) ./ (length(woF5));
+      modelErrorsDivSuccess(:, idx, fcni) = nansum( modelErrorsPerFS{di}(:, woF5, fcni) ...
+          ./ trainSuccessPerFS{di}(:, woF5), 2 ) ./ (length(woF5));
+    end
     modelErrorRanks(:, idx) = nansum(modelErrorRanksPerFS{di}(:, woF5), 2) ./ (length(woF5));
-    modelErrorsDivSuccess(:, idx) = nansum( modelErrorsPerFS{di}(:, woF5) ...
-        ./ trainSuccessPerFS{di}(:, woF5), 2 ) ./ (length(woF5));
     modelErrorDivSuccessRanks(:, idx) = nansum( modelErrorRanksPerFS{di}(:, woF5) ...
         ./ trainSuccessPerFS{di}(:, woF5), 2 ) ./ (length(woF5));  
     % Normlize to (0, 1)
     % modelErrors(:, idx) = (modelErrors(:, idx) - min(modelErrors(:, idx))) ./ (max(modelErrors(:, idx)) - min(modelErrors(:, idx)));
-    [~, bestModelNumbers(:, idx)] = sort(modelErrorsDivSuccess(:, idx));
+    [~, bestModelNumbers(:, idx)] = sort(modelErrorsDivSuccess(:, idx, 1));
     [~, bestModelRankNumbers(:, idx)] = sort(modelErrorDivSuccessRanks(:, idx));
   end
 end  % for dimensions
@@ -187,7 +193,7 @@ if (~strcmpi(plotImages, 'off'))
     figure();
     switch lower(plotImages)
       case 'mean'
-        image(modelErrorsPerFS{di}(:, woF5) ./ trainSuccessPerFS{di}(:, woF5), 'CDataMapping', 'scaled');
+        image(modelErrorsPerFS{di}(:, woF5, 1) ./ trainSuccessPerFS{di}(:, woF5), 'CDataMapping', 'scaled');
       case 'rank'
         image(modelErrorRanksPerFS{di}(:, woF5) ./ trainSuccessPerFS{di}(:, woF5), 'CDataMapping', 'scaled');
       otherwise
@@ -206,13 +212,13 @@ if (~strcmpi(plotImages, 'off'))
   figure();
   switch lower(plotImages)
     case 'mean'
-      image(modelErrorsDivSuccess, 'CDataMapping', 'scaled');
+      image(modelErrorsDivSuccess(:,:,1), 'CDataMapping', 'scaled');
     case 'rank'
       image(modelErrorDivSuccessRanks, 'CDataMapping', 'scaled');
   end
   colorbar;
   ax = gca();
-  ax.XTick = 1:2:size(modelErrorsDivSuccess, 2);
+  ax.XTick = 1:2:size(modelErrorsDivSuccess(:,:,1), 2);
   ax.XTickLabel = dimensions;
   title('RDE averaged across functions');
   xlabel('dimension, snapshot group');
@@ -237,7 +243,7 @@ for di = 1:length(dimensions)
       % Prepare Anova-n y's and categorical predictors
       categorical = { modelsSettings(:, 3), cell2mat(modelsSettings(:, 4)), ...
           cellfun(@(x) x(1,1), modelsSettings(:, 5)) };
-      y = modelErrorsDivSuccess(:, idx);
+      y = modelErrorsDivSuccess(:, idx, 1);
     end
     % Anova-n itself:
     [p{idx},tbl,stats{idx},terms] = anovan(y, categorical, 'model', 1, 'varnames', multiFieldNames, 'display', 'off');
@@ -311,34 +317,57 @@ ellCol  = cellfun(@(x) num2str(x(1,1)), modelsSettings(:,end), 'UniformOutput', 
 ellCol  = strrep(ellCol, '-2', 'ML estimate');
 ellCol  = strrep(ellCol, '0',  '$\ell = 1$');
 
-rdePerDim = zeros(size(modelErrorsDivSuccess,1), size(modelErrorsDivSuccess,2)/2);
-for j = 1:size(modelErrorsDivSuccess,1)
-  for i = 1:(size(modelErrorsDivSuccess,2)/2)
-    rdePerDim(j, i) = mean(modelErrorsDivSuccess(j, ((i-1)*2+1):(2*i)));
-    fprintf('  %.2f', mean(modelErrorsDivSuccess(j, i:(i+1))));
-  end;
-  fprintf('\n');
+rdePerDim = zeros(size(modelErrorsDivSuccess,1), size(modelErrorsDivSuccess,2)/2, nAggFcns);
+for fcni = 1:length(aggFcn)
+  for j = 1:size(modelErrorsDivSuccess,1)
+    for i = 1:(size(modelErrorsDivSuccess,2)/2)
+      rdePerDim(j, i, fcni) = mean(modelErrorsDivSuccess(j, ((i-1)*2+1):(2*i), fcni));
+      fprintf('  %.2f', mean(modelErrorsDivSuccess(j, i:(i+1), fcni)));
+    end;
+    fprintf('\n');
+  end
 end
-meanRDE = mean(modelErrorsDivSuccess, 2);
-meanRDECol = num2cell(meanRDE);
+for iAggFcn = 1:nAggFcns
+  meanRDE(:,iAggFcn) = mean(modelErrorsDivSuccess(:,:,iAggFcn), 2);
+end
 
-header = {'covf', 'meanf', 'ell', 'D2', 'D3', 'D5', 'D10', 'D20', 'average'};
-data   = [covCol, meanCol, ellCol, num2cell(rdePerDim), meanRDECol];
+header = {'covf', 'meanf', 'ell', 'D2m', 'D2std', 'D3m', 'D3std', ...
+          'D5m', 'D5std', 'D10m', 'D10std', 'D20m', 'D20std', 'avg_m', 'avg_std'};
+numericData = zeros(size(modelErrorsDivSuccess,1), size(modelErrorsDivSuccess,1)/2*2);
+for di = 1:length(dimensions)
+  for iAggFcn = 1:2
+    numericData(:,(di-1)*2+iAggFcn) = rdePerDim(:,di,iAggFcn);
+  end
+end
+numericData(:, [end+1,end+2]) = meanRDE(:,1:2);
+data   = [covCol, meanCol, ellCol, num2cell(numericData)];
 
 fixedHypersTable = cell2table(data, 'VariableNames', header);
 writetable(fixedHypersTable, '../latex_scmaes/ec2016paper/data/fixedHypers.csv');
 
 lt = LatexTable(fixedHypersTable);
-lt.headerRow = {'covariance f.', '$m_\mu$', '$\ell$', '$2D$', '$3D$', '$5D$', '$10D$', '$20D$', '\textbf{average}'}';
-lt.opts.tableColumnAlignment = num2cell('lcccccccc');
+lt.headerRow = {'covariance f.', '$m_\mu$', '$\ell$', '\multicolumn{2}{c}{$2D$}', ...
+                '\multicolumn{2}{c}{$3D$}', '\multicolumn{2}{c}{$5D$}', ...
+                '\multicolumn{2}{c}{$10D$}', '\multicolumn{2}{c}{$20D$}', ...
+                '\multicolumn{2}{c}{\textbf{average}}'}';
+lt.opts.tableColumnAlignment = num2cell('lccrlrlrlrlrl');
 lt.opts.numericFormat = '$%.2f$';
 lt.opts.booktabs = 1;
 lt.opts.latexHeader = 0;
 % identify minimas and set them bold
-[~, minRows] = min([rdePerDim, meanRDE]);
-for j = 1:size([rdePerDim, meanRDE], 2)
+for j = 5:2:size(data,2)
+  for i = 1:size(numericData,1)
+    lt.setFormatXY(i, j, '\\tiny $\\pm%.2f$');
+  end
+end
+[~, minRows] = min(numericData);
+for j = 1:2:length(minRows)
   lt.setFormatXY(minRows(j), 3+j, '$\\bf %.2f$');
 end
+% colorize the values
+grayNumerics = numericData(:, repelem(1:2:size(numericData,2),1,2));
+lt.colorizeSubMatrixInGray(grayNumerics, 1, 4, 1.0, 0.5);
+
 latexRows = lt.toStringRows(lt.toStringTable);
 % delete the lines \begin{tabular}{...} \toprule
 % and              \bottomrule  \end{tabular}
