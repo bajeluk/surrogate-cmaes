@@ -317,6 +317,7 @@ ellCol  = cellfun(@(x) num2str(x(1,1)), modelsSettings(:,end), 'UniformOutput', 
 ellCol  = strrep(ellCol, '-2', 'ML estimate');
 ellCol  = strrep(ellCol, '0',  '$\ell = 1$');
 
+%{
 rdePerDim = zeros(size(modelErrorsDivSuccess,1), size(modelErrorsDivSuccess,2)/2, nAggFcns);
 for fcni = 1:length(aggFcn)
   for j = 1:size(modelErrorsDivSuccess,1)
@@ -330,27 +331,56 @@ end
 for iAggFcn = 1:nAggFcns
   meanRDE(:,iAggFcn) = mean(modelErrorsDivSuccess(:,:,iAggFcn), 2);
 end
+%}
+
+% Calculate mean and standard deviations of RDE errors
+dimensionMean = zeros(length(hashes), length(dimensions));
+dimensionStd = zeros(length(hashes), length(dimensions));
+
+for di = 1:length(dimensions)
+  dim = dimensions(di);
+
+  errorsForStd{di} = NaN(length(hashes), (length(functions)) * nSnapshotGroups);
+
+  for mi = 1:length(hashes)
+    hash = hashes{mi};
+    fprintf('model %s\n', hash);
+
+    for si = 1:nSnapshotGroups
+      idx = ((di - 1) * nSnapshotGroups) + si;
+      fcni = 1; % aggFcn index, for third quantiles
+
+      woF5 = ((setdiff(functions, 5) - 1) * nSnapshotGroups) + si;
+
+      errorsForStd{di}(mi,woF5) = modelErrorsPerFS{di}(mi, woF5, fcni) ...
+          ./ trainSuccessPerFS{di}(mi, woF5);
+    end
+  end
+  dimensionMean(:,di) = nanmean(errorsForStd{di}, 2);
+  dimensionStd(:,di) = nanstd(errorsForStd{di}, 0, 2);
+end
+overallMean = nanmean([errorsForStd{:}], 2);
+overallStd  = nanstd([errorsForStd{:}], 0, 2);
 
 header = {'covf', 'meanf', 'ell', 'D2m', 'D2std', 'D3m', 'D3std', ...
           'D5m', 'D5std', 'D10m', 'D10std', 'D20m', 'D20std', 'avg_m', 'avg_std'};
-numericData = zeros(size(modelErrorsDivSuccess,1), size(modelErrorsDivSuccess,1)/2*2);
+numericData = zeros(length(hashes), 2*length(dimensions));
 for di = 1:length(dimensions)
-  for iAggFcn = 1:2
-    numericData(:,(di-1)*2+iAggFcn) = rdePerDim(:,di,iAggFcn);
-  end
+  numericData(:,(di-1)*2+1) = dimensionMean(:,di);
+  numericData(:,di*2) = dimensionStd(:,di);
 end
-numericData(:, [end+1,end+2]) = meanRDE(:,1:2);
+numericData(:, [end+1,end+2]) = [mean(dimensionMean, 2), mean(dimensionStd, 2)];
 data   = [covCol, meanCol, ellCol, num2cell(numericData)];
 
 fixedHypersTable = cell2table(data, 'VariableNames', header);
 writetable(fixedHypersTable, '../latex_scmaes/ec2016paper/data/fixedHypers.csv');
 
 lt = LatexTable(fixedHypersTable);
-lt.headerRow = {'covariance f.', '$m_\mu$', '$\ell$', '\multicolumn{2}{c}{$2D$}', ...
+lt.headerRow = {'covar. fun.', '$\meanf(\xx)$', '$\ell$', '\multicolumn{2}{c}{$2D$}', ...
                 '\multicolumn{2}{c}{$3D$}', '\multicolumn{2}{c}{$5D$}', ...
                 '\multicolumn{2}{c}{$10D$}', '\multicolumn{2}{c}{$20D$}', ...
                 '\multicolumn{2}{c}{\textbf{average}}'}';
-lt.opts.tableColumnAlignment = num2cell('lccrlrlrlrlrl');
+lt.opts.tableColumnAlignment = num2cell('lcc cc cc cc cc cc cc');
 lt.opts.numericFormat = '$%.2f$';
 lt.opts.booktabs = 1;
 lt.opts.latexHeader = 0;
@@ -366,7 +396,7 @@ for j = 1:2:length(minRows)
 end
 % colorize the values
 grayNumerics = numericData(:, repelem(1:2:size(numericData,2),1,2));
-lt.colorizeSubMatrixInGray(grayNumerics, 1, 4, 1.0, 0.5);
+lt.colorizeSubMatrixInGray(grayNumerics, 1, 4, 1.00, 0.60);
 
 latexRows = lt.toStringRows(lt.toStringTable);
 % delete the lines \begin{tabular}{...} \toprule
