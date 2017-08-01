@@ -272,8 +272,10 @@ end
 
 %% Multcompare
 cellBestValues = cell(0, 2+length(multiFieldNames));
+outputLatex = 1;
 mstd = {};
 mltc = {};
+pValues = zeros(length(dimensions)*nSnapshotGroups, length(multiFieldNames));
 for di = 1:length(dimensions)
   for si = 1:nSnapshotGroups
     idx = ((di - 1) * nSnapshotGroups) + si;
@@ -281,12 +283,14 @@ for di = 1:length(dimensions)
     fprintf('==== %d D, snapshotG: %d ====\n', dimensions(di), si);
     rowStart = size(cellBestValues, 1);
 
+    maxNValues = 0;
     for i = 1:length(multiFieldNames)
       fprintf('==   predictor: %s   ==\n', multiFieldNames{i});
 
       % Do the multi-comparison
       [c,mstd{idx, i},h,nms] = multcompare(stats{idx}, 'Dimension', i, 'display', 'off');
       nValues = size(nms, 1);
+      maxNValues = max(maxNValues, nValues);
       mltc{idx, i} = c;
 
       % Identify the lowest estimated mean (and sort them, too)
@@ -306,10 +310,22 @@ for di = 1:length(dimensions)
       isOtherInSorted = ismember(sortedMeansId, otherLowIdx);
       otherLowSorted = sortedMeansId(isOtherInSorted);
 
-      bestValues = cellfun(@(x) regexprep(x, '^.*=', ''), ...
+      % Mark statistical significance
+      stars = '';
+      if (outputLatex)
+        if (p{idx}(i) < 0.001)
+          stars = '$^{\star\star\star}$';
+        elseif (p{idx}(i) < 0.01)
+          stars = '$^{\star\star}$';
+        elseif (p{idx}(i) < 0.05)
+          stars = '$^{\star}$';
+        end
+      end
+    
+      bestValues = cellfun(@(x) [regexprep(x, '^.*=', ''), stars], ...
           nms([iMinMean; otherLowSorted]), 'UniformOutput', false);
       cellBestValues(rowStart + (1:length(bestValues)), 2+i) = bestValues;
-
+      
       if (any(otherLowBool))
         fprintf('Other statistically also low are:\n\n');
         disp(nms(otherLowSorted));
@@ -317,14 +333,46 @@ for di = 1:length(dimensions)
         fprintf('No other statistically lowest values.\n\n');
       end
     end
-    cellBestValues(end+1, :) = [{[], []}, num2cell(p{idx}')];
-    cellBestValues((rowStart+1):end, 1:2) = repmat({dimensions(di), si}, ...
-        size(cellBestValues,1)-rowStart, 1);
+    pValues(idx, :) = p{idx}';
+    if (~outputLatex)
+      cellBestValues(end+1, :) = [{[], []}, num2cell(p{idx}')];
+      cellBestValues((rowStart+1):end, 1:2) = repmat({dimensions(di), si}, ...
+          size(cellBestValues,1)-rowStart, 1);
+    else
+      cellBestValues{(rowStart+1), 1} = ['\multirow{' num2str(maxNValues) ...
+          '}{*}{$' num2str(dimensions(di)) 'D$}'];
+      iiNumber = repmat('i', 1, si);
+      cellBestValues{(rowStart+1), 2} = ['\multirow{' num2str(maxNValues) ...
+          '}{*}{' iiNumber '}'];
+    end
   end
 end
 tBestValues = cell2table(cellBestValues, ...
     'VariableNames', [{'dim', 'snG' }, multiFieldNames]);
 disp(tBestValues)
+
+if (outputLatex)
+  lt = LatexTable(cellBestValues);
+  lt.headerRow = {'dim', 'part of run', 'trainset selection', ...
+                  'max. distance $r^\mathcal{A}_\text{max}$', ...
+                  '$N_\text{max}$', 'covariance function'}';
+  lt.opts.tableColumnAlignment = num2cell('cc llll');
+  lt.opts.numericFormat = '%d';
+  lt.opts.booktabs = 1;
+  lt.opts.latexHeader = 0;
+  latexRows = lt.toStringRows(lt.toStringTable);
+  % delete the lines \begin{tabular}{...} \toprule
+  % and              \bottomrule  \end{tabular}
+  latexRows([1,2,end-1,end]) = [];
+  % save the result in the file
+  fid = fopen('../latex_scmaes/ec2016paper/data/anovaTable.tex', 'w');
+  for i = 1:length(latexRows)
+    fprintf(fid, '%s\n', latexRows{i});
+  end
+  fclose(fid);
+end
+
+
 
 %% Models for ModelPool
 nModels = length(hashes);
