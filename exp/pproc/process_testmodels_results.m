@@ -270,7 +270,7 @@ for di = 1:length(dimensions)
   end
 end
 
-%% Multcompare
+%% Multcompare & LaTex table output
 cellBestValues = cell(0, 2+length(multiFieldNames));
 outputLatex = 1;
 mstd = {};
@@ -290,7 +290,6 @@ for di = 1:length(dimensions)
       % Do the multi-comparison
       [c,mstd{idx, i},h,nms] = multcompare(stats{idx}, 'Dimension', i, 'display', 'off');
       nValues = size(nms, 1);
-      maxNValues = max(maxNValues, nValues);
       mltc{idx, i} = c;
 
       % Identify the lowest estimated mean (and sort them, too)
@@ -309,10 +308,11 @@ for di = 1:length(dimensions)
       otherLowIdx = find(otherLowBool);
       isOtherInSorted = ismember(sortedMeansId, otherLowIdx);
       otherLowSorted = sortedMeansId(isOtherInSorted);
+      maxNValues = max(maxNValues, sum(isOtherInSorted)+1);
 
       % Mark statistical significance
       stars = '';
-      if (outputLatex)
+      if (outputLatex && (sum(isOtherInSorted)+1 < nValues))
         if (p{idx}(i) < 0.001)
           stars = '$^{\star\star\star}$';
         elseif (p{idx}(i) < 0.01)
@@ -352,10 +352,25 @@ tBestValues = cell2table(cellBestValues, ...
 disp(tBestValues)
 
 if (outputLatex)
+  for i = 1:size(cellBestValues,1)
+    if isempty(cellBestValues{i,3}), cellBestValues{i,3} = ''; end
+    if isempty(cellBestValues{i,end}), cellBestValues{i,end} = ''; end
+  end
+  covCol  = regexprep(cellBestValues(:,end), '({@|[,@ ]|cov|iso)', '');
+  covCol  = strrep(covCol, 'Matern5}', '$\covMatern{5/2}$');
+  covCol  = strrep(covCol, 'Matern3}', '$\covMatern{3/2}$');
+  covCol  = strrep(covCol, 'SE}',      '$\covSE$');
+  tssCol  = strrep(cellBestValues(:,3), 'nearestToPopulation', 'population \ref{enu:tss4}');
+  tssCol  = strrep(tssCol, 'recent', 'recent \ref{enu:tss1}');
+  tssCol  = strrep(tssCol, 'clustering', 'clustering \ref{enu:tss3}');
+  tssCol  = strrep(tssCol, 'nearest', '$k$-NN \ref{enu:tss2}');
+  cellBestValues(:, 3)   = tssCol;
+  cellBestValues(:, end) = covCol;
+  
   lt = LatexTable(cellBestValues);
-  lt.headerRow = {'dim', 'part of run', 'trainset selection', ...
-                  'max. distance $r^\mathcal{A}_\text{max}$', ...
-                  '$N_\text{max}$', 'covariance function'}';
+  lt.headerRow = {'\bf dim', '\bf part of run', '\bf trainset selection', ...
+                  '\bf max. distance $r^\mathcal{A}_\text{max}$', ...
+                  '$N_\text{max}$', '\bf covariance function'}';
   lt.opts.tableColumnAlignment = num2cell('cc llll');
   lt.opts.numericFormat = '%d';
   lt.opts.booktabs = 1;
@@ -367,6 +382,9 @@ if (outputLatex)
   % save the result in the file
   fid = fopen('../latex_scmaes/ec2016paper/data/anovaTable.tex', 'w');
   for i = 1:length(latexRows)
+    if (i > 3 && i < length(latexRows) && ~isempty(regexp(latexRows{i}, '^ *\\multirow')))
+      fprintf(fid, '\\hline\n');
+    end
     fprintf(fid, '%s\n', latexRows{i});
   end
   fclose(fid);
