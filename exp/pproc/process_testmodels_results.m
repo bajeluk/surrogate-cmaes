@@ -271,7 +271,7 @@ for di = 1:length(dimensions)
 end
 
 %% Multcompare & LaTex table output
-cellBestValues = cell(0, 2+length(multiFieldNames));
+cellBestValues = cell(0, 2+2*length(multiFieldNames));
 outputLatex = 1;
 mstd = {};
 mltc = {};
@@ -324,7 +324,10 @@ for di = 1:length(dimensions)
     
       bestValues = cellfun(@(x) [regexprep(x, '^.*=', ''), stars], ...
           nms([iMinMean; otherLowSorted]), 'UniformOutput', false);
-      cellBestValues(rowStart + (1:length(bestValues)), 2+i) = bestValues;
+      cellBestValues(rowStart + (1:length(bestValues)), 2+2*(i-1)+1) = ...
+          num2cell(mstd{idx,i}([iMinMean; otherLowSorted],1));
+      cellBestValues(rowStart + (1:length(bestValues)), 2+2*i) = bestValues;
+      
       
       if (any(otherLowBool))
         fprintf('Other statistically also low are:\n\n');
@@ -335,7 +338,7 @@ for di = 1:length(dimensions)
     end
     pValues(idx, :) = p{idx}';
     if (~outputLatex)
-      cellBestValues(end+1, :) = [{[], []}, num2cell(p{idx}')];
+      cellBestValues(end+1, 3:2:end) = num2cell(p{idx}');
       cellBestValues((rowStart+1):end, 1:2) = repmat({dimensions(di), si}, ...
           size(cellBestValues,1)-rowStart, 1);
     else
@@ -347,32 +350,35 @@ for di = 1:length(dimensions)
     end
   end
 end
+varNames = cell(1, 2*length(multiFieldNames));
+varNames(1:2:end) = cellfun(@(x) [x '_mean'], multiFieldNames, 'UniformOutput', false);
+varNames(2:2:end) = multiFieldNames;
 tBestValues = cell2table(cellBestValues, ...
-    'VariableNames', [{'dim', 'snG' }, multiFieldNames]);
+    'VariableNames', [{'dim', 'snG' }, varNames]);
 disp(tBestValues)
 
 if (outputLatex)
   for i = 1:size(cellBestValues,1)
-    if isempty(cellBestValues{i,3}), cellBestValues{i,3} = ''; end
+    if isempty(cellBestValues{i,4}), cellBestValues{i,4} = ''; end
     if isempty(cellBestValues{i,end}), cellBestValues{i,end} = ''; end
   end
   covCol  = regexprep(cellBestValues(:,end), '({@|[,@ ]|cov|iso)', '');
   covCol  = strrep(covCol, 'Matern5}', '$\covMatern{5/2}$');
   covCol  = strrep(covCol, 'Matern3}', '$\covMatern{3/2}$');
   covCol  = strrep(covCol, 'SE}',      '$\covSE$');
-  tssCol  = strrep(cellBestValues(:,3), 'nearestToPopulation', 'population \ref{enu:tss4}');
+  tssCol  = strrep(cellBestValues(:,4), 'nearestToPopulation', 'population \ref{enu:tss4}');
   tssCol  = strrep(tssCol, 'recent', 'recent \ref{enu:tss1}');
   tssCol  = strrep(tssCol, 'clustering', 'clustering \ref{enu:tss3}');
   tssCol  = strrep(tssCol, 'nearest', '$k$-NN \ref{enu:tss2}');
-  cellBestValues(:, 3)   = tssCol;
+  cellBestValues(:, 4)   = tssCol;
   cellBestValues(:, end) = covCol;
   
   lt = LatexTable(cellBestValues);
-  lt.headerRow = {'\bf dim', '\bf part of run', '\bf trainset selection', ...
-                  '\bf max. distance $r^\mathcal{A}_\text{max}$', ...
-                  '$N_\text{max}$', '\bf covariance function'}';
-  lt.opts.tableColumnAlignment = num2cell('cc llll');
-  lt.opts.numericFormat = '%d';
+  lt.headerRow = {'\bf dim', '\bf part of run', '\multicolumn{2}{c}{\bf trainset selection}', ...
+                  '\multicolumn{2}{c}{\bf max. distance $r^\mathcal{A}_\text{max}$}', ...
+                  '\multicolumn{2}{c}{$N_\text{max}$}', '\multicolumn{2}{c}{\bf covariance function}'}';
+  lt.opts.tableColumnAlignment = num2cell('cc ll ll ll ll');
+  lt.opts.numericFormat = '%.2f';
   lt.opts.booktabs = 1;
   lt.opts.latexHeader = 0;
   latexRows = lt.toStringRows(lt.toStringTable);
