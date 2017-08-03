@@ -189,10 +189,10 @@ if (~strcmpi(plotImages, 'off'))
   for di = 1:length(dimensions)
     dim = dimensions(di);
     figure();
-    switch lower(plotImages)
-      case 'mean'
+    switch plotImages
+      case {1, 'mean'}
         image(modelErrorsPerFS{di}(:, woF5) ./ trainSuccessPerFS{di}(:, woF5), 'CDataMapping', 'scaled');
-      case 'rank'
+      case {0, 'rank'}
         image(modelErrorRanksPerFS{di}(:, woF5) ./ trainSuccessPerFS{di}(:, woF5), 'CDataMapping', 'scaled');
       otherwise
         warning('plot style not known: %s', plotImages)
@@ -276,6 +276,8 @@ outputLatex = 1;
 mstd = {};
 mltc = {};
 pValues = zeros(length(dimensions)*nSnapshotGroups, length(multiFieldNames));
+statDifferencesBetweenValues = cell( ...
+    length(dimensions)*nSnapshotGroups, length(multiFieldNames) );
 for di = 1:length(dimensions)
   for si = 1:nSnapshotGroups
     idx = ((di - 1) * nSnapshotGroups) + si;
@@ -308,7 +310,6 @@ for di = 1:length(dimensions)
       otherLowIdx = find(otherLowBool);
       isOtherInSorted = ismember(sortedMeansId, otherLowIdx);
       otherLowSorted = sortedMeansId(isOtherInSorted);
-      maxNValues = max(maxNValues, sum(isOtherInSorted)+1);
 
       % Mark statistical significance
       stars = '';
@@ -321,14 +322,53 @@ for di = 1:length(dimensions)
           stars = '$^{\star}$';
         end
       end
-    
+
       bestValues = cellfun(@(x) [regexprep(x, '^.*=', ''), stars], ...
           nms([iMinMean; otherLowSorted]), 'UniformOutput', false);
       cellBestValues(rowStart + (1:length(bestValues)), 2+2*(i-1)+1) = ...
           num2cell(mstd{idx,i}([iMinMean; otherLowSorted],1));
       cellBestValues(rowStart + (1:length(bestValues)), 2+2*i) = bestValues;
-      
-      
+      maxNValues = max(maxNValues, sum(isOtherInSorted)+1);
+
+      allSortedValues = cellfun(@(x) [regexprep(x, '^.*=', '')], ...
+          nms(sortedMeansId), 'UniformOutput', false);
+      allSortedValues(1:length(bestValues)) = cellfun(@(x) [x, stars], ...
+          allSortedValues(1:length(bestValues)), 'UniformOutput', false);
+      cellBestValues(rowStart + (1:nValues), 2+2*(i-1)+1) = ...
+          num2cell(mstd{idx,i}(sortedMeansId,1));
+      cellBestValues(rowStart + (1:nValues), 2+2*i) = allSortedValues;      
+      maxNValues = max(maxNValues, nValues);
+
+      % fill the statistical significance of mutual comparisons between
+      % values, if ANOVA said that this parameter is significant
+      if (p{idx}(i) < 0.05)
+        for value_i = 1:nValues
+          id_i = sortedMeansId(value_i);
+          for value_j = (value_i+1):nValues
+            id_j = sortedMeansId(value_j);
+            cRow = c((c(:,1) == id_i & c(:,2) == id_j) ...
+                     | c(:,2) == id_i & c(:,1) == id_j, :);
+            if (cRow(6) < 0.05)
+              stars = '';
+              if (cRow(6) < 0.001)
+                stars = '$^{\star\star\star}$';
+              elseif (cRow(6) < 0.01)
+                stars = '$^{\star\star}$';
+              elseif (cRow(6) < 0.05)
+                stars = '$^{\star}$';
+              end
+              if (~isempty(statDifferencesBetweenValues{idx, i}))
+                statDifferencesBetweenValues{idx, i} = [ ...
+                  statDifferencesBetweenValues{idx, i}, ', \ \ '];
+              end
+              statDifferencesBetweenValues{idx, i} = [ ...
+                statDifferencesBetweenValues{idx, i}, ' ', num2str(value_i), ...
+                '<', stars, num2str(value_j), ''];
+            end
+          end
+        end
+      end
+
       if (any(otherLowBool))
         fprintf('Other statistically also low are:\n\n');
         disp(nms(otherLowSorted));
@@ -342,10 +382,18 @@ for di = 1:length(dimensions)
       cellBestValues((rowStart+1):end, 1:2) = repmat({dimensions(di), si}, ...
           size(cellBestValues,1)-rowStart, 1);
     else
-      cellBestValues{(rowStart+1), 1} = ['\multirow{' num2str(maxNValues) ...
+      incLine = 0;
+      for i = 1:length(multiFieldNames)
+        if (~isempty(statDifferencesBetweenValues{idx, i}))
+          incLine = 1;
+          cellBestValues{rowStart + maxNValues + 1, 2+2*(i-1)+1} = [ ...
+              '\multicolumn{2}{l}{', statDifferencesBetweenValues{idx, i}, '}'];
+        end
+      end
+      cellBestValues{(rowStart+1), 1} = ['\multirow{' num2str(maxNValues+incLine) ...
           '}{*}{$' num2str(dimensions(di)) 'D$}'];
       iiNumber = repmat('i', 1, si);
-      cellBestValues{(rowStart+1), 2} = ['\multirow{' num2str(maxNValues) ...
+      cellBestValues{(rowStart+1), 2} = ['\multirow{' num2str(maxNValues+incLine) ...
           '}{*}{' iiNumber '}'];
     end
   end
@@ -374,9 +422,10 @@ if (outputLatex)
   cellBestValues(:, end) = covCol;
   
   lt = LatexTable(cellBestValues);
-  lt.headerRow = {'\bf dim', '\bf part of run', '\multicolumn{2}{c}{\bf trainset selection}', ...
-                  '\multicolumn{2}{c}{\bf max. distance $r^\mathcal{A}_\text{max}$}', ...
-                  '\multicolumn{2}{c}{$N_\text{max}$}', '\multicolumn{2}{c}{\bf covariance function}'}';
+  lt.headerRow = {'\bf dim', '\bf part of run', '\multicolumn{2}{c}{\bf trainset selection}', '', ...
+                  '\multicolumn{2}{c}{\bf $r^\mathcal{A}_\text{max}$}', '', ...
+                  '\multicolumn{2}{c}{$N_\text{max}$}', '', ...
+                  '\multicolumn{2}{c}{\bf covariance function}', ''}';
   lt.opts.tableColumnAlignment = num2cell('cc ll ll ll ll');
   lt.opts.numericFormat = '%.2f';
   lt.opts.booktabs = 1;
