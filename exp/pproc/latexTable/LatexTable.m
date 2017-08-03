@@ -353,11 +353,13 @@ classdef LatexTable < handle
           thisRow = [thisRow sprintf(['%' num2str(colWidths(j)) 's'], stringTable{i,j})];
           if (~isempty(multiCols) && str2num(multiCols{1}{1}) > 1)
             skip = skip + (str2num(multiCols{1}{1}) - 1);
+            thisRow = [thisRow, '   '];
+          elseif (j < nCols)
+            thisRow = [thisRow, ' & '];
           end
-          if (j >= nCols - skip)
-            break;
-          end
-          thisRow = [thisRow, ' & '];
+          % if (j >= nCols - skip)
+          %   break;
+          % end
         end
         latex{end+1} = [thisRow ' \\'];
 
