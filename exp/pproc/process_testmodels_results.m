@@ -430,6 +430,7 @@ disp(tBestValues)
 if (outputLatex)
   for i = 1:size(cellBestValues,1)
     if isempty(cellBestValues{i,4}), cellBestValues{i,4} = ''; end
+    if isempty(cellBestValues{i,8}), cellBestValues{i,8} = ''; end
     if isempty(cellBestValues{i,end}), cellBestValues{i,end} = ''; end
   end
   % Replace values with the strings which should go to LaTeX table
@@ -441,7 +442,10 @@ if (outputLatex)
   tssCol  = strrep(tssCol, 'recent', 'recent \ref{enu:tss1}');
   tssCol  = strrep(tssCol, 'clustering', 'clustering \ref{enu:tss3}');
   tssCol  = strrep(tssCol, 'nearest', '$k$-NN \ref{enu:tss2}');
+  nmaxCol = regexprep(cellBestValues(:,8), '^\<([0-9]+)\>', '\$$1D$');
+
   cellBestValues(:, 4)   = tssCol;
+  cellBestValues(:, 8)   = nmaxCol;
   cellBestValues(:, end) = covCol;
   
   lt = LatexTable(cellBestValues);
