@@ -313,6 +313,7 @@ for di = 1:length(dimensions)
 
       % Mark statistical significance
       stars = '';
+      nonstars = '';
       if (outputLatex && (sum(isOtherInSorted)+1 < nValues))
         if (p{idx}(i) < 0.001)
           stars = '$^{\star\star\star}$';
@@ -321,6 +322,7 @@ for di = 1:length(dimensions)
         elseif (p{idx}(i) < 0.05)
           stars = '$^{\star}$';
         end
+        nonstars = ' \cindex{\downarrow}';
       end
 
       bestValues = cellfun(@(x) [regexprep(x, '^.*=', ''), stars], ...
@@ -334,6 +336,9 @@ for di = 1:length(dimensions)
           nms(sortedMeansId), 'UniformOutput', false);
       allSortedValues(1:length(bestValues)) = cellfun(@(x) [x, stars], ...
           allSortedValues(1:length(bestValues)), 'UniformOutput', false);
+      allSortedValues((length(bestValues)+1):nValues) = cellfun(@(x) [x, nonstars], ...
+          allSortedValues((length(bestValues)+1):nValues), 'UniformOutput', false);
+
       cellBestValues(rowStart + (1:nValues), 2+2*(i-1)+1) = ...
           num2cell(mstd{idx,i}(sortedMeansId,1));
       cellBestValues(rowStart + (1:nValues), 2+2*i) = allSortedValues;      
@@ -383,11 +388,17 @@ for di = 1:length(dimensions)
           size(cellBestValues,1)-rowStart, 1);
     else
       incLine = 0;
-      for i = 1:length(multiFieldNames)
-        if (~isempty(statDifferencesBetweenValues{idx, i}))
-          incLine = 1;
-          cellBestValues{rowStart + maxNValues + 1, 2+2*(i-1)+1} = [ ...
-              '\multicolumn{2}{l}{', statDifferencesBetweenValues{idx, i}, '}'];
+      isAnyTukeyStatistical = cellfun(@(x) ~isempty(x), statDifferencesBetweenValues(idx, :));
+      if (any(isAnyTukeyStatistical))
+        for i = 1:length(multiFieldNames)
+          if (~isempty(statDifferencesBetweenValues{idx, i}))
+            incLine = 1;
+            cellBestValues{rowStart + maxNValues + 1, 2+2*(i-1)+1} = [ ...
+                '\multicolumn{2}{l}{\cellcolor[gray]{0.9}', statDifferencesBetweenValues{idx, i}, '}'];
+          else
+            cellBestValues{rowStart + maxNValues + 1, 2+2*(i-1)+1} = [ ...
+                '\multicolumn{2}{l}{\cellcolor[gray]{0.9}}'];
+          end
         end
       end
       cellBestValues{(rowStart+1), 1} = ['\multirow{' num2str(maxNValues+incLine) ...
