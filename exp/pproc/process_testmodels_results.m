@@ -5,7 +5,7 @@ snapshotGroups = { [5,6,7], [18,19,20] };
 errorCol = 'rde2'; % 'rdeM1_M2WReplace'; % 'rdeValid';
 nTrainedCol = 'nTrained2';
 plotImages = 'mean';  % 'off', 'rank'
-savePDF = true;
+savePDF = false;
 aggFcn = @(x) quantile(x, 0.75);
 rankTol = 0.01;   % tolerance for considering the RDE equal
 nModelpoolModels = 5; % # of models to choose into ModelPool
@@ -146,38 +146,39 @@ end
 
 %% Summarizing results
 % Initialization
-modelErrorRanks = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
-modelErrors     = zeros(length(hashes), length(dimensions*nSnapshotGroups));
-bestModelNumbers = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
-bestModelRankNumbers = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
-modelErrorsDivSuccess = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
-modelErrorDivSuccessRanks = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
-modelErrorRanksPerFS = cell(length(dimensions), 1);
-for di = 1:length(dimensions)
-  modelErrorRanksPerFS{di} = zeros(length(hashes), length(functions) * nSnapshotGroups);  
-end
-
-for di = 1:length(dimensions)
-  for si = 1:nSnapshotGroups
-    idx = ((di - 1) * nSnapshotGroups) + si;
-
-    woF5 = ((setdiff(functions, 5) - 1) * nSnapshotGroups) + si;
-    for col = woF5
-      modelErrorRanksPerFS{di}(:, col) = preciseRank(modelErrorsPerFS{di}(:, col), rankTol);
-    end
-    modelErrors(:, idx) = nansum(modelErrorsPerFS{di}(:, woF5), 2) ./ (length(woF5));
-    modelErrorRanks(:, idx) = nansum(modelErrorRanksPerFS{di}(:, woF5), 2) ./ (length(woF5));
-    modelErrorsDivSuccess(:, idx) = nansum( modelErrorsPerFS{di}(:, woF5) ...
-        ./ trainSuccessPerFS{di}(:, woF5), 2 ) ./ (length(woF5));
-    modelErrorDivSuccessRanks(:, idx) = nansum( modelErrorRanksPerFS{di}(:, woF5) ...
-        ./ trainSuccessPerFS{di}(:, woF5), 2 ) ./ (length(woF5));  
-    % Normlize to (0, 1)
-    % modelErrors(:, idx) = (modelErrors(:, idx) - min(modelErrors(:, idx))) ./ (max(modelErrors(:, idx)) - min(modelErrors(:, idx)));
-    [~, bestModelNumbers(:, idx)] = sort(modelErrorsDivSuccess(:, idx));
-    [~, bestModelRankNumbers(:, idx)] = sort(modelErrorDivSuccessRanks(:, idx));
+if (~exist('modelErrorsDivSuccess', 'var'))
+  modelErrorRanks = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
+  modelErrors     = zeros(length(hashes), length(dimensions*nSnapshotGroups));
+  bestModelNumbers = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
+  bestModelRankNumbers = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
+  modelErrorsDivSuccess = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
+  modelErrorDivSuccessRanks = zeros(length(hashes), length(dimensions)*nSnapshotGroups);
+  modelErrorRanksPerFS = cell(length(dimensions), 1);
+  for di = 1:length(dimensions)
+    modelErrorRanksPerFS{di} = zeros(length(hashes), length(functions) * nSnapshotGroups);  
   end
-end  % for dimensions
 
+  for di = 1:length(dimensions)
+    for si = 1:nSnapshotGroups
+      idx = ((di - 1) * nSnapshotGroups) + si;
+
+      woF5 = ((setdiff(functions, 5) - 1) * nSnapshotGroups) + si;
+      for col = woF5
+        modelErrorRanksPerFS{di}(:, col) = preciseRank(modelErrorsPerFS{di}(:, col), rankTol);
+      end
+      modelErrors(:, idx) = nansum(modelErrorsPerFS{di}(:, woF5), 2) ./ (length(woF5));
+      modelErrorRanks(:, idx) = nansum(modelErrorRanksPerFS{di}(:, woF5), 2) ./ (length(woF5));
+      modelErrorsDivSuccess(:, idx) = nansum( modelErrorsPerFS{di}(:, woF5) ...
+          ./ trainSuccessPerFS{di}(:, woF5), 2 ) ./ (length(woF5));
+      modelErrorDivSuccessRanks(:, idx) = nansum( modelErrorRanksPerFS{di}(:, woF5) ...
+          ./ trainSuccessPerFS{di}(:, woF5), 2 ) ./ (length(woF5));  
+      % Normlize to (0, 1)
+      % modelErrors(:, idx) = (modelErrors(:, idx) - min(modelErrors(:, idx))) ./ (max(modelErrors(:, idx)) - min(modelErrors(:, idx)));
+      [~, bestModelNumbers(:, idx)] = sort(modelErrorsDivSuccess(:, idx));
+      [~, bestModelRankNumbers(:, idx)] = sort(modelErrorDivSuccessRanks(:, idx));
+    end
+  end  % for dimensions
+end
 
 %% Plot images
 woF5 = repelem((setdiff(functions, 5) - 1) * nSnapshotGroups, 1, nSnapshotGroups) ...
@@ -325,6 +326,7 @@ for di = 1:length(dimensions)
         nonstars = ' \cindex{\downarrow}';
       end
 
+      % This variant only prints the best and statistically equal values
       bestValues = cellfun(@(x) [regexprep(x, '^.*=', ''), stars], ...
           nms([iMinMean; otherLowSorted]), 'UniformOutput', false);
       cellBestValues(rowStart + (1:length(bestValues)), 2+2*(i-1)+1) = ...
@@ -332,6 +334,8 @@ for di = 1:length(dimensions)
       cellBestValues(rowStart + (1:length(bestValues)), 2+2*i) = bestValues;
       maxNValues = max(maxNValues, sum(isOtherInSorted)+1);
 
+      % This variant prints all values, but marks the statistically worse 
+      % with 'nonstars'
       allSortedValues = cellfun(@(x) [regexprep(x, '^.*=', '')], ...
           nms(sortedMeansId), 'UniformOutput', false);
       allSortedValues(1:length(bestValues)) = cellfun(@(x) [x, stars], ...
@@ -339,6 +343,7 @@ for di = 1:length(dimensions)
       allSortedValues((length(bestValues)+1):nValues) = cellfun(@(x) [x, nonstars], ...
           allSortedValues((length(bestValues)+1):nValues), 'UniformOutput', false);
 
+      % Fill also the mean response value of RDE/r_succ
       cellBestValues(rowStart + (1:nValues), 2+2*(i-1)+1) = ...
           num2cell(mstd{idx,i}(sortedMeansId,1));
       cellBestValues(rowStart + (1:nValues), 2+2*i) = allSortedValues;      
@@ -354,6 +359,7 @@ for di = 1:length(dimensions)
             cRow = c((c(:,1) == id_i & c(:,2) == id_j) ...
                      | c(:,2) == id_i & c(:,1) == id_j, :);
             if (cRow(6) < 0.05)
+              % Tukey--Kramer said, that this comparison is significant:
               stars = '';
               if (cRow(6) < 0.001)
                 stars = '$^{\star\star\star}$';
@@ -362,6 +368,7 @@ for di = 1:length(dimensions)
               elseif (cRow(6) < 0.05)
                 stars = '$^{\star}$';
               end
+              % Fill the 'i <** j' string
               if (~isempty(statDifferencesBetweenValues{idx, i}))
                 statDifferencesBetweenValues{idx, i} = [ ...
                   statDifferencesBetweenValues{idx, i}, ', \ \ '];
@@ -390,6 +397,8 @@ for di = 1:length(dimensions)
       incLine = 0;
       isAnyTukeyStatistical = cellfun(@(x) ~isempty(x), statDifferencesBetweenValues(idx, :));
       if (any(isAnyTukeyStatistical))
+        % Tukey--Kramer said at least about one parameter, that the some
+        % comparison between values are significant
         for i = 1:length(multiFieldNames)
           if (~isempty(statDifferencesBetweenValues{idx, i}))
             incLine = 1;
@@ -401,6 +410,8 @@ for di = 1:length(dimensions)
           end
         end
       end
+      % Fill also the first two columns with dimension and part of
+      % optimization run
       cellBestValues{(rowStart+1), 1} = ['\multirow{' num2str(maxNValues+incLine) ...
           '}{*}{$' num2str(dimensions(di)) 'D$}'];
       iiNumber = repmat('i', 1, si);
@@ -421,6 +432,7 @@ if (outputLatex)
     if isempty(cellBestValues{i,4}), cellBestValues{i,4} = ''; end
     if isempty(cellBestValues{i,end}), cellBestValues{i,end} = ''; end
   end
+  % Replace values with the strings which should go to LaTeX table
   covCol  = regexprep(cellBestValues(:,end), '({@|[,@ ]|cov|iso)', '');
   covCol  = strrep(covCol, 'Matern5}', '$\covMatern{5/2}$');
   covCol  = strrep(covCol, 'Matern3}', '$\covMatern{3/2}$');
@@ -448,7 +460,7 @@ if (outputLatex)
   % save the result in the file
   fid = fopen('../latex_scmaes/ec2016paper/data/anovaTable.tex', 'w');
   for i = 1:length(latexRows)
-    if (i > 3 && i < length(latexRows) && ~isempty(regexp(latexRows{i}, '^ *\\multirow')))
+    if (i > 3 && i < length(latexRows) && ~isempty(regexp(latexRows{i}, '^ *\\multirow', 'once')))
       fprintf(fid, '\\hline\n');
     end
     fprintf(fid, '%s\n', latexRows{i});
