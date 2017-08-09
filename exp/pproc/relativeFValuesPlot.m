@@ -403,7 +403,8 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   notEmptyData = false(1, nRelativeData);
   % find not empty data
   for dat = 1:nRelativeData
-    notEmptyData(dat) = ~isempty(relativeData{dat}) && ~isempty(relativeData{dat}{fId, dId});
+    notEmptyData(dat) = ~isempty(relativeData{dat}) && size(relativeData{dat}, 1) >= fId ...
+        && size(relativeData{dat}, 2) >= dId && ~isempty(relativeData{dat}{fId, dId});
   end
   
   if any(notEmptyData)
