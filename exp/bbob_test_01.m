@@ -240,12 +240,12 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
       evalsRestartCorrection = fgeneric('evaluations');
 
       if fgeneric('fbest') < fgeneric('ftarget') || ...
-        fgeneric('evaluations') + minfunevals > restartMaxfunevals
+        fgeneric('evaluations') + minfunevals > maxfunevals
         break;
       else
         % try to improve the best foud solution
         xstart = xopt;
-        restartMaxfunevals = restartMaxfunevals - fgeneric('evaluations');
+        restartMaxfunevals = maxfunevals - fgeneric('evaluations');
       end  
     end
 
