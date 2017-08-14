@@ -1,4 +1,4 @@
-classdef TreeModel < ImplModel
+classdef TreeModel < AbstractModel
   properties (Constant, Access = private)
     nodeTemplate = struct(... % template for nodes
         'parent', 0, ...
@@ -20,20 +20,22 @@ classdef TreeModel < ImplModel
     splitGenerators % generators for split functions
     splitEvaluator % evaluator for split functions
     predictorFunc % function which creates a model in leaf
-    prune % grows a full tree then prunes, otherwise prunes during splitting
+    pruning % grows a full tree then prunes, otherwise prunes during splitting
+    objectiveFunc
   end
   
   methods
     function obj = TreeModel(modelOptions, xMean)
       % constructor
-      obj = obj@ImplModel(modelOptions, xMean);
+      obj = obj@AbstractModel(modelOptions, xMean);
       
       % specific model options
       obj.minGain = defopts(modelOptions, 'minGain', 1e-3);
       obj.minLeafSize = defopts(modelOptions, 'minLeafSize', 2);
       obj.minParentSize = defopts(modelOptions, 'minParentSize', 10);
       obj.maxDepth = defopts(modelOptions, 'maxDepth', inf);
-      obj.prune = defopts(modelOptions, 'prune', false);
+      obj.pruning = defopts(modelOptions, 'pruning', false);
+      obj.objectiveFunc = defopts(modelOptions, 'objectiveFunc', @immse);
       obj.predictorFunc = defopts(modelOptions, 'predictorFunc', ...
         @(xMean) ConstantModel(struct, xMean));
       obj.splitGenerators = defopts(modelOptions, 'splitGenerators', ...
@@ -64,6 +66,10 @@ classdef TreeModel < ImplModel
     function [y, sd2] = modelPredict(obj, X)
       % predicts the function values in new points X
       [y, sd2] = obj.modelPredictRecursive(X, 1);
+    end
+    
+    function prune(obj, X, y)
+      obj.pruneRecursive(X, y, 1);
     end
   end
   
@@ -145,6 +151,55 @@ classdef TreeModel < ImplModel
           end
         end
         [y(i), sd2(i)] = obj.nodes(iNode).predictor.modelPredict(X(i, :));
+      end
+    end
+    
+    function pruneRecursive(obj, X, y, iNode)
+      if obj.nodes(iNode).left > 0 && obj.nodes(iNode).right > 0 ...
+        && obj.nodes(obj.nodes(iNode).left) == 0 ...
+        && obj.nodes(obj.nodes(iNode).right) == 0
+        % internal node having two leaves
+        % consider making this node a leaf
+        yPred = zeros(size(X, 1), 1);
+        
+        left = struct('idx', obj.nodes(iNode).splitter(X), 'iNode', obj.nodes(iNode).left);
+        if any(left.idx)
+          [yPred(left.idx)] = obj.modelPredictRecursive(X(left.idx, :), left.iNode);
+        end
+        
+        right = struct('idx', ~left.idx, 'iNode', obj.nodes(iNode).right);
+        if any(right.idx)
+          [yPred(right.idx)] = obj.modelPredictRecursive(X(right.idx, :), right.iNode);
+        end
+        
+        objective = obj.objectiveFunc(y, yPred);
+        
+        predictorNew = obj.predictorFunc(mean(X));
+        predictorNew.trainModel(X, y, mean(X), 0);
+        objectiveNew = obj.objectiveFunc(y, predictorNew.modelPredict(X));
+        
+        if objectiveNew <= objective
+          % remove children
+          obj.nodes(left.iNode) = TreeModel.nodeTemplate;
+          obj.nodes(right.iNode) = TreeModel.nodeTemplate;
+          obj.nodes(iNode).left = 0;
+          obj.nodes(iNode).right = 0;
+          obj.nodes(iNode).predictor = predictorNew;
+          obj.nodes(iNode).X = X;
+          obj.nodes(iNode).y = y;
+        end
+      end
+      if obj.nodes(iNode).left == 0 && obj.nodes(iNode).right == 0
+        % try to replace complex model in leaf with constant model
+        objective = obj.objectiveFunc(y, obj.nodes(iNode).predictor.modelPredict(X));
+        
+        predictorNew = ConstantModel(struct, mean(X));
+        predictorNew.trainModel(X, y, mean(X), 0);
+        objectiveNew = obj.objectiveFunc(y, predictorNew.modelPredict(X));
+        
+        if objectiveNew <= objective
+          obj.nodes(iNode).predictor = predictorNew;
+        end
       end
     end
     

@@ -1,4 +1,4 @@
-classdef ConstantModel < ImplModel
+classdef ConstantModel < AbstractModel
   properties %(Access = protected)
     y % predicted value
     sd2 % standard deviation
@@ -7,7 +7,7 @@ classdef ConstantModel < ImplModel
   methods
     function obj = ConstantModel(modelOptions, xMean)
       % constructor
-      obj = obj@ImplModel(modelOptions, xMean);
+      obj = obj@AbstractModel(modelOptions, xMean);
       % specific model options
       obj.y = defopts(modelOptions, 'y', NaN);
     end
@@ -27,7 +27,7 @@ classdef ConstantModel < ImplModel
       if isnan(obj.y)
         obj.y = mean(y);
       end
-      obj.sd2 = sum((y - obj.y).^2) / size(y, 1);
+      obj.sd2 = mean((y - obj.y).^2);
     end
 
     function [y, sd2] = modelPredict(obj, X)

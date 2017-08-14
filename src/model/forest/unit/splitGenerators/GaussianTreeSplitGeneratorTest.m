@@ -1,4 +1,4 @@
-classdef GMMTreeSplitGeneratorTest < matlab.unittest.TestCase
+classdef GaussianTreeSplitGeneratorTest < matlab.unittest.TestCase
   methods (Test)
     function testOneGaussian(testCase)
       rng('default');
@@ -10,7 +10,7 @@ classdef GMMTreeSplitGeneratorTest < matlab.unittest.TestCase
       % we expect the split to be in half
       y = (X(:, 1) <= 0)*1;
       
-      generator = GMMTreeSplitGenerator(nRepeats);
+      generator = GaussianTreeSplitGenerator(nRepeats);
       [best, count, vars] = TreeSplitGeneratorTest.findBest(X, y, generator);
       
       verifyEqual(testCase, count, nRepeats);
@@ -29,7 +29,7 @@ classdef GMMTreeSplitGeneratorTest < matlab.unittest.TestCase
       % we expect the split to be in half
       y = (X(:, 1) <= m/2)*1;
       
-      generator = GMMTreeSplitGenerator(nRepeats);
+      generator = GaussianTreeSplitGenerator(nRepeats);
       [best, count, vars] = TreeSplitGeneratorTest.findBest(X, y, generator);
       
       verifyEqual(testCase, count, nRepeats);
@@ -51,7 +51,7 @@ classdef GMMTreeSplitGeneratorTest < matlab.unittest.TestCase
       % we expect to split the two parallel gaussians 
       y = half*1;
       
-      generator = GMMTreeSplitGenerator(nRepeats);
+      generator = GaussianTreeSplitGenerator(nRepeats);
       [best, count, vars] = TreeSplitGeneratorTest.findBest(X, y, generator);
       
       verifyEqual(testCase, count, nRepeats);

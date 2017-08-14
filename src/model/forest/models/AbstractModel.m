@@ -1,4 +1,4 @@
-classdef (Abstract) ImplModel < handle % Model
+classdef (Abstract) AbstractModel < handle % Model
   properties
     dim                  % dimension of the input space X (determined from x_mean)
     trainGeneration      % # of the generation when the model was built
@@ -16,7 +16,7 @@ classdef (Abstract) ImplModel < handle % Model
   end
   
   methods (Access = protected)
-    function obj = ImplModel(modelOptions, xMean)
+    function obj = AbstractModel(modelOptions, xMean)
       % constructor
       assert(size(xMean,1) == 1, 'Model (constructor): xMean is not a row-vector.');
       

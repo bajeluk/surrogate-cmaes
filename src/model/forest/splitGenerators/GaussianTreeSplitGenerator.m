@@ -1,18 +1,16 @@
-classdef KMeansTreeSplitGenerator < TreeSplitGenerator
+classdef GaussianTreeSplitGenerator < TreeSplitGenerator
   
   properties (Access = protected)
     discrimType % degree for discriminant analysis ('linear', 'quadratic')
-    metric %
-    nRepeats
-    iRepeats
+    nRepeats % number or repeats
+    iRepeats % current repeat
     Z % scaled input-output matrix
   end
   
   methods
-    function obj = KMeansTreeSplitGenerator(discrimType, metric, nRepeats)
+    function obj = GaussianTreeSplitGenerator(discrimType, nRepeats)
       if nargin > 0
-        obj.discrimType = discrimType;
-        obj.metric = metric;
+        obj.degree = discrimType;
         obj.nRepeats = nRepeats;
       end
     end
@@ -33,7 +31,9 @@ classdef KMeansTreeSplitGenerator < TreeSplitGenerator
     
     function f = next(obj)
       obj.iRepeats = obj.iRepeats + 1;
-      c = kmeans(obj.Z, 2, 'Distance', obj.metric);
+      % fit 2 gaussian distributions on input-output space
+      model = fitgmdist(obj.Z, 2, 'RegularizationValue', 0.001);
+      c = model.cluster(X);
       % discriminant analysis of two clusters
       model = fitcdiscr(X, c, 'DiscrimType', obj.discrimType);
       f = @(X) model.predict(X) == 1;

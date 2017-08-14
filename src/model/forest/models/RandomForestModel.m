@@ -1,9 +1,9 @@
-classdef RandomForestModel < ImplModel
+classdef RandomForestModel < AbstractModel
   properties (Constant, Access = private)
     treeTemplate = struct(... % template for trees
         'model', [], ... % model
         'features', [], ... % used features in the model
-        'weight', []); % wieght of the model in the resulting tree
+        'weight', 0); % wieght of the model in the resulting tree
   end
   
   properties %(Access = protected)
@@ -13,19 +13,26 @@ classdef RandomForestModel < ImplModel
     treeFunc % function which creates a new tree
     nTrees % number of trees
     trees % trained trees
+    oobError % out of bag error
+    boosting % whether boosting is enabled
+    shrinkage % shrinkage parameter
+    objectiveFunc
   end
   
   methods
     function obj = RandomForestModel(modelOptions, xMean)
       % constructor
-      obj = obj@ImplModel(modelOptions, xMean);
+      obj = obj@AbstractModel(modelOptions, xMean);
       
       % model specific options
+      obj.treeFunc = defopts(modelOptions, 'treeFunc', @(xMean) TreeModel(struct, xMean));
       obj.nTrees = defopts(modelOptions, 'nTrees', 1);
       obj.nFeaturesToSample = defopts(modelOptions, 'nFeaturesToSample', size(xMean, 2));
       obj.sampleWithReplacement = defopts(modelOptions, 'sampleWithReplacement', false);
       obj.inBagFraction = defopts(modelOptions, 'inBagFraction', 1);
-      obj.treeFunc = defopts(modelOptions, 'treeFunc', @(xMean) TreeModel(struct, xMean));
+      obj.boosting = defopts(modelOptions, 'boosting', false);
+      obj.shrinkage = defopts(modelOptions, 'shrinkage', 0.1);
+      obj.objectiveFunc = defopts(modelOptions, 'objectiveFunc', @immse);
     end
     
     function nData = getNTrainData(obj)
@@ -58,16 +65,52 @@ classdef RandomForestModel < ImplModel
         sample.y = y(sample.idx, :);
         sample.xMean = mean(sample.X);
         obj.trees(iTree).features = sample.features;
-        obj.trees(iTree).weight = 1 / obj.nTrees;
         obj.trees(iTree).model = obj.treeFunc(sample.xMean);
-        obj.trees(iTree).model.trainModel(sample.X, sample.y, sample.xMean, generation);
+        if obj.boosting && iTree == 1
+          % first tree is trained fully
+          obj.trees(iTree).model.trainModel(sample.X, sample.y, sample.xMean, generation);
+          obj.trees(iTree).weight = 1;
+        elseif obj.boosting
+          % fit to residuals
+          yPred = obj.modelPredict(sample.X);
+          r = sample.y - yPred;
+          obj.trees(iTree).model.trainModel(sample.X, r, sample.xMean, generation);
+          % find the best weight (simplified gradient of objective function)
+          yPredNew = obj.trees(iTree).model.modelPredict(sample.X);
+          w = 1;
+          objective = obj.objectiveFunc(sample.y, yPred + w * yPredNew);
+          improved = true;
+          while improved
+            improved = false;
+            eps = 0.01;
+            for w1 = [w * (1 - eps), w * (1 + eps)]
+              objective1 = obj.objectiveFunc(sample.y, yPred + w1 * yPredNew);
+              if objective1 < objective
+                w = w1;
+                objective = objective1;
+                improved = true;
+                break;
+              end
+            end
+          end
+          obj.trees(iTree).weight = w;
+        else
+          obj.trees(iTree).model.trainModel(sample.X, sample.y, sample.xMean, generation);
+          obj.trees(iTree).weight = 1 / obj.nTrees;
+        end
       end
     end
     
     function [y, sd2] = modelPredict(obj, X)
-      y = zeros(size(X, 1), obj.nTrees);
-      sd2 = zeros(size(X, 1), obj.nTrees);
-      for iTree = 1:obj.nTrees
+      nX = size(X, 1);
+      nTrees = size(obj.trees, 1);
+      y = zeros(nX, nTrees);
+      sd2 = zeros(nX, nTrees);
+      for iTree = 1:nTrees
+        if obj.trees(iTree).weight == 0
+          % this tree doesn't contribute
+          continue
+        end
         XS = X(:, obj.trees(iTree).features);
         [y(:, iTree), sd2(:, iTree)] = obj.trees(iTree).model.modelPredict(XS);
       end

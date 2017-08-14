@@ -1,4 +1,4 @@
-classdef PolynomialModel < ImplModel
+classdef PolynomialModel < AbstractProbabilityModel
   properties %(Access = protected)
     modelSpec % model specification (https://www.mathworks.com/help/stats/fitlm.html#inputarg_modelspec)
     model % trained model
@@ -7,14 +7,21 @@ classdef PolynomialModel < ImplModel
   methods
     function obj = PolynomialModel(modelOptions, xMean)
       % constructor
-      obj = obj@ImplModel(modelOptions, xMean);
+      obj = obj@AbstractProbabilityModel(modelOptions, xMean);
       % specific model options
       obj.modelSpec = defopts(modelOptions, 'modelSpec', 'constant');
     end
     
     function nData = getNTrainData(obj)
       % returns the required number of data for training the model
-      nData = 1;
+      switch obj.modelSpec
+        case 'constant'
+          nData = 1;
+        case 'linear'
+          nData = 2;
+        otherwise
+          nData = 3;
+      end
     end
 
     function obj = trainModel(obj, X, y, xMean, generation)
@@ -27,12 +34,19 @@ classdef PolynomialModel < ImplModel
       obj.model = fitlm(X, y, obj.modelSpec);
       warning('on', 'stats:LinearModel:RankDefDesignMat');
     end
-
-    function [y, sd2] = modelPredict(obj, X)
+    
+    
+    function [y, sd2, ci, p] = modelPredict(obj, X)
       % predicts the function values in new points X
       [y, ci] = obj.model.predict(X);
-      sd2 = (ci(:,2) - ci(:,1)).^2; % TODO: can we get SD2 from confidence interval?
-      sd2 = repmat(obj.model.RMSE^2, size(y, 1), 1);
+      if nargout >= 1
+        % sd2 = diag(X * obj.model.CoefficientCovariance * X');
+        sd2 = sum(X * obj.model.CoefficientCovariance .* X, 2);
+        if nargout >= 4
+          % assume normal distribution and compute prediction probability
+          p = normpdf(y, y, sqrt(sd2));
+        end
+      end
     end
   end
 end
