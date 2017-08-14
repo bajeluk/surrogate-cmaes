@@ -243,8 +243,13 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
         fgeneric('evaluations') + minfunevals > maxfunevals
         break;
       else
-        % try to improve the best foud solution
-        xstart = xopt;
+        if (mod((restarts+1), 5) ~= 0)
+          % try to improve the best foud solution
+          xstart = xopt;
+        else
+          % or generate a new point once in 5 generations
+          xstart = 8 * rand(exp_settings.dim, 1) - 4;
+        end
         restartMaxfunevals = maxfunevals - fgeneric('evaluations');
       end  
     end

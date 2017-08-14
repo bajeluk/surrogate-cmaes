@@ -1,4 +1,4 @@
-function [x, y_evals, stopflag, varargout] = opt_fmincon(FUN, DIM, ftarget, maxfunevals, id, varargin)
+function [x, y_evals, stopflag, varargout] = opt_bobyqa(FUN, DIM, ftarget, maxfunevals, id, varargin)
 % minimizes FUN in DIM dimensions by multistarts of fminsearch.
 % ftarget and maxfunevals are additional external termination conditions,
 % where at most 2 * maxfunevals function evaluations are conducted.
@@ -12,17 +12,13 @@ function [x, y_evals, stopflag, varargout] = opt_fmincon(FUN, DIM, ftarget, maxf
 
 
   fDelta = 1e-8;
-  stopflag = [];
-  varargout = {};
 
   cmOptions = struct( ...
-    'Algorithm', 'interior-point', ...
-    ... % 'ObjectiveLimit', ftarget,
-    'Display', 'off', ...
-    'MaxFunctionEvaluations', min(1e8*DIM, maxfunevals), ...
+    'display', 'iter', ...
+    'rho_end', 1e-7, ...
+    'maxFunEval', min(1e8*DIM, maxfunevals), ...
     'LBounds', -5, ...
-    'UBounds',  5 ...
-    );
+    'UBounds',  5);
 
   y_evals = [];
 
@@ -30,7 +26,6 @@ function [x, y_evals, stopflag, varargout] = opt_fmincon(FUN, DIM, ftarget, maxf
     else              exppath = '';  end
   if (nargin >= 7), xstart = varargin{2};
     else              xstart = 8 * rand(dim, 1) - 4;  end
-  % xstart = 8 * rand(DIM, 1) - 4;
 
   load([exppath 'scmaes_params.mat'], 'bbParamDef', 'sgParamDef', 'cmParamDef');
   [~, ~, cmParams] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
@@ -39,13 +34,17 @@ function [x, y_evals, stopflag, varargout] = opt_fmincon(FUN, DIM, ftarget, maxf
     cmOptions.(fname{1}) = cmParams.(fname{1});
   end
 
-  lb = cmOptions.LBounds * ones(1, DIM);
-  ub = cmOptions.UBounds * ones(1, DIM);
+  lb = cmOptions.LBounds * ones(DIM, 1);
+  ub = cmOptions.UBounds * ones(DIM, 1);
+  cmOptions.rho_beg = defopts(cmOptions, 'rho_beg', (cmOptions.UBounds - cmOptions.LBounds) * 0.3);
 
-  [x, fmin, stopflag, output] = fmincon(FUN, xstart, [], [], [], [], lb, ub, [], cmOptions);
+  % BOBYQA itself
+  % 
+  [fmin, x] = bobyqa(FUN, xstart, lb, ub, cmOptions);
   
-  y_evals = [fmin, output.funcCount NaN NaN NaN];
+  y_evals = [fmin, cmOptions.maxFunEval NaN NaN NaN];
 
+  stopflag = [];
   if (nargout > 3)
     varargout{1} = [];
   else
