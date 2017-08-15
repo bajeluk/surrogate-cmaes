@@ -43,7 +43,8 @@ function colors = getAlgColors(colId)
       0,   0, 255; ... % blue middle clearly visible
     191, 191,   0; ... % golden (dark yellow)
       0, 127,   0; ... % darker green
-    239, 239,   0  ... % middle yellow
+    223, 223,   0; ... % middle yellow
+    255,  90, 229  ... % very light pink
     ];
   
   def_alg_color_base = [...

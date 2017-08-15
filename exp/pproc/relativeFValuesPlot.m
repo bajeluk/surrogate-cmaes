@@ -122,6 +122,7 @@ function handle = relativeFValuesPlot(data, varargin)
     plotSet.lineSpec = defaultLine;
   end
   plotSet.lineWidth = defopts(settings, 'LineWidth', 1);
+  plotSet.markers   = defopts(settings, 'Markers', []);
   % statistic settings
   statistic = defopts(settings, 'Statistic', @mean);
   plotSet.drawQuantiles = false;
@@ -424,6 +425,21 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     end
     hold on
     grid on
+    N_MARKERS = 2;
+    if (~isempty(settings.markers) && (length(settings.markers) >= nRelativeData) ...
+        && (ischar(settings.markers{end}) && ~strcmpi(settings.markers{end}, '')))
+      randomStartMarker = 1+floor(rand()*(evaldim(end) / (N_MARKERS+1)));
+      randomStepMarker  = floor((0.7 + rand()*0.6) * (evaldim(end) / (N_MARKERS+1)));
+      randomXMarkers    = randomStartMarker:randomStepMarker:evaldim(end);
+      if notEmptyData(end)
+        h(end) = plot(randomXMarkers, relativeData{end}{fId, dId}(randomXMarkers), ...
+          settings.markers{end}, 'LineWidth', medianLineWidth(end), 'Color', colors(end, :));
+      else
+        h(end) = plot(0, 0, ...
+          settings.markers{end}, 'LineWidth', medianLineWidth(end), 'Color', colors(end, :), ...
+          'Visible', 'off');
+      end
+    end
     % plot rest of lines
     for dat = (nRelativeData-1):-1:1
       if notEmptyData(dat)
@@ -433,6 +449,20 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
         h(dat) = plot(0, 0, ...
           lineSpec{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :), ...
           'Visible', 'off');
+      end
+      if (~isempty(settings.markers) && (length(settings.markers) >= dat) ...
+          && (ischar(settings.markers{dat}) && ~strcmpi(settings.markers{end}, '')))
+        randomStartMarker = 1+floor(rand()*(evaldim(end) / (N_MARKERS+1)));
+        randomStepMarker  = floor((0.7 + rand()*0.6) * (evaldim(end) / (N_MARKERS+1)));
+        randomXMarkers    = randomStartMarker:randomStepMarker:evaldim(end);
+        if notEmptyData(end)
+          h(dat) = plot(randomXMarkers, relativeData{dat}{fId, dId}(randomXMarkers), ...
+            settings.markers{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :));
+        else
+          h(dat) = plot(0, 0, ...
+            settings.markers{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :), ...
+            'Visible', 'off');
+        end
       end
     end
     if settings.drawQuantiles
