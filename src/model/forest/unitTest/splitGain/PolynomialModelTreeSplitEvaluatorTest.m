@@ -9,7 +9,7 @@ classdef PolynomialModelTreeSplitEvaluatorTest < matlab.unittest.TestCase
       % two constant functions
       split = X(:, 1) <= m/2;
       y = 1 * split;
-      TreeSplitEvaluatorTest.draw(X, y, split);
+      testCase.draw(X, y, split);
       
       evaluator = PolynomialModelTreeSplitEvaluator(@gainMse, 'constant');
       evaluator.reset(X, y);
