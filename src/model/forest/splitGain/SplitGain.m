@@ -57,7 +57,7 @@ classdef SplitGain
       obj.current = obj.getData(true(n, 1));
     end
     
-    function gain = eval(obj, splitter)
+    function gain = get(obj, splitter)
     % evaluates splitter function
       idx = splitter(obj.X);
       left = obj.getData(idx);
