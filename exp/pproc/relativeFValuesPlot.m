@@ -123,7 +123,7 @@ function handle = relativeFValuesPlot(data, varargin)
     plotSet.lineSpec = defaultLine;
   end
   plotSet.lineWidth = defopts(settings, 'LineWidth', 1);
-  plotSet.markers   = defopts(settings, 'Markers', []);
+  plotSet.markers   = defopts(settings, 'Markers', {''});
   % statistic settings
   statistic = defopts(settings, 'Statistic', @mean);
   if ischar(statistic)
@@ -136,6 +136,9 @@ function handle = relativeFValuesPlot(data, varargin)
       end
       if (length(plotSet.drawQuantiles) == 1)
         plotSetQuantiles = repmat(plotSet.drawQuantiles, 1, numOfData);
+      end
+      if (~any(plotSet.drawQuantiles))
+        plotSet.drawQuantiles = true(1, numOfData);
       end
     else
       % other than quantile statistics
