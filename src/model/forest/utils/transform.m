@@ -1,16 +1,16 @@
-function [XT, yt, trans] = transform(X, y, opt)
+function [X, y, trans] = transform(X, y, opt)
   [n, d] = size(X);
   opt.nFeatures = min(defopts(opt, 'nFeatures', d), d);
   opt.nValues = min(defopts(opt, 'nValues', n), n);
-  opt.pca = defopts(opt, 'pca', false);
   opt.zscore = defopts(opt, 'zscore', false);
+  opt.pca = defopts(opt, 'pca', false);
+  opt.polynomial = defopts(opt, 'polynomial', 'linear');
   trans = struct;
-  XT = X;
   if opt.zscore
-    [XT, trans.mu, trans.sigma] = zscore(XT);
+    [X, trans.mu, trans.sigma] = zscore(X);
   end
   if opt.pca
-    [trans.coeff, XT, ~, ~, explained, trans.mu] = pca(XT);
+    [trans.coeff, X, ~, ~, explained, trans.mu] = pca(X);
     % prefer featurer with higher explained value
     trans.featuresIdx = datasample(1:d, opt.nFeatures, ...
       'Replace', false, 'Weights', explained);
@@ -20,6 +20,10 @@ function [XT, yt, trans] = transform(X, y, opt)
   end
   trans.valuesIdx = datasample(1:n, opt.nValues, ...
     'Replace', false);
-  XT = XT(trans.valuesIdx, trans.featuresIdx);
-  yt = y(trans.valuesIdx, :);
+  X = X(trans.valuesIdx, trans.featuresIdx);
+  if ~stricmp(opt.polynomial, 'linear')
+    trans.polynomial = opt.polynomial;
+    X = generateFeatures(X, opt.polynomial, false);
+  end
+  y = y(trans.valuesIdx, :);
 end

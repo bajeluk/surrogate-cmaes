@@ -14,10 +14,10 @@ classdef AxisSplit < Split
       for feature = 1:d
         featureSelector = (1:d == feature)';
         values = unique(obj.X(:, feature));
-        for value = values
+        for treshold = values
           candidate = obj.splitCandidate;
           candidate.splitter = @(X)...
-            transformApply(X, trans) * featureSelector <= value;
+            transformApply(X, trans) * featureSelector <= treshold;
           candidate.gain = splitGain.get(splitter);
           if candidate.gain > best.gain
             best = candidate;

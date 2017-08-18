@@ -1,20 +1,18 @@
-classdef KMeansSplit < Split
+classdef KMeansSplit < RandomSplit
   
   properties %(Access = protected)
     discrimType % degree for discriminant analysis ('linear', 'quadratic')
     includeInput % whether to include input space
     metric % k-means metric
-    nRepeats % number of random repeats
   end
   
   methods
-    function obj = KMeansSplit(...
-        transformationOptions, discrimType, includeInput, metric, nRepeats)
-      obj = obj@Split(transformationOptions);
+    function obj = KMeansSplit(transformationOptions, nRepeats, ...
+        discrimType, includeInput, metric)
+      obj = obj@RandomSplit(transformationOptions, nRepeats);
       obj.discrimType = discrimType;
       obj.includeInput = includeInput;
       obj.metric = metric;
-      obj.nRepeats = nRepeats;
     end
     
     function best = get(obj, splitGain)
@@ -22,15 +20,21 @@ classdef KMeansSplit < Split
       best = obj.splitCandidate;
       trans = obj.transformation;
       [n, d] = size(obj.X);
-      % gaussians are fit on scaled input-output space
-      if obj.includeInput
-        Z = [X y];
-      else
-        Z = y;
-      end
-      Z = zscore(Z);
+      % clusters are fit in scaled input-output space
+      ZX = zscore(obj.X);
+      Zy = zscore(obj.y);
       for iRepeats = 1:obj.nRepeats
         candidate = obj.splitCandidate;
+        % fit 2 clusters in input-output space
+        if obj.includeInput
+          % select random features
+          % the amount of features increases with iRepeats
+          nFeatures = ceil(d * iRepeats / obj.nRepeats);
+          features = datasample(1:d, nFeatures, 'Replacement', false);
+          Z = [ZX(:, features) Zy];
+        else
+          Z = Zy;
+        end
         c = kmeans(Z, 2, 'Distance', obj.metric);
         % discriminant analysis of two clusters
         model = fitcdiscr(X, c, 'DiscrimType', obj.discrimType);

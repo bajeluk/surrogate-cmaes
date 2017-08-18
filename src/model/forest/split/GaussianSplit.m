@@ -1,18 +1,16 @@
-classdef GaussianSplit < Split
+classdef GaussianSplit < RandomSplit
   
-  properties (Access = protected)
+  properties %(Access = protected)
     discrimType % degree for discriminant analysis ('linear', 'quadratic')
     includeInput % whether to include input space
-    nRepeats % number or repeats
   end
   
   methods
-    function obj = GaussianSplit(...
-        transformationOptions, discrimType, includeInput, nRepeats)
-      obj = obj@Split(transformationOptions);
+    function obj = GaussianSplit(transformationOptions, nRepeats, ...
+        discrimType, includeInput)
+      obj = obj@RandomSplit(transformationOptions, nRepeats);
       obj.discrimType = discrimType;
       obj.includeInput = includeInput;
-      obj.nRepeats = nRepeats;
     end
     
     function best = get(obj, splitGain)
@@ -20,18 +18,23 @@ classdef GaussianSplit < Split
       best = obj.splitCandidate;
       trans = obj.transformation;
       [n, d] = size(obj.X);
-      % gaussians are fit on scaled input-output space
-      if obj.includeInput
-        Z = [X y];
-      else
-        Z = y;
-      end
-      Z = zscore(Z);
+      % clusters are fit in scaled input-output space
+      ZX = zscore(obj.X);
+      Zy = zscore(obj.y);
       for iRepeats = 1:obj.nRepeats
         candidate = obj.splitCandidate;
-        % fit 2 gaussian distributions on input-output space
+        % fit 2 clusters in input-output space
+        if obj.includeInput
+          % select random features
+          % the amount of features increases with iRepeats
+          nFeatures = ceil(d * iRepeats / obj.nRepeats);
+          features = datasample(1:d, nFeatures, 'Replacement', false);
+          Z = [ZX(:, features) Zy];
+        else
+          Z = Zy;
+        end
         model = fitgmdist(Z, 2, 'RegularizationValue', 0.001);
-        c = model.cluster(X);
+        c = model.cluster(Z);
         % discriminant analysis of two clusters
         model = fitcdiscr(X, c, 'DiscrimType', obj.discrimType);
         candidate.splitter = @(X)...

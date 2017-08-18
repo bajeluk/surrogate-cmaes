@@ -29,14 +29,7 @@ classdef Split
     function best = get(obj, splitGain)
     % returns the split with max splitGain
       candidate = obj.splitCandidate;
-      trans = obj.transformation;
-      [n, d] = size(obj.X);
-      feature = randi(d);
-      featureSelector = (1:d == feature)';
-      value = obj.X(randi(n), feature);
-      candidate.splitter = @(X)...
-        transformApply(X, trans) * featureSelector <= value;
-      candidate.gain = splitGain.get(candidate.splitter);
+      candidate.gain = splitGain(candidate.splitter);
       best = candidate;
     end
   end

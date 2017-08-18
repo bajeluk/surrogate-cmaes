@@ -1,19 +1,17 @@
-classdef RandomPolynomialSplit < Split
+classdef RandomPolynomialSplit < RandomSplit
 % RandomPolynomialSplit tries some random polynomial splits and returns the
 % best split. It selects a random point from X as origin and generates a
 % hyperplane passing through the origin.
   
-  properties % (Access = protected)
+  properties %(Access = protected)
     degree % degree of polynomial
-    nRepeats % number of random repeats
   end
   
   methods
-    function obj = RandomPolynomialSplit(...
-        transformationOptions, degree, nRepeats)
-      obj = obj@Split(transformationOptions);
+    function obj = RandomPolynomialSplit(transformationOptions, nRepeats, ...
+        degree)
+      obj = obj@RandomSplit(transformationOptions, nRepeats);
       obj.degree = degree;
-      obj.nRepeats = nRepeats;
     end
     
     function best = get(obj, splitGain)
@@ -21,6 +19,7 @@ classdef RandomPolynomialSplit < Split
       best = obj.splitCandidate;
       trans = obj.transformation;
       [n, d] = size(obj.X);
+      dPoly = -1;
       for iRepeats = 1:obj.nRepeats
         candidate = obj.splitCandidate;
         featuresMin = min(obj.X);
@@ -40,12 +39,14 @@ classdef RandomPolynomialSplit < Split
               .* (featuresMax - featuresMin) ...
               + featuresMin;
             %origin = datasample(obj.X, 1);
-            degree = obj.degree;
-            nPoly = size(generateFeatures(1:d, degree, false), 2);
+            if dPoly < 0
+              dPoly = size(generateFeatures(1:d, obj.degree, false), 2);
+            end
             % select a direction of the hyperplane
-            angles = rand(nPoly, 1) * pi - pi/2;
+            angles = rand(dPoly, 1) * pi - pi/2;
             % convert direction to weights
             weights = tan(angles);
+            degree = obj.degree;
             candidate.splitter = @(X) ...
               generateFeatures(...
                 bsxfun(@minus, transformApply(X, trans), origin), ...

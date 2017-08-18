@@ -1,19 +1,17 @@
-classdef RandomRbfSplit < Split
+classdef RandomRbfSplit < RandomSplit
 % RandomRbfSplit tries some random RBF splits and returns the
 % best split. It selects a random point from X as origin and generates a
 % sphere with given metric
 
-  properties
+  properties %(Access = protected)
     metric % metric
-    nRepeats % number of random repeats
   end
   
   methods
-    function obj = RandomRbfSplit(...
-        transformationOptions, metric, nRepeats)
-      obj = obj@Split(transformationOptions);
+    function obj = RandomRbfSplit(transformationOptions, nRepeats, ...
+        metric)
+      obj = obj@RandomSplit(transformationOptions, nRepeats);
       obj.metric = metric;
-      obj.nRepeats = nRepeats;
     end
     
     function best = get(obj, splitGain)

@@ -1,13 +1,15 @@
-function [XT] = transformApply(X, trans)
-  XT = X;
+function [X] = transformApply(X, trans)
   if isfield(trans, 'mu')
-    XT = bsxfun(@minus, XT, trans.mu);
+    X = bsxfun(@minus, X, trans.mu);
   end
   if isfield(trans, 'sigma')
-    XT = bsxfun(@rdivide, XT, trans.sigma);
+    X = bsxfun(@rdivide, X, trans.sigma);
   end
   if isfield(trans, 'coeff')
-    XT = XT * trans.coeff;
+    X = X * trans.coeff;
   end
-  XT = XT(:, trans.featuresIdx);
+  X = X(:, trans.featuresIdx);
+  if isfield(trans, 'polynomial')
+    X = generateFeatures(X, trans.polynomial, false);
+  end
 end

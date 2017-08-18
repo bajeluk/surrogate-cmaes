@@ -5,7 +5,8 @@ classdef ObliqueHCTreeSplitGenerator < TreeSplitGenerator
   %     yield lambda X(:, feature) <= value
   % setting featuresFraction = 1, valuesFraction = 1 generates every
   % possible split point
-  properties (Access = protected)
+  
+  properties %(Access = protected)
     samplesFraction % fraction of data values to split by
     samples % sampled examples
     generated
