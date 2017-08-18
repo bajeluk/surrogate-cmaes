@@ -19,9 +19,9 @@ classdef RandomSplit < Split
       for iRepeats = 1:obj.nRepeats
         feature = randi(d);
         featureSelector = (1:d == feature)';
-        value = obj.X(randi(n), feature);
+        treshold = obj.X(randi(n), feature);
         candidate.splitter = @(X)...
-          transformApply(X, trans) * featureSelector <= value;
+          transformApply(X, trans) * featureSelector <= treshold;
         candidate.gain = splitGain.get(candidate.splitter);
         best = candidate;
       end

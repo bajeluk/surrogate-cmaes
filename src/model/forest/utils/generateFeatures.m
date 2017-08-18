@@ -27,11 +27,11 @@ function XP = generateFeatures(X, degree, intercept)
     case 'constant'
       XP = I;
     case 'linear'
-      XP = [I X];
+      XP = [X I];
     case 'purequadratic'
-      XP = [I X X.^2];
+      XP = [X X.^2 I];
     case 'interactions'
-      XP = [I X nan(n, d*(d-1)/2)];
+      XP = [X nan(n, d*(d-1)/2) I];
       dCur = size(I, 2)+d+1;
       for d1 = 1:d-1
         for d2 = d1+1:d
@@ -40,7 +40,7 @@ function XP = generateFeatures(X, degree, intercept)
         end
       end
     case 'quadratic'
-      XP = [I X nan(n, d*(d+1)/2)];
+      XP = [X nan(n, d*(d+1)/2) I];
       dCur = size(I, 2)+d+1;
       for d1 = 1:d
         for d2 = d1:d

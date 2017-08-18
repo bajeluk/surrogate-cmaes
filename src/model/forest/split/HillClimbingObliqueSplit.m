@@ -1,102 +1,140 @@
-classdef ObliqueHCTreeSplitGenerator < TreeSplitGenerator
-  % obj = AxisTreeSplitGenerator(featuresFraction, valuesFraction)
-  % for feature = random unique from features
-  %   for value = random unique from values(feature)
-  %     yield lambda X(:, feature) <= value
-  % setting featuresFraction = 1, valuesFraction = 1 generates every
-  % possible split point
+classdef HillClimbingObliqueSplit < RandomSplit
+% HillClimbingObliqueSplit starts with a random hyperplane (or with some
+% good axis parallel hyperplane) and deterministically perturbates
+% the hyperplane's direction in each axis to maximize the split gain. Once
+% no improvement is possible, performs a number of random jumps as an
+% attempt to escape local maxima. If some random jump succeeds,
+% deterministic perturbation is performed again.
   
-  properties %(Access = protected)
-    samplesFraction % fraction of data values to split by
-    samples % sampled examples
-    generated
-    evaluator
-    nRepeats
-    iRepeats
+  properties
+    X1 % X with intercept
   end
-  
+
   methods
-    function obj = ObliqueHCTreeSplitGenerator(evaluator, samplesFraction, nRepeats)
-      if nargin > 0
-        obj.samplesFraction = samplesFraction;
-        obj.evaluator = evaluator;
-        obj.nRepeats = nRepeats;
+    function obj = HillClimbingObliqueSplit(transformationOptions, nRepeats)
+      obj = obj@RandomSplit(transformationOptions, nRepeats);
+    end
+    
+    function obj = reset(obj, X, y)
+    % sets new transformed input
+      obj = reset@RandomSplit(obj, X, y);
+      obj.X1 = generateFeatures(obj.X, 'linear', true);
+    end
+
+    function best = get(obj, splitGain)
+    % returns the split with max splitGain
+      best = obj.splitCandidate;
+      for iRepeats = 1:obj.nRepeats
+        if iRepeats == 1
+          candidate = obj.getAxisHyperplane(splitGain);
+        else
+          candidate = obj.getRandomHyperplane(splitGain);
+        end
+        candidate = obj.hillClimb(splitGain, candidate);
+        if candidate.gain > best.gain
+          best = candidate;
+        end
       end
     end
-    
-    function reset(obj, X, y)
-      % resets the generator with new data
-      obj.X = X;
-      obj.y = y;
-      obj.samples = datasample(X, ...
-        ceil(obj.samplesFraction * size(X, 1)), ...
-        'Replace', false);
-      obj.iRepeats = 1;
-    end
-    
-    function r = hasNext(obj)
-      % whether next split function is available
-      r = obj.iRepeats <= obj.nRepeats;
-    end
-    
-    function f = next(obj)
-      if obj.iRepeats == 1
-        axisGenerator = AxisTreeSplitGenerator(1, 1, false);
-        axisGenerator.reset(obj.samples, []);
-        best = struct('gain', -inf);
-        while axisGenerator.hasNext()
-          candidate = struct;
-          candidate.splitter = axisGenerator.next();
-          candidate.gain = obj.evaluator.eval(candidate.splitter);
+  end
+  
+  methods (Access = private)
+    function candidate = getAxisHyperplane(obj, splitGain)
+      best = obj.splitCandidate;
+      trans = obj.transformation;
+      [n, d] = size(obj.X);
+      for feature = 1:d
+        featureSelector = (1:d == feature)';
+        values = unique(obj.X(:, feature));
+        for treshold = values
+          candidate = obj.splitCandidate;
+          candidate.splitter = @(X)...
+            transformApply(X, trans) * featureSelector <= treshold;
+          candidate.gain = splitGain.get(splitter);
+          candidate.feature = feature;
+          candidate.treshold = treshold;
           if candidate.gain > best.gain
             best = candidate;
           end
         end
-        f = functions(best.splitter);
-        ws = f.workspace{1};
-        H = [zeros(1, size(X, 2)), ws.treshold];
-        H(ws.feature) = 1;
-      else
-        H = rand(1, size(X, 2) + 1);
       end
-      obj.nRepeats = obj.nRepeats + 1;
-      X1 = [X ones(size(X, 1), 1)]; 
+      
+      best.H = [zeros(1, d), -best.treshold];
+      best.H(best.feature) = 1;
+    end
+    
+    function candidate = getRandomHyperplane(obj, splitGain)
+      [n, d] = size(obj.X);
+      H = rand(1, d+1);
+      candidate = obj.getSplit(splitGain, H);
+      candidate.H = H;
+    end
+    
+    function best = hillClimb(obj, splitGain, best)
+      pStag = 0.1;
+      pMove = pStag;
       J = 10;
       while J > 0
         improvement = true;
         while improvement
           improvement = false;
-          for d = 1:size(X, 2)
-            V = X1 * H;
-            U = (H(:, d) * X1(:, d) - V) ./ X1(:, d);
-            H1 = H;
-            HBest = 0;
-            for u = U
-              H1(d) = u;
-              % if better
-              if true
-                HBest = H1;
-              end
-            end
-            if true % HBest better than H
-              H = HBest;
-            else
-              if rand() < 0.5
-                H = HBest;
+          for feature = 1:d+1
+            candidate = obj.deterministicPerturb(splitGain, best, feature);
+            if candidate.gain > best.gain
+              best = candidate;
+              pMove = pStag;
+              improvement = true;
+            elseif candidate.gain == best.gain
+              if rand() < pMove
+                best = candidate;
+                pMove = pMove - 0.1 * pStag;
               end
             end
           end
         end
         while J > 0
-          H1 = H + 0.01 * rand(1, size(X, 2) + 1);
-          % if better
-          if true
-            H = H1;
+          candidate = obj.randomPerturb(splitGain, best);
+          if candidate.gain >= best.gain
+            best = candidate;
             break;
           end
           J = J + 1;
         end
       end
+    end
+    
+    function best = deterministicPerturb(obj, splitGain, best, feature)
+      V = obj.X1 * best.H;
+      U = (best.H(feature) * obj.X1(:, feature) - V) ...
+        ./ obj.X1(:, feature);
+      H = best.H;
+      for u = unique(U)
+        if isinf(u) || isnan(u)
+          continue
+        end
+        H(feature) = u;
+        candidate = obj.getSplit(splitGain, H);
+        if candidate.gain > best.gain
+          best = candidate;
+        end
+      end
+    end
+    
+    function candidate = randomPerturb(obj, splitGain, best)
+      r = randn(size(best.H));
+      r = max(-pi/2, r);
+      r = min(pi/2, r);
+      H = best.H + tan(r);
+      candidate = obj.getSplit(splitGain, H);
+    end
+    
+    function [candidate] = getSplit(obj, splitGain, H)
+      candidate = obj.splitCandidate;
+      candidate.splitter = @(X) ...
+        generateFeatures(transformApply(X, trans), 'linear', true) ...
+        * H <= 0;
+      candidate.gain = splitGain.get(candidate.splitter);
+      candidate.H = H;
     end
   end
 end

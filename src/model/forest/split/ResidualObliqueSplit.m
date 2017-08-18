@@ -20,18 +20,11 @@ classdef ResidualObliqueSplit < Split
       % linear regression
       X1 = generateFeatures(obj.X, obj.degree, true);
       w = X1 / obj.y;
-      if stricmp(obj.discrimType, obj.degree)
-        % classify according to residuals
-        candidate.splitter = @(X)...
-          generateFeatures(transformApply(X, trans), 'linear', true) ...
-          * w < 0;
-      else
-        % create classes from residuals
-        c = X1 * w < obj.y;
-        model = fitcdiscr(X, c, 'DiscrimType', obj.discrimType);
-        candidate.splitter = @(X)...
-          model.predict(transformApply(X, trans)) == 1;
-      end
+      % create classes from residuals
+      c = X1 * w < obj.y;
+      model = fitcdiscr(X, c, 'DiscrimType', obj.discrimType);
+      candidate.splitter = @(X)...
+        model.predict(transformApply(X, trans)) == 1;
       candidate.gain = splitGain.get(splitter);
       best = candidate;
     end
