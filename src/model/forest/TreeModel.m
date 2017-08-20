@@ -17,8 +17,8 @@ classdef TreeModel < AbstractModel
     minLeafSize % minimum number of data examples in leaf
     minParentSize % minimum number of data examples in parent
     maxDepth % maximum depth of the tree
-    splitGenerators % generators for split functions
-    splitEvaluator % evaluator for split functions
+    splits % generators for split functions
+    splitGain % evaluator for split functions
     predictorFunc % function which creates a model in leaf
     pruning % grows a full tree then prunes, otherwise prunes during splitting
     objectiveFunc
@@ -38,10 +38,10 @@ classdef TreeModel < AbstractModel
       obj.objectiveFunc = defopts(modelOptions, 'objectiveFunc', @immse);
       obj.predictorFunc = defopts(modelOptions, 'predictorFunc', ...
         @(xMean) ConstantModel(struct, xMean));
-      obj.splitGenerators = defopts(modelOptions, 'splitGenerators', ...
-        {AxisTreeSplitGenerator(1, 1, false)});
-      obj.splitEvaluator = defopts(modelOptions, 'splitEvaluator', ...
-        GenericModelTreeSplitEvaluator(@gainMse, obj.predictorFunc));
+      obj.splits = defopts(modelOptions, 'splits', ...
+        {AxisSplit(1, 1, false)});
+      obj.splitGain = defopts(modelOptions, 'splitGain', ...
+        GenericModelTreesplitGain(@gainMse, obj.predictorFunc));
     end
     
     function nData = getNTrainData(obj)
@@ -78,35 +78,31 @@ classdef TreeModel < AbstractModel
       [N, D] = size(X);
       if depth < obj.maxDepth && N >= obj.minParentSize && N >= 2 * obj.minLeafSize && length(unique(y)) >= 2
         best = struct('gain', -inf);
-        obj.splitEvaluator.reset(X, y);
-        for iSplitGenerator = 1:size(obj.splitGenerators, 2)
-          splitGenerator = obj.splitGenerators{iSplitGenerator};
-          splitGenerator.reset(X, y);
-          while splitGenerator.hasNext()
-            candidate = struct('gain', -inf);
-            candidate.splitter = splitGenerator.next();
-            idx = candidate.splitter(X);
-            if sum(idx) >= obj.minLeafSize && sum(~idx) >= obj.minLeafSize
-              candidate.gain = obj.splitEvaluator.eval(candidate.splitter);
-              if candidate.gain > best.gain
-                best = candidate;
-              end
+        obj.splitGain.reset(X, y);
+        for iSplit = 1:size(obj.splits, 2)
+          split = obj.splits{iSplit};
+          split.reset(X, y);
+          candidate = split.get();
+          idx = candidate.splitter(X);
+          if sum(idx) >= obj.minLeafSize && sum(~idx) >= obj.minLeafSize
+            if candidate.gain > best.gain
+              best = candidate;
             end
           end
         end
-        if best.gain > obj.minGain
+        if best.gain >= obj.minGain
           obj.nodes(iNode).splitter = best.splitter;
           idx = best.splitter(X);
           
           left = struct('idx', idx, 'iNode', obj.addNode());
           obj.nodes(iNode).left = left.iNode;
           obj.nodes(left.iNode).parent = iNode;
-          obj.trainModelRecursive(X(left.idx, :), y(left.idx), left.iNode, depth+1);
+          obj.trainModelRecursive(X(left.idx, :), y(left.idx, :), left.iNode, depth+1);
           
           right = struct('idx', ~idx, 'iNode', obj.addNode());
           obj.nodes(iNode).right = right.iNode;
           obj.nodes(right.iNode).parent = iNode;
-          obj.trainModelRecursive(X(right.idx, :), y(right.idx), right.iNode, depth+1);
+          obj.trainModelRecursive(X(right.idx, :), y(right.idx, :), right.iNode, depth+1);
           
           return;
         end
@@ -174,8 +170,12 @@ classdef TreeModel < AbstractModel
         
         objective = obj.objectiveFunc(y, yPred);
         
-        predictorNew = obj.predictorFunc(mean(X));
-        predictorNew.trainModel(X, y, mean(X), 0);
+        current = struct;
+        current.X = [obj.nodes(left.iNode).X; obj.nodes(right.iNode).X];
+        current.y = [obj.nodes(left.iNode).y; obj.nodes(right.iNode).y];
+        current.xMean = mean(X);
+        predictorNew = obj.predictorFunc(current.xMean);
+        predictorNew.trainModel(current.X, current.y, current.xMean, 0);
         objectiveNew = obj.objectiveFunc(y, predictorNew.modelPredict(X));
         
         if objectiveNew <= objective
@@ -193,8 +193,9 @@ classdef TreeModel < AbstractModel
         % try to replace complex model in leaf with constant model
         objective = obj.objectiveFunc(y, obj.nodes(iNode).predictor.modelPredict(X));
         
-        predictorNew = ConstantModel(struct, mean(X));
-        predictorNew.trainModel(X, y, mean(X), 0);
+        xMean = mean(obj.nodes(iNode).X);
+        predictorNew = ConstantModel(struct, xMean);
+        predictorNew.trainModel(obj.nodes(iNode).X, obj.nodes(iNode).y, xMean, 0);
         objectiveNew = obj.objectiveFunc(y, predictorNew.modelPredict(X));
         
         if objectiveNew <= objective

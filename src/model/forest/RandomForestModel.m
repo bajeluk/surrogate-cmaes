@@ -56,7 +56,8 @@ classdef RandomForestModel < AbstractModel
         nRows = size(X, 1);
       end
       
-      obj.trees = repmat(RandomForestModel.treeTemplate, obj.nTrees, 1);
+      yPred = zeros(size(y));
+      obj.trees = repmat(obj.treeTemplate, obj.nTrees, 1);
       for iTree = 1:obj.nTrees
         sample = struct;
         sample.features = datasample(1:size(X, 2), nFeatures, 2, 'Replace', false);
@@ -66,25 +67,22 @@ classdef RandomForestModel < AbstractModel
         sample.xMean = mean(sample.X);
         obj.trees(iTree).features = sample.features;
         obj.trees(iTree).model = obj.treeFunc(sample.xMean);
-        if obj.boosting && iTree == 1
-          % first tree is trained fully
-          obj.trees(iTree).model.trainModel(sample.X, sample.y, sample.xMean, generation);
-          obj.trees(iTree).weight = 1;
-        elseif obj.boosting
+        if obj.boosting
           % fit to residuals
-          yPred = obj.modelPredict(sample.X);
-          r = sample.y - yPred;
-          obj.trees(iTree).model.trainModel(sample.X, r, sample.xMean, generation);
+          sample.yPred = yPred(sample.idx, :);
+          r = sample.y - sample.yPred;
+          obj.trees(iTree).model = obj.trees(iTree).model.trainModel(...
+              sample.X, r, sample.xMean, generation);
           % find the best weight (simplified gradient of objective function)
-          yPredNew = obj.trees(iTree).model.modelPredict(sample.X);
+          yPredNew = obj.trees(iTree).model.modelPredict(X(:, sample.features));
           w = 1;
-          objective = obj.objectiveFunc(sample.y, yPred + w * yPredNew);
+          objective = obj.objectiveFunc(y, yPred + w * yPredNew);
           improved = true;
           while improved
             improved = false;
             eps = 0.01;
             for w1 = [w * (1 - eps), w * (1 + eps)]
-              objective1 = obj.objectiveFunc(sample.y, yPred + w1 * yPredNew);
+              objective1 = obj.objectiveFunc(y, yPred + w1 * yPredNew);
               if objective1 < objective
                 w = w1;
                 objective = objective1;
@@ -92,10 +90,12 @@ classdef RandomForestModel < AbstractModel
                 break;
               end
             end
-          end
-          obj.trees(iTree).weight = w;
+          end;
+          obj.trees(iTree).weight = w * obj.shrinkage;
+          yPred = yPred + obj.trees(iTree).weight * yPredNew;
         else
-          obj.trees(iTree).model.trainModel(sample.X, sample.y, sample.xMean, generation);
+          obj.trees(iTree).model = obj.trees(iTree).model.trainModel(...
+              sample.X, sample.y, sample.xMean, generation);
           obj.trees(iTree).weight = 1 / obj.nTrees;
         end
       end
