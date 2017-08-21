@@ -315,7 +315,7 @@ for di = 1:length(dimensions)
       % Mark statistical significance
       stars = '';
       nonstars = '';
-      if (outputLatex && (sum(isOtherInSorted)+1 < nValues))
+      if (outputLatex && (p{idx}(i) < 0.05) && (sum(isOtherInSorted)+1 < nValues))
         if (p{idx}(i) < 0.001)
           stars = '$^{\star\star\star}$';
         elseif (p{idx}(i) < 0.01)
@@ -442,7 +442,7 @@ if (outputLatex)
   tssCol  = strrep(tssCol, 'recent', 'recent \ref{enu:tss1}');
   tssCol  = strrep(tssCol, 'clustering', 'clustering \ref{enu:tss3}');
   tssCol  = strrep(tssCol, 'nearest', '$k$-NN \ref{enu:tss2}');
-  nmaxCol = regexprep(cellBestValues(:,8), '^\<([0-9]+)\>', '\$$1D$');
+  nmaxCol = regexprep(cellBestValues(:,8), '^\<([0-9]+)\>', '\$$1\\cdot D$');
 
   cellBestValues(:, 4)   = tssCol;
   cellBestValues(:, 8)   = nmaxCol;
