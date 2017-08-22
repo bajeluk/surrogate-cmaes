@@ -47,6 +47,12 @@ function handle = relativeFValuesPlot(data, varargin)
 %                       (e.g. [3, 6, 10, 17])
 %     'Statistic'     - statistic of data | string or handle (@mean, 
 %                       @median)
+%     'PlotGrid'      - the number of plots in the final plot grid in order
+%                       to omit the y-label or x-label in internal plots
+%                       2-element vector of number of plots in y and x axis,
+%                       or [] for plotting x/y-labels everywhere
+%     'ScaleY08'      - whether to always scale the y-axis to [-8, 0]
+%                       true by default
 %
 % Output:
 %   handle - handles of resulting figures | cell-array
@@ -111,6 +117,8 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.legendOption = lower(defopts(settings, 'LegendOption', 'show'));
   plotSet.omitEmptyPlots = defopts(settings, 'OmitEmpty', false);
   plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
+  plotSet.plotGrid = defopts(settings, 'PlotGrid', []);
+  plotSet.scaleY08 = defopts(settings, 'ScaleY08', true);
   % plot-line settings
   defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
   plotSet.lineSpec = defopts(settings, 'LineSpec', defaultLine);
@@ -268,13 +276,20 @@ function handle = relativePlot(data_stats, settings)
         if (any(settings.drawQuantiles))
           nonEmptyId = [nonEmptyId, numOfData+nonEmptyId, 2*numOfData+nonEmptyId];
           actualData = actualData(:,[1:3:end, 2:3:end, 3:3:end]);
+          nMedians = size(actualData,2)/3;
+          actualMin = min(min(actualData(:, [true(1,nMedians), repmat(settings.drawQuantiles, 1, 2)])));
+          actualMax = max(max(actualData(:, [true(1,nMedians), repmat(settings.drawQuantiles, 1, 2)])));
         end
 
         for D = 1:size(actualData, 2)
           % % this is old version for scaling BEFORE logarithm
           % minGraph = 1e-8; maxGraph = 1;
           % relativeData{nEmptyId(D)}{f, d} = log10(thisData);
-          thisData = ((actualData(:, D) - actualMin) * (maxGraph - minGraph)/(actualMax - actualMin))' + minGraph;
+          if (settings.scaleY08 || (settings.aggDims || settings.aggFuns))
+            thisData = ((actualData(:, D) - actualMin) * (maxGraph - minGraph)/(actualMax - actualMin))' + minGraph;
+          else
+            thisData = actualData(:, D);
+          end
           relativeData{nonEmptyId(D)}{f, d} = thisData;
         end
       end
@@ -378,9 +393,16 @@ function handle = relativePlot(data_stats, settings)
           figure('Units', 'centimeters', 'Position', [1, 1, 12.5, 6]);
         % display legend indicator 
         actualDisp = dispLegend(handleId, settings.legendOption);
+        if (~isempty(settings.plotGrid) && length(settings.plotGrid) == 2)
+          omitXLabel = (floor((handleId-1) / settings.plotGrid(2)) ~= (settings.plotGrid(1)-1));
+          omitYLabel = (mod(handleId, settings.plotGrid(2)) ~= 1);
+        else
+          omitXLabel = false;
+          omitYLabel = false;
+        end
         % plot results
         isNotEmptyData = onePlot(relativeData, f, d, settings, ...
-                               actualDisp, handleId*splitLegend, false);
+                               actualDisp, handleId*splitLegend, omitYLabel, omitXLabel);
         % check if any and which data were plotted in at least one function
         % and dimension
         plottedInAny = plottedInAny | isNotEmptyData;
@@ -420,13 +442,16 @@ function handle = relativePlot(data_stats, settings)
 end
 
 function notEmptyData = onePlot(relativeData, fId, dId, ...
-                 settings, dispLegend, splitLegendStatus, omitYLabel)
+                 settings, dispLegend, splitLegendStatus, omitYLabel, omitXLabel)
 % Plots one scaled graph 
 %
 % Note: Omitting y-label is currently enabled. To change this status
 % uncomment rows at the end of onePlot function.
 
   nRelativeData = length(relativeData);
+  if (~exist('omitXLabel', 'var') || isempty(omitXLabel))
+    omitXLabel = false
+  end
 
   % parsing settings
   maxEval = settings.maxEval;
@@ -471,11 +496,17 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     h = zeros(1, nRelativeData);
     N_MARKERS = 3;
     % plot the lines
+    thisYMin = Inf;
+    thisYMax = -Inf;
     for dat = nRelativeData:-1:1
       if (notEmptyData(dat) && (~any(settings.drawQuantiles) ...
           || (dat <= (nRelativeData/3)) || settings.drawQuantiles(mod(dat-1,nRelativeData/3)+1)))
         h(dat) = plot(evaldim, relativeData{dat}{fId, dId}(evaldim), ...
           lineSpec{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :));
+        thisY = relativeData{dat}{fId, dId}(evaldim(:));
+        thisY = thisY(:);
+        thisYMin = min([thisYMin; thisY]);
+        thisYMax = max([thisYMax; thisY]);
       else
         h(dat) = plot(0, 0, ...
           lineSpec{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :), ...
@@ -530,6 +561,12 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
         legend(h(legIds), datanames(legIds), 'Location', settings.legendLocation)
       end
     end
+    ax = gca();
+    if (settings.scaleY08)
+      ax.YLim = [-8, 0];
+    else
+      ax.YLim = [thisYMin, thisYMax];
+    end
   else
     warning('Function %d dimension %d has no data available.', BBfunc(fId), dims(dId))
   end
@@ -546,9 +583,11 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     titleString = [titleString, ' ', num2str(dims(dId)),'D'];
   end
   title(titleString)
-  xlabel('Number of evaluations / D')
-  if ~omitYLabel
-    ylabel('\Delta_f^{log}')
+  if (~omitXLabel)
+    xlabel('Number of evaluations / D');
+  end
+  if (~omitYLabel)
+    ylabel('\Delta_f^{log}');
   end
   
   hold off

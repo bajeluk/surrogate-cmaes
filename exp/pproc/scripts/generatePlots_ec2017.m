@@ -1,7 +1,7 @@
 %% EC 2017 journal plots
 % Script for making graphs showing the dependence of minimal function
 % values on the number of function values of compared algorithms.
-% 
+%
 % Created for the journal article for EC (2017).
 
 %% load data
@@ -11,12 +11,12 @@ tmpFName = fullfile('/tmp', 'ec2017comparison.mat');
 if (exist(tmpFName', 'file'))
   load(tmpFName);
 else
-  
+
 % needed function and dimension settings
 funcSet.BBfunc = 1:24;
 funcSet.dims = [2, 3, 5, 10, 20];
 maxEvals = 250;
-  
+
 % folder for results
 actualFolder = pwd;
 articleFolder = fullfile(actualFolder(1:end - 1 - length('surrogate-cmaes')), 'latex_scmaes', 'ec2016paper');
@@ -62,7 +62,7 @@ dataFolders = {scmaes_path; ...
                fmincon_path; ...
                fmincon_pure_path ...
                };
-             
+
 [evals, settings] = catEvalSet(dataFolders, funcSet);
 
 % find ids in settings
@@ -206,10 +206,10 @@ datanames = {...
     % 'adaptive DTS-CMA-ES' ...
     };
 
-% colors = [scmaes_gpCol; dts005Col; dts_adaptCol; maesCol; gpopCol]/255;  
+% colors = [scmaes_gpCol; dts005Col; dts_adaptCol; maesCol; gpopCol]/255;
 % markers = {scmaesMark, dts005Mark, dts_adaptMark, maesMark, gpopMark};
 colors = [maesCol; gpopCol; bobyqaCol; dts005Col; [0,0,0]]/255; % ; dts_adaptCol]/255;
-markers = {'o', 'p', 's', dts005Mark, '^']; % , dts_adaptMark};  
+markers = {'o', 'p', 's', dts005Mark, '^'}; % , dts_adaptMark};
 
 %{
 % Results separately for selected functions, not used anymore...
@@ -263,6 +263,7 @@ han = relativeFValuesPlot(data, ...
                               ... % 'LineWidth', [ 2*ones(1,5), ones(1,7) ], ...
                               'LegendOption', 'split', 'MaxEval', maxEvals, ...
                               'Markers', markers, ...
+                              'PlotGrid', [2, 2], ...
                               'FunctionNames', true);
 print2pdf(han, pdfNamesUnimodal, 1)
 
@@ -278,6 +279,7 @@ han = relativeFValuesPlot(data, ...
                               ... % 'LineWidth', [ 2*ones(1,5), ones(1,7) ], ...
                               'LegendOption', 'hide', 'MaxEval', maxEvals, ...
                               'Markers', markers, ...
+                              'PlotGrid', [1, 2], ...
                               'FunctionNames', true);
 print2pdf(han, pdfNamesMultimodal, 1)
 
@@ -316,23 +318,23 @@ for plotDims = [5, 10, 20]
       'fmincon' ...
       };
 
-  % colors = [scmaes_gpCol; dts005Col; dts_adaptCol; maesCol; gpopCol]/255;  
+  % colors = [scmaes_gpCol; dts005Col; dts_adaptCol; maesCol; gpopCol]/255;
   % markers = {scmaesMark, dts005Mark, dts_adaptMark, maesMark, gpopMark};
   colors = [scmaes_gpCol; dts005Col; dts_adaptCol; maesCol; gpopCol; ...
       cmaesCol; cmaes2popCol; saacmesCol; lmmCol; bobyqaCol; smacCol; fmincon_pureCol]/255;
   % set up pastel tones of the non-GP algorithms except SMAC which is
   % already very light
-  % - more intesive brightening for CMA-ES, CMA-ES 2pop, and fmincon
-  colors([6,7,12],:) = colors([6,7,12],:) + 0.7*(1 - colors([6,7,12],:));
-  % - not too much added brightness for saACM-ES, lmm-CMA, and BOBYQA
-  colors([8,10],:)   = colors([8,10],:)   + 0.5*(1 - colors([8,10],:));
-  colors(9,:)        = colors(9,:)        + 0.2*(1 - colors(9,:));
+  % % - more intesive brightening for CMA-ES, CMA-ES 2pop, and fmincon
+  % colors([6,7,12],:) = colors([6,7,12],:) + 0.7*(1 - colors([6,7,12],:));
+  % % - not too much added brightness for saACM-ES, lmm-CMA, and BOBYQA
+  % colors([8,10],:)   = colors([8,10],:)   + 0.5*(1 - colors([8,10],:));
+  % colors(9,:)        = colors(9,:)        + 0.2*(1 - colors(9,:));
 
   % gray = [192, 192, 192];
   % colors = [scmaes_gpCol; dts005Col; dts_adaptCol; maesCol; gpopCol;
   %     repmat(gray, 7, 1)]/255;
   markers = {scmaesMark, dts005Mark, dts_adaptMark, maesMark, gpopMark, ...
-      cmaesMark, cmaes2popMark, saacmesMark, lmmMark, bobyqaMark, smacMark, fmincon_pureMark};  
+      cmaesMark, cmaes2popMark, saacmesMark, lmmMark, bobyqaMark, smacMark, fmincon_pureMark};
 
   plotFuns = 1:24;
   % plotDims = [5, 10, 20];
@@ -358,6 +360,8 @@ for plotDims = [5, 10, 20]
                                 'LineWidth', [ 2*ones(1,5), ones(1,7) ], ...
                                 'LegendOption', 'split', 'MaxEval', maxEvals, ...
                                 'Markers', markers, ...
+                                'PlotGrid', [8, 3], ...
+                                'ScaleY08', false, ...
                                 'FunctionNames', true);
 
   print2pdf(han, pdfNames, 1)
@@ -377,7 +381,7 @@ smacCol      = [255, 192, 203];  % solomon pink (#ffc0cb)
 fminconCol   = getAlgColors(23); % 23=middle yellow
 fmincon_pureCol = [  0, 127,   0]; % dark forrest green (#007f00)
 
-%% Algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES  
+%% Algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES
 % Scaled function values of f1-f24 in dimensions 5, 10 and 20.
 
 for plotDims = [5, 10, 20]
@@ -441,12 +445,14 @@ for plotDims = [5, 10, 20]
                                 'LineWidth', [ 1*ones(1,5), 1*ones(1,7) ], ...
                                 'LegendOption', 'split', 'MaxEval', maxEvals, ...
                                 'Markers', markers, ...
+                                'PlotGrid', [8, 3], ...
+                                'ScaleY08', false, ...
                                 'FunctionNames', true);
 
   print2pdf(han, pdfNames, 1)
 end
 
-%% Aggregated algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES  
+%% Aggregated algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES
 % Aggregated  scaled function values in dimensions 5, 10 and 20.
 
 plotDims = [2, 5, 10, 20];
@@ -506,11 +512,12 @@ han = relativeFValuesPlot(data, ...
                               'LineSpecification', {'-', '-', '-', '-', '-', '-', '-'}, ...
                               'LegendOption', 'split', 'MaxEval', maxEvals, ...
                               'Markers', markers, ...
+                              'PlotGrid', [2, 2], ...
                               'FunctionNames', true);
 
-                              
-                            
+
+
 print2pdf(han, pdfNames, 1)
-                         
+
 %% final clearing
 close all
