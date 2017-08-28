@@ -1,44 +1,34 @@
 classdef NNSplitGainTest < SplitGainTest
   
   methods (Test)
-    function testConstant1(testCase)
-      f = @(X) ones(size(X, 1), 1);
-      [X, y, splitIdx, n, d, m] = generate(testCase, f, f);
-      
+    function testConstant(testCase)
       splitGain = NNSplitGain();
-      splitGain = splitGain.reset(X, y);
-      
-      % try to split in quarter
-      splitter = @(X) X(:, 1) <= m/2;
-      gain = splitGain.eval(splitter);
-      % no gain
-      testCase.verifyLessThanOrEqual(gain, -realmax/2);
-      
-      % try to split in half
-      splitter = @(X) X(:, 1) <= 0;
-      gain = splitGain.eval(splitter);
-      % no gain
-      testCase.verifyLessThanOrEqual(gain, -realmax/2);
+      testCase.testAxisConstant(splitGain);
     end
     
-    function testConstant2(testCase)
-      f = @(X) ones(size(X, 1), 1);
-      [X, y, splitIdx, n, d, m] = generate(testCase, f, @(X)-f(X));
-      
+    function testLinear(testCase)
       splitGain = NNSplitGain();
-      splitGain = splitGain.reset(X, y);
-      
-      % try to split in quarter
-      splitter = @(X) X(:, 1) <= m/2;
-      gain = splitGain.eval(splitter);
-      % no gain
-      testCase.verifyLessThanOrEqual(gain, -realmax/2);
-      
-      % try to split in half
-      splitter = @(X) X(:, 1) <= 0;
-      gain = splitGain.eval(splitter);
-      % big gain
-      testCase.verifyGreaterThanOrEqual(gain, realmax-1);
+      testCase.testAxisLinear(splitGain);
+    end
+    
+    function testQuadratic(testCase)
+      splitGain = NNSplitGain();
+      testCase.testAxisQuadratic(splitGain);
+    end
+    
+    function testConstant10(testCase)
+      splitGain = NNSplitGain(10);
+      testCase.testAxisConstant(splitGain);
+    end
+    
+    function testLinear10(testCase)
+      splitGain = NNSplitGain(10);
+      testCase.testAxisLinear(splitGain);
+    end
+    
+    function testQuadratic10(testCase)
+      splitGain = NNSplitGain(10);
+      testCase.testAxisQuadratic(splitGain);
     end
   end
 end

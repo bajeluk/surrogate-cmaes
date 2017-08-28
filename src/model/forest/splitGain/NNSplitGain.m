@@ -25,10 +25,10 @@ classdef NNSplitGain < SplitGain
       n = numel(data.y);
       nUnique = numel(yUnique);
       if nUnique <= obj.k
-        value = -realmax / numel(obj.y) * n;
+        value = 0; %-realmax / numel(obj.y) * n;
         return;
       end
-      dist = abs(yUnique(1:nUnique-obj.k) - yUnique(obj.k:nUnique));
+      dist = abs(yUnique(1:nUnique-obj.k) - yUnique(obj.k+1:nUnique));
       padding = inf(obj.k, 1);
       nearest = min([dist; padding], [padding; dist]);
       counts = zeros(nUnique, 1);

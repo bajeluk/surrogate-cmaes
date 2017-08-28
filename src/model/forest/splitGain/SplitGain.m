@@ -1,4 +1,4 @@
-classdef SplitGain
+classdef (Abstract) SplitGain
 % SplitGain evaluates split functions used in decision trees using
 % custom metric. The evaluation can be based on the data alone or on the
 % output of a model. If the model is polynomial, optimized evaluation is
@@ -7,16 +7,16 @@ classdef SplitGain
   properties %(Access = protected)
     X % input data
     y % output data
-    evalFunc % function which evaluates data
     current % struct holding data for current node
     modelFunc % function which creates new model, model = modelFunc(xMean)
     probabilistic % whether to compute also probability and confidence interval
     XP % generated polynomial features for MethodPolynomialModel
     degree % degree of polynomial features for MethodPolynomialModel
+    allEqual % whether all y values are equal
   end
   
   methods
-    function obj = SplitGain(evalFunc, modelSpec, probabilistic)
+    function obj = SplitGain(modelSpec, probabilistic)
     % constructor
     % evaluator = SplitGain()
     %   evaluates functions based on the data
@@ -32,16 +32,13 @@ classdef SplitGain
     %   evaluates functions based on the output of the specified model
     %   (y, yPred, variancePred, confidenceIntervalPred, probabilityPred)
       if nargin >= 1
-        obj.evalFunc = evalFunc;
-      end
-      if nargin >= 2
         if isa(modelSpec, 'function_handle')
           obj.modelFunc = modelSpec;
         else
           obj.degree = modelSpec;
         end
       end
-      if nargin >= 3
+      if nargin >= 2
         obj.probabilistic = probabilistic;
       end
     end
@@ -51,6 +48,10 @@ classdef SplitGain
       [n, ~] = size(X);
       obj.X = X;
       obj.y = y;
+      obj.allEqual = size(obj.y, 1) == 0 || all(obj.y == obj.y(1, :));
+      if obj.allEqual
+        return
+      end
       if ~isempty(obj.degree)
         obj.XP = generateFeatures(X, obj.degree, true);
       end
@@ -59,23 +60,33 @@ classdef SplitGain
     
     function gain = get(obj, splitter)
     % evaluates splitter function
+      if obj.allEqual
+        gain = -inf;
+        return;
+      end
       idx = splitter(obj.X);
+      if ~any(idx) || ~any(~idx)
+        gain = -inf;
+        return;
+      end
       left = obj.getData(idx);
       right = obj.getData(~idx);
-      gain = obj.current.value - left.value - right.value;
+      n = size(obj.y, 1);
+      nLeft = size(left.y, 1);
+      nRight = size(right.y, 1);
+      gain = obj.current.value ...
+        - nLeft/n * left.value ...
+        - nRight/n * right.value;
+      % gain = obj.current.value - left.value - right.value;
     end
   end
   
-  methods (Access = protected)
-    function value = getValue(obj, data)
+  methods (Abstract, Access = protected)
+    value = getValue(obj, data)
     % evaluates data using custom metric
-      if isempty(obj.evalFunc)
-        value = 0;
-      else
-        value = obj.evalFunc(data);
-      end
-    end
-    
+  end
+  
+  methods (Access = protected)
     function data = getData(obj, idx)
     % returns portion of data given by idx and stores its value
       data = struct;
