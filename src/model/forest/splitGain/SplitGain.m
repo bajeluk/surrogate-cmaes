@@ -115,13 +115,13 @@ classdef (Abstract) SplitGain
         X = obj.X(idx, :);
         xMean = mean(X);
         model = obj.modelFunc(xMean);
-        model.trainModel(X, data.y, xMean, 0);
+        model = model.trainModel(X, data.y, xMean, 0);
         if obj.probabilistic
           [data.yPred, data.sd2, data.ci, data.p] = ...
-            model.predict(X, data.y);
+            model.modelPredict(X, data.y);
         else
           [data.yPred, data.sd2] = ...
-            model.predict(X);
+            model.modelPredict(X);
         end
       end
       data.value = obj.getValue(data);

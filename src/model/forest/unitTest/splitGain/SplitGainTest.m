@@ -55,11 +55,11 @@ classdef SplitGainTest < matlab.unittest.TestCase
       end
       splitVal = minVal * (1-splitPercentage) + maxVal * splitPercentage;
       splitIdx = X(:, 1) < splitVal;
-      y1 = f1(X);
+      y1 = f1(X - splitVal);
       if nargin < 3
-        y2 = f1(X);
+        y2 = f1(X - splitVal);
       else
-        y2 = f2(X);
+        y2 = f2(X - splitVal);
       end
       y = y1 .* splitIdx + y2 .* ~splitIdx;
       testCase.draw(X, y, splitIdx);
@@ -102,7 +102,12 @@ classdef SplitGainTest < matlab.unittest.TestCase
     
     function testAxisQuadratic(testCase, splitGain)
       f = @(X) X(:, 1).^2 + randn(size(X, 1), 1) * 0.001;
-      testCase.testAxis(splitGain, f);
+      [values, maxGain, maxGainSplit] = ...
+        testCase.testGains(splitGain, f, f);
+      [values, maxGain, maxGainSplit] = ...
+        testCase.testGains(splitGain, f, f, 0.75);
+      [values, maxGain, maxGainSplit] = ...
+        testCase.testGains(splitGain, f, @(X)-f(X));
     end
     
     function testAxis(testCase, splitGain, f)

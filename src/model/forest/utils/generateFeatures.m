@@ -1,4 +1,4 @@
-function XP = generateFeatures(X, degree, intercept)
+function XP = generateFeatures(X, degree, intercept, back)
 % Generates new features(columns).
 % XP = generateFeatures(X, degree, intercept)
 % Generates new features(columns) up to degree and adds intercept.
@@ -19,20 +19,16 @@ function XP = generateFeatures(X, degree, intercept)
 %   fitlm
 
   [n, d] = size(X);
-  I = []; % intercept
-  if intercept
-    I = ones(n, 1);
-  end
   switch degree
     case 'constant'
-      XP = I;
+      XP = [];
     case 'linear'
-      XP = [X I];
+      XP = X;
     case 'purequadratic'
-      XP = [X X.^2 I];
+      XP = [X X.^2];
     case 'interactions'
-      XP = [X nan(n, d*(d-1)/2) I];
-      dCur = size(I, 2)+d+1;
+      XP = [X nan(n, d*(d-1)/2)];
+      dCur = d+1;
       for d1 = 1:d-1
         for d2 = d1+1:d
           XP(:, dCur) = X(:, d1) .* X(:, d2);
@@ -40,15 +36,23 @@ function XP = generateFeatures(X, degree, intercept)
         end
       end
     case 'quadratic'
-      XP = [X nan(n, d*(d+1)/2) I];
-      dCur = size(I, 2)+d+1;
-      for d1 = 1:d
-        for d2 = d1:d
+      XP = [X nan(n, d*(d-1)/2) X.^2];
+      dCur = d+1;
+      for d1 = 1:d-1
+        for d2 = d1+1:d
           XP(:, dCur) = X(:, d1) .* X(:, d2);
           dCur = dCur + 1;
         end
       end
     otherwise
       XP = [];
+  end
+  if nargin >= 3 && intercept
+    I = ones(n, 1);
+    if nargin >= 4 && back
+      XP = [XP I];
+    else
+      XP = [I XP];
+    end
   end
 end

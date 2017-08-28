@@ -1,18 +1,18 @@
-classdef DifferentialEntropySplitGainTest < SplitGainTest
+classdef VarSplitGainTest < SplitGainTest
   
   methods (Test)
     function testConstant(testCase)
-      splitGain = DifferentialEntropySplitGain();
+      splitGain = VarSplitGain();
       testCase.testAxisConstant(splitGain);
     end
     
     function testLinear(testCase)
-      splitGain = DifferentialEntropySplitGain();
+      splitGain = VarSplitGain();
       testCase.testAxisLinear(splitGain);
     end
     
     function testQuadratic(testCase)
-      splitGain = DifferentialEntropySplitGain();
+      splitGain = VarSplitGain();
       testCase.testAxisQuadratic(splitGain);
     end
   end
