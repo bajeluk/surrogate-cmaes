@@ -3,8 +3,8 @@ classdef VarSplitGain < SplitGain
 % of variances
 
   methods
-    function obj = VarSplitGain(varargin)
-      obj = obj@SplitGain(varargin{:});
+    function obj = VarSplitGain(options)
+      obj = obj@SplitGain(options);
     end
   end
   

@@ -7,14 +7,10 @@ classdef NNSplitGain < SplitGain
   end
 
   methods
-    function obj = NNSplitGain(k)
-    % Creates a new splitter based on 1-NN algorithm
-      obj = obj@SplitGain();
-      if nargin >= 1
-        obj.k = k;
-      else
-        obj.k = 1;
-      end
+    function obj = NNSplitGain(options)
+    % Creates a new splitter based on k-NN algorithm
+      obj = obj@SplitGain(options);
+      obj.k = defopts(options, 'k', 1);
     end
   end
   

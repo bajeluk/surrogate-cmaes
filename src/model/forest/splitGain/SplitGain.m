@@ -7,39 +7,34 @@ classdef (Abstract) SplitGain
   properties %(Access = protected)
     X % input data
     y % output data
-    current % struct holding data for current node
+    minSize % min size of one side of the split
     modelFunc % function which creates new model, model = modelFunc(xMean)
     probabilistic % whether to compute also probability and confidence interval
     XP % generated polynomial features for MethodPolynomialModel
     degree % degree of polynomial features for MethodPolynomialModel
+    current % struct holding data for current node
     allEqual % whether all y values are equal
   end
   
   methods
-    function obj = SplitGain(modelSpec, probabilistic)
+    function obj = SplitGain(options)
     % constructor
-    % evaluator = SplitGain()
-    %   evaluates functions based on the data
-    %   (y, variance)
-    % evaluator = SplitGain(degree)
-    %   evaluates functions based on the output of polynomial model with
-    %   given degree
+    % evaluates functions based on constant model
     %   (y, yPred, variancePred)
-    % evaluator = SplitGain(modelFunc)
-    %   evaluates functions based on the output of the specified model
+    % if 'degree' or 'modelFunc' is specified, uses custom model
     %   (y, yPred, variancePred)
-    % evaluator = SplitGain(modelFunc, true)
-    %   evaluates functions based on the output of the specified model
+    % if also 'probabilistic' is specified
     %   (y, yPred, variancePred, confidenceIntervalPred, probabilityPred)
+    % options
+    %   'minSize'       - specifies the min size of either side
+    %   'degree'        - uses polynomial model of given degree
+    %   'modelFunc'     - uses custom model
+    %   'probabilistic' - computes probability and confidence interval
       if nargin >= 1
-        if isa(modelSpec, 'function_handle')
-          obj.modelFunc = modelSpec;
-        else
-          obj.degree = modelSpec;
-        end
-      end
-      if nargin >= 2
-        obj.probabilistic = probabilistic;
+        obj.minSize = defopts(options, 'minSize', 1);
+        obj.degree = defopts(options, 'degree', []);
+        obj.modelFunc = defopts(options, 'modelFunc', []);
+        obj.probabilistic = defopts(options, 'probabilistic', false);
       end
     end
     
@@ -54,6 +49,7 @@ classdef (Abstract) SplitGain
       end
       if ~isempty(obj.degree)
         obj.XP = generateFeatures(X, obj.degree, true);
+        obj.minSize = max(obj.minSize, size(obj.XP, 2));
       end
       obj.current = obj.getData(true(n, 1));
     end
@@ -65,7 +61,7 @@ classdef (Abstract) SplitGain
         return;
       end
       idx = splitter(obj.X);
-      if ~any(idx) || ~any(~idx)
+      if sum(idx) < obj.minSize || sum(~idx) < obj.minSize
         gain = -inf;
         return;
       end
@@ -101,12 +97,24 @@ classdef (Abstract) SplitGain
       elseif isempty(obj.modelFunc)
         % polynomial model
         X = obj.XP(idx, :);
+        r = rank(X);
+        % check rank deficiency
+        if r < size(X, 2)
+          d = size(obj.X, 2);
+          if r >= d+1
+            % use linear model
+            X = obj.XP(idx, 1:d+1);
+          else
+            % use constant model
+            X = obj.XP(idx, 1);
+          end
+        end
         warning('off', 'MATLAB:rankDeficientMatrix');
         warning('off', 'MATLAB:singularMatrix');
         warning('off', 'MATLAB:nearlySingularMatrix');
         M = (X' * X)^-1;
         b = M * X' * data.y;
-        b = X \ data.y;
+        %b = X \ data.y;
         warning('on', 'MATLAB:rankDeficientMatrix');
         warning('on', 'MATLAB:singularMatrix');
         warning('on', 'MATLAB:nearlySingularMatrix');

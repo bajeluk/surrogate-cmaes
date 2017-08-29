@@ -2,17 +2,20 @@ classdef VarSplitGainTest < SplitGainTest
   
   methods (Test)
     function testConstant(testCase)
-      splitGain = VarSplitGain();
+      options = struct;
+      splitGain = VarSplitGain(options);
       testCase.testAxisConstant(splitGain);
     end
     
     function testLinear(testCase)
-      splitGain = VarSplitGain();
+      options = struct;
+      splitGain = VarSplitGain(options);
       testCase.testAxisLinear(splitGain);
     end
     
     function testQuadratic(testCase)
-      splitGain = VarSplitGain();
+      options = struct;
+      splitGain = VarSplitGain(options);
       testCase.testAxisQuadratic(splitGain);
     end
   end

@@ -2,8 +2,8 @@ classdef SSESplitGain < SplitGain
 % SSESplitGain evaluates split functions used in decision trees using SSE
 
   methods
-    function obj = SSESplitGain(modelSpec)
-      obj = obj@SplitGain(modelSpec);
+    function obj = SSESplitGain(options)
+      obj = obj@SplitGain(options);
     end
   end
   

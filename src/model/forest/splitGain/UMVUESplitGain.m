@@ -3,8 +3,8 @@ classdef UMVUESplitGain < SplitGain
 % uniformly minimum-variance unbiased estimator
 
   methods
-    function obj = UMVUESplitGain()
-      obj = obj@SplitGain();
+    function obj = UMVUESplitGain(options)
+      obj = obj@SplitGain(options);
     end
   end
   

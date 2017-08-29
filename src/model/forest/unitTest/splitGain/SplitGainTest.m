@@ -19,10 +19,13 @@ classdef SplitGainTest < matlab.unittest.TestCase
     function draw(testCase, X, y, splitIdx)      
       if size(X, 2) == 2 && testCase.drawEnabled
         stack = dbstack;
-        figure('Name', stack(4).name);
-        scatter3(X(splitIdx, 1), X(splitIdx, 2), y(splitIdx));
+        name = strcat(stack(6).name, ' ', stack(5).name);
+        figure('Name', name);
+        scatter(X(splitIdx, 1), y(splitIdx));
+        %scatter3(X(splitIdx, 1), X(splitIdx, 2), y(splitIdx));
         hold on;
-        scatter3(X(~splitIdx, 1), X(~splitIdx, 2), y(~splitIdx));
+        scatter(X(~splitIdx, 1), y(~splitIdx));
+        %scatter3(X(~splitIdx, 1), X(~splitIdx, 2), y(~splitIdx));
         hold off;
         legend('yLeftWanted', 'yRightWanted');
       end
@@ -85,7 +88,8 @@ classdef SplitGainTest < matlab.unittest.TestCase
       
       if testCase.drawEnabled
         stack = dbstack;
-        figure('Name', stack(2).name);
+        name = strcat(stack(4).name, ' ', stack(3).name);
+        figure('Name', name);
         plot(splitPoints, values);
       end
     end

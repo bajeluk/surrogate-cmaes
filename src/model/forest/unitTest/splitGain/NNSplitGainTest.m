@@ -2,17 +2,20 @@ classdef NNSplitGainTest < SplitGainTest
   
   methods (Test)
     function testConstant(testCase)
-      splitGain = NNSplitGain();
+      options = struct;
+      splitGain = NNSplitGain(options);
       testCase.testAxisConstant(splitGain);
     end
     
     function testLinear(testCase)
-      splitGain = NNSplitGain();
+      options = struct;
+      splitGain = NNSplitGain(options);
       testCase.testAxisLinear(splitGain);
     end
     
     function testQuadratic(testCase)
-      splitGain = NNSplitGain();
+      options = struct;
+      splitGain = NNSplitGain(options);
       testCase.testAxisQuadratic(splitGain);
     end
   end

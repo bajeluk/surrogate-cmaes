@@ -2,47 +2,65 @@ classdef DESplitGainPolynomialTest < SplitGainTest
   
   methods (Test)
     function testConstantConstantModel(testCase)
-      splitGain = DESplitGain('constant');
+      options = struct;
+      options.degree = 'constant';
+      splitGain = DESplitGain(options);
       testCase.testAxisConstant(splitGain);
     end
     
     function testLinearConstantModel(testCase)
-      splitGain = DESplitGain('constant');
+      options = struct;
+      options.degree = 'constant';
+      splitGain = DESplitGain(options);
       testCase.testAxisLinear(splitGain);
     end
     
     function testQuadraticConstantModel(testCase)
-      splitGain = DESplitGain('constant');
+      options = struct;
+      options.degree = 'constant';
+      splitGain = DESplitGain(options);
       testCase.testAxisQuadratic(splitGain);
     end
     
     function testConstantLinearModel(testCase)
-      splitGain = DESplitGain('linear');
+      options = struct;
+      options.degree = 'linear';
+      splitGain = DESplitGain(options);
       testCase.testAxisConstant(splitGain);
     end
     
     function testLinearLinearModel(testCase)
-      splitGain = DESplitGain('linear');
+      options = struct;
+      options.degree = 'linear';
+      splitGain = DESplitGain(options);
       testCase.testAxisLinear(splitGain);
     end
     
     function testQuadraticLinearModel(testCase)
-      splitGain = DESplitGain('linear');
+      options = struct;
+      options.degree = 'linear';
+      splitGain = DESplitGain(options);
       testCase.testAxisQuadratic(splitGain);
     end
     
     function testConstantQuadraticModel(testCase)
-      splitGain = DESplitGain('quadratic');
+      options = struct;
+      options.degree = 'quadratic';
+      splitGain = DESplitGain(options);
       testCase.testAxisConstant(splitGain);
     end
     
     function testLinearQuadraticModel(testCase)
-      splitGain = DESplitGain('quadratic');
+      options = struct;
+      options.degree = 'quadratic';
+      splitGain = DESplitGain(options);
       testCase.testAxisLinear(splitGain);
     end
     
     function testQuadraticQuadraticModel(testCase)
-      splitGain = DESplitGain('quadratic');
+      options = struct;
+      options.degree = 'quadratic';
+      splitGain = DESplitGain(options);
       testCase.testAxisQuadratic(splitGain);
     end
   end

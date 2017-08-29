@@ -7,9 +7,9 @@ classdef GradientSplitGain < SplitGain
   end
 
   methods
-    function obj = GradientSplitGain(regularization)
-      obj = obj@SplitGain();
-      obj.regularization = regularization;
+    function obj = GradientSplitGain(options)
+      obj = obj@SplitGain(options);
+      obj.regularization = defopts(options, regularization, 0);
     end
   end
   

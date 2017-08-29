@@ -3,8 +3,8 @@ classdef DESplitGain < SplitGain
 % trees using differential entropy
 
   methods
-    function obj = DESplitGain(varargin)
-      obj = obj@SplitGain(varargin{:});
+    function obj = DESplitGain(options)
+      obj = obj@SplitGain(options);
     end
   end
   
