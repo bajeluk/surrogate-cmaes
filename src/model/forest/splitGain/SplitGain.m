@@ -104,12 +104,17 @@ classdef (Abstract) SplitGain
         warning('off', 'MATLAB:rankDeficientMatrix');
         warning('off', 'MATLAB:singularMatrix');
         warning('off', 'MATLAB:nearlySingularMatrix');
-        data.yPred = X * (X \ data.y);
+        M = (X' * X)^-1;
+        b = M * X' * data.y;
+        b = X \ data.y;
         warning('on', 'MATLAB:rankDeficientMatrix');
         warning('on', 'MATLAB:singularMatrix');
         warning('on', 'MATLAB:nearlySingularMatrix');
-        sd2 = mean((data.y - data.yPred).^2);
-        data.sd2 = repmat(sd2, size(data.y));
+        data.yPred = X * b;
+        % var(b) = E(b^2) * (X'*X)^-1
+        sd2 = immse(data.y, data.yPred);
+        bCov = sd2 * M;
+        data.sd2 = sum(X * bCov .* X, 2);
       else
         % custom model
         X = obj.X(idx, :);

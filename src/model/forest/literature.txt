@@ -23,3 +23,5 @@ https://www.jair.org/media/63/live-63-1401-jair.pdf
 
 Oblique split - pairs of points
 http://www.cs.toronto.edu/~fritz/absps/bcart.pdf
+
+https://stats.stackexchange.com/questions/152558/what-is-the-interpretation-of-the-covariance-of-regression-coefficients
