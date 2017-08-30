@@ -1,39 +1,37 @@
-classdef ConstantModel < AbstractModel
+classdef ConstantModel < WeakModel
+  
   properties %(Access = protected)
-    y % predicted value
-    sd2 % standard deviation
+    coeff % predicted value
+    coeffCov % standard deviation
   end
   
   methods
-    function obj = ConstantModel(modelOptions, xMean)
+    function obj = ConstantModel(modelOptions)
       % constructor
-      obj = obj@AbstractModel(modelOptions, xMean);
+      obj = obj@WeakModel(modelOptions);
       % specific model options
-      obj.y = defopts(modelOptions, 'y', NaN);
-    end
-    
-    function nData = getNTrainData(obj)
-      % returns the required number of data for training the model
-      nData = 0;
+      obj.coeff = defopts(modelOptions, 'coeff', NaN);
     end
 
-    function obj = trainModel(obj, X, y, xMean, generation)
+    function obj = trainModel(obj, X, y)
       % train the model based on the data (X,y)
-      obj.trainGeneration = generation;
-      obj.trainMean = xMean;
-      obj.dataset.X = X;
-      obj.dataset.y = y;
-      
-      if isnan(obj.y)
-        obj.y = mean(y);
+      if isnan(obj.coeff)
+        obj.coeff = mean(y);
+        obj.coeffCov = var(y);
+      else
+        obj.coeffCov = mean((y - obj.coeff).^2);
       end
-      obj.sd2 = mean((y - obj.y).^2);
     end
 
-    function [y, sd2] = modelPredict(obj, X)
+    function [yPred, sd2, ci] = modelPredict(obj, X)
       % predicts the function values in new points X
-      y = repmat(obj.y, size(X, 1), 1);
-      sd2 = repmat(obj.sd2, size(X, 1), 1);
+      yPred = repmat(obj.coeff, size(X, 1), 1);
+      if nargout >= 2
+        sd2 = repmat(obj.coeffCov, size(X, 1), 1);
+        if nargout >= 3
+          ci = WeakModel.getCi(yPred, sd2);
+        end
+      end
     end
   end
   

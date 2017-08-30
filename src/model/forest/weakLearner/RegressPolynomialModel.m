@@ -1,4 +1,4 @@
-classdef PolynomialModel < WeakModel
+classdef RegressPolynomialModel < WeakModel
   
   properties %(Access = protected)
     modelSpec % model specification (https://www.mathworks.com/help/stats/fitlm.html#inputarg_modelspec)
@@ -8,7 +8,7 @@ classdef PolynomialModel < WeakModel
   end
   
   methods
-    function obj = PolynomialModel(modelOptions)
+    function obj = RegressPolynomialModel(modelOptions)
       % constructor
       obj = obj@WeakModel(modelOptions);
       % specific model options
@@ -18,25 +18,14 @@ classdef PolynomialModel < WeakModel
     function obj = trainModel(obj, X, y)
       % train the model based on the data (X,y)
       XP = generateFeatures(X, obj.modelSpec, true);
+      %warning('off', 'stats:regress:RankDefDesignMat');
+      obj.coeff = regress(y, XP);
+      %warning('on', 'stats:regress:RankDefDesignMat');
+      obj.features = obj.coeff ~= 0;
+      obj.coeff = obj.coeff(obj.features);
+      XP = XP(:, obj.features);
       M = XP' * XP;
-      % check rank deficiency
-      r = rank(M);
-      if r < size(M, 2)
-        % remove dependent columns
-        [~, obj.features] = rref(M);
-        XP = XP(:, obj.features);
-        M = M(obj.features, obj.features);
-      end
-      %warning('off', 'MATLAB:rankDeficientMatrix');
-      %warning('off', 'MATLAB:singularMatrix');
-      %warning('off', 'MATLAB:nearlySingularMatrix');
       Mi = pinv(M);
-      %obj.coeff = Mi * XP' * y;
-      %obj.coeff = M \ (XP' * y);
-      obj.coeff = XP \ y;
-      %warning('on', 'MATLAB:rankDeficientMatrix');
-      %warning('on', 'MATLAB:singularMatrix');
-      %warning('on', 'MATLAB:nearlySingularMatrix');
       yPred = XP * obj.coeff;
       % var(b) = E(b^2) * (X'*X)^-1
       obj.coeffCov = (mean((y - yPred).^2)) * Mi;

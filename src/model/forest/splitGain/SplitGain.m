@@ -8,12 +8,13 @@ classdef (Abstract) SplitGain
     X % input data
     y % output data
     minSize % min size of one side of the split
-    modelFunc % function which creates new model, model = modelFunc(xMean)
+    modelFunc % function which creates new model
     probabilistic % whether to compute also probability and confidence interval
-    XP % generated polynomial features for MethodPolynomialModel
-    degree % degree of polynomial features for MethodPolynomialModel
-    current % struct holding data for current node
+    degree % degree of polynomial features
+    XP % generated polynomial features
     allEqual % whether all y values are equal
+    current % struct holding data for current node
+    polyMethod % method for computing polynomial model - 'regress' or ''
   end
   
   methods
@@ -33,6 +34,7 @@ classdef (Abstract) SplitGain
       if nargin >= 1
         obj.minSize = defopts(options, 'minSize', 1);
         obj.degree = defopts(options, 'degree', []);
+        obj.polyMethod = defopts(options, 'polyMethod', '');
         obj.modelFunc = defopts(options, 'modelFunc', []);
         obj.probabilistic = defopts(options, 'probabilistic', false);
       end
@@ -90,48 +92,54 @@ classdef (Abstract) SplitGain
       data.y = obj.y(idx, :);
       if isempty(obj.modelFunc) && isempty(obj.degree)
         % constant model
-        yPred = mean(data.y);
-        sd2 = var(data.y);
-        data.yPred = repmat(yPred, size(data.y));
-        data.sd2 = repmat(sd2, size(data.y));
+        coeff = mean(data.y);
+        coeffCov = var(data.y);
+        data.yPred = repmat(coeff, size(data.y));
+        data.sd2 = repmat(coeffCov, size(data.y));
+      elseif isempty(obj.modelFunc) && stricmp(obj.polyMethod, 'regress')
+        % polynomial model using regress
+        XP = obj.XP(idx, :);
+        [coeff, ci] = regress(data.y, XP);
+        features = coeff ~= 0;
+        coeff = coeff(features);
+        XP = XP(:, features);
+        data.yPred = XP * coeff;
+        data.sd2 = 
       elseif isempty(obj.modelFunc)
         % polynomial model
-        X = obj.XP(idx, :);
-        r = rank(X);
+        XP = obj.XP(idx, :);
+        M = XP' * XP;
         % check rank deficiency
-        if r < size(X, 2)
-          d = size(obj.X, 2);
-          if r >= d+1
-            % use linear model
-            X = obj.XP(idx, 1:d+1);
-          else
-            % use constant model
-            X = obj.XP(idx, 1);
-          end
+        r = rank(M);
+        if r < size(M, 2)
+          % remove dependent columns
+          [~, features] = rref(M);
+          XP = XP(:, features);
+          M = M(features, features);
         end
         warning('off', 'MATLAB:rankDeficientMatrix');
         warning('off', 'MATLAB:singularMatrix');
         warning('off', 'MATLAB:nearlySingularMatrix');
-        M = (X' * X)^-1;
-        b = M * X' * data.y;
-        %b = X \ data.y;
+        Mi = inv(M);
+        %coeff = Mi * XP' * data.y;
+        %coeff = M \ (XP' * data.y);
+        coeff = XP \ data.y;
         warning('on', 'MATLAB:rankDeficientMatrix');
         warning('on', 'MATLAB:singularMatrix');
         warning('on', 'MATLAB:nearlySingularMatrix');
-        data.yPred = X * b;
+        data.yPred = XP * coeff;
         % var(b) = E(b^2) * (X'*X)^-1
-        sd2 = immse(data.y, data.yPred);
-        bCov = sd2 * M;
-        data.sd2 = sum(X * bCov .* X, 2);
+        % add realmin to avoid 0 * inf = NaN
+        coeffCov = (mean((data.y - data.yPred).^2) + realmin) * Mi;
+        data.sd2 = sum(XP * coeffCov .* XP, 2);
       else
         % custom model
         X = obj.X(idx, :);
-        xMean = mean(X);
         model = obj.modelFunc(xMean);
         model = model.trainModel(X, data.y, xMean, 0);
         if obj.probabilistic
           [data.yPred, data.sd2, data.ci, data.p] = ...
-            model.modelPredict(X, data.y);
+            model.modelPredict(X);
         else
           [data.yPred, data.sd2] = ...
             model.modelPredict(X);

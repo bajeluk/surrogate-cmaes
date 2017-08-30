@@ -1,4 +1,4 @@
-classdef (Abstract) ModelTest < matlab.unittest.TestCase
+classdef (Abstract) WeakModelTest < matlab.unittest.TestCase
   properties
     drawEnabled = true
   end
@@ -25,13 +25,14 @@ classdef (Abstract) ModelTest < matlab.unittest.TestCase
       train.XN = normalizeFunc(train.X);
       test.XN = normalizeFunc(test.X);
       
-      xMean = mean(train.XN);
-      model = modelFunc(xMean);
+      model = modelFunc();
       tic
-      model = model.trainModel(train.XN, train.y, xMean, 0);
+      model = model.trainModel(train.XN, train.y);
       time = toc;
-      [train.yPred, train.sd2] = model.modelPredict(train.XN);
-      [test.yPred, test.sd2] = model.modelPredict(test.XN);
+      [train.yPred, train.sd2, train.ci] = ...
+        model.modelPredict(train.XN);
+      [test.yPred, test.sd2, test.ci] = ...
+        model.modelPredict(test.XN);
       train.err = immse(train.y, train.yPred);
       test.err = immse(test.y, test.yPred);
       

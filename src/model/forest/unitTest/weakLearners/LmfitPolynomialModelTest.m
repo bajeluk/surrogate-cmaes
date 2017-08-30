@@ -1,4 +1,4 @@
-classdef PolynomialModelTest < WeakModelTest
+classdef LmfitPolynomialModelTest < WeakModelTest
   methods (Test)
     function testConstantFunction(testCase)
       rng('default');
@@ -11,7 +11,7 @@ classdef PolynomialModelTest < WeakModelTest
       y = 1 * split;
       
       modelOptions = struct('modelSpec', 'linear');
-      modelFunc = @() PolynomialModel(modelOptions);
+      modelFunc = @() LmfitPolynomialModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % small error
@@ -29,7 +29,7 @@ classdef PolynomialModelTest < WeakModelTest
       y = 5 + 2*X(:, 1) + 3*X(:, 2);
       
       modelOptions = struct('modelSpec', 'linear');
-      modelFunc = @() PolynomialModel(modelOptions);
+      modelFunc = @() LmfitPolynomialModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % no error
@@ -47,7 +47,7 @@ classdef PolynomialModelTest < WeakModelTest
       y = 2*X(:, 1).^2 + 3*X(:, 2).^2;
       
       modelOptions = struct('modelSpec', 'quadratic');
-      modelFunc = @() PolynomialModel(modelOptions);
+      modelFunc = @() LmfitPolynomialModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % no error
@@ -65,7 +65,7 @@ classdef PolynomialModelTest < WeakModelTest
       y = 5 + 2*X(:, 1) + 3*X(:, 2);
       
       modelOptions = struct('modelSpec', 'linear');
-      modelFunc = @() PolynomialModel(modelOptions);
+      modelFunc = @() LmfitPolynomialModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % small error
@@ -83,7 +83,7 @@ classdef PolynomialModelTest < WeakModelTest
       y = 5 + 2*X(:, 1) + 3*X(:, 2);
       
       modelOptions = struct('modelSpec', 'linear');
-      modelFunc = @() PolynomialModel(modelOptions);
+      modelFunc = @() LmfitPolynomialModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % small error

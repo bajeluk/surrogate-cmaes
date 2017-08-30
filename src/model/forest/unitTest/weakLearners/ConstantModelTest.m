@@ -1,4 +1,4 @@
-classdef ConstantModelTest < matlab.unittest.TestCase
+classdef ConstantModelTest < WeakModelTest
   methods (Test)
     function testConstantFunction(testCase)
       rng('default');
@@ -11,8 +11,8 @@ classdef ConstantModelTest < matlab.unittest.TestCase
       y = 1 * split;
       
       modelOptions = struct;
-      modelFunc = @(xMean) ConstantModel(modelOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
+      modelFunc = @() ConstantModel(modelOptions);
+      [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % some unavoidable error
       verifyLessThan(testCase, abs(train.err - 0.25), 1e-2);
@@ -29,9 +29,9 @@ classdef ConstantModelTest < matlab.unittest.TestCase
       split = X(:, 1) <= m/2;
       y = 1 * split;
       
-      modelOptions = struct('y', 0.75);
-      modelFunc = @(xMean) ConstantModel(modelOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
+      modelOptions = struct('coeff', 0.75);
+      modelFunc = @() ConstantModel(modelOptions);
+      [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % bigger error
       verifyLessThan(testCase, abs(train.err - 0.30), 1e-2);
@@ -48,8 +48,8 @@ classdef ConstantModelTest < matlab.unittest.TestCase
       y = 5 + 2*X(:, 1) + 3*X(:, 2);
       
       modelOptions = struct;
-      modelFunc = @(xMean) ConstantModel(modelOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
+      modelFunc = @() ConstantModel(modelOptions);
+      [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % big error
       verifyGreaterThan(testCase, train.err, 1e4);
