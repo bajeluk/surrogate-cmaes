@@ -16,11 +16,10 @@ classdef ConstantModel < WeakModel
     function obj = trainModel(obj, X, y)
       % train the model based on the data (X,y)
       if isnan(obj.coeff)
-        obj.coeff = mean(y);
-        obj.coeffCov = var(y);
-      else
-        obj.coeffCov = mean((y - obj.coeff).^2);
+        obj.coeff = sum(y) / numel(n);
       end
+      r = y - obj.coeff;
+      obj.coeffCov = r' * r / numel(r);
     end
 
     function [yPred, sd2, ci] = modelPredict(obj, X)
@@ -29,7 +28,7 @@ classdef ConstantModel < WeakModel
       if nargout >= 2
         sd2 = repmat(obj.coeffCov, size(X, 1), 1);
         if nargout >= 3
-          ci = WeakModel.getCi(yPred, sd2);
+          ci = varToConfidence(yPred, sd2);
         end
       end
     end

@@ -29,8 +29,8 @@ classdef RegressPolynomialModel < WeakModel
       yPred = XP * obj.coeff;
       % var(b) = E(b^2) * (X'*X)^-1
       r = y - yPred;
-      sd2 = r' * r / numel(r);
-      obj.coeffCov = sd2 * Mi;
+      mse = r' * r / numel(r);
+      obj.coeffCov = mse * Mi;
     end
     
     function [yPred, sd2, ci] = modelPredict(obj, X)

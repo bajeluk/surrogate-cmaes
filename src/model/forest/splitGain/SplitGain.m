@@ -115,8 +115,8 @@ classdef (Abstract) SplitGain
         data.yPred = XP * (XP \ data.y);
         % var(b) = E(b^2) * (X'*X)^-1
         r = data.y - data.yPred;
-        sd2 = r' * r / numel(r);
-        data.sd2 = sd2 * sum(XP / (XP' * XP) .* XP, 2);
+        mse = r' * r / numel(r);
+        data.sd2 = mse * sum(XP / (XP' * XP) .* XP, 2);
         warning('on', 'MATLAB:rankDeficientMatrix');
         warning('on', 'MATLAB:singularMatrix');
         warning('on', 'MATLAB:nearlySingularMatrix');
