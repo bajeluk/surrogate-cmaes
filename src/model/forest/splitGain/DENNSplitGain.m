@@ -1,4 +1,4 @@
-classdef NNSplitGain < SplitGain
+classdef DENNSplitGain < SplitGain
 % NNSplitGain evaluates split functions used in decision trees using
 % 1 nearest neighbor
 
@@ -7,7 +7,7 @@ classdef NNSplitGain < SplitGain
   end
 
   methods
-    function obj = NNSplitGain(options)
+    function obj = DENNSplitGain(options)
     % Creates a new splitter based on k-NN algorithm
       obj = obj@SplitGain(options);
       obj.k = defopts(options, 'k', 1);

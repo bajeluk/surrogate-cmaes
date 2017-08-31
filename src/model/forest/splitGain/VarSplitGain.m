@@ -11,7 +11,7 @@ classdef VarSplitGain < SplitGain
   methods (Access = protected)
     function value = getValue(obj, data)
     % evaluates data using custom metric
-      [n, ~] = size(y);
+      [n, ~] = size(data.y);
       value = sum(data.sd2) / (n^2);
     end
   end

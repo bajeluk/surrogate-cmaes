@@ -20,26 +20,33 @@ classdef PolynomialModel < WeakModel
       XP = generateFeatures(X, obj.modelSpec, true);
       M = XP' * XP;
       % check rank deficiency
-      r = rank(M);
-      if r < size(M, 2)
+      [U, S, V] = svd(M, 'econ');
+      s = diag(S);
+      tol = max(size(M)) * eps(max(s));
+      rank = sum(s > tol);
+      if rank < size(M, 2)
         % remove dependent columns
         [~, obj.features] = rref(M);
         XP = XP(:, obj.features);
         M = M(obj.features, obj.features);
+        [U, S, V] = svd(M);
       end
       %warning('off', 'MATLAB:rankDeficientMatrix');
       %warning('off', 'MATLAB:singularMatrix');
-      %warning('off', 'MATLAB:nearlySingularMatrix');
-      Mi = pinv(M);
+      warning('off', 'MATLAB:nearlySingularMatrix');
+      %Mi = inv(M);
+      Mi = V / S * U';
       %obj.coeff = Mi * XP' * y;
       %obj.coeff = M \ (XP' * y);
       obj.coeff = XP \ y;
       %warning('on', 'MATLAB:rankDeficientMatrix');
       %warning('on', 'MATLAB:singularMatrix');
-      %warning('on', 'MATLAB:nearlySingularMatrix');
+      warning('on', 'MATLAB:nearlySingularMatrix');
       yPred = XP * obj.coeff;
       % var(b) = E(b^2) * (X'*X)^-1
-      obj.coeffCov = (mean((y - yPred).^2)) * Mi;
+      r = y - yPred;
+      sd2 = r' * r / numel(r);
+      obj.coeffCov = sd2 * Mi;
     end
     
     function [yPred, sd2, ci] = modelPredict(obj, X)

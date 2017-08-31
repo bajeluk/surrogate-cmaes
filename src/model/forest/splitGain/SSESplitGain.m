@@ -10,7 +10,8 @@ classdef SSESplitGain < SplitGain
   methods (Access = protected)
     function value = getValue(obj, data)
     % evaluates data using custom metric
-      value = sum((data.y - data.yPred).^2);
+      r = data.y - data.yPred;
+      value = r' * r / numel(r);
     end
   end
 end

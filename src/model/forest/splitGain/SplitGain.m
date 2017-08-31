@@ -92,58 +92,41 @@ classdef (Abstract) SplitGain
       data.y = obj.y(idx, :);
       if isempty(obj.modelFunc) && isempty(obj.degree)
         % constant model
-        coeff = mean(data.y);
-        coeffCov = var(data.y);
-        data.yPred = repmat(coeff, size(data.y));
-        data.sd2 = repmat(coeffCov, size(data.y));
-      elseif isempty(obj.modelFunc) && stricmp(obj.polyMethod, 'regress')
+        mu = sum(data.y) / numel(data.y);
+        r = data.y - mu;
+        sd2 = r' * r / numel(r);
+        data.yPred = repmat(mu, size(data.y));
+        data.sd2 = repmat(sd2, size(data.y));
+      elseif isempty(obj.modelFunc) && strcmpi(obj.polyMethod, 'regress')
         % polynomial model using regress
         XP = obj.XP(idx, :);
-        [coeff, ci] = regress(data.y, XP);
-        features = coeff ~= 0;
-        coeff = coeff(features);
-        XP = XP(:, features);
-        data.yPred = XP * coeff;
-        data.sd2 = 
+        warning('off', 'stats:regress:RankDefDesignMat');
+        [~, ~, r, rint] = regress(data.y, XP);
+        warning('on', 'stats:regress:RankDefDesignMat');
+        data.yPred = data.y - r;
+        ci = [data.y - rint(:, 2), data.y - rint(:, 1)];
+        data.sd2 = confidenceToVar(ci);
       elseif isempty(obj.modelFunc)
         % polynomial model
         XP = obj.XP(idx, :);
-        M = XP' * XP;
-        % check rank deficiency
-        r = rank(M);
-        if r < size(M, 2)
-          % remove dependent columns
-          [~, features] = rref(M);
-          XP = XP(:, features);
-          M = M(features, features);
-        end
         warning('off', 'MATLAB:rankDeficientMatrix');
         warning('off', 'MATLAB:singularMatrix');
         warning('off', 'MATLAB:nearlySingularMatrix');
-        Mi = inv(M);
-        %coeff = Mi * XP' * data.y;
-        %coeff = M \ (XP' * data.y);
-        coeff = XP \ data.y;
+        data.yPred = XP * (XP \ data.y);
+        % var(b) = E(b^2) * (X'*X)^-1
+        r = data.y - data.yPred;
+        sd2 = r' * r / numel(r);
+        data.sd2 = sd2 * sum(XP / (XP' * XP) .* XP, 2);
         warning('on', 'MATLAB:rankDeficientMatrix');
         warning('on', 'MATLAB:singularMatrix');
         warning('on', 'MATLAB:nearlySingularMatrix');
-        data.yPred = XP * coeff;
-        % var(b) = E(b^2) * (X'*X)^-1
-        % add realmin to avoid 0 * inf = NaN
-        coeffCov = (mean((data.y - data.yPred).^2) + realmin) * Mi;
-        data.sd2 = sum(XP * coeffCov .* XP, 2);
       else
         % custom model
         X = obj.X(idx, :);
-        model = obj.modelFunc(xMean);
-        model = model.trainModel(X, data.y, xMean, 0);
-        if obj.probabilistic
-          [data.yPred, data.sd2, data.ci, data.p] = ...
-            model.modelPredict(X);
-        else
-          [data.yPred, data.sd2] = ...
-            model.modelPredict(X);
-        end
+        model = obj.modelFunc();
+        model = model.trainModel(X, data.y);
+        [data.yPred, data.sd2] = ...
+          model.modelPredict(X);
       end
       data.value = obj.getValue(data);
     end

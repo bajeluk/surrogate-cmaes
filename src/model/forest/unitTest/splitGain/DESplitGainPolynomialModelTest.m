@@ -5,7 +5,7 @@ classdef DESplitGainPolynomialModelTest < SplitGainTest
       modelOptions = struct;
       modelOptions.modelSpec = 'constant';
       options = struct;
-      options.modelFunc = @(xMean) PolynomialModel(modelOptions, xMean);
+      options.modelFunc = @() PolynomialModel(modelOptions);
       splitGain = DESplitGain(options);
       testCase.testAxisConstant(splitGain);
     end
@@ -14,7 +14,7 @@ classdef DESplitGainPolynomialModelTest < SplitGainTest
       modelOptions = struct;
       modelOptions.modelSpec = 'constant';
       options = struct;
-      options.modelFunc = @(xMean) PolynomialModel(modelOptions, xMean);
+      options.modelFunc = @() PolynomialModel(modelOptions);
       splitGain = DESplitGain(options);
       testCase.testAxisLinear(splitGain);
     end
@@ -23,7 +23,7 @@ classdef DESplitGainPolynomialModelTest < SplitGainTest
       modelOptions = struct;
       modelOptions.modelSpec = 'constant';
       options = struct;
-      options.modelFunc = @(xMean) PolynomialModel(modelOptions, xMean);
+      options.modelFunc = @() PolynomialModel(modelOptions);
       splitGain = DESplitGain(options);
       testCase.testAxisQuadratic(splitGain);
     end
@@ -32,7 +32,7 @@ classdef DESplitGainPolynomialModelTest < SplitGainTest
       modelOptions = struct;
       modelOptions.modelSpec = 'linear';
       options = struct;
-      options.modelFunc = @(xMean) PolynomialModel(modelOptions, xMean);
+      options.modelFunc = @() PolynomialModel(modelOptions);
       splitGain = DESplitGain(options);
       testCase.testAxisConstant(splitGain);
     end
@@ -41,7 +41,7 @@ classdef DESplitGainPolynomialModelTest < SplitGainTest
       modelOptions = struct;
       modelOptions.modelSpec = 'linear';
       options = struct;
-      options.modelFunc = @(xMean) PolynomialModel(modelOptions, xMean);
+      options.modelFunc = @() PolynomialModel(modelOptions);
       splitGain = DESplitGain(options);
       testCase.testAxisLinear(splitGain);
     end
@@ -50,7 +50,7 @@ classdef DESplitGainPolynomialModelTest < SplitGainTest
       modelOptions = struct;
       modelOptions.modelSpec = 'linear';
       options = struct;
-      options.modelFunc = @(xMean) PolynomialModel(modelOptions, xMean);
+      options.modelFunc = @() PolynomialModel(modelOptions);
       splitGain = DESplitGain(options);
       testCase.testAxisQuadratic(splitGain);
     end
@@ -59,7 +59,7 @@ classdef DESplitGainPolynomialModelTest < SplitGainTest
       modelOptions = struct;
       modelOptions.modelSpec = 'quadratic';
       options = struct;
-      options.modelFunc = @(xMean) PolynomialModel(modelOptions, xMean);
+      options.modelFunc = @() PolynomialModel(modelOptions);
       splitGain = DESplitGain(options);
       testCase.testAxisConstant(splitGain);
     end
@@ -68,7 +68,7 @@ classdef DESplitGainPolynomialModelTest < SplitGainTest
       modelOptions = struct;
       modelOptions.modelSpec = 'quadratic';
       options = struct;
-      options.modelFunc = @(xMean) PolynomialModel(modelOptions, xMean);
+      options.modelFunc = @() PolynomialModel(modelOptions);
       splitGain = DESplitGain(options);
       testCase.testAxisLinear(splitGain);
     end
@@ -77,7 +77,7 @@ classdef DESplitGainPolynomialModelTest < SplitGainTest
       modelOptions = struct;
       modelOptions.modelSpec = 'quadratic';
       options = struct;
-      options.modelFunc = @(xMean) PolynomialModel(modelOptions, xMean);
+      options.modelFunc = @() PolynomialModel(modelOptions);
       splitGain = DESplitGain(options);
       testCase.testAxisQuadratic(splitGain);
     end

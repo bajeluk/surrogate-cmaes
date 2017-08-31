@@ -74,5 +74,5 @@ function testOther(testCase)
     []);
   XP = generateFeatures(X, 'other', true);
   verifyEqual(testCase, XP, ...
-    [1; 1]);
+    []);
 end

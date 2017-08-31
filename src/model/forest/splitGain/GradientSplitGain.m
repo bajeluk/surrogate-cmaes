@@ -23,4 +23,5 @@ classdef GradientSplitGain < SplitGain
       value = -0.5 * G*G / (H + obj.regularization);
     end
   end
+  
 end
