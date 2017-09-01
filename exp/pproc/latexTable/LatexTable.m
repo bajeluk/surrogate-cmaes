@@ -265,7 +265,7 @@ classdef LatexTable < handle
         isHeaderCol = 1;
       end
       if (~isempty(this.headerRow))
-        stringTable = this.headerRow';
+        stringTable = this.headerRow;
         isHeaderRow = 1;
       end
 
