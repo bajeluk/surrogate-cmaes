@@ -5,11 +5,11 @@ classdef DESplitGainPolynomialModelTest < SplitGainTest
       modelOptions = struct;
       modelOptions.modelSpec = 'constant';
       options = struct;
-      options.modelFunc = @() PolynomialModel(modelOptions);
+      options.modelFunc = @() LmfitPolynomialModel(modelOptions);
       splitGain = DESplitGain(options);
       testCase.testAxisConstant(splitGain);
     end
-    
+
     function testLinearConstantPolynomialModel(testCase)
       modelOptions = struct;
       modelOptions.modelSpec = 'constant';
@@ -83,4 +83,3 @@ classdef DESplitGainPolynomialModelTest < SplitGainTest
     end
   end
 end
-

@@ -9,7 +9,7 @@ classdef (Abstract) SplitGain
     y % output data
     minSize % min size of one side of the split
     modelFunc % function which creates new model
-    probabilistic % whether to compute also probability and confidence interval
+    weightedGain % whether gain is weighted by number of examples
     degree % degree of polynomial features
     XP % generated polynomial features
     allEqual % whether all y values are equal
@@ -29,14 +29,17 @@ classdef (Abstract) SplitGain
     % options
     %   'minSize'       - specifies the min size of either side
     %   'degree'        - uses polynomial model of given degree
+    %   'polyMethod'    - method for computing polynomial model
+    %     ''            - defualt model
+    %     'regress'     - regress function
     %   'modelFunc'     - uses custom model
-    %   'probabilistic' - computes probability and confidence interval
+    %   'weightedGain'  - whether gain is weighted by number of examples
       if nargin >= 1
         obj.minSize = defopts(options, 'minSize', 1);
         obj.degree = defopts(options, 'degree', []);
         obj.polyMethod = defopts(options, 'polyMethod', '');
         obj.modelFunc = defopts(options, 'modelFunc', []);
-        obj.probabilistic = defopts(options, 'probabilistic', false);
+        obj.weightedGain = defopts(options, 'weightedGain', true);
       end
     end
     
@@ -45,7 +48,8 @@ classdef (Abstract) SplitGain
       [n, ~] = size(X);
       obj.X = X;
       obj.y = y;
-      obj.allEqual = size(obj.y, 1) == 0 || all(obj.y == obj.y(1, :));
+      obj.allEqual = size(obj.y, 1) == 0 ...
+        || (size(obj.y, 2) == 1 && all(obj.y == obj.y(1, :)));
       if obj.allEqual
         return
       end
@@ -72,10 +76,13 @@ classdef (Abstract) SplitGain
       n = size(obj.y, 1);
       nLeft = size(left.y, 1);
       nRight = size(right.y, 1);
-      gain = obj.current.value ...
-        - nLeft/n * left.value ...
-        - nRight/n * right.value;
-      % gain = obj.current.value - left.value - right.value;
+      if obj.weightedGain
+        gain = obj.current.value ...
+          - nLeft/n * left.value ...
+          - nRight/n * right.value;
+      else
+        gain = obj.current.value - left.value - right.value;
+      end
     end
   end
   
@@ -90,7 +97,9 @@ classdef (Abstract) SplitGain
       data = struct;
       data.idx = idx;
       data.y = obj.y(idx, :);
-      if isempty(obj.modelFunc) && isempty(obj.degree)
+      if size(data.y, 2) > 1
+        % gradient model
+      elseif isempty(obj.modelFunc) && isempty(obj.degree)
         % constant model
         mu = sum(data.y) / numel(data.y);
         r = data.y - mu;
@@ -104,7 +113,7 @@ classdef (Abstract) SplitGain
         [~, ~, r, rint] = regress(data.y, XP);
         warning('on', 'stats:regress:RankDefDesignMat');
         data.yPred = data.y - r;
-        ci = [data.y - rint(:, 2), data.y - rint(:, 1)];
+        ci = yPred + rint - r;
         data.sd2 = confidenceToVar(ci);
       elseif isempty(obj.modelFunc)
         % polynomial model

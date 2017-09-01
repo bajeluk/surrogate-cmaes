@@ -6,8 +6,9 @@ classdef GradientTreeModel < TreeModel
   methods
     function obj = GradientTreeModel(modelOptions, xMean)
       % constructor
-      regularization = defopts(modelOptions, 'regularization', 0);
-      modelOptions.splitGain = GradientSplitGain(regularization);
+      splitGainOptions.weightedGain = false;
+      splitGainOptions.regularization = defopts(modelOptions, 'regularization', 0);
+      modelOptions.splitGain = GradientSplitGain(splitGainOptions);
       modelOptions.predictorFunc = @(xMean) ConstantModel(struct, xMean);
       modelOptions.objectiveFunc = @immse;
       obj = obj@TreeModel(modelOptions, xMean);

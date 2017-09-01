@@ -69,13 +69,13 @@ classdef SplitGainTest < matlab.unittest.TestCase
     end
     
     function [values, maxGain, maxGainSplit] = ...
-        testGains(testCase, splitGain, f1, f2, splitPercentage)
-      if nargin < 5
+        testGains(testCase, splitGain, f1, f2, g, splitPercentage)
+      if nargin < 6
         splitPercentage = 0.5;
       end
       [X, y, splitIdx, n, d, minVal, maxVal, midVal] = ...
         testCase.generate(f1, f2, splitPercentage);
-      splitGain = splitGain.reset(X, y);
+      splitGain = splitGain.reset(X, g(y));
       splitPoints = unique(X(:, 1));
       values = -inf(numel(splitPoints), 1);
       for i = 1:numel(splitPoints)
@@ -94,33 +94,42 @@ classdef SplitGainTest < matlab.unittest.TestCase
       end
     end
     
-    function testAxisConstant(testCase, splitGain)
+    function testAxisConstant(testCase, splitGain, g)
+      if nargin < 3
+        g = @(y) y;
+      end
       f = @(X) repmat(max(X(:, 1)), size(X, 1), 1) + randn(size(X, 1), 1) * 0.001;
-      testCase.testAxis(splitGain, f);
+      testCase.testAxis(splitGain, f, g);
     end
     
-    function testAxisLinear(testCase, splitGain)
+    function testAxisLinear(testCase, splitGain, g)
+      if nargin < 3
+        g = @(y) y;
+      end
       f = @(X) X(:, 1) + randn(size(X, 1), 1) * 0.001;
-      testCase.testAxis(splitGain, f);
+      testCase.testAxis(splitGain, f, g);
     end
     
-    function testAxisQuadratic(testCase, splitGain)
+    function testAxisQuadratic(testCase, splitGain, g)
+      if nargin < 3
+        g = @(y) y;
+      end
       f = @(X) X(:, 1).^2 + randn(size(X, 1), 1) * 0.001;
       [values, maxGain, maxGainSplit] = ...
-        testCase.testGains(splitGain, f, f);
+        testCase.testGains(splitGain, f, f, g);
       [values, maxGain, maxGainSplit] = ...
-        testCase.testGains(splitGain, f, f, 0.75);
+        testCase.testGains(splitGain, f, f, g, 0.75);
       [values, maxGain, maxGainSplit] = ...
-        testCase.testGains(splitGain, f, @(X)-f(X));
+        testCase.testGains(splitGain, f, @(X)-f(X), g);
     end
     
-    function testAxis(testCase, splitGain, f)
+    function testAxis(testCase, splitGain, f, g)
       [values, maxGain, maxGainSplit] = ...
-        testCase.testGains(splitGain, f, f);
+        testCase.testGains(splitGain, f, f, g);
       [values, maxGain, maxGainSplit] = ...
-        testCase.testGains(splitGain, f, @(X)-f(X));
+        testCase.testGains(splitGain, f, @(X)-f(X), g);
       [values, maxGain, maxGainSplit] = ...
-        testCase.testGains(splitGain, f, @(X)-f(X), 0.75);
+        testCase.testGains(splitGain, f, @(X)-f(X), g, 0.75);
     end
   end
 end

@@ -8,7 +8,7 @@ classdef DESplitGainPolynomialRegressTest < SplitGainTest
       splitGain = DESplitGain(options);
       testCase.testAxisConstant(splitGain);
     end
-    
+
     function testLinearConstantModel(testCase)
       options = struct;
       options.degree = 'constant';
@@ -74,4 +74,3 @@ classdef DESplitGainPolynomialRegressTest < SplitGainTest
     end
   end
 end
-

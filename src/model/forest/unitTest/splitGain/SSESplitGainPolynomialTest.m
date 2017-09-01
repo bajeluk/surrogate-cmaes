@@ -7,7 +7,7 @@ classdef SSESplitGainPolynomialTest < SplitGainTest
       splitGain = SSESplitGain(options);
       testCase.testAxisConstant(splitGain);
     end
-    
+
     function testLinearConstantModel(testCase)
       options = struct;
       options.degree = 'constant';
@@ -65,4 +65,3 @@ classdef SSESplitGainPolynomialTest < SplitGainTest
     end
   end
 end
-

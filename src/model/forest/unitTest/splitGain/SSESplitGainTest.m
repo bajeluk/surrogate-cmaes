@@ -20,4 +20,3 @@ classdef SSESplitGainTest < SplitGainTest
     end
   end
 end
-
