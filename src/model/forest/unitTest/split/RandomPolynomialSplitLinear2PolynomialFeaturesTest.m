@@ -1,4 +1,4 @@
-classdef AxisSplitTest < SplitTest
+classdef RandomPolynomialSplitLinear2PolynomialFeaturesTest < SplitTest
   methods (Test)
     
     function testTwoParallelLines45Degrees(testCase)
@@ -18,7 +18,10 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.polynomial = 'quadratic';
+      splitOptions.nRepeats = 1000;
+      splitOptions.degree = 'linear2';
+      split = RandomPolynomialSplit(splitOptions);
       [best] = testCase.findBest(X, y, split, splitGain);
     end
     
@@ -39,8 +42,11 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
+      splitOptions.transformationOptions.polynomial = 'quadratic';
       splitOptions.transformationOptions.pca = true;
-      split = AxisSplit(splitOptions);
+      splitOptions.nRepeats = 1000;
+      splitOptions.degree = 'linear2';
+      split = RandomPolynomialSplit(splitOptions);
       [best] = testCase.findBest(X, y, split, splitGain);
     end
     
@@ -51,7 +57,10 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.polynomial = 'quadratic';
+      splitOptions.nRepeats = 1000;
+      splitOptions.degree = 'linear2';
+      split = RandomPolynomialSplit(splitOptions);
       [best] = testCase.splitFlat(split, splitGain);
     end
     
@@ -62,7 +71,10 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.polynomial = 'quadratic';
+      splitOptions.nRepeats = 1000;
+      splitOptions.degree = 'linear2';
+      split = RandomPolynomialSplit(splitOptions);
       [best] = testCase.splitAxis(split, splitGain);
     end
     
@@ -73,7 +85,10 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.polynomial = 'quadratic';
+      splitOptions.nRepeats = 1000;
+      splitOptions.degree = 'linear2';
+      split = RandomPolynomialSplit(splitOptions);
       [best] = testCase.splitLine(split, splitGain);
     end
     
@@ -84,7 +99,10 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.polynomial = 'quadratic';
+      splitOptions.nRepeats = 1000;
+      splitOptions.degree = 'linear2';
+      split = RandomPolynomialSplit(splitOptions);
       [best] = testCase.splitTwoLines(split, splitGain);
     end
     
@@ -95,7 +113,10 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.polynomial = 'quadratic';
+      splitOptions.nRepeats = 1000;
+      splitOptions.degree = 'linear2';
+      split = RandomPolynomialSplit(splitOptions);
       [best] = testCase.splitPolynomial(split, splitGain);
     end
     
@@ -106,7 +127,10 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.polynomial = 'quadratic';
+      splitOptions.nRepeats = 1000;
+      splitOptions.degree = 'linear2';
+      split = RandomPolynomialSplit(splitOptions);
       [best] = testCase.splitCircle(split, splitGain);
     end
     
@@ -117,7 +141,10 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.polynomial = 'quadratic';
+      splitOptions.nRepeats = 1000;
+      splitOptions.degree = 'linear2';
+      split = RandomPolynomialSplit(splitOptions);
       [best] = testCase.splitAtan(split, splitGain);
     end
     
@@ -128,7 +155,10 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.polynomial = 'quadratic';
+      splitOptions.nRepeats = 1000;
+      splitOptions.degree = 'linear2';
+      split = RandomPolynomialSplit(splitOptions);
       [best] = testCase.splitParabola(split, splitGain);
     end
     
@@ -139,7 +169,10 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.polynomial = 'quadratic';
+      splitOptions.nRepeats = 1000;
+      splitOptions.degree = 'linear2';
+      split = RandomPolynomialSplit(splitOptions);
       [best] = testCase.splitParabola2(split, splitGain);
     end
   end

@@ -53,7 +53,7 @@ classdef RandomPolynomialSplit < RandomSplit
                 false ...
               ) * weights <= 0;
         end
-        candidate.gain = splitGain.get(splitter);
+        candidate.gain = splitGain.get(candidate.splitter);
         if candidate.gain > best.gain
           best = candidate;
         end

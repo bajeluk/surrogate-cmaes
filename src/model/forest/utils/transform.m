@@ -20,12 +20,12 @@ function [X, y, trans] = transform(X, y, opt)
     trans.featuresIdx = datasample(1:d, opt.nFeatures, ...
       'Replace', false);
   end
-  trans.valuesIdx = datasample(1:n, opt.nValues, ...
+  valuesIdx = datasample(1:n, opt.nValues, ...
     'Replace', false);
-  X = X(trans.valuesIdx, trans.featuresIdx);
+  X = X(valuesIdx, trans.featuresIdx);
   if ~isempty(opt.polynomial) && ~strcmpi(opt.polynomial, 'linear')
     trans.polynomial = opt.polynomial;
     X = generateFeatures(X, opt.polynomial, false);
   end
-  y = y(trans.valuesIdx, :);
+  y = y(valuesIdx, :);
 end

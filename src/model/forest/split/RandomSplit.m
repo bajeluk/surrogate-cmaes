@@ -13,17 +13,20 @@ classdef RandomSplit < Split
     
     function best = get(obj, splitGain)
     % returns the split with max splitGain
-      candidate = obj.splitCandidate;
+      best = obj.splitCandidate;
       trans = obj.transformation;
       [n, d] = size(obj.X);
       for iRepeats = 1:obj.nRepeats
         feature = randi(d);
         featureSelector = (1:d == feature)';
         treshold = obj.X(randi(n), feature);
+        candidate = obj.splitCandidate;
         candidate.splitter = @(X)...
           transformApply(X, trans) * featureSelector <= treshold;
         candidate.gain = splitGain.get(candidate.splitter);
-        best = candidate;
+        if candidate.gain > best.gain
+          best = candidate;
+        end
       end
     end
   end

@@ -18,7 +18,7 @@ classdef PairObliqueSplit < Split
           % normal vector of the hyperplane
           v = obj.X(i, :) - obj.X(j, :);
           % project X onto v
-          projectedValues = unique(obj.X * v');
+          projectedValues = unique(obj.X * v')';
           for treshold = projectedValues
             candidate = obj.splitCandidate;
             candidate.splitter = @(X) ...

@@ -1,4 +1,4 @@
-classdef AxisSplitTest < SplitTest
+classdef PairObliqueSplitTest < SplitTest
   methods (Test)
     
     function testTwoParallelLines45Degrees(testCase)
@@ -18,7 +18,8 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.nValues = 100;
+      split = PairObliqueSplit(splitOptions);
       [best] = testCase.findBest(X, y, split, splitGain);
     end
     
@@ -40,7 +41,8 @@ classdef AxisSplitTest < SplitTest
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
       splitOptions.transformationOptions.pca = true;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.nValues = 100;
+      split = PairObliqueSplit(splitOptions);
       [best] = testCase.findBest(X, y, split, splitGain);
     end
     
@@ -51,7 +53,8 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.nValues = 100;
+      split = PairObliqueSplit(splitOptions);
       [best] = testCase.splitFlat(split, splitGain);
     end
     
@@ -62,7 +65,8 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.nValues = 100;
+      split = PairObliqueSplit(splitOptions);
       [best] = testCase.splitAxis(split, splitGain);
     end
     
@@ -73,7 +77,8 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.nValues = 100;
+      split = PairObliqueSplit(splitOptions);
       [best] = testCase.splitLine(split, splitGain);
     end
     
@@ -84,7 +89,8 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.nValues = 100;
+      split = PairObliqueSplit(splitOptions);
       [best] = testCase.splitTwoLines(split, splitGain);
     end
     
@@ -95,7 +101,8 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.nValues = 100;
+      split = PairObliqueSplit(splitOptions);
       [best] = testCase.splitPolynomial(split, splitGain);
     end
     
@@ -106,7 +113,8 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.nValues = 100;
+      split = PairObliqueSplit(splitOptions);
       [best] = testCase.splitCircle(split, splitGain);
     end
     
@@ -117,7 +125,8 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.nValues = 100;
+      split = PairObliqueSplit(splitOptions);
       [best] = testCase.splitAtan(split, splitGain);
     end
     
@@ -128,7 +137,8 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.nValues = 100;
+      split = PairObliqueSplit(splitOptions);
       [best] = testCase.splitParabola(split, splitGain);
     end
     
@@ -139,7 +149,8 @@ classdef AxisSplitTest < SplitTest
       splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
       splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
+      splitOptions.transformationOptions.nValues = 100;
+      split = PairObliqueSplit(splitOptions);
       [best] = testCase.splitParabola2(split, splitGain);
     end
   end

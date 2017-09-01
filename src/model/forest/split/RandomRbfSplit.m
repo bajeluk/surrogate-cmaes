@@ -28,7 +28,7 @@ classdef RandomRbfSplit < RandomSplit
           + featuresMin;
         %origin = datasample(X, 1);
         metric = obj.metric;
-        distances = pdist2(X, origin, metric);
+        distances = pdist2(obj.X, origin, metric);
         maxDistance = max(distances);
         minDistance = min(distances);
         treshold = rand() * (maxDistance - minDistance) + minDistance;
@@ -43,7 +43,7 @@ classdef RandomRbfSplit < RandomSplit
               pdist2(transformApply(X, trans), origin, metric) ...
               <= treshold;
         end
-        candidate.gain = splitGain.get(splitter);
+        candidate.gain = splitGain.get(candidate.splitter);
         if candidate.gain > best.gain
           best = candidate;
         end

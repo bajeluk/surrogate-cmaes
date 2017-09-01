@@ -13,7 +13,7 @@ classdef AxisSplit < Split
       [n, d] = size(obj.X);
       for feature = 1:d
         featureSelector = (1:d == feature)';
-        values = unique(obj.X(:, feature)');
+        values = unique(obj.X(:, feature))';
         for treshold = values
           candidate = obj.splitCandidate;
           candidate.splitter = @(X)...
