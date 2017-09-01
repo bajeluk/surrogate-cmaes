@@ -33,7 +33,7 @@ scmaes_path = fullfile(exppath, 'S-CMA-ES_GP5');
 dts005_path = fullfile(exppath, 'exp_doubleEC_26');
 % TODO: change to exp_doubleEC_26_1model_adapt04
 dts4crit_path = fullfile(exppath, 'exp_doubleEC_26_4crit');
-dts_adapt_path = fullfile(exppath, 'exp_doubleEC_26_adapt04');
+dts_adapt_path = fullfile(exppath, 'exp_doubleEC_26_1model_adapt04');
 maes_path = fullfile(exppath, 'MAES-MMP');
 gpop_path = fullfile(exppath, 'GPOP');
 
