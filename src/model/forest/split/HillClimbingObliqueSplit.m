@@ -11,8 +11,8 @@ classdef HillClimbingObliqueSplit < RandomSplit
   end
 
   methods
-    function obj = HillClimbingObliqueSplit(transformationOptions, nRepeats)
-      obj = obj@RandomSplit(transformationOptions, nRepeats);
+    function obj = HillClimbingObliqueSplit(options)
+      obj = obj@RandomSplit(options);
     end
     
     function obj = reset(obj, X, y)

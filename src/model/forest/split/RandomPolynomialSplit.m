@@ -8,10 +8,9 @@ classdef RandomPolynomialSplit < RandomSplit
   end
   
   methods
-    function obj = RandomPolynomialSplit(transformationOptions, nRepeats, ...
-        degree)
-      obj = obj@RandomSplit(transformationOptions, nRepeats);
-      obj.degree = degree;
+    function obj = RandomPolynomialSplit(options)
+      obj = obj@RandomSplit(options);
+      obj.degree = defopts(options, 'degree', 'linear');
     end
     
     function best = get(obj, splitGain)

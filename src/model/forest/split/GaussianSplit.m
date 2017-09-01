@@ -6,11 +6,10 @@ classdef GaussianSplit < RandomSplit
   end
   
   methods
-    function obj = GaussianSplit(transformationOptions, nRepeats, ...
-        discrimType, includeInput)
-      obj = obj@RandomSplit(transformationOptions, nRepeats);
-      obj.discrimType = discrimType;
-      obj.includeInput = includeInput;
+    function obj = GaussianSplit(options)
+      obj = obj@RandomSplit(options);
+      obj.discrimType = defopts(options, 'discrimType', 'linear');
+      obj.includeInput = defopts(options, 'includeInput', true);
     end
     
     function best = get(obj, splitGain)
@@ -46,4 +45,5 @@ classdef GaussianSplit < RandomSplit
       end
     end
   end
+  
 end

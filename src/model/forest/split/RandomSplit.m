@@ -6,9 +6,9 @@ classdef RandomSplit < Split
   end
   
   methods
-    function obj = RandomSplit(transformationOptions, nRepeats)
-      obj = obj@Split(transformationOptions);
-      obj.nRepeats = nRepeats;
+    function obj = RandomSplit(options)
+      obj = obj@Split(options);
+      obj.nRepeats = defopts(options, 'nRepeats', 1);
     end
     
     function best = get(obj, splitGain)
@@ -27,4 +27,5 @@ classdef RandomSplit < Split
       end
     end
   end
+  
 end

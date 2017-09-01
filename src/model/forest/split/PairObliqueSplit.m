@@ -4,8 +4,8 @@ classdef PairObliqueSplit < Split
 % tresholds for decision to which side the point belongs
 
   methods
-    function obj = PairObliqueSplit(transformationOptions)
-      obj = obj@Split(transformationOptions);
+    function obj = PairObliqueSplit(options)
+      obj = obj@Split(options);
     end
     
     function best = get(obj, splitGain)

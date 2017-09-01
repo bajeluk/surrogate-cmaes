@@ -7,12 +7,11 @@ classdef KMeansSplit < RandomSplit
   end
   
   methods
-    function obj = KMeansSplit(transformationOptions, nRepeats, ...
-        discrimType, includeInput, metric)
-      obj = obj@RandomSplit(transformationOptions, nRepeats);
-      obj.discrimType = discrimType;
-      obj.includeInput = includeInput;
-      obj.metric = metric;
+    function obj = KMeansSplit(options)
+      obj = obj@RandomSplit(options);
+      obj.discrimType = defopts(options, 'discrimType', 'linear');
+      obj.includeInput = defopts(options, 'includeInput', true);
+      obj.metric = defopts(options, 'metric', 'euclidean');
     end
     
     function best = get(obj, splitGain)

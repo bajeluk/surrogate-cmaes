@@ -16,8 +16,8 @@ classdef Split
   end
   
   methods
-    function obj = Split(transformationOptions)
-      obj.transformationOptions = transformationOptions;
+    function obj = Split(options)
+      obj.transformationOptions = defopts(options, 'transformationOptions', struct);
     end
     
     function obj = reset(obj, X, y)

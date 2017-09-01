@@ -8,10 +8,9 @@ classdef RandomRbfSplit < RandomSplit
   end
   
   methods
-    function obj = RandomRbfSplit(transformationOptions, nRepeats, ...
-        metric)
-      obj = obj@RandomSplit(transformationOptions, nRepeats);
-      obj.metric = metric;
+    function obj = RandomRbfSplit(options)
+      obj = obj@RandomSplit(options);
+      obj.metric = defopts(options, 'metric', 'euclidean');
     end
     
     function best = get(obj, splitGain)

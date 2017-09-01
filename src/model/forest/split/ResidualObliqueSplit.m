@@ -8,8 +8,10 @@ classdef ResidualObliqueSplit < Split
   end
     
   methods
-    function obj = ResidualObliqueSplit(transformationOptions)
-      obj = obj@Split(transformationOptions);
+    function obj = ResidualObliqueSplit(options)
+      obj = obj@Split(options);
+      obj.degree = defopts(options, 'degree', 'linear');
+      obj.discrimType = defopts(options, 'discrimType', 'linear');
     end
     
     function best = get(obj, splitGain)
