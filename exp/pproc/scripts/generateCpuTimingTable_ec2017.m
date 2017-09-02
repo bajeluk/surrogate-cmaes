@@ -202,9 +202,11 @@ header = [{'Algorithm'} header];
 timingTable = cell2table(tab_data, 'VariableNames', header);
 
 lt = LatexTable(timingTable);
-lt.headerRow = arrayfun(@(x)sprintf('\\hspace{3ex}{%d-D}', x), funcSet.dims, 'UniformOutput', false);
+lt.headerRow = arrayfun(@(x)sprintf('{%d-D}', x), funcSet.dims, 'UniformOutput', false);
 lt.headerRow = [{'Algorithm'} lt.headerRow];
-lt.opts.tableColumnAlignment = num2cell(['l' repmat('S', 1, length(funcSet.dims))]);
+lt.opts.tableColumnAlignment = num2cell(['l' ...
+  repmat('S[table-number-alignment=center,table-sign-mantissa,table-figures-integer=1,table-figures-decimal=1,table-figures-exponent=1]', ...
+  1, length(funcSet.dims))]);
 lt.opts.numericFormat = '%2.1e';
 lt.opts.booktabs = 1;
 lt.opts.latexHeader = 0;
