@@ -8,22 +8,29 @@ classdef HillClimbingObliqueSplit < RandomSplit
   
   properties
     X1 % X with intercept
+    nQuantize % quantization of tresholds
+    nRandomPerturbations % number of random perturbations
   end
 
   methods
     function obj = HillClimbingObliqueSplit(options)
       obj = obj@RandomSplit(options);
+      obj.nQuantize = defopts(options, 'nQuantize', 0);
+      obj.nRandomPerturbations = defopts(options, 'nRandomPerturbations', 10);
     end
     
     function obj = reset(obj, X, y)
     % sets new transformed input
       obj = reset@RandomSplit(obj, X, y);
-      obj.X1 = generateFeatures(obj.X, 'linear', true);
+      obj.X1 = generateFeatures(obj.X, 'linear', true, true);
     end
 
     function best = get(obj, splitGain)
     % returns the split with max splitGain
       best = obj.splitCandidate;
+      if obj.allEqual
+        return
+      end
       for iRepeats = 1:obj.nRepeats
         if iRepeats == 1
           candidate = obj.getAxisHyperplane(splitGain);
@@ -39,18 +46,24 @@ classdef HillClimbingObliqueSplit < RandomSplit
   end
   
   methods (Access = private)
-    function candidate = getAxisHyperplane(obj, splitGain)
+    function best = getAxisHyperplane(obj, splitGain)
       best = obj.splitCandidate;
       trans = obj.transformation;
       [n, d] = size(obj.X);
       for feature = 1:d
         featureSelector = (1:d == feature)';
-        values = unique(obj.X(:, feature));
-        for treshold = values
+        values = obj.X(:, feature)';
+        if obj.nQuantize > 0 && numel(values) > obj.nQuantize
+          mm = minmax(values);
+          tresholds = linspace(mm(1), mm(2), obj.nQuantize);
+        else
+          tresholds = unique(values);
+        end
+        for treshold = tresholds
           candidate = obj.splitCandidate;
           candidate.splitter = @(X)...
             transformApply(X, trans) * featureSelector <= treshold;
-          candidate.gain = splitGain.get(splitter);
+          candidate.gain = splitGain.get(candidate.splitter);
           candidate.feature = feature;
           candidate.treshold = treshold;
           if candidate.gain > best.gain
@@ -59,21 +72,22 @@ classdef HillClimbingObliqueSplit < RandomSplit
         end
       end
       
-      best.H = [zeros(1, d), -best.treshold];
+      best.H = [zeros(1, d), -best.treshold]';
       best.H(best.feature) = 1;
     end
     
     function candidate = getRandomHyperplane(obj, splitGain)
       [n, d] = size(obj.X);
-      H = rand(1, d+1);
+      H = tan(rand(1, d+1)' * pi - pi/2);
       candidate = obj.getSplit(splitGain, H);
       candidate.H = H;
     end
     
     function best = hillClimb(obj, splitGain, best)
+      d = size(obj.X, 2);
       pStag = 0.1;
       pMove = pStag;
-      J = 10;
+      J = obj.nRandomPerturbations;
       while J > 0
         improvement = true;
         while improvement
@@ -98,7 +112,7 @@ classdef HillClimbingObliqueSplit < RandomSplit
             best = candidate;
             break;
           end
-          J = J + 1;
+          J = J - 1;
         end
       end
     end
@@ -108,11 +122,18 @@ classdef HillClimbingObliqueSplit < RandomSplit
       U = (best.H(feature) * obj.X1(:, feature) - V) ...
         ./ obj.X1(:, feature);
       H = best.H;
-      for u = unique(U)
-        if isinf(u) || isnan(u)
+      values = U';
+      if obj.nQuantize > 0 && numel(values) > obj.nQuantize
+        mm = minmax(values);
+        tresholds = linspace(mm(1), mm(2), obj.nQuantize);
+      else
+        tresholds = unique(values);
+      end
+      for treshold = tresholds
+        if isinf(treshold) || isnan(treshold)
           continue
         end
-        H(feature) = u;
+        H(feature) = treshold;
         candidate = obj.getSplit(splitGain, H);
         if candidate.gain > best.gain
           best = candidate;
@@ -124,14 +145,16 @@ classdef HillClimbingObliqueSplit < RandomSplit
       r = randn(size(best.H));
       r = max(-pi/2, r);
       r = min(pi/2, r);
-      H = best.H + tan(r);
+      r = tan(r);
+      H = best.H + r;
       candidate = obj.getSplit(splitGain, H);
     end
     
     function [candidate] = getSplit(obj, splitGain, H)
+      trans = obj.transformation;
       candidate = obj.splitCandidate;
       candidate.splitter = @(X) ...
-        generateFeatures(transformApply(X, trans), 'linear', true) ...
+        generateFeatures(transformApply(X, trans), 'linear', true, true) ...
         * H <= 0;
       candidate.gain = splitGain.get(candidate.splitter);
       candidate.H = H;

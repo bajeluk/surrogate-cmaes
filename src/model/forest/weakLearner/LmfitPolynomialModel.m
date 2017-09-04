@@ -19,9 +19,9 @@ classdef LmfitPolynomialModel < WeakModel
         X = [X; X];
         y = [y; y];
       end
-      %warning('off', 'stats:LinearModel:RankDefDesignMat');
+      warning('off', 'stats:LinearModel:RankDefDesignMat');
       obj.model = fitlm(X, y, obj.modelSpec);
-      %warning('on', 'stats:LinearModel:RankDefDesignMat');
+      warning('on', 'stats:LinearModel:RankDefDesignMat');
     end
     
     function [yPred, sd2, ci] = modelPredict(obj, X)

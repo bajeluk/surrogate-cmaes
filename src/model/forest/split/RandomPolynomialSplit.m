@@ -16,6 +16,9 @@ classdef RandomPolynomialSplit < RandomSplit
     function best = get(obj, splitGain)
     % returns the split with max splitGain
       best = obj.splitCandidate;
+      if obj.allEqual
+        return
+      end
       trans = obj.transformation;
       [n, d] = size(obj.X);
       dPoly = -1;

@@ -1,58 +1,9 @@
-classdef SplitGainTest < matlab.unittest.TestCase
+classdef (Abstract) SplitGainTest < Test
   
-  properties
-    drawEnabled = true
-  end
-  
-  methods (TestMethodSetup)
-    function setup(testCase)
-      rng('default');
-    end
-  end
-
-  methods (TestMethodTeardown)
-    function teardown(testCase)
-    end
-  end
-  
-  methods (Access = protected)
-    function draw(testCase, X, y, splitIdx)      
-      if size(X, 2) == 2 && testCase.drawEnabled
-        stack = dbstack;
-        name = strcat(stack(6).name, ' ', stack(5).name);
-        figure('Name', name);
-        scatter(X(splitIdx, 1), y(splitIdx));
-        %scatter3(X(splitIdx, 1), X(splitIdx, 2), y(splitIdx));
-        hold on;
-        scatter(X(~splitIdx, 1), y(~splitIdx));
-        %scatter3(X(~splitIdx, 1), X(~splitIdx, 2), y(~splitIdx));
-        hold off;
-        legend('yLeftWanted', 'yRightWanted');
-      end
-    end
-    
-    function [X, n, d, minVal, maxVal] = ...
-        generateRandom(testCase, n, d, minVal, maxVal)
-      rng('default');
-      % random points
-      if nargin < 2
-        n = 1000; % number of points
-      end
-      if nargin < 3
-        d = 2; % dimension
-      end
-      if nargin < 3
-        minVal = -100; % range [minVal, maxVal]
-      end
-      if nargin < 4
-        maxVal = 100; % range [minVal, maxVal]
-      end
-      X = minVal + (maxVal - minVal) * rand(n, d);
-    end
-    
-    function [X, y, splitIdx, n, d, minVal, maxVal, splitVal] = ...
+  methods (Access = protected)    
+    function [X, y, splitIdx, minVal, maxVal, splitVal] = ...
         generate(testCase, f1, f2, splitPercentage)
-      [X, n, d, minVal, maxVal] = testCase.generateRandom();
+      [X, minVal, maxVal] = testCase.generateInput();
       if nargin < 4
         splitPercentage = 0.5;
       end
@@ -65,15 +16,16 @@ classdef SplitGainTest < matlab.unittest.TestCase
         y2 = f2(X - splitVal);
       end
       y = y1 .* splitIdx + y2 .* ~splitIdx;
-      testCase.draw(X, y, splitIdx);
+      %y = y + randn(size(y));
     end
     
     function [values, maxGain, maxGainSplit] = ...
-        testGains(testCase, splitGain, f1, f2, g, splitPercentage)
+        findBest(testCase, splitGain, f1, f2, g, splitPercentage)
+      rng('default');
       if nargin < 6
         splitPercentage = 0.5;
       end
-      [X, y, splitIdx, n, d, minVal, maxVal, midVal] = ...
+      [X, y, splitIdx, minVal, maxVal, midVal] = ...
         testCase.generate(f1, f2, splitPercentage);
       splitGain = splitGain.reset(X, g(y));
       splitPoints = unique(X(:, 1));
@@ -87,49 +39,57 @@ classdef SplitGainTest < matlab.unittest.TestCase
       maxGainSplit = splitPoints(maxGainPos);
       
       if testCase.drawEnabled
-        stack = dbstack;
-        name = strcat(stack(4).name, ' ', stack(3).name);
-        figure('Name', name);
+        splitIdx = X(:, 1) < splitPoints(maxGainPos);
+        testCase.iPlot = testCase.iPlot + 1;
+        subplot(3, 2, testCase.iPlot);
+        testCase.drawSplit(X, y, splitIdx);
+        title('split');
+        testCase.iPlot = testCase.iPlot + 1;
+        subplot(3, 2, testCase.iPlot);
         plot(splitPoints, values);
+        title('gain');
       end
     end
     
-    function testAxisConstant(testCase, splitGain, g)
+    function splitConstant(testCase, splitGain, g)
       if nargin < 3
         g = @(y) y;
       end
-      f = @(X) repmat(max(X(:, 1)), size(X, 1), 1) + randn(size(X, 1), 1) * 0.001;
-      testCase.testAxis(splitGain, f, g);
+      f = @(X) repmat(100, size(X, 1), 1) + randn(size(X, 1), 1) * 0.01;
+      testCase.split(splitGain, f, g);
     end
     
-    function testAxisLinear(testCase, splitGain, g)
+    function splitLinear(testCase, splitGain, g)
       if nargin < 3
         g = @(y) y;
       end
-      f = @(X) X(:, 1) + randn(size(X, 1), 1) * 0.001;
-      testCase.testAxis(splitGain, f, g);
+      f = @(X) X(:, 1) + randn(size(X, 1), 1) * 0.01;
+      testCase.split(splitGain, f, g);
     end
     
-    function testAxisQuadratic(testCase, splitGain, g)
+    function splitQuadratic(testCase, splitGain, g)
       if nargin < 3
         g = @(y) y;
       end
-      f = @(X) X(:, 1).^2 + randn(size(X, 1), 1) * 0.001;
+      f = @(X) X(:, 1).^2 + randn(size(X, 1), 1) * 0.01;
+      testCase.split(splitGain, f, g);
+      %{
       [values, maxGain, maxGainSplit] = ...
         testCase.testGains(splitGain, f, f, g);
       [values, maxGain, maxGainSplit] = ...
         testCase.testGains(splitGain, f, f, g, 0.75);
       [values, maxGain, maxGainSplit] = ...
         testCase.testGains(splitGain, f, @(X)-f(X), g);
+      %}
     end
     
-    function testAxis(testCase, splitGain, f, g)
+    function split(testCase, splitGain, f, g)
       [values, maxGain, maxGainSplit] = ...
-        testCase.testGains(splitGain, f, f, g);
+        testCase.findBest(splitGain, f, f, g);
       [values, maxGain, maxGainSplit] = ...
-        testCase.testGains(splitGain, f, @(X)-f(X), g);
+        testCase.findBest(splitGain, f, @(X)-f(X), g);
       [values, maxGain, maxGainSplit] = ...
-        testCase.testGains(splitGain, f, @(X)-f(X), g, 0.75);
+        testCase.findBest(splitGain, f, @(X)-f(X), g, 0.75);
     end
   end
 end

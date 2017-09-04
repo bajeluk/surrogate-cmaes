@@ -16,6 +16,10 @@ classdef ResidualObliqueSplit < Split
     
     function best = get(obj, splitGain)
     % returns the split with max splitGain
+      best = obj.splitCandidate;
+      if obj.allEqual
+        return
+      end
       trans = obj.transformation;
       [n, d] = size(obj.X);
       candidate = obj.splitCandidate;
@@ -24,7 +28,13 @@ classdef ResidualObliqueSplit < Split
       w = X1 / obj.y;
       % create classes from residuals
       c = X1 * w < obj.y;
-      model = fitcdiscr(X, c, 'DiscrimType', obj.discrimType);
+      try
+        model = fitcdiscr(obj.X, c, 'DiscrimType', obj.discrimType);
+      catch
+        % singular covariance matrix
+        pseudoDiscrimType = strcat('pseudo', obj.discrimType);
+        model = fitcdiscr(obj.X, c, 'DiscrimType', pseudoDiscrimType);
+      end
       candidate.splitter = @(X)...
         model.predict(transformApply(X, trans)) == 1;
       candidate.gain = splitGain.get(splitter);

@@ -1,22 +1,19 @@
 classdef DENNSplitGainTest < SplitGainTest
+
+  properties (TestParameter)
+    testMethod = {'Constant', 'Linear', 'Quadratic'};
+  end
   
   methods (Test)
-    function testConstant(testCase)
+    function test(testCase, testMethod)
+      params = struct;
+      testCase.reset(params, testMethod);
+      
       options = struct;
       splitGain = DENNSplitGain(options);
-      testCase.testAxisConstant(splitGain);
-    end
-    
-    function testLinear(testCase)
-      options = struct;
-      splitGain = DENNSplitGain(options);
-      testCase.testAxisLinear(splitGain);
-    end
-    
-    function testQuadratic(testCase)
-      options = struct;
-      splitGain = DENNSplitGain(options);
-      testCase.testAxisQuadratic(splitGain);
+
+      testMethod = strcat('split', testMethod);
+      testCase.(testMethod)(splitGain);
     end
   end
 end

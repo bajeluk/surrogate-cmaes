@@ -12,7 +12,7 @@ classdef DESplitGain < SplitGain
     function value = getValue(obj, data)
     % evaluates data using custom metric
       [n, ~] = size(data.y);
-      value = 1 + log(2*pi) + sum(log(data.sd2)) / n;
+      value = 1 + log(2*pi) + sum(log(data.sd2 + realmin)) / n;
       value = 0.5 * value;
     end
   end

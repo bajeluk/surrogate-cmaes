@@ -1,9 +1,9 @@
-classdef PairObliqueSplitTest < SplitTest
+classdef HillClimbingObliqueSplitTest < SplitTest
   
   properties (TestParameter)
     testMethod = {'Flat', 'Axis', 'Linear', 'Linear2', 'Polynomial', ...
       'Circle', 'Atan', 'Parabola', 'Parabola2'};
-    nQuantize = {10, -1};
+    nQuantize = {10, 100};
     pca = {false, true};
   end
   
@@ -16,11 +16,11 @@ classdef PairObliqueSplitTest < SplitTest
       testCase.reset(params);
       
       splitOptions = struct;
+      splitOptions.nRepeats = 10;
       splitOptions.nQuantize = nQuantize;
       splitOptions.transformationOptions = struct;
-      splitOptions.transformationOptions.nValues = floor(sqrt(1000));
       splitOptions.transformationOptions.pca = pca;
-      split = PairObliqueSplit(splitOptions);
+      split = HillClimbingObliqueSplit(splitOptions);
       
       [best] = testCase.splitTwoLines(split);
     end
@@ -32,10 +32,27 @@ classdef PairObliqueSplitTest < SplitTest
       testCase.reset(params, testMethod);
       
       splitOptions = struct;
+      splitOptions.nRepeats = 10;
       splitOptions.nQuantize = nQuantize;
       splitOptions.transformationOptions = struct;
-      splitOptions.transformationOptions.nValues = floor(sqrt(1000));
-      split = PairObliqueSplit(splitOptions);
+      split = HillClimbingObliqueSplit(splitOptions);
+      
+      testMethod = strcat('split', testMethod);
+      [best] = testCase.(testMethod)(split);
+    end
+    
+    function testQuadraticFeatures(testCase, testMethod, ...
+        nQuantize)
+      params = struct;
+      params.nQuantize = int2str(nQuantize);
+      testCase.reset(params, testMethod);
+      
+      splitOptions = struct;
+      splitOptions.nRepeats = 10;
+      splitOptions.nQuantize = nQuantize;
+      splitOptions.transformationOptions = struct;
+      splitOptions.transformationOptions.polynomial = 'quadratic';
+      split = HillClimbingObliqueSplit(splitOptions);
       
       testMethod = strcat('split', testMethod);
       [best] = testCase.(testMethod)(split);

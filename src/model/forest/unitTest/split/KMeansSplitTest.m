@@ -1,132 +1,49 @@
-classdef KMeansTreeSplitGeneratorTest < matlab.unittest.TestCase
+classdef KMeansSplitTest < SplitTest
+  
+  properties (TestParameter)
+    testMethod = {'Flat', 'Axis', 'Linear', 'Linear2', 'Polynomial', ...
+      'Circle', 'Atan', 'Parabola', 'Parabola2'};
+    discrimType = {'linear', 'quadratic'};
+    includeInput = {false, true};
+    pca = {false, true};
+  end
+  
   methods (Test)
-    function testOneLine(testCase)
-      rng('default');
-      nRepeats = 2;
-      % one line where X1 == X2
-      n = 1000;
-      m = 100;
-      X = randi(m, n, 1);
-      X = [X X];
-      % we expect the split to be in half
-      y = (X(:, 1) <= m/2)*1;
+    function testTwoLines(testCase, ...
+        discrimType, includeInput, pca)
+      params = struct;
+      params.discrimType = discrimType;
+      params.includeInput = int2str(includeInput);
+      params.pca = int2str(pca);
+      testCase.reset(params);
       
-      generator = KMeansTreeSplitGenerator('sqeuclidean', false, nRepeats);
-      [best, count, vars] = TreeSplitGeneratorTest.findBest(X, y, generator);
+      splitOptions = struct;
+      splitOptions.nRepeats = 10;
+      splitOptions.discrimType = discrimType;
+      splitOptions.includeInput = includeInput;
+      splitOptions.transformationOptions = struct;
+      splitOptions.transformationOptions.pca = pca;
+      split = KMeansSplit(splitOptions);
       
-      verifyEqual(testCase, count, nRepeats);
-      % it splits it aproximately in half
-      verifyLessThanOrEqual(testCase, best.err, n/100);
+      [best] = testCase.splitTwoLines(split);
     end
     
-    function testTwoLines(testCase)
-      rng('default');
-      nRepeats = 2;
-      % two gaussians in one line
-      n = 1000;
-      m = 100;
-      X = [[randi(m, n/2, 1); randi(m, n/2, 1) + 2*m]];
-      X = [X X];
-      % we expect the split to be in half
-      y = (X(:, 1) <= 1.5*m)*1;
+    function test(testCase, testMethod, ...
+        discrimType, includeInput)
+      params = struct;
+      params.discrimType = discrimType;
+      params.includeInput = int2str(includeInput);
+      testCase.reset(params, testMethod);
       
-      generator = KMeansTreeSplitGenerator('sqeuclidean', false, nRepeats);
-      [best, count, vars] = TreeSplitGeneratorTest.findBest(X, y, generator);
+      splitOptions = struct;
+      splitOptions.nRepeats = 10;
+      splitOptions.discrimType = discrimType;
+      splitOptions.includeInput = includeInput;
+      splitOptions.transformationOptions = struct;
+      split = KMeansSplit(splitOptions);
       
-      verifyEqual(testCase, count, nRepeats);
-      % good split
-      verifyLessThanOrEqual(testCase, best.err, n/1000);
-    end
-    
-    function testTwoParallelLines(testCase)
-      rng('default');
-      nRepeats = 2;
-      % two parallel lines
-      n = 1000;
-      m = 100;
-      X = randi(100, n, 1);
-      X = [X X];
-      half = (1:n)' <= n/2;
-      X(half, 2) = X(half, 2) - 60;
-      X(~half, 2) = X(~half, 2) + 60;
-      % we expect to split the two parallel lines 
-      y = half*1;
-      
-      generator = KMeansTreeSplitGenerator('sqeuclidean', false, nRepeats);
-      [best, count, vars] = TreeSplitGeneratorTest.findBest(X, y, generator);
-      
-      verifyEqual(testCase, count, nRepeats);
-      % good split
-      verifyLessThanOrEqual(testCase, best.err, n/100);
-    end
-    
-    function testTwoParallelLinesCloser(testCase)
-      rng('default');
-      nRepeats = 2;
-      % two parallel lines
-      n = 1000;
-      m = 100;
-      X = randi(100, n, 1);
-      X = [X X];
-      half = (1:n)' <= n/2;
-      X(half, 2) = X(half, 2) - 40;
-      X(~half, 2) = X(~half, 2) + 40;
-      % we expect to split the two parallel lines 
-      y = half*1;
-      
-      generator = KMeansTreeSplitGenerator('sqeuclidean', false, nRepeats);
-      [best, count, vars] = TreeSplitGeneratorTest.findBest(X, y, generator);
-      
-      verifyEqual(testCase, count, nRepeats);
-      % not so good split
-      verifyGreaterThanOrEqual(testCase, best.err, n*2/10);
-    end
-    
-    function testTwoParallelLinesCloserNormalized(testCase)
-      rng('default');
-      nRepeats = 2;
-      % two parallel lines
-      n = 1000;
-      m = 100;
-      X = randi(100, n, 1);
-      X = [X X];
-      half = (1:n)' <= n/2;
-      X(half, 2) = X(half, 2) - 40;
-      X(~half, 2) = X(~half, 2) + 40;
-      % we expect to split the two parallel lines 
-      y = half*1;
-      
-      generator = KMeansTreeSplitGenerator('sqeuclidean', true, nRepeats);
-      [best, count, vars] = TreeSplitGeneratorTest.findBest(X, y, generator);
-      
-      verifyEqual(testCase, count, nRepeats);
-      % even worse split
-      verifyGreaterThanOrEqual(testCase, best.err, n*4/10);
-    end
-    
-    function testTwoCircles(testCase)
-      rng('default');
-      nRepeats = 2;
-      % two parallel lines
-      n = 1000;
-      m = 100;
-      X = rand(n, 2) * 2 - 1;
-      for i = 1:n
-        while sqrt(sum(X(i, :).^2)) > 1
-          X(i, :) = rand(1, 2) * 2 - 1;
-        end
-      end
-      half = (1:n)' <= n/2;
-      X(~half, :) = X(~half, :) + 1;
-      % we expect to split the two parallel lines 
-      y = half*1;
-      
-      generator = KMeansTreeSplitGenerator('sqeuclidean', false, nRepeats);
-      [best, count, vars] = TreeSplitGeneratorTest.findBest(X, y, generator);
-      
-      verifyEqual(testCase, count, nRepeats);
-      % quite good split
-      verifyLessThanOrEqual(testCase, best.err, n/10);
+      testMethod = strcat('split', testMethod);
+      [best] = testCase.(testMethod)(split);
     end
   end
 end

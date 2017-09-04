@@ -1,22 +1,37 @@
 classdef DEMSDSplitGainTest < SplitGainTest
   
+  properties (TestParameter)
+    testMethod = {'Constant', 'Linear', 'Quadratic'};
+    degree = {'constant', 'linear', 'quadratic'};
+    polyMethod = {'default', 'regress'};
+  end
+
   methods (Test)
-    function testConstant(testCase)
+    function test(testCase, testMethod)
+      params = struct;
+      testCase.reset(params, testMethod);
+      
       options = struct;
       splitGain = DEMSDSplitGain(options);
-      testCase.testAxisConstant(splitGain);
+      
+      testMethod = strcat('split', testMethod);
+      testCase.(testMethod)(splitGain);
     end
     
-    function testLinear(testCase)
+    function testPoly(testCase, testMethod, ...
+        degree, polyMethod)
+      params = struct;
+      params.degree = degree;
+      params.polyMethod = polyMethod;
+      testCase.reset(params, testMethod);
+      
       options = struct;
+      options.degree = degree;
+      options.polyMethod = polyMethod;
       splitGain = DEMSDSplitGain(options);
-      testCase.testAxisLinear(splitGain);
-    end
-    
-    function testQuadratic(testCase)
-      options = struct;
-      splitGain = DEMSDSplitGain(options);
-      testCase.testAxisQuadratic(splitGain);
+      
+      testMethod = strcat('split', testMethod);
+      testCase.(testMethod)(splitGain);
     end
   end
 end

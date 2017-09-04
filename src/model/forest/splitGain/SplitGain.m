@@ -48,8 +48,8 @@ classdef (Abstract) SplitGain
       [n, ~] = size(X);
       obj.X = X;
       obj.y = y;
-      obj.allEqual = size(obj.y, 1) == 0 ...
-        || (size(obj.y, 2) == 1 && all(obj.y == obj.y(1, :)));
+      varY = var(y);
+      obj.allEqual = any(isnan(varY)) || all(varY < eps(max(varY)) * n);
       if obj.allEqual
         return
       end
@@ -113,7 +113,7 @@ classdef (Abstract) SplitGain
         [~, ~, r, rint] = regress(data.y, XP);
         warning('on', 'stats:regress:RankDefDesignMat');
         data.yPred = data.y - r;
-        ci = yPred + rint - r;
+        ci = bsxfun(@plus, data.yPred - r, rint);
         data.sd2 = confidenceToVar(ci);
       elseif isempty(obj.modelFunc)
         % polynomial model

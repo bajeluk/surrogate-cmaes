@@ -1,146 +1,42 @@
 classdef AxisSplitTest < SplitTest
+  
+  properties (TestParameter)
+    testMethod = {'Flat', 'Axis', 'Linear', 'Linear2', 'Polynomial', ...
+      'Circle', 'Atan', 'Parabola', 'Parabola2'};
+    nQuantize = {10, 100, -1};
+    pca = {false, true};
+  end
+  
   methods (Test)
-    
-    function testTwoParallelLines45Degrees(testCase)
-      rng('default');
-      % one line where X1 == X2
-      n = 1000;
-      m = 10;
-      X = rand(n, 1) * m;
-      half = (1:n)' <= n/2;
-      X = [X(half, :)+1, X(half, :); ...
-           X(~half, :),  X(~half, :)+1];
-      % we expect to split the two parallel lines 
-      y = half*1;
+    function testTwoLines(testCase, ...
+        nQuantize, pca)
+      params = struct;
+      params.nQuantize = int2str(nQuantize);
+      params.pca = int2str(pca);
+      testCase.reset(params);
       
-      splitGainOptions = struct;
-      splitGainOptions.minSize = 5;
-      splitGain = SSESplitGain(splitGainOptions);
       splitOptions = struct;
+      splitOptions.nQuantize = nQuantize;
       splitOptions.transformationOptions = struct;
+      splitOptions.transformationOptions.pca = pca;
       split = AxisSplit(splitOptions);
-      [best] = testCase.findBest(X, y, split, splitGain);
-    end
-    
-    function testTwoParallelLines45DegreesPca(testCase)
-      rng('default');
-      % one line where X1 == X2
-      n = 1000;
-      m = 10;
-      X = rand(n, 1) * m;
-      half = (1:n)' <= n/2;
-      X = [X(half, :)+1, X(half, :); ...
-           X(~half, :),  X(~half, :)+1];
-      % we expect to split the two parallel lines 
-      y = half*1;
       
-      splitGainOptions = struct;
-      splitGainOptions.minSize = 5;
-      splitGain = SSESplitGain(splitGainOptions);
-      splitOptions = struct;
-      splitOptions.transformationOptions = struct;
-      splitOptions.transformationOptions.pca = true;
-      split = AxisSplit(splitOptions);
-      [best] = testCase.findBest(X, y, split, splitGain);
+      [best] = testCase.splitTwoLines(split);
     end
     
-    function testFlat(testCase)
-      splitGainOptions = struct;
-      splitGainOptions.minSize = 5;
-      splitGainOptions.degree = 'constant';
-      splitGain = SSESplitGain(splitGainOptions);
+    function test(testCase, testMethod, ...
+        nQuantize)
+      params = struct;
+      params.nQuantize = int2str(nQuantize);
+      testCase.reset(params, testMethod);
+      
       splitOptions = struct;
+      splitOptions.nQuantize = nQuantize;
       splitOptions.transformationOptions = struct;
       split = AxisSplit(splitOptions);
-      [best] = testCase.splitFlat(split, splitGain);
-    end
-    
-    function testAxis(testCase)
-      splitGainOptions = struct;
-      splitGainOptions.minSize = 5;
-      splitGainOptions.degree = 'constant';
-      splitGain = SSESplitGain(splitGainOptions);
-      splitOptions = struct;
-      splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
-      [best] = testCase.splitAxis(split, splitGain);
-    end
-    
-    function testLine(testCase)
-      splitGainOptions = struct;
-      splitGainOptions.minSize = 5;
-      splitGainOptions.degree = 'constant';
-      splitGain = SSESplitGain(splitGainOptions);
-      splitOptions = struct;
-      splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
-      [best] = testCase.splitLine(split, splitGain);
-    end
-    
-    function testTwoLines(testCase)
-      splitGainOptions = struct;
-      splitGainOptions.minSize = 5;
-      splitGainOptions.degree = 'constant';
-      splitGain = SSESplitGain(splitGainOptions);
-      splitOptions = struct;
-      splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
-      [best] = testCase.splitTwoLines(split, splitGain);
-    end
-    
-    function testPolynomial(testCase)
-      splitGainOptions = struct;
-      splitGainOptions.minSize = 5;
-      splitGainOptions.degree = 'constant';
-      splitGain = SSESplitGain(splitGainOptions);
-      splitOptions = struct;
-      splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
-      [best] = testCase.splitPolynomial(split, splitGain);
-    end
-    
-    function testCircle(testCase)
-      splitGainOptions = struct;
-      splitGainOptions.minSize = 5;
-      splitGainOptions.degree = 'constant';
-      splitGain = SSESplitGain(splitGainOptions);
-      splitOptions = struct;
-      splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
-      [best] = testCase.splitCircle(split, splitGain);
-    end
-    
-    function testAtan(testCase)
-      splitGainOptions = struct;
-      splitGainOptions.minSize = 5;
-      splitGainOptions.degree = 'quadratic';
-      splitGain = SSESplitGain(splitGainOptions);
-      splitOptions = struct;
-      splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
-      [best] = testCase.splitAtan(split, splitGain);
-    end
-    
-    function testParabola(testCase)
-      splitGainOptions = struct;
-      splitGainOptions.minSize = 5;
-      splitGainOptions.degree = 'quadratic';
-      splitGain = SSESplitGain(splitGainOptions);
-      splitOptions = struct;
-      splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
-      [best] = testCase.splitParabola(split, splitGain);
-    end
-    
-    function testParabola2(testCase)
-      splitGainOptions = struct;
-      splitGainOptions.minSize = 5;
-      splitGainOptions.degree = 'quadratic';
-      splitGain = SSESplitGain(splitGainOptions);
-      splitOptions = struct;
-      splitOptions.transformationOptions = struct;
-      split = AxisSplit(splitOptions);
-      [best] = testCase.splitParabola2(split, splitGain);
+      
+      testMethod = strcat('split', testMethod);
+      [best] = testCase.(testMethod)(split);
     end
   end
 end

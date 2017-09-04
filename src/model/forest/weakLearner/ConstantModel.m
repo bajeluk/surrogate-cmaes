@@ -16,7 +16,7 @@ classdef ConstantModel < WeakModel
     function obj = trainModel(obj, X, y)
       % train the model based on the data (X,y)
       if isnan(obj.coeff)
-        obj.coeff = sum(y) / numel(n);
+        obj.coeff = sum(y) / numel(y);
       end
       r = y - obj.coeff;
       obj.coeffCov = r' * r / numel(r);

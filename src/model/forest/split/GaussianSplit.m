@@ -15,6 +15,9 @@ classdef GaussianSplit < RandomSplit
     function best = get(obj, splitGain)
     % returns the split with max splitGain
       best = obj.splitCandidate;
+      if obj.allEqual
+        return
+      end
       trans = obj.transformation;
       [n, d] = size(obj.X);
       % clusters are fit in scaled input-output space
@@ -27,18 +30,26 @@ classdef GaussianSplit < RandomSplit
           % select random features
           % the amount of features increases with iRepeats
           nFeatures = ceil(d * iRepeats / obj.nRepeats);
-          features = datasample(1:d, nFeatures, 'Replacement', false);
+          features = datasample(1:d, nFeatures, 'Replace', false);
           Z = [ZX(:, features) Zy];
         else
           Z = Zy;
         end
+        warning('off', 'stats:gmdistribution:FailedToConverge');
         model = fitgmdist(Z, 2, 'RegularizationValue', 0.001);
+        warning('on', 'stats:gmdistribution:FailedToConverge');
         c = model.cluster(Z);
         % discriminant analysis of two clusters
-        model = fitcdiscr(X, c, 'DiscrimType', obj.discrimType);
+        try
+          model = fitcdiscr(obj.X, c, 'DiscrimType', obj.discrimType);
+        catch
+          % singular covariance matrix
+          pseudoDiscrimType = strcat('pseudo', obj.discrimType);
+          model = fitcdiscr(obj.X, c, 'DiscrimType', pseudoDiscrimType);
+        end
         candidate.splitter = @(X)...
           model.predict(transformApply(X, trans)) == 1;
-        candidate.gain = splitGain.get(splitter);
+        candidate.gain = splitGain.get(candidate.splitter);
         if candidate.gain > best.gain
           best = candidate;
         end

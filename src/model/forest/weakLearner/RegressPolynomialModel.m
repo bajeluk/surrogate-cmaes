@@ -18,9 +18,9 @@ classdef RegressPolynomialModel < WeakModel
     function obj = trainModel(obj, X, y)
       % train the model based on the data (X,y)
       XP = generateFeatures(X, obj.modelSpec, true);
-      %warning('off', 'stats:regress:RankDefDesignMat');
+      warning('off', 'stats:regress:RankDefDesignMat');
       obj.coeff = regress(y, XP);
-      %warning('on', 'stats:regress:RankDefDesignMat');
+      warning('on', 'stats:regress:RankDefDesignMat');
       obj.features = obj.coeff ~= 0;
       obj.coeff = obj.coeff(obj.features);
       XP = XP(:, obj.features);
