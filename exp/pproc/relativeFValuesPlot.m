@@ -580,7 +580,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     end
   end
   if ~aggDims
-    titleString = [titleString, ' ', num2str(dims(dId)),'D'];
+    titleString = [titleString, ' ', num2str(dims(dId)),'-D'];
   end
   title(titleString)
   if (~omitXLabel)
