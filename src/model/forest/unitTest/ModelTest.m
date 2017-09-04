@@ -1,18 +1,4 @@
-classdef (Abstract) ModelTest < matlab.unittest.TestCase
-  properties
-    drawEnabled = true
-  end
-  
-  methods (TestMethodSetup)
-    function setup(testCase)
-      rng('default');
-    end
-  end
-
-  methods (TestMethodTeardown)
-    function teardown(testCase)
-    end
-  end
+classdef (Abstract) ModelTest < Test
   
   methods (Access = protected)
     function [model, train, test, time] = testModel(testCase, X, y, modelFunc)
@@ -25,19 +11,18 @@ classdef (Abstract) ModelTest < matlab.unittest.TestCase
       train.XN = normalizeFunc(train.X);
       test.XN = normalizeFunc(test.X);
       
-      xMean = mean(train.XN);
-      model = modelFunc(xMean);
+      model = modelFunc();
       tic
-      model = model.trainModel(train.XN, train.y, xMean, 0);
+      model = model.trainModel(train.XN, train.y);
       time = toc;
-      [train.yPred, train.sd2] = model.modelPredict(train.XN);
-      [test.yPred, test.sd2] = model.modelPredict(test.XN);
+      [train.yPred, train.sd2, train.ci] = ...
+        model.modelPredict(train.XN);
+      [test.yPred, test.sd2, test.ci] = ...
+        model.modelPredict(test.XN);
       train.err = immse(train.y, train.yPred);
       test.err = immse(test.y, test.yPred);
       
       if testCase.drawEnabled
-        stack = dbstack;
-        figure('Name', stack(2).name);
         if size(X, 2) == 1
           plot(X, y);
           hold on;
@@ -56,6 +41,9 @@ classdef (Abstract) ModelTest < matlab.unittest.TestCase
         else
           legend('y', 'y_{pred}^{train}', 'y_{pred}^{test}');
         end
+        description = sprintf('train MSE: %.3f\n test MSE: %.3f', ...
+          train.err, test.err);
+        title(description);
       end
     end
   end

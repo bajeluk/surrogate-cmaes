@@ -1,4 +1,5 @@
-classdef TreeModelTest < matlab.unittest.TestCase
+classdef TreeModelTest < ModelTest
+  
   methods (Test)
     function testConstantFunctionConstantPredictor(testCase)
       rng('default');
@@ -11,8 +12,8 @@ classdef TreeModelTest < matlab.unittest.TestCase
       y = 1 * split;
       
       modelOptions = struct;
-      modelFunc = @(xMean) TreeModel(modelOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
+      modelFunc = @() TreeModel(modelOptions);
+      [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % no error
       verifyLessThan(testCase, train.err, 1e-4);
@@ -31,8 +32,8 @@ classdef TreeModelTest < matlab.unittest.TestCase
         + [5 + 3*X(:, 1) + 2*X(:, 2)] .* ~split;
       
       modelOptions = struct;
-      modelFunc = @(xMean) TreeModel(modelOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
+      modelFunc = @() TreeModel(modelOptions);
+      [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % small error
       verifyLessThan(testCase, train.err, 50);
@@ -51,9 +52,11 @@ classdef TreeModelTest < matlab.unittest.TestCase
         + [5 + 3*X(:, 1) + 2*X(:, 2)] .* ~split;
       
       modelOptions = struct;
-      modelOptions.splitGenerators = {AxisTreeSplitGenerator(1, 1, true)};
-      modelFunc = @(xMean) TreeModel(modelOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
+      modelOptions.splitGenerators = {...
+        AxisTreeSplitGenerator(struct('transformationOptions', struct('pca', true)))...
+        };
+      modelFunc = @() TreeModel(modelOptions);
+      [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % better with pca
       verifyLessThan(testCase, train.err, 20);
@@ -78,8 +81,8 @@ classdef TreeModelTest < matlab.unittest.TestCase
         'predictorFunc', predictorFunc, ...
         'splitEvaluator', splitEvaluator ...
         );
-      modelFunc = @(xMean) TreeModel(modelOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
+      modelFunc = @() TreeModel(modelOptions);
+      [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % no error
       verifyLessThan(testCase, train.err, 1e-4);
@@ -105,8 +108,8 @@ classdef TreeModelTest < matlab.unittest.TestCase
         'predictorFunc', predictorFunc, ...
         'splitEvaluator', splitEvaluator ...
         );
-      modelFunc = @(xMean) TreeModel(modelOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
+      modelFunc = @() TreeModel(modelOptions);
+      [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % no error
       verifyLessThan(testCase, train.err, 1e-4);
@@ -125,7 +128,7 @@ classdef TreeModelTest < matlab.unittest.TestCase
         + [3*X(:, 1).^2 + 2*X(:, 2).^2] .* ~split;
       
       predictorOptions = struct('modelSpec', 'quadratic');
-      predictorFunc = @(xMean) PolynomialModel(predictorOptions, xMean);
+      predictorFunc = @() PolynomialModel(predictorOptions);
       splitEvaluator = PolynomialModelTreeSplitEvaluator(...
         @gainMse, predictorOptions.modelSpec);
       modelOptions = struct(...
@@ -133,7 +136,7 @@ classdef TreeModelTest < matlab.unittest.TestCase
         'splitEvaluator', splitEvaluator ...
         );
       modelFunc = @(xMean) TreeModel(modelOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
+      [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % no error
       verifyLessThan(testCase, train.err, 1e-4);
