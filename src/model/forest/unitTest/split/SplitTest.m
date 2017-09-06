@@ -2,9 +2,10 @@ classdef (Abstract) SplitTest < Test
   
   methods (Access = protected)
     function [X, y] = generate(testCase, f, phi)
-      n = 1000;
+      d = 2;
+      n = 250 * d;
       m = 100;
-      X = testCase.generateInput(n, 2, 0, m);
+      X = testCase.generateInput(n, d, 0, m);
       mu = [m/2 m/2];
       if nargin < 3
         phi = pi/4;
@@ -24,7 +25,8 @@ classdef (Abstract) SplitTest < Test
     
     function [best] = splitTwoLines(testCase, split, splitGain)
       % one line where X1 == X2
-      n = 1000;
+      d = 2;
+      n = 250 * d;
       m = 10;
       X = rand(n, 1) * m;
       half = (1:n)' <= n/2;

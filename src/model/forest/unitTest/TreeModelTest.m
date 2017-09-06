@@ -2,7 +2,9 @@ classdef TreeModelTest < ModelTest
   
   methods (Test)
     function testConstantFunctionConstantPredictor(testCase)
-      rng('default');
+      params = struct;
+      testCase.reset(params);
+      
       % random points
       n = 1000;
       m = 100;
@@ -21,7 +23,9 @@ classdef TreeModelTest < ModelTest
     end
     
     function testLinearFunctionConstantPredictor(testCase)
-      rng('default');
+      params = struct;
+      testCase.reset(params);
+      
       % random points
       n = 1000;
       m = 100;
@@ -41,7 +45,9 @@ classdef TreeModelTest < ModelTest
     end
     
     function testLinearFunctionConstantPredictorPcaSplit(testCase)
-      rng('default');
+      params = struct;
+      testCase.reset(params);
+      
       % random points
       n = 1000;
       m = 100;
@@ -52,8 +58,8 @@ classdef TreeModelTest < ModelTest
         + [5 + 3*X(:, 1) + 2*X(:, 2)] .* ~split;
       
       modelOptions = struct;
-      modelOptions.splitGenerators = {...
-        AxisTreeSplitGenerator(struct('transformationOptions', struct('pca', true)))...
+      modelOptions.splits = {...
+        AxisSplit(struct('transformationOptions', struct('pca', true)))...
         };
       modelFunc = @() TreeModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
@@ -64,7 +70,9 @@ classdef TreeModelTest < ModelTest
     end
     
     function testConstantFunctionLinearPredictor(testCase)
-      rng('default');
+      params = struct;
+      testCase.reset(params);
+      
       % random points
       n = 1000;
       m = 100;
@@ -74,12 +82,12 @@ classdef TreeModelTest < ModelTest
       y = 1 * split;
       
       predictorOptions = struct('modelSpec', 'linear');
-      predictorFunc = @(xMean) PolynomialModel(predictorOptions, xMean);
-      splitEvaluator = PolynomialModelTreeSplitEvaluator(...
-        @gainMse, predictorOptions.modelSpec);
+      predictorFunc = @() PolynomialModel(predictorOptions);
+      splitGainOptions = struct('degree', 'linear');
+      splitGain = SSESplitGain(splitGainOptions);
       modelOptions = struct(...
         'predictorFunc', predictorFunc, ...
-        'splitEvaluator', splitEvaluator ...
+        'splitGain', splitGain ...
         );
       modelFunc = @() TreeModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
@@ -90,7 +98,9 @@ classdef TreeModelTest < ModelTest
     end
     
     function testLinearFunctionLinearPredictor(testCase)
-      rng('default');
+      params = struct;
+      testCase.reset(params);
+      
       % random points
       n = 1000;
       m = 100;
@@ -101,12 +111,12 @@ classdef TreeModelTest < ModelTest
         + [5 + 3*X(:, 1) + 2*X(:, 2)] .* ~split;
       
       predictorOptions = struct('modelSpec', 'linear');
-      predictorFunc = @(xMean) PolynomialModel(predictorOptions, xMean);
-      splitEvaluator = PolynomialModelTreeSplitEvaluator(...
-        @gainMse, predictorOptions.modelSpec);
+      predictorFunc = @() PolynomialModel(predictorOptions);
+      splitGainOptions = struct('degree', 'linear');
+      splitGain = SSESplitGain(splitGainOptions);
       modelOptions = struct(...
         'predictorFunc', predictorFunc, ...
-        'splitEvaluator', splitEvaluator ...
+        'splitGain', splitGain ...
         );
       modelFunc = @() TreeModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
@@ -117,7 +127,9 @@ classdef TreeModelTest < ModelTest
     end
     
     function testQuadraticFunctionQuadraticPredictor(testCase)
-      rng('default');
+      params = struct;
+      testCase.reset(params);
+      
       % random points
       n = 1000;
       m = 100;
@@ -129,13 +141,13 @@ classdef TreeModelTest < ModelTest
       
       predictorOptions = struct('modelSpec', 'quadratic');
       predictorFunc = @() PolynomialModel(predictorOptions);
-      splitEvaluator = PolynomialModelTreeSplitEvaluator(...
-        @gainMse, predictorOptions.modelSpec);
+      splitGainOptions = struct('degree', 'quadratic');
+      splitGain = SSESplitGain(splitGainOptions);
       modelOptions = struct(...
         'predictorFunc', predictorFunc, ...
-        'splitEvaluator', splitEvaluator ...
+        'splitGain', splitGain ...
         );
-      modelFunc = @(xMean) TreeModel(modelOptions, xMean);
+      modelFunc = @() TreeModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
       
       % no error

@@ -51,20 +51,23 @@ classdef TreeModel < WeakModel
       obj.trainModelRecursive(X, y, iNodeRoot, 0);
     end
 
-    function [y, sd2] = modelPredict(obj, X)
+    function [yPred, sd2, ci] = modelPredict(obj, X)
       % predicts the function values in new points X
-      [y, sd2] = obj.modelPredictRecursive(X, 1);
+      [yPred, sd2] = obj.modelPredictRecursive(X, 1);
+      if nargout >= 3
+        ci = varToConfidence(yPred, sd2);
+      end
     end
     
-    function prune(obj, X, y)
+    function obj = prune(obj, X, y)
       obj.pruneRecursive(X, y, 1);
     end
   end
   
   methods (Access = private)
     function trainModelRecursive(obj, X, y, iNode, depth)
-      [N, D] = size(X);
-      if depth < obj.maxDepth && N >= obj.minParentSize && N >= 2 * obj.minLeafSize && length(unique(y)) >= 2
+      n = size(X, 1);
+      if depth < obj.maxDepth && n >= obj.minParentSize && n >= 2 * obj.minLeafSize && length(unique(y)) >= 2
         best = struct('gain', -inf);
         splitGain = obj.splitGain.reset(X, y);
         for iSplit = 1:size(obj.splits, 2)

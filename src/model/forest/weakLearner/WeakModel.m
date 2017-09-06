@@ -1,4 +1,4 @@
-classdef (Abstract) WeakModel
+classdef (Abstract) WeakModel < handle
   
   properties
   end

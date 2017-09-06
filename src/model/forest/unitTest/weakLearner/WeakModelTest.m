@@ -1,4 +1,4 @@
-classdef (Abstract) WeakModelTest < Test
+classdef (Abstract) WeakModelTest < ModelTest
   
   methods (Access = protected)
     function [model, train, test, time] = testModel(testCase, X, y, modelFunc)
@@ -49,9 +49,10 @@ classdef (Abstract) WeakModelTest < Test
     
     function testConstantFunction(testCase, modelFunc)
       % random points
-      n = 1000;
+      d = 2;
+      n = 250 * d;
       m = 100;
-      X = rand(n, 2) * m;
+      X = rand(n, d) * m;
       % two constant functions
       split = X(:, 1) <= m/2;
       y = 1 * split;
@@ -61,9 +62,10 @@ classdef (Abstract) WeakModelTest < Test
     
     function testLinearFunction(testCase, modelFunc)
       % random points
-      n = 1000;
+      d = 2;
+      n = 250 * d;
       m = 100;
-      X = rand(n, 2) * m;
+      X = rand(n, d) * m;;
       % linear function
       y = 5 + 2*X(:, 1) + 3*X(:, 2);
       
@@ -72,9 +74,10 @@ classdef (Abstract) WeakModelTest < Test
     
     function testQuadraticFunction(testCase, modelFunc)
       % random points
-      n = 1000;
+      d = 2;
+      n = 250 * d;
       m = 100;
-      X = rand(n, 2) * m;
+      X = rand(n, d) * m;
       % quadratic function
       y = 2*X(:, 1).^2 + 3*X(:, 2).^2;
       
@@ -83,9 +86,10 @@ classdef (Abstract) WeakModelTest < Test
     
     function testDependentFeatures(testCase, modelFunc)
       % random points
-      n = 1000;
+      d = 2;
+      n = 250 * d;
       m = 100;
-      X = [ones(n, 1), rand(n, 1) * m];
+      X = [ones(n, d-1), rand(n, 1) * m];
       % linear function
       y = 5 + 2*X(:, 1) + 3*X(:, 2);
 
@@ -94,9 +98,10 @@ classdef (Abstract) WeakModelTest < Test
     
     function testFewPoints(testCase, modelFunc)
       % random points
-      n = 2;
+      d = 2;
+      n = 1 * d;
       m = 100;
-      X = rand(n, 2) * m;
+      X = rand(n, d) * m;
       % linear function
       y = 5 + 2*X(:, 1) + 3*X(:, 2);
 

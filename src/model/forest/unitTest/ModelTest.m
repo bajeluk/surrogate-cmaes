@@ -46,6 +46,19 @@ classdef (Abstract) ModelTest < Test
         title(description);
       end
     end
+    
+    function [model, train, test, time] = testCoco(testCase, modelFunc, fNum, m)
+      if nargin < 4
+        m = 5;
+      end
+      % random points
+      d = 2;
+      n = 250 * d;
+      X = testCase.generateInput(n, d, -m, m);
+      y = benchmarks(X', fNum)';
+      
+      [model, train, test, time] = testCase.testModel(X, y, modelFunc);
+    end
   end
 end
 

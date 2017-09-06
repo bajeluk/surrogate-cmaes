@@ -78,7 +78,7 @@ classdef (Abstract) Test < matlab.unittest.TestCase
         end
         if d == 1
           scatter(Xs(:, 1), ys);
-        else
+        elseif d == 2
           scatter3(Xs(:, 1), Xs(:, 2), ys);
         end
         hold on;
@@ -89,11 +89,11 @@ classdef (Abstract) Test < matlab.unittest.TestCase
     function [X, minVal, maxVal] = ...
         generateInput(n, d, minVal, maxVal)
       % random points
-      if nargin < 1
-        n = 1000; % number of points
-      end
       if nargin < 2
         d = 1; % dimension
+      end
+      if nargin < 1
+        n = 250 * d; % number of points
       end
       if nargin < 3
         minVal = -100; % range [minVal, maxVal]
