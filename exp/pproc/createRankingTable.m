@@ -1,9 +1,9 @@
-function [rankTable, ranks] = createRankingTable(data, varargin)
-% [table, ranks] = createRankingTable(data, settings)
+function [rankTable, ranks, values] = createRankingTable(data, varargin)
+% [table, ranks, values] = createRankingTable(data, settings)
 % Creates table containing rankings for different evaluations.
 %
 % Input:
-%   data      - cell array of data
+%   data     - cell array of data
 %   settings - pairs of property (string) and value or struct with 
 %              properties as fields:
 %
@@ -22,8 +22,9 @@ function [rankTable, ranks] = createRankingTable(data, varargin)
 %     'TableFuns'   - functions chosen to count
 %
 % Output:
-%   table - table of rankings
-%   ranks - rankings for each function and dimension
+%   table  - table of rankings
+%   ranks  - rankings for each function and dimension
+%   values - values of data in demanded evaluations
 %
 % Ranking Example:
 %    values  =    [ 1    5    8   13    1    8    1   21 ]
@@ -50,7 +51,18 @@ function [rankTable, ranks] = createRankingTable(data, varargin)
   funcSet.BBfunc = defopts(settings, 'DataFuns', 1:size(data{1}, 1));
   dims    = defopts(settings, 'TableDims', funcSet.dims);
   BBfunc  = defopts(settings, 'TableFuns', funcSet.BBfunc);
-  evaluations = defopts(settings, 'Evaluations', [20 40 80]);
+  tableMode = defopts(settings, 'Mode', 'evaluations');
+  if strcmp(tableMode, 'evaluations')
+    evaluations = defopts(settings, 'Evaluations', [20 40 80]);
+    if any(evaluations < 1)
+      warning(['In table mode ''evaluations'' all evaluation values has to be >= 1.',...
+               'Dividing by maximal element (%d)'], max(evaluations))
+      evaluations = evaluations/max(evaluations);
+    end
+  else
+    evaluations = defopts(settings, 'Evaluations', [1/3 1]);
+  end
+  targetValue = defopts(settings, 'Target', 1e-8);
   tableRank = defopts(settings, 'Rank', 1);
   chosenRank = chooseRanking(defopts(settings, 'Ranking', 'tolerant'));
   statistic = defopts(settings, 'Statistic', @median);
@@ -89,17 +101,36 @@ function [rankTable, ranks] = createRankingTable(data, varargin)
   nDims = length(dimIds);
   nEvals = length(evaluations);
   ranks = cell(nFunc, nDims);
+  
+  % return ranks in specific evaluations
   for f = 1:nFunc
     for d = 1:nDims
       % init
       ranks{f,d} = zeros(nEvals, numOfData);
+      values{f,d} = NaN(nEvals, numOfData);
+      % find not empty data
       notEmptyData = inverseIndex(arrayfun(@(x) ~isempty(data_stats{x}{f,d}), 1:numOfData));
+      actualData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}, notEmptyData, 'UniformOutput', false));
+      % return ranks in specific evaluations
+      if strcmp(tableMode, 'evaluations')
+        if all(evaluations <= 1)
+          actualEvals = ceil(evaluations*size(actualData, 1));
+        else
+          actualEvals = evaluations;
+        end
+      % return ranks when reaching specified target
+      else
+        % number of evaluations needed by the best data to reach the
+        % optimum
+        minEval = min([size(actualData, 1), size(actualData, 1) - sum(actualData < targetValue) + 1]);
+        actualEvals = ceil(evaluations*minEval);
+      end
+
       for e = 1:nEvals
-        thisData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}(evaluations(e)), notEmptyData, 'UniformOutput', false));
-        thisData = max(thisData, 1e-8 * ones(size(thisData)));
-%         [~, ~, I] = unique(thisData);
-%         ranks{f,d}(e, notEmptyData) = I';
+        thisData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}(actualEvals(e)), notEmptyData, 'UniformOutput', false));
+        thisData = max(thisData, targetValue * ones(size(thisData)));
         ranks{f,d}(e, notEmptyData) = chosenRank(thisData);
+        values{f,d}(e, notEmptyData) = thisData;
       end
     end
   end

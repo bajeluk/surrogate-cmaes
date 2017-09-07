@@ -95,15 +95,7 @@ saacmesCol   = getAlgColors('saacmes');
 dtsCol       = getAlgColors('dtscmaes');
 lmmCol       = getAlgColors('lmmcmaes');
 
-if (~exist(tmpFName, 'file'))
-  save(tmpFName);
-end
-
-end
-
-%% Algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES  
-% Scaled function values of f1-f24 in dimension 5.
-
+% aggregate data & settings
 data = {cmaes_data, ...
         maes_data, ...
         lmmcmaes_data, ...
@@ -112,9 +104,18 @@ data = {cmaes_data, ...
         scmaes_rf_data, ...
         dtscmaes_data};
 
-datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', 'BIPOP-{}^{s*}ACMES-k', 'S-CMA-ES GP', 'S-CMA-ES RF', 'DTS-CMA-ES'};
+datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', '{}^{s*}ACMES-k', 'S-CMA-ES GP', 'S-CMA-ES RF', 'DTS-CMA-ES'};
 
 colors = [cmaesCol; maesCol; lmmCol; saacmesCol; scmaes_gpCol; scmaes_rfCol; dtsCol]/255;
+
+if (~exist(tmpFName, 'file'))
+  save(tmpFName);
+end
+
+end
+
+%% Algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES  
+% Scaled function values of f1-f24 in dimension 5.
 
 plotFuns = 1:24;
 plotDims = 5;
@@ -145,18 +146,6 @@ print2pdf(han, pdfNames, 1)
 %% Algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES  
 % Scaled function values of f1-f24 in dimension 20.
 
-data = {cmaes_data, ...
-        maes_data, ...
-        lmmcmaes_data, ...
-        saacmes_data, ...
-        scmaes_gp_data, ...
-        scmaes_rf_data, ...
-        dtscmaes_data};
-
-datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', 'BIPOP-{}^{s*}ACMES-k', 'S-CMA-ES GP', 'S-CMA-ES RF', 'DTS-CMA-ES'};
-
-colors = [cmaesCol; maesCol; lmmCol; saacmesCol; scmaes_gpCol; scmaes_rfCol; dtsCol]/255;
-
 plotFuns = 1:24;
 plotDims = 20;
 
@@ -186,18 +175,6 @@ print2pdf(han, pdfNames, 1)
 %% Aggregated algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES  
 % Aggregated  scaled function values in dimensions 5 and 20.
 
-data = {cmaes_data, ...
-        maes_data, ...
-        lmmcmaes_data, ...
-        saacmes_data, ...
-        scmaes_gp_data, ...
-        scmaes_rf_data, ...
-        dtscmaes_data};
-
-datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', 'BIPOP-{}^{s*}ACMES-k', 'S-CMA-ES GP', 'S-CMA-ES RF', 'DTS-CMA-ES'};
-
-colors = [cmaesCol; maesCol; lmmCol; saacmesCol; scmaes_gpCol; scmaes_rfCol; dtsCol]/255;
-
 plotFuns = 1:24;
 plotDims = [5, 20];
 
@@ -221,6 +198,30 @@ han = relativeFValuesPlot(data, ...
                               
                             
 print2pdf(han, pdfNames, 1)
-                         
+
+%% Multiple comparison of algorithms with a statistical posthoc test.
+
+close all
+
+tableFunc = funcSet.BBfunc;
+tableDims = [5, 20];
+
+resultDuelTable = fullfile(tableFolder, 'duelTable.tex');
+resultStatsTable = fullfile(tableFolder, 'statsTable.tex');
+
+datanames = {'CMA-ES', 'MA-ES', 'lmm-CMA-ES', '\\saACMES-k', 'S-CMA-ES GP', 'S-CMA-ES RF', 'DTS-CMA-ES'};
+
+[table, ranks] = duelTable(data, 'DataNames', datanames, ...
+                            'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
+                            'TableFuns', tableFunc, 'TableDims', tableDims, ...
+                            'Evaluations', [1/3 1], ...
+                            'ResultFile', resultDuelTable);
+
+[stats, meanRanks] = multCompStatsTable(data, 'DataNames', datanames, ...
+                       'DataFuns', funcSet.BBfunc, 'DataDims', funcSet.dims, ...
+                       'TableFuns', tableFunc, 'TableDims', tableDims, ...
+                       'Evaluations', [1/3 1], ...
+                       'ResultFile', resultStatsTable);
+
 %% final clearing
 close all

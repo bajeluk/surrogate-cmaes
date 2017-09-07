@@ -16,7 +16,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   exppath = [exppath_short filesep exp_id];
   load([exppath filesep 'scmaes_params.mat']);
   [bbParams, surrogateParams, cmaesParams, nNonBbobValues] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
-  
+
   % BBOB parameters
   minfunevals = 'dim + 2';      % PUT MINIMAL SENSIBLE NUMBER OF EVALUATIONS for a restart
   bbobpath = 'vendor/bbob';     % should point to fgeneric.m etc.
@@ -209,7 +209,7 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
   for iinstance = exp_settings.instances((nCompletedInstances+1):end)   % 15 function instances
     fmin = Inf;
 
-    fgeneric('initialize', exp_settings.bbob_function, iinstance, datapath, opt); 
+    fgeneric('initialize', exp_settings.bbob_function, iinstance, datapath, opt);
     yeRestarts = [];
     cmaes_out{end+1}  = {};
     t = tic;
