@@ -3,15 +3,13 @@ classdef ResidualObliqueSplit < Split
 % two classes based on which side of the line they lie
 
   properties %(Access = protected)
-    discrimType % degree for discriminant analysis ('linear', 'quadratic')
-    degree % degree for fitted polynomial
+    modelSpec % degree for fitted polynomial
   end
     
   methods
     function obj = ResidualObliqueSplit(options)
       obj = obj@Split(options);
-      obj.degree = defopts(options, 'degree', 'linear');
-      obj.discrimType = defopts(options, 'discrimType', 'linear');
+      obj.modelSpec = defopts(options, 'degree', 'constant');
     end
     
     function best = get(obj, splitGain)
@@ -21,24 +19,38 @@ classdef ResidualObliqueSplit < Split
         return
       end
       trans = obj.transformation;
-      [n, d] = size(obj.X);
       candidate = obj.splitCandidate;
       % linear regression
-      X1 = generateFeatures(obj.X, obj.degree, true);
-      w = X1 / obj.y;
-      % create classes from residuals
-      c = X1 * w < obj.y;
-      try
-        model = fitcdiscr(obj.X, c, 'DiscrimType', obj.discrimType);
-      catch
-        % singular covariance matrix
-        pseudoDiscrimType = strcat('pseudo', obj.discrimType);
-        model = fitcdiscr(obj.X, c, 'DiscrimType', pseudoDiscrimType);
+      model = PolynomialModel(struct('modelSpec', obj.modelSpec));
+      model = model.trainModel(obj.X, obj.y);
+      c = model.modelPredict(obj.X) < obj.y;
+      
+      switch obj.modelSpec
+        case 'constant'
+          discrimTypes = {'linear', 'quadratic'};
+        case 'linear'
+          discrimTypes = {'linear', 'quadratic'};
+        case 'quadratic'
+          discrimTypes = {'quadratic'};
+        otherwise
+          discrimTypes = {};
       end
-      candidate.splitter = @(X)...
-        model.predict(transformApply(X, trans)) == 1;
-      candidate.gain = splitGain.get(splitter);
-      best = candidate;
+      for i = 1:numel(discrimTypes)
+        discrimType = discrimTypes{i};
+        try
+          model = fitcdiscr(obj.X, c, 'DiscrimType', discrimType);
+        catch
+          % singular covariance matrix
+          pseudoDiscrimType = strcat('pseudo', discrimType);
+          model = fitcdiscr(obj.X, c, 'DiscrimType', pseudoDiscrimType);
+        end
+        candidate.splitter = @(X)...
+          model.predict(transformApply(X, trans)) == 1;
+        candidate.gain = splitGain.get(candidate.splitter);
+        if candidate.gain > best.gain
+          best = candidate;
+        end
+      end
     end
   end
 end

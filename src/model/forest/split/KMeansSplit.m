@@ -9,7 +9,7 @@ classdef KMeansSplit < RandomSplit
   methods
     function obj = KMeansSplit(options)
       obj = obj@RandomSplit(options);
-      obj.discrimType = defopts(options, 'discrimType', 'linear');
+      obj.discrimType = defopts(options, 'discrimType', {'linear', 'quadratic'});
       obj.includeInput = defopts(options, 'includeInput', true);
       obj.metric = defopts(options, 'metric', 'sqeuclidean');
     end
@@ -38,19 +38,28 @@ classdef KMeansSplit < RandomSplit
           Z = Zy;
         end
         c = kmeans(Z, 2, 'Distance', obj.metric);
+        
         % discriminant analysis of two clusters
-        try
-          model = fitcdiscr(obj.X, c, 'DiscrimType', obj.discrimType);
-        catch
-          % singular covariance matrix
-          pseudoDiscrimType = strcat('pseudo', obj.discrimType);
-          model = fitcdiscr(obj.X, c, 'DiscrimType', pseudoDiscrimType);
+        if iscell(obj.discrimType)
+          discrimTypes = obj.discrimType;
+        else
+          discrimTypes = {obj.discrimType};
         end
-        candidate.splitter = @(X)...
-          model.predict(transformApply(X, trans)) == 1;
-        candidate.gain = splitGain.get(candidate.splitter);
-        if candidate.gain > best.gain
-          best = candidate;
+        for i = 1:numel(discrimTypes)
+          discrimType = discrimTypes{i};
+          try
+            model = fitcdiscr(obj.X, c, 'DiscrimType', discrimType);
+          catch
+            % singular covariance matrix
+            pseudoDiscrimType = strcat('pseudo', discrimType);
+            model = fitcdiscr(obj.X, c, 'DiscrimType', pseudoDiscrimType);
+          end
+          candidate.splitter = @(X)...
+            model.predict(transformApply(X, trans)) == 1;
+          candidate.gain = splitGain.get(candidate.splitter);
+          if candidate.gain > best.gain
+            best = candidate;
+          end
         end
       end
     end

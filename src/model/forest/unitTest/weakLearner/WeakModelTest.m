@@ -19,8 +19,8 @@ classdef (Abstract) WeakModelTest < ModelTest
         model.modelPredict(train.XN);
       [test.yPred, test.sd2, test.ci] = ...
         model.modelPredict(test.XN);
-      train.err = immse(train.y, train.yPred);
-      test.err = immse(test.y, test.yPred);
+      train.err = sqrt(immse(train.y, train.yPred));
+      test.err = sqrt(immse(test.y, test.yPred));
       
       if testCase.drawEnabled
         if size(X, 2) == 1
@@ -41,7 +41,7 @@ classdef (Abstract) WeakModelTest < ModelTest
         else
           legend('y', 'y_{pred}^{train}', 'y_{pred}^{test}');
         end
-        description = sprintf('train MSE: %.3f\n test MSE: %.3f', ...
+        description = sprintf('train RMSE: %.3f\n test RMSE: %.3f', ...
           train.err, test.err);
         title(description);
       end

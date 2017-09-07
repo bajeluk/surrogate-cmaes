@@ -1,5 +1,34 @@
 classdef (Abstract) ModelTest < Test
   
+  properties (Constant, Access = private)
+    resultsTemplate = struct(... % template for results
+        'name', '', ...
+        'trainRMSE', 0, ...
+        'testRMSE', 0);
+  end
+  
+  properties (Access = protected)
+    results = [];
+  end
+  
+  methods (TestMethodTeardown)
+    function saveResults(testCase)   
+      path = 'results';
+      [~,~,~] = mkdir(path);
+      filename = sprintf('%s/%s.mat', ...
+        path, ...
+        testCase.name{1});
+      resultsNew = struct2table(testCase.results);
+      try
+        load(filename);
+        results = [results; resultsNew];
+      catch
+        results = resultsNew;
+      end
+      save(filename, 'results');
+    end
+  end
+  
   methods (Access = protected)
     function [model, train, test, time] = testModel(testCase, X, y, modelFunc)
       n = size(X, 1);
@@ -19,8 +48,20 @@ classdef (Abstract) ModelTest < Test
         model.modelPredict(train.XN);
       [test.yPred, test.sd2, test.ci] = ...
         model.modelPredict(test.XN);
-      train.err = immse(train.y, train.yPred);
-      test.err = immse(test.y, test.yPred);
+      train.err = sqrt(immse(train.y, train.yPred));
+      test.err = sqrt(immse(test.y, test.yPred));
+      
+      result = struct;
+      result.name = sprintf('%s(%s)', ...
+          testCase.name{2}, ...
+          testCase.joinedParams);
+      result.trainRMSE = train.err;
+      result.testRMSE = test.err;
+      if isempty(testCase.results)
+        testCase.results = [result];
+      else
+        testCase.results(end+1) = result;
+      end
       
       if testCase.drawEnabled
         if size(X, 2) == 1
@@ -41,7 +82,7 @@ classdef (Abstract) ModelTest < Test
         else
           legend('y', 'y_{pred}^{train}', 'y_{pred}^{test}');
         end
-        description = sprintf('train MSE: %.3f\n test MSE: %.3f', ...
+        description = sprintf('train RMSE: %.3f\n test RMSE: %.3f', ...
           train.err, test.err);
         title(description);
       end

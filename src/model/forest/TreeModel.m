@@ -29,7 +29,7 @@ classdef TreeModel < WeakModel
     function obj = TreeModel(modelOptions)
       % constructor
       obj = obj@WeakModel(modelOptions);
-      obj.minGain = defopts(modelOptions, 'minGain', 1e-3);
+      obj.minGain = defopts(modelOptions, 'minGain', 1e-2);
       obj.minLeafSize = defopts(modelOptions, 'minLeafSize', 5);
       obj.minParentSize = defopts(modelOptions, 'minParentSize', 10);
       obj.maxDepth = defopts(modelOptions, 'maxDepth', inf);
