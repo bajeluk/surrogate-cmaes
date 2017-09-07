@@ -1,5 +1,9 @@
 classdef TreeModelTest < ModelTest
   
+  properties (TestParameter)
+    testMethod = {1, 2, 6, 8, 13, 14, 15, 17, 20, 21};
+  end
+  
   methods (Test)
     function testConstantFunctionConstantPredictor(testCase)
       params = struct;
@@ -16,10 +20,6 @@ classdef TreeModelTest < ModelTest
       modelOptions = struct;
       modelFunc = @() TreeModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
-      
-      % no error
-      verifyLessThan(testCase, train.err, 1e-4);
-      verifyLessThan(testCase, test.err, 1e-4);
     end
     
     function testLinearFunctionConstantPredictor(testCase)
@@ -38,10 +38,6 @@ classdef TreeModelTest < ModelTest
       modelOptions = struct;
       modelFunc = @() TreeModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
-      
-      % small error
-      verifyLessThan(testCase, train.err, 50);
-      verifyLessThan(testCase, test.err, 160);
     end
     
     function testLinearFunctionConstantPredictorPcaSplit(testCase)
@@ -63,10 +59,6 @@ classdef TreeModelTest < ModelTest
         };
       modelFunc = @() TreeModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
-      
-      % better with pca
-      verifyLessThan(testCase, train.err, 20);
-      verifyLessThan(testCase, test.err, 50);
     end
     
     function testConstantFunctionLinearPredictor(testCase)
@@ -91,10 +83,6 @@ classdef TreeModelTest < ModelTest
         );
       modelFunc = @() TreeModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
-      
-      % no error
-      verifyLessThan(testCase, train.err, 1e-4);
-      verifyLessThan(testCase, test.err, 1e-4);
     end
     
     function testLinearFunctionLinearPredictor(testCase)
@@ -120,10 +108,6 @@ classdef TreeModelTest < ModelTest
         );
       modelFunc = @() TreeModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
-      
-      % no error
-      verifyLessThan(testCase, train.err, 1e-4);
-      verifyLessThan(testCase, test.err, 1e-4);
     end
     
     function testQuadraticFunctionQuadraticPredictor(testCase)
@@ -149,10 +133,6 @@ classdef TreeModelTest < ModelTest
         );
       modelFunc = @() TreeModel(modelOptions);
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
-      
-      % no error
-      verifyLessThan(testCase, train.err, 1e-4);
-      verifyLessThan(testCase, test.err, 1e-4);
     end
   end
 end

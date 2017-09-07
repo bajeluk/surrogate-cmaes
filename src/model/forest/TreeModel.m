@@ -21,7 +21,8 @@ classdef TreeModel < WeakModel
     splitGain % evaluator for split functions
     predictorFunc % function which creates a model in leaf
     pruning % grows a full tree then prunes, otherwise prunes during splitting
-    lossFunc
+    lossFunc % loss function used for pruning
+    probabilistic % use fuzzy splits
   end
   
   methods
