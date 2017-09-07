@@ -46,12 +46,14 @@ function [stats, meanRanks] = multCompStatsTable(data, varargin)
   resultFile = defopts(settings, 'ResultFile', fullfile(defResultFolder, 'duelTable.tex'));
   fileID = strfind(resultFile, filesep);
   resultFolder = resultFile(1 : fileID(end) - 1);
+  printHeader = defopts(settings, 'PrintHeader', true);
   
   nDim = length(dims);
   nEvals = length(evaluations);
 
   meanRanks = cell(nDim, nEvals);
   stats = cell(nDim, nEvals);
+  pvals = cell(nDim, nEvals);
 
   % create tables with values at different budgets of evaluations
   extraFields = {'DataNames', 'ResultFile'};
@@ -63,10 +65,11 @@ function [stats, meanRanks] = multCompStatsTable(data, varargin)
   for d = 1:nDim
     for e = 1:nEvals
       fValData = cell2mat(arrayfun(@(x) values{x, d}(e, :), BBfunc, 'UniformOutput', false)');
-      [~, mr] = postHocTest(fValData, 'friedman');
+      [~, mr] = postHocTest(fValData, 'friedman', 'shaffer');
       [p, stat] = multipleComparisonTest(fValData, 'iman');
       meanRanks{d, e} = mr;
       stats{d, e} = stat;
+      pvals{d, e} = p;
     end
   end
 
@@ -78,8 +81,8 @@ function [stats, meanRanks] = multCompStatsTable(data, varargin)
         mkdir(resultFolder);
       end
       FID = fopen(resultFile, 'w');
-      printTableTex(FID, stats, '$F_F$', meanRanks, dims, evaluations, ...
-        datanames);
+      printTableTex(FID, stats, pvals, '$F_F$', meanRanks, dims, evaluations, ...
+        datanames, printHeader);
       fclose(FID);
 
       fprintf('Table written to %s\n', resultFile);
@@ -88,8 +91,8 @@ function [stats, meanRanks] = multCompStatsTable(data, varargin)
   end
 end
 
-function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ...
-  datanames)
+function printTableTex(FID, stats, pvals, statsSymbol, meanRanks, dims, evaluations, ...
+  datanames, printHeader)
 
   numOfData = length(datanames);
   nDims = length(dims);
@@ -106,12 +109,15 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
     if length(s) == 1
       evaluationsString{e} = s{1};
     else
-      evaluationsString{e} = sprintf('{\\\\LARGE\\\\sfrac{%s}{%s}}', s{1}, s{2});
+      evaluationsString{e} = sprintf('{\\\\large\\\\sfrac{%s}{%s}}', s{1}, s{2});
     end
   end
 
-  fprintf(FID, '\\begin{table}[t]\n');
-  fprintf(FID, '\\centering\n');
+  if printHeader
+    fprintf(FID, '\\begin{table}[t]\n');
+    fprintf(FID, '\\centering\n');
+  end
+
   fprintf(FID, '\\begin{tabular}{ l%s }\n', repmat('r', 1, nDims * nEvals));
   fprintf(FID, '\\toprule\n');
 
@@ -174,16 +180,26 @@ function printTableTex(FID, stats, statsSymbol, meanRanks, dims, evaluations, ..
     end
   end
 
+  % and with the p-values
+  fprintf(FID, '\\\\\np-val');
+  for d = 1:nDims
+    for e = 1:nEvals
+      fprintf(FID, ' & $%.2e$', pvals{d, e});
+    end
+  end
+
   fprintf(FID, '\\\\\n');
   fprintf(FID, '\\bottomrule\n');
   fprintf(FID, '\\end{tabular}\n');
   
-  % caption
-  fprintf(FID, ['\\caption{Mean rank of each algorithm over the BBOB ', ...
-                'and the Iman-Davenport statistic ', ...
-                'for the %d considered combinations of ', ...
-                'dimensionalities and evaluation budgets.}\n'], nEvals * nDims);
-  fprintf(FID, '\\label{tab:stat}\n');
-  fprintf(FID, '\\end{table}\n');
+  if printHeader
+    % caption
+    fprintf(FID, ['\\caption{Mean rank of each algorithm over the BBOB ', ...
+      'and the Iman-Davenport statistic ', ...
+      'for the %d considered combinations of ', ...
+      'dimensionalities and evaluation budgets.}\n'], nEvals * nDims);
+    fprintf(FID, '\\label{tab:stat}\n');
+    fprintf(FID, '\\end{table}\n');
+  end
 end
 
