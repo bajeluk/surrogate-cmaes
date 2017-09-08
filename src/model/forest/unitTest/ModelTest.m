@@ -3,6 +3,7 @@ classdef (Abstract) ModelTest < Test
   properties (Constant, Access = private)
     resultsTemplate = struct(... % template for results
         'name', '', ...
+        'params', struct, ...
         'trainRMSE', 0, ...
         'testRMSE', 0);
   end
@@ -18,13 +19,13 @@ classdef (Abstract) ModelTest < Test
       filename = sprintf('%s/%s.mat', ...
         path, ...
         testCase.name{1});
-      resultsNew = struct2table(testCase.results);
       try
         load(filename);
-        results = [results; resultsNew];
+        results = [results; testCase.results];
       catch
-        results = resultsNew;
+        results = testCase.results;
       end
+      numel(results)
       save(filename, 'results');
     end
   end
@@ -55,6 +56,7 @@ classdef (Abstract) ModelTest < Test
       result.name = sprintf('%s(%s)', ...
           testCase.name{2}, ...
           testCase.joinedParams);
+      result.params = testCase.params;
       result.trainRMSE = train.err;
       result.testRMSE = test.err;
       if isempty(testCase.results)
