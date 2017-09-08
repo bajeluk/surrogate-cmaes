@@ -30,3 +30,4 @@ https://stats.stackexchange.com/questions/152558/what-is-the-interpretation-of-t
 
 Soft split for probabilistic regression tree
 https://books.google.cz/books?id=65-oCgAAQBAJ&lpg=PA21&ots=yi8e1mT_0u&dq=split%20distance%20to%20probability&hl=cs&pg=PA21#v=onepage&q=split%20distance%20to%20probability&f=false
+
