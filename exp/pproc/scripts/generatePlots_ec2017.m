@@ -29,9 +29,8 @@ tableFolder = fullfile(articleFolder, 'data');
 exppath = fullfile('exp', 'experiments');
 
 scmaes_path = fullfile(exppath, 'S-CMA-ES_GP5');
-% TODO: change to exp_doubleEC_26_1model
-dts005_path = fullfile(exppath, 'exp_doubleEC_26');
-% TODO: change to exp_doubleEC_26_1model_adapt04
+dts005_multimodel_path = fullfile(exppath, 'exp_doubleEC_26');
+dts005_1model_path = fullfile(exppath, 'exp_doubleEC_26_1model');
 dts4crit_path = fullfile(exppath, 'exp_doubleEC_26_4crit');
 dts_adapt_path = fullfile(exppath, 'exp_doubleEC_26_1model_adapt04');
 maes_path = fullfile(exppath, 'MAES-MMP');
@@ -49,7 +48,8 @@ fmincon_pure_path = fullfile(exppath, 'fmincon');
 
 % load data
 dataFolders = {scmaes_path; ...
-               dts005_path; ...
+               dts005_multimodel_path; ...
+               dts005_1model_path; ... % let it the 3rd dataset (see below)
                dts4crit_path; ...
                dts_adapt_path; ...
                maes_path; ...
@@ -91,6 +91,20 @@ findSet.modelOpts.predictionType = 'expectedRank';
 dts_criterde_Id = getStructIndex(settings, findSet);
 
 clear findSet
+findSet.evoControl = 'doubletrained';
+findSet.modelOpts.predictionType = 'poi';
+findSet.modelOpts.parameterSets_dimensions = [2 3 5 10 20];
+dts005_multimodel_Id = getStructIndex(settings, findSet);
+
+% % if the DTS/1model data should be loaded from the BBOB results
+% clear findSet
+% findSet.algName = 'DTS-CMA-ES_005-2pop_v26_1model';
+% dts005_1model_Id = getStructIndex(settings, findSet);
+
+% otherwise, DTS/1model should be the third dataset
+dts005_1model_Id = 3;
+
+clear findSet
 findSet.algName = 'MAES-MMP';
 maes_Id = getStructIndex(settings, findSet);
 findSet.algName = 'GPOP';
@@ -116,15 +130,20 @@ fmincon_Id = getStructIndex(settings, findSet);
 findSet.algName = 'fmincon';
 fmincon_pure_Id = getStructIndex(settings, findSet);
 
-all_Ids = [scmaes_gp_Id, dts_adapt_Id, ...
+all_Ids = [scmaes_gp_Id, dts005_multimodel_Id, dts_adapt_Id, ...
     dts_critfvalues_Id, dts_critsd2_Id, dts_critei_Id, dts_criterde_Id, ...
     maes_Id, gpop_Id, sapeo_Id, cmaes_Id, ...
     cmaes2pop_Id, saacmes_Id, lmm_Id, bobyqa_Id, smac_Id, fmincon_Id, fmincon_pure_Id];
-dts005_Id = setdiff(1:length(settings), all_Ids);
+
+if (dts005_1model_Id ~= setdiff(1:length(settings), all_Ids))
+  error('The datasets for DTS 1model seems wrongly indexed!');
+  dts005_1model_Id = setdiff(1:length(settings), all_Ids);
+end
 
 % extract data
 scmaes_gp_data = evals(:, :, scmaes_gp_Id);
-dts005_data    = evals(:, :, dts005_Id);
+dts005_data    = evals(:, :, dts005_1model_Id);
+dts005_multimodel_data    = evals(:, :, dts005_multimodel_Id);
 dts_critfvalues_data = evals(:,:,dts_critfvalues_Id);
 dts_critsd2_data  = evals(:,:,dts_critsd2_Id);
 dts_critei_data   = evals(:,:,dts_critei_Id);
@@ -201,7 +220,7 @@ data = {...
         dts_critfvalues_data, ...
         dts_critsd2_data, ...
         dts_critei_data, ...
-        dts005_data, ...
+        dts005_multimodel_data, ...
         dts_criterde_data ...
         % dts_adapt_data ...
         };
@@ -393,7 +412,7 @@ fminconCol   = getAlgColors(23); % 23=middle yellow
 fmincon_pureCol = [  0, 127,   0]; % dark forrest green (#007f00)
 %}
 
-%% Algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES
+%% Algorithm comparison: CMA-ES, MA-ES, lmm-CMA, saACMES, S-CMA-ES, DTS-CMA-ES
 % Scaled function values of f1-f24 in dimensions 5, 10 and 20.
 
 for plotDims = [5, 10, 20]
@@ -466,7 +485,7 @@ for plotDims = [5, 10, 20]
   print2pdf(han, pdfNames, 1)
 end
 
-%% Aggregated algorithm comparison: CMA-ES, MA-ES, lmm-CMA-ES, saACMES, S-CMA-ES, DTS-CMA-ES
+%% Aggregated algorithm comparison: CMA-ES, MA-ES, lmm-CMA, saACMES, S-CMA-ES, DTS-CMA-ES
 % Aggregated  scaled function values in dimensions 5, 10 and 20.
 
 plotDims = [2, 5, 10, 20];
