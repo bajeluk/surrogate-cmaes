@@ -13,8 +13,8 @@ classdef KMeansSplitTest < SplitTest
         discrimType, includeInput, pca)
       params = struct;
       params.discrimType = discrimType;
-      params.includeInput = int2str(includeInput);
-      params.pca = int2str(pca);
+      params.includeInput = includeInput;
+      params.pca = pca;
       testCase.reset(params);
       
       splitOptions = struct;
@@ -32,7 +32,7 @@ classdef KMeansSplitTest < SplitTest
         discrimType, includeInput)
       params = struct;
       params.discrimType = discrimType;
-      params.includeInput = int2str(includeInput);
+      params.includeInput = includeInput;
       testCase.reset(params, testMethod);
       
       splitOptions = struct;

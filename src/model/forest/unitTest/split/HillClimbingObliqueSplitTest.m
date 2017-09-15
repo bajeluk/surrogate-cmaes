@@ -11,8 +11,8 @@ classdef HillClimbingObliqueSplitTest < SplitTest
     function testTwoLines(testCase, ...
         nQuantize, pca)
       params = struct;
-      params.nQuantize = int2str(nQuantize);
-      params.pca = int2str(pca);
+      params.nQuantize = nQuantize;
+      params.pca = pca;
       testCase.reset(params);
       
       splitOptions = struct;
@@ -28,7 +28,7 @@ classdef HillClimbingObliqueSplitTest < SplitTest
     function test(testCase, testMethod, ...
         nQuantize)
       params = struct;
-      params.nQuantize = int2str(nQuantize);
+      params.nQuantize = nQuantize;
       testCase.reset(params, testMethod);
       
       splitOptions = struct;
@@ -44,7 +44,7 @@ classdef HillClimbingObliqueSplitTest < SplitTest
     function testQuadraticFeatures(testCase, testMethod, ...
         nQuantize)
       params = struct;
-      params.nQuantize = int2str(nQuantize);
+      params.nQuantize = nQuantize;
       testCase.reset(params, testMethod);
       
       splitOptions = struct;

@@ -22,7 +22,7 @@ classdef TreeModel < WeakModel
     predictorFunc % function which creates a model in leaf
     pruning % grows a full tree then prunes, otherwise prunes during splitting
     lossFunc % loss function used for pruning
-    probabilistic % use fuzzy splits
+    fuzziness % use fuzzy splits
   end
   
   methods
@@ -41,6 +41,7 @@ classdef TreeModel < WeakModel
         {AxisSplit(struct)});
       obj.splitGain = defopts(modelOptions, 'splitGain', ...
         SSESplitGain(struct));
+      obj.fuzziness = defopts(modelOptions, 'fuzziness', 0);
     end
 
     function obj = trainModel(obj, X, y)
@@ -54,7 +55,11 @@ classdef TreeModel < WeakModel
 
     function [yPred, sd2, ci] = modelPredict(obj, X)
       % predicts the function values in new points X
-      [yPred, sd2] = obj.modelPredictRecursive(X, 1);
+      if obj.fuzziness == 0
+        [yPred, sd2] = obj.modelPredictRecursive(X, 1);
+      else
+        [yPred, sd2] = obj.modelPredictFuzzyRecursive(X, 1);
+      end
       if nargout >= 3
         ci = varToConfidence(yPred, sd2);
       end
@@ -74,7 +79,7 @@ classdef TreeModel < WeakModel
         for iSplit = 1:size(obj.splits, 2)
           split = obj.splits{iSplit}.reset(X, y);
           candidate = split.get(splitGain);
-          idx = candidate.splitter(X);
+          idx = candidate.splitter(X) <= 0.5;
           if sum(idx) >= obj.minLeafSize && sum(~idx) >= obj.minLeafSize
             if candidate.gain > best.gain
               best = candidate;
@@ -83,7 +88,7 @@ classdef TreeModel < WeakModel
         end
         if best.gain >= obj.minGain
           obj.nodes(iNode).splitter = best.splitter;
-          idx = best.splitter(X);
+          idx = best.splitter(X) <= 0.5;
           
           left = struct('idx', idx, 'iNode', obj.addNode());
           obj.nodes(iNode).left = left.iNode;
@@ -106,40 +111,54 @@ classdef TreeModel < WeakModel
       end
     end
     
-    function [y, sd2] = modelPredictRecursive(obj, X, iNode)
+    function [yPred, sd2] = modelPredictRecursive(obj, X, iNode)
       if isempty(obj.nodes(iNode).splitter)
-        [y, sd2] = obj.nodes(iNode).predictor.modelPredict(X);
+        [yPred, sd2] = obj.nodes(iNode).predictor.modelPredict(X);
       else
-        y = zeros(size(X, 1), 1);
+        yPred = zeros(size(X, 1), 1);
         sd2 = zeros(size(X, 1), 1);
+        idx = obj.nodes(iNode).splitter(X) <= 0.5;
         
-        left = struct('idx', obj.nodes(iNode).splitter(X), 'iNode', obj.nodes(iNode).left);
+        left = struct('idx', idx, 'iNode', obj.nodes(iNode).left);
         if any(left.idx)
-          [y(left.idx), sd2(left.idx)] = obj.modelPredictRecursive(X(left.idx, :), left.iNode);
+          [yPred(left.idx), sd2(left.idx)] = obj.modelPredictRecursive(X(left.idx, :), left.iNode);
         end
         
-        right = struct('idx', ~left.idx, 'iNode', obj.nodes(iNode).right);
+        right = struct('idx', ~idx, 'iNode', obj.nodes(iNode).right);
         if any(right.idx)
-          [y(right.idx), sd2(right.idx)] = obj.modelPredictRecursive(X(right.idx, :), right.iNode);
+          [yPred(right.idx), sd2(right.idx)] = obj.modelPredictRecursive(X(right.idx, :), right.iNode);
         end
       end
     end
     
-    function [y, sd2] = modelPredictProbRecursive(obj, X, p, iNode)
+    function [yPred, sd2] = modelPredictFuzzyRecursive(obj, X, iNode)
       if isempty(obj.nodes(iNode).splitter)
-        [y, sd2] = obj.nodes(iNode).predictor.modelPredict(X);
+        [yPred, sd2] = obj.nodes(iNode).predictor.modelPredict(X);
       else
-        y = zeros(size(X, 1), 1);
+        yPred = zeros(size(X, 1), 1);
         sd2 = zeros(size(X, 1), 1);
+        p = obj.nodes(iNode).splitter(X);
         
-        left = struct('idx', obj.nodes(iNode).splitter(X), 'iNode', obj.nodes(iNode).left);
+        left = struct('idx', p <= 0.5 - obj.fuzziness, 'iNode', obj.nodes(iNode).left);
         if any(left.idx)
-          [y(left.idx), sd2(left.idx)] = obj.modelPredictRecursive(X(left.idx, :), left.iNode);
+          [yPred(left.idx), sd2(left.idx)] = obj.modelPredictFuzzyRecursive(X(left.idx, :), left.iNode);
         end
         
-        right = struct('idx', ~left.idx, 'iNode', obj.nodes(iNode).right);
+        right = struct('idx', p > 0.5 + obj.fuzziness, 'iNode', obj.nodes(iNode).right);
         if any(right.idx)
-          [y(right.idx), sd2(right.idx)] = obj.modelPredictRecursive(X(right.idx, :), right.iNode);
+          [yPred(right.idx), sd2(right.idx)] = obj.modelPredictFuzzyRecursive(X(right.idx, :), right.iNode);
+        end
+        
+        both = struct('idx', (p > 0.5 - obj.fuzziness) && (p <= 0.5 + obj.fuzziness));
+        if any(both.idx)
+          XBoth = X(both.idx, :);
+          pRight = p(both.idx);
+          [yLeft, sd2Left] = obj.modelPredictFuzzyRecursive(XBoth, left.iNode);
+          [yRight, sd2Right] = obj.modelPredictFuzzyRecursive(XBoth, right.iNode);
+          [yPred(both.idx)] = (1-pRight) .* yLeft + pRight .* yRight;
+          % TODO can we do this?
+          [sd2(both.idx)] = (1-pRight) .* sd2Left + pRight .* sd2Right;
+          % [sd2(both.idx)] = (1-p(both.idx)).^2 .* sd2Left + p(both.idx).^2 .* sd2Right;
         end
       end
     end
@@ -151,15 +170,25 @@ classdef TreeModel < WeakModel
         % internal node having two leaves
         % consider making this node a leaf
         yPred = zeros(size(X, 1), 1);
+        p = obj.nodes(iNode).splitter(X);
         
-        left = struct('idx', obj.nodes(iNode).splitter(X), 'iNode', obj.nodes(iNode).left);
+        left = struct('idx', p <= 0.5 - obj.fuzziness, 'iNode', obj.nodes(iNode).left);
         if any(left.idx)
           [yPred(left.idx)] = obj.modelPredictRecursive(X(left.idx, :), left.iNode);
         end
         
-        right = struct('idx', ~left.idx, 'iNode', obj.nodes(iNode).right);
+        right = struct('idx', p > 0.5 + obj.fuzziness, 'iNode', obj.nodes(iNode).right);
         if any(right.idx)
           [yPred(right.idx)] = obj.modelPredictRecursive(X(right.idx, :), right.iNode);
+        end
+        
+        both = struct('idx', (p > 0.5 - obj.fuzziness) && (p <= 0.5 + obj.fuzziness));
+        if any(both.idx)
+          XBoth = X(both.idx, :);
+          pRight = p(both.idx);
+          [yLeft] = obj.modelPredictFuzzyRecursive(XBoth, left.iNode);
+          [yRight] = obj.modelPredictFuzzyRecursive(XBoth, right.iNode);
+          [yPred(both.idx)] = (1-pRight) .* yLeft + pRight .* yRight;
         end
         
         objective = obj.lossFunc(y, yPred);
@@ -167,9 +196,8 @@ classdef TreeModel < WeakModel
         current = struct;
         current.X = [obj.nodes(left.iNode).X; obj.nodes(right.iNode).X];
         current.y = [obj.nodes(left.iNode).y; obj.nodes(right.iNode).y];
-        current.xMean = mean(X);
-        predictorNew = obj.predictorFunc(current.xMean);
-        predictorNew.trainModel(current.X, current.y, current.xMean, 0);
+        predictorNew = obj.predictorFunc();
+        predictorNew = predictorNew.trainModel(current.X, current.y);
         objectiveNew = obj.lossFunc(y, predictorNew.modelPredict(X));
         
         if objectiveNew <= objective
@@ -187,9 +215,8 @@ classdef TreeModel < WeakModel
         % try to replace complex model in leaf with constant model
         objective = obj.lossFunc(y, obj.nodes(iNode).predictor.modelPredict(X));
         
-        xMean = mean(obj.nodes(iNode).X);
-        predictorNew = ConstantModel(struct, xMean);
-        predictorNew.trainModel(obj.nodes(iNode).X, obj.nodes(iNode).y, xMean, 0);
+        predictorNew = ConstantModel(struct);
+        predictorNew = predictorNew.trainModel(obj.nodes(iNode).X, obj.nodes(iNode).y);
         objectiveNew = obj.lossFunc(y, predictorNew.modelPredict(X));
         
         if objectiveNew <= objective

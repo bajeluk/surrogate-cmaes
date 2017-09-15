@@ -42,7 +42,7 @@ classdef (Abstract) ModelTest < Test
       test.XN = normalizeFunc(test.X);
       
       model = modelFunc();
-      tic
+      tic;
       model = model.trainModel(train.XN, train.y);
       time = toc;
       [train.yPred, train.sd2, train.ci] = ...

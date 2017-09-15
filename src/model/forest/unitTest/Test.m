@@ -50,20 +50,7 @@ classdef (Abstract) Test < matlab.unittest.TestCase
       testCase.name = strsplit(name, '.');
       testCase.params = params;
       
-      testCase.joinedParams = '';
-      keys = fieldnames(testCase.params);
-      for i = 1:numel(keys)
-        value = testCase.params.(keys{i});
-        if i == numel(keys)
-          format = '%s%s=%s';
-        else
-          format = '%s%s=%s,';
-        end
-        testCase.joinedParams = sprintf(format, ...
-          testCase.joinedParams, ...
-          keys{i}, ...
-          value);
-      end
+      testCase.joinedParams = Test.struct2str(testCase.params);
     end
   end
   
@@ -102,6 +89,28 @@ classdef (Abstract) Test < matlab.unittest.TestCase
         maxVal = 100; % range [minVal, maxVal]
       end
       X = minVal + (maxVal - minVal) * rand(n, d);
+    end
+    
+    function str = struct2str(s)
+      str = '';
+      keys = fieldnames(s);
+      for i = 1:numel(keys)
+        value = s.(keys{i});
+        if islogical(value)
+          value = num2str(value);
+        elseif isnumeric(value)
+          value = num2str(value);
+        end
+        if i == numel(keys)
+          format = '%s%s=%s';
+        else
+          format = '%s%s=%s,';
+        end
+        str = sprintf(format, ...
+          str, ...
+          keys{i}, ...
+          value);
+      end
     end
   end
 end

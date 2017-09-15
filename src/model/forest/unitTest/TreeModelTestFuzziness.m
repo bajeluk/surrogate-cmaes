@@ -1,16 +1,14 @@
-classdef TreeModelTest < ModelTest
-
+classdef TreeModelTestFuzziness < ModelTest
+  
   properties (TestParameter)
-    %fNum = {1, 2, 6, 8, 13, 14, 15, 17, 20, 21};
-    fNum = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, ...
-      13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
+    fNum = {1, 2, 6, 8, 13, 14, 15, 17, 20, 21};
     m = {10}; %{5, 10, 100};
     modelSpec = {'linear', 'quadratic'};
-    minLeafSize = {10, 50};
-    minGain = {0.1, 1, 10};
-    splitGain1 = {'DEMSD', 'DENN', 'DE', 'SSE', 'Var'};
-    splitGain2 = {'DEMSD', 'DE', 'SSE', 'Var'};
-    fuzziness = {0};
+    minLeafSize = {10};
+    minGain = {0.1};
+    splitGain1 = {'SSE'};
+    splitGain2 = {'SSE'};
+    fuzziness = {0, 0.01, 0.1, 0.25, 0.4};
   end
   
   methods (TestClassSetup)
@@ -37,7 +35,7 @@ classdef TreeModelTest < ModelTest
       splits = {};
       splitOptions = struct;
       splitOptions.soft = fuzziness ~= 0;
-      splitOptions.lambda = 2;
+      splitOptions.lambda = 1 / fuzziness;
       splits{1} = AxisSplit(splitOptions);
       
       modelOptions = struct;
@@ -73,7 +71,7 @@ classdef TreeModelTest < ModelTest
       splits = {};
       splitOptions = struct;
       splitOptions.soft = fuzziness ~= 0;
-      splitOptions.lambda = 2;
+      splitOptions.lambda = 1 / fuzziness;
       splits{1} = AxisSplit(splitOptions);
       
       modelOptions = struct;

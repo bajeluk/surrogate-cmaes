@@ -12,7 +12,7 @@ classdef RandomRbfSplitTest < SplitTest
         metric, pca)
       params = struct;
       params.metric = metric;
-      params.pca = int2str(pca);
+      params.pca = pca;
       testCase.reset(params);
       
       splitOptions = struct;

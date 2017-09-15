@@ -10,7 +10,7 @@ classdef RandomSplitTest < SplitTest
     function testTwoLines(testCase, ...
       pca)
       params = struct;
-      params.pca = int2str(pca);
+      params.pca = pca;
       testCase.reset(params);
       
       splitOptions = struct;

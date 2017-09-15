@@ -22,7 +22,7 @@ classdef Split
     function obj = Split(options)
       obj.transformationOptions = defopts(options, 'transformationOptions', struct);
       obj.soft = defopts(options, 'soft', false);
-      obj.lambda = defopts(options, 'lambda', inf);
+      obj.lambda = defopts(options, 'lambda', 1);
     end
     
     function obj = reset(obj, X, y)
@@ -51,6 +51,12 @@ classdef Split
       trans = obj.transformation;
       if obj.soft
         % soft splitter using logit
+        % normalize first
+        r = splitter(obj.X);
+        idx = r <= 0;
+        mm = [mean(-r(idx)), mean(r(~idx))];
+        splitter = @(X) Split.normalize(splitter(X), mm);
+
         lambda = obj.lambda;
         f = @(X) 1 ./ (1 + exp(-lambda * splitter(transformApply(X, trans))));
       else
@@ -74,6 +80,16 @@ classdef Split
   methods (Access = private, Static)
     function p = modelProbability(model, X)
       [~, p] = model.predict(X);
+    end
+    
+    function r = normalize(r, mm)
+      idx = r <= 0;
+      if mm(1) > 0
+        r(idx) = r(idx) / mm(1);
+      end
+      if mm(2) > 0
+        r(~idx) = r(~idx) / mm(2);
+      end
     end
   end
 end

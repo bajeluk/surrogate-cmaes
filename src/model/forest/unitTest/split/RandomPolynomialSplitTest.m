@@ -13,7 +13,7 @@ classdef RandomPolynomialSplitTest < SplitTest
         degree, pca)
       params = struct;
       params.degree = degree;
-      params.pca = int2str(pca);
+      params.pca = pca;
       testCase.reset(params);
       
       splitOptions = struct;
