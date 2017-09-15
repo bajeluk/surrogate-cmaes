@@ -149,7 +149,7 @@ classdef TreeModel < WeakModel
           [yPred(right.idx), sd2(right.idx)] = obj.modelPredictFuzzyRecursive(X(right.idx, :), right.iNode);
         end
         
-        both = struct('idx', (p > 0.5 - obj.fuzziness) && (p <= 0.5 + obj.fuzziness));
+        both = struct('idx', and(p > 0.5 - obj.fuzziness, p <= 0.5 + obj.fuzziness));
         if any(both.idx)
           XBoth = X(both.idx, :);
           pRight = p(both.idx);
@@ -182,7 +182,7 @@ classdef TreeModel < WeakModel
           [yPred(right.idx)] = obj.modelPredictRecursive(X(right.idx, :), right.iNode);
         end
         
-        both = struct('idx', (p > 0.5 - obj.fuzziness) && (p <= 0.5 + obj.fuzziness));
+        both = struct('idx', and(p > 0.5 - obj.fuzziness, p <= 0.5 + obj.fuzziness));
         if any(both.idx)
           XBoth = X(both.idx, :);
           pRight = p(both.idx);
