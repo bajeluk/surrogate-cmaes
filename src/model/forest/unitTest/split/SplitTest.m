@@ -19,7 +19,7 @@ classdef (Abstract) SplitTest < Test
       splitGain = splitGain.reset(X, y);
       split = split.reset(X, y);
       best = split.get(splitGain);
-      idx = best.splitter(X);
+      idx = best.splitter(X) <= 0.5;
       testCase.drawSplit(X, y, idx);
     end
     

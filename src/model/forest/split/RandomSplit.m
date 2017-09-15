@@ -17,15 +17,14 @@ classdef RandomSplit < Split
       if obj.allEqual
         return
       end
-      trans = obj.transformation;
       [n, d] = size(obj.X);
       for iRepeats = 1:obj.nRepeats
         feature = randi(d);
         featureSelector = (1:d == feature)';
         treshold = obj.X(randi(n), feature);
         candidate = obj.splitCandidate;
-        candidate.splitter = @(X)...
-          transformApply(X, trans) * featureSelector <= treshold;
+        candidate.splitter = obj.createSplitter(@(X) ...
+          X * featureSelector - treshold);
         candidate.gain = splitGain.get(candidate.splitter);
         if candidate.gain > best.gain
           best = candidate;

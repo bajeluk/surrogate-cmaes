@@ -35,8 +35,8 @@ classdef PairObliqueSplit < Split
           end
           for treshold = tresholds
             candidate = obj.splitCandidate;
-            candidate.splitter = @(X) ...
-              transformApply(X, trans) * v' <= treshold;
+            candidate.splitter = obj.createSplitter(@(X) ...
+              X * v' - treshold);
             candidate.gain = splitGain.get(candidate.splitter);
             if candidate.gain > best.gain
               best = candidate;

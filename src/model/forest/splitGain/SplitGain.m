@@ -66,7 +66,7 @@ classdef (Abstract) SplitGain
         gain = -inf;
         return;
       end
-      idx = splitter(obj.X);
+      idx = splitter(obj.X) <= 0.5;
       if sum(idx) < obj.minSize || sum(~idx) < obj.minSize
         gain = -inf;
         return;

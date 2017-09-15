@@ -17,7 +17,6 @@ classdef AxisSplit < Split
       if obj.allEqual
         return
       end
-      trans = obj.transformation;
       [n, d] = size(obj.X);
       for feature = 1:d
         featureSelector = (1:d == feature)';
@@ -30,8 +29,8 @@ classdef AxisSplit < Split
         end
         for treshold = tresholds
           candidate = obj.splitCandidate;
-          candidate.splitter = @(X)...
-            transformApply(X, trans) * featureSelector <= treshold;
+          candidate.splitter = obj.createSplitter(@(X) ... 
+            X * featureSelector - treshold);
           candidate.gain = splitGain.get(candidate.splitter);
           if candidate.gain > best.gain
             best = candidate;

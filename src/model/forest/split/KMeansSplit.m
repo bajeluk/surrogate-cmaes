@@ -20,7 +20,6 @@ classdef KMeansSplit < RandomSplit
       if obj.allEqual
         return
       end
-      trans = obj.transformation;
       [n, d] = size(obj.X);
       % clusters are fit in scaled input-output space
       ZX = zscore(obj.X);
@@ -54,8 +53,7 @@ classdef KMeansSplit < RandomSplit
             pseudoDiscrimType = strcat('pseudo', discrimType);
             model = fitcdiscr(obj.X, c, 'DiscrimType', pseudoDiscrimType);
           end
-          candidate.splitter = @(X)...
-            model.predict(transformApply(X, trans)) == 1;
+          candidate.splitter = obj.createModelSplitter(model);
           candidate.gain = splitGain.get(candidate.splitter);
           if candidate.gain > best.gain
             best = candidate;

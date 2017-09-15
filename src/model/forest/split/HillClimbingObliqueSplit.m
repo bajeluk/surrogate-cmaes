@@ -151,11 +151,9 @@ classdef HillClimbingObliqueSplit < RandomSplit
     end
     
     function [candidate] = getSplit(obj, splitGain, H)
-      trans = obj.transformation;
       candidate = obj.splitCandidate;
-      candidate.splitter = @(X) ...
-        generateFeatures(transformApply(X, trans), 'linear', true, true) ...
-        * H <= 0;
+      candidate.splitter = obj.createSplitter(@(X) ...
+        generateFeatures(X, 'linear', true, true) * H);
       candidate.gain = splitGain.get(candidate.splitter);
       candidate.H = H;
     end

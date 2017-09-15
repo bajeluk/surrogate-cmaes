@@ -18,8 +18,6 @@ classdef ResidualObliqueSplit < Split
       if obj.allEqual
         return
       end
-      trans = obj.transformation;
-      candidate = obj.splitCandidate;
       % linear regression
       model = PolynomialModel(struct('modelSpec', obj.modelSpec));
       model = model.trainModel(obj.X, obj.y);
@@ -44,8 +42,8 @@ classdef ResidualObliqueSplit < Split
           pseudoDiscrimType = strcat('pseudo', discrimType);
           model = fitcdiscr(obj.X, c, 'DiscrimType', pseudoDiscrimType);
         end
-        candidate.splitter = @(X)...
-          model.predict(transformApply(X, trans)) == 1;
+        candidate = obj.splitCandidate;
+        candidate.splitter = obj.createModelSplitter(model);
         candidate.gain = splitGain.get(candidate.splitter);
         if candidate.gain > best.gain
           best = candidate;

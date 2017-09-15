@@ -19,7 +19,6 @@ classdef RandomRbfSplit < RandomSplit
       if obj.allEqual
         return
       end
-      trans = obj.transformation;
       [n, d] = size(obj.X);
       for iRepeats = 1:obj.nRepeats
         candidate = obj.splitCandidate;
@@ -38,13 +37,11 @@ classdef RandomRbfSplit < RandomSplit
         switch metric
           case 'mahalanobis'
             C = nancov(X);
-            candidate.splitter = @(X)...
-              pdist2(transformApply(X, trans), origin, metric, C) ...
-              <= treshold;
+            candidate.splitter = obj.createSplitter(@(X) ...
+              pdist2(X, origin, metric, C) - treshold);
           otherwise
-            candidate.splitter = @(X)...
-              pdist2(transformApply(X, trans), origin, metric) ...
-              <= treshold;
+            candidate.splitter = obj.createSplitter(@(X) ...
+              pdist2(X, origin, metric) - treshold);
         end
         candidate.gain = splitGain.get(candidate.splitter);
         if candidate.gain > best.gain

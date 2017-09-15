@@ -3,7 +3,7 @@ classdef Split
   
   properties (Constant)
     splitCandidate = struct( ...
-      'splitter', @(X) false(size(X, 1), 1), ...
+      'splitter', @(X) zeros(size(X, 1), 1), ...
       'gain', -inf ...
       );
   end
@@ -14,11 +14,15 @@ classdef Split
     X % input data
     y % output data
     allEqual % whether all y values are equal
+    soft % use soft split
+    lambda % lambda steepness in soft logit function
   end
   
   methods
     function obj = Split(options)
       obj.transformationOptions = defopts(options, 'transformationOptions', struct);
+      obj.soft = defopts(options, 'soft', false);
+      obj.lambda = defopts(options, 'lambda', inf);
     end
     
     function obj = reset(obj, X, y)
@@ -39,6 +43,37 @@ classdef Split
       candidate = obj.splitCandidate;
       candidate.gain = splitGain(candidate.splitter);
       best = candidate;
+    end
+  end
+  
+  methods (Access = protected)
+    function f = createSplitter(obj, splitter)
+      trans = obj.transformation;
+      if obj.soft
+        % soft splitter using logit
+        lambda = obj.lambda;
+        f = @(X) 1 ./ (1 + exp(-lambda * splitter(transformApply(X, trans))));
+      else
+        % hard splitter
+        f = @(X) splitter(transformApply(X, trans)) <= 0;
+      end
+    end
+    
+    function f = createModelSplitter(obj, model)
+      trans = obj.transformation;
+      if obj.soft
+        % soft splitter
+        f = @(X) Split.modelProbability(model, transformApply(X, trans));
+      else
+        % hard splitter
+        f = @(X) model.predict(transformApply(X, trans)) == 1;
+      end
+    end
+  end
+  
+  methods (Access = private, Static)
+    function p = modelProbability(model, X)
+      [~, p] = model.predict(X);
     end
   end
 end
