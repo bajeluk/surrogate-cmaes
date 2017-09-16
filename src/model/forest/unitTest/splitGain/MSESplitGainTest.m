@@ -1,4 +1,4 @@
-classdef SSESplitGainTest < SplitGainTest  
+classdef MSESplitGainTest < SplitGainTest  
   
   properties (TestParameter)
     testMethod = {'Constant', 'Linear', 'Quadratic'};
@@ -12,7 +12,7 @@ classdef SSESplitGainTest < SplitGainTest
       testCase.reset(params, testMethod);
       
       options = struct;
-      splitGain = SSESplitGain(options);
+      splitGain = MSESplitGain(options);
       
       testMethod = strcat('split', testMethod);
       testCase.(testMethod)(splitGain);
@@ -28,7 +28,7 @@ classdef SSESplitGainTest < SplitGainTest
       options = struct;
       options.degree = degree;
       options.polyMethod = polyMethod;
-      splitGain = SSESplitGain(options);
+      splitGain = MSESplitGain(options);
       
       testMethod = strcat('split', testMethod);
       testCase.(testMethod)(splitGain);

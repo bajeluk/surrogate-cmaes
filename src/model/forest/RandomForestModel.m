@@ -1,9 +1,9 @@
-classdef RandomForestModel < AbstractModel
+classdef RandomForestModel < WeakModel
   properties (Constant, Access = private)
     treeTemplate = struct(... % template for trees
         'model', [], ... % model
         'features', [], ... % used features in the model
-        'weight', 0); % wieght of the model in the resulting tree
+        'weight', 0); % weight of the model in the resulting tree
   end
   
   properties %(Access = protected)
@@ -16,36 +16,27 @@ classdef RandomForestModel < AbstractModel
     oobError % out of bag error
     boosting % whether boosting is enabled
     shrinkage % shrinkage parameter
-    objectiveFunc
+    lossFunc % loss function
   end
   
   methods
-    function obj = RandomForestModel(modelOptions, xMean)
+    function obj = RandomForestModel(modelOptions)
       % constructor
-      obj = obj@AbstractModel(modelOptions, xMean);
+      obj = obj@WeakModel(modelOptions);
       
       % model specific options
-      obj.treeFunc = defopts(modelOptions, 'treeFunc', @(xMean) TreeModel(struct, xMean));
+      obj.treeFunc = defopts(modelOptions, 'treeFunc', @() TreeModel(struct));
       obj.nTrees = defopts(modelOptions, 'nTrees', 1);
-      obj.nFeaturesToSample = defopts(modelOptions, 'nFeaturesToSample', size(xMean, 2));
-      obj.sampleWithReplacement = defopts(modelOptions, 'sampleWithReplacement', false);
+      obj.nFeaturesToSample = defopts(modelOptions, 'nFeaturesToSample', -1);
+      obj.sampleWithReplacement = defopts(modelOptions, 'sampleWithReplacement', true);
       obj.inBagFraction = defopts(modelOptions, 'inBagFraction', 1);
       obj.boosting = defopts(modelOptions, 'boosting', false);
       obj.shrinkage = defopts(modelOptions, 'shrinkage', 0.1);
-      obj.objectiveFunc = defopts(modelOptions, 'objectiveFunc', @immse);
+      obj.lossFunc = defopts(modelOptions, 'lossFunc', @immse);
     end
     
-    function nData = getNTrainData(obj)
-      % returns the required number of data for training the model
-      nData = 1;
-    end
-    
-    function obj = trainModel(obj, X, y, xMean, generation)
+    function obj = trainModel(obj, X, y)
       % train the model based on the data (X,y)
-      obj.trainGeneration = generation;
-      obj.trainMean = xMean;
-      obj.dataset.X = X;
-      obj.dataset.y = y;
       
       nFeatures = obj.nFeaturesToSample;
       if nFeatures <= 0
@@ -64,9 +55,8 @@ classdef RandomForestModel < AbstractModel
         sample.idx = datasample((1:size(X, 1))', nRows, 1, 'Replace', obj.sampleWithReplacement);
         sample.X = X(sample.idx, sample.features);
         sample.y = y(sample.idx, :);
-        sample.xMean = mean(sample.X);
         obj.trees(iTree).features = sample.features;
-        obj.trees(iTree).model = obj.treeFunc(sample.xMean);
+        obj.trees(iTree).model = obj.treeFunc();
         if obj.boosting
           % fit to residuals
           sample.yPred = yPred(sample.idx, :);
@@ -76,13 +66,13 @@ classdef RandomForestModel < AbstractModel
           % find the best weight (simplified gradient of objective function)
           yPredNew = obj.trees(iTree).model.modelPredict(X(:, sample.features));
           w = 1;
-          objective = obj.objectiveFunc(y, yPred + w * yPredNew);
+          objective = obj.lossFunc(y, yPred + w * yPredNew);
           improved = true;
           while improved
             improved = false;
             eps = 0.01;
             for w1 = [w * (1 - eps), w * (1 + eps)]
-              objective1 = obj.objectiveFunc(y, yPred + w1 * yPredNew);
+              objective1 = obj.lossFunc(y, yPred + w1 * yPredNew);
               if objective1 < objective
                 w = w1;
                 objective = objective1;
@@ -90,7 +80,7 @@ classdef RandomForestModel < AbstractModel
                 break;
               end
             end
-          end;
+          end
           obj.trees(iTree).weight = w * obj.shrinkage;
           yPred = yPred + obj.trees(iTree).weight * yPredNew;
         else

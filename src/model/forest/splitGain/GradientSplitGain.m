@@ -21,6 +21,8 @@ classdef GradientSplitGain < SplitGain
       % second derivatives
       H = sum(data.y(:, 2));
       value = -0.5 * G*G / (H + obj.regularization);
+      % normalize
+      value = value / (obj.yRange^2);
     end
   end
   

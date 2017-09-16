@@ -37,7 +37,7 @@ classdef (Abstract) SplitTest < Test
       if nargin < 3
         splitGainOptions = struct;
         splitGainOptions.minSize = 5;
-        splitGain = SSESplitGain(splitGainOptions);
+        splitGain = MSESplitGain(splitGainOptions);
       end
       best = testCase.findBest(X, y, split, splitGain);
     end
@@ -48,7 +48,7 @@ classdef (Abstract) SplitTest < Test
       if nargin < 3
         splitGainOptions = struct;
         splitGainOptions.minSize = 5;
-        splitGain = SSESplitGain(splitGainOptions);
+        splitGain = MSESplitGain(splitGainOptions);
       end
       best = testCase.findBest(X, y, split, splitGain);
     end
@@ -59,7 +59,7 @@ classdef (Abstract) SplitTest < Test
       if nargin < 3
         splitGainOptions = struct;
         splitGainOptions.minSize = 5;
-        splitGain = SSESplitGain(splitGainOptions);
+        splitGain = MSESplitGain(splitGainOptions);
       end
       best = testCase.findBest(X, y, split, splitGain);
     end
@@ -70,7 +70,7 @@ classdef (Abstract) SplitTest < Test
       if nargin < 3
         splitGainOptions = struct;
         splitGainOptions.minSize = 5;
-        splitGain = SSESplitGain(splitGainOptions);
+        splitGain = MSESplitGain(splitGainOptions);
       end
       best = testCase.findBest(X, y, split, splitGain);
     end
@@ -81,7 +81,7 @@ classdef (Abstract) SplitTest < Test
       if nargin < 3
         splitGainOptions = struct;
         splitGainOptions.minSize = 5;
-        splitGain = SSESplitGain(splitGainOptions);
+        splitGain = MSESplitGain(splitGainOptions);
       end
       best = testCase.findBest(X, y, split, splitGain);
     end
@@ -92,7 +92,7 @@ classdef (Abstract) SplitTest < Test
       if nargin < 3
         splitGainOptions = struct;
         splitGainOptions.minSize = 5;
-        splitGain = SSESplitGain(splitGainOptions);
+        splitGain = MSESplitGain(splitGainOptions);
       end
       best = testCase.findBest(X, y, split, splitGain);
     end
@@ -103,7 +103,7 @@ classdef (Abstract) SplitTest < Test
       if nargin < 3
         splitGainOptions = struct;
         splitGainOptions.minSize = 5;
-        splitGain = SSESplitGain(splitGainOptions);
+        splitGain = MSESplitGain(splitGainOptions);
       end
       best = testCase.findBest(X, y, split, splitGain);
     end
@@ -114,7 +114,7 @@ classdef (Abstract) SplitTest < Test
       if nargin < 3
         splitGainOptions = struct;
         splitGainOptions.minSize = 5;
-        splitGain = SSESplitGain(splitGainOptions);
+        splitGain = MSESplitGain(splitGainOptions);
       end
       best = testCase.findBest(X, y, split, splitGain);
     end
@@ -126,7 +126,7 @@ classdef (Abstract) SplitTest < Test
         splitGainOptions = struct;
         splitGainOptions.minSize = 5;
         splitGainOptions.degree = 'quadratic';
-        splitGain = SSESplitGain(splitGainOptions);
+        splitGain = MSESplitGain(splitGainOptions);
       end
       best = testCase.findBest(X, y, split, splitGain);
     end
@@ -138,7 +138,7 @@ classdef (Abstract) SplitTest < Test
         splitGainOptions = struct;
         splitGainOptions.minSize = 5;
         splitGainOptions.degree = 'quadratic';
-        splitGain = SSESplitGain(splitGainOptions);
+        splitGain = MSESplitGain(splitGainOptions);
       end
       best = testCase.findBest(X, y, split, splitGain);
     end

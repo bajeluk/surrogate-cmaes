@@ -31,3 +31,8 @@ https://stats.stackexchange.com/questions/152558/what-is-the-interpretation-of-t
 Soft split for probabilistic regression tree
 https://books.google.cz/books?id=65-oCgAAQBAJ&lpg=PA21&ots=yi8e1mT_0u&dq=split%20distance%20to%20probability&hl=cs&pg=PA21#v=onepage&q=split%20distance%20to%20probability&f=false
 
+Variable importance using OOB error
+https://stat.ethz.ch/education/semesters/ss2012/ams/slides/v10.2.pdf
+
+Overview of tree algorithms from decision tree to xgboost 
+https://www.google.cz/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&uact=8&ved=0ahUKEwi928H-5aHWAhUD1xQKHe0tDSMQFggsMAA&url=https%3A%2F%2Fwww.slideshare.net%2Ftkm2261%2Foverview-of-tree-algorithms-from-decision-tree-to-xgboost&usg=AFQjCNGoC75JFVCuBZOeg8LBYI505hRrow

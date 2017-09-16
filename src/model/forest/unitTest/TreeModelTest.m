@@ -8,8 +8,8 @@ classdef TreeModelTest < ModelTest
     modelSpec = {'linear', 'quadratic'};
     minLeafSize = {10, 50};
     minGain = {0.1, 1, 10};
-    splitGain1 = {'DEMSD', 'DENN', 'DE', 'SSE', 'Var'};
-    splitGain2 = {'DEMSD', 'DE', 'SSE', 'Var'};
+    splitGain1 = {'DEMSD', 'DENN', 'DE', 'MSE', 'Var'};
+    splitGain2 = {'DEMSD', 'DE', 'MSE', 'Var'};
     fuzziness = {0};
   end
   

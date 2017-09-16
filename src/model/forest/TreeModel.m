@@ -40,7 +40,7 @@ classdef TreeModel < WeakModel
       obj.splits = defopts(modelOptions, 'splits', ...
         {AxisSplit(struct)});
       obj.splitGain = defopts(modelOptions, 'splitGain', ...
-        SSESplitGain(struct));
+        MSESplitGain(struct));
       obj.fuzziness = defopts(modelOptions, 'fuzziness', 0);
     end
 

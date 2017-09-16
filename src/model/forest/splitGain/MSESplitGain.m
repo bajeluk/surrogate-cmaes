@@ -1,8 +1,8 @@
-classdef SSESplitGain < SplitGain
-% SSESplitGain evaluates split functions used in decision trees using SSE
+classdef MSESplitGain < SplitGain
+% MSESplitGain evaluates split functions used in decision trees using MSE
 
   methods
-    function obj = SSESplitGain(options)
+    function obj = MSESplitGain(options)
       obj = obj@SplitGain(options);
     end
   end
