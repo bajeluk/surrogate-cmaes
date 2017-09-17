@@ -1,15 +1,13 @@
 classdef TreeModelTest < ModelTest
 
   properties (TestParameter)
-    %fNum = {1, 2, 6, 8, 13, 14, 15, 17, 20, 21};
-    fNum = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, ...
-      13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
-    m = {10}; %{5, 10, 100};
+    fNum = {2}; %{1, 2, 6, 8, 13, 14, 15, 17, 20, 21};
+    m = {10};
     modelSpec = {'linear', 'quadratic'};
-    minLeafSize = {10, 50};
-    minGain = {0.1, 1, 10};
-    splitGain1 = {'DEMSD', 'DENN', 'DE', 'MSE', 'Var'};
-    splitGain2 = {'DEMSD', 'DE', 'MSE', 'Var'};
+    minLeafSize = {10};
+    minGain = {0.1};
+    splitGain0 = {'MSE'};
+    splitGain1 = {'MSE'};
     fuzziness = {0};
   end
   
@@ -20,18 +18,18 @@ classdef TreeModelTest < ModelTest
   end
   
   methods (Test)
-    function test1(testCase, fNum, m, ...
-        minLeafSize, minGain, splitGain1, fuzziness)
+    function test0(testCase, fNum, m, ...
+        minLeafSize, minGain, splitGain0, fuzziness)
       params = struct;
       params.minLeafSize = minLeafSize;
       params.minGain = minGain;
-      params.splitGain = splitGain1;
+      params.splitGain = splitGain0;
       params.fuzziness = fuzziness;
       testCase.reset(params, sprintf('_%02d_%03d', fNum, m));
       
       splitGainOptions = struct;
       splitGainOptions.minSize = minLeafSize;
-      splitGainFunc = str2func(sprintf('%sSplitGain', splitGain1));
+      splitGainFunc = str2func(sprintf('%sSplitGain', splitGain0));
       splitGain = splitGainFunc(splitGainOptions);
       
       splits = {};
@@ -50,13 +48,13 @@ classdef TreeModelTest < ModelTest
       [model, train, test, time] = testCase.testCoco(modelFunc, fNum, m);
     end
     
-    function test2(testCase, fNum, m, ...
-        modelSpec, minLeafSize, minGain, splitGain2, fuzziness)
+    function test1(testCase, fNum, m, ...
+        modelSpec, minLeafSize, minGain, splitGain1, fuzziness)
       params = struct;
       params.modelSpec = modelSpec;
       params.minLeafSize = minLeafSize;
       params.minGain = minGain;
-      params.splitGain = splitGain2;
+      params.splitGain = splitGain1;
       params.fuzziness = fuzziness;
       testCase.reset(params, sprintf('_%02d_%03d', fNum, m));
       
@@ -67,7 +65,7 @@ classdef TreeModelTest < ModelTest
       splitGainOptions = struct;
       splitGainOptions.degree = modelSpec;
       splitGainOptions.minSize = minLeafSize;
-      splitGainFunc = str2func(sprintf('%sSplitGain', splitGain2));
+      splitGainFunc = str2func(sprintf('%sSplitGain', splitGain1));
       splitGain = splitGainFunc(splitGainOptions);
       
       splits = {};

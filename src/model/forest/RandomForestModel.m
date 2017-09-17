@@ -26,12 +26,12 @@ classdef RandomForestModel < WeakModel
       
       % model specific options
       obj.treeFunc = defopts(modelOptions, 'treeFunc', @() TreeModel(struct));
-      obj.nTrees = defopts(modelOptions, 'nTrees', 1);
+      obj.nTrees = defopts(modelOptions, 'nTrees', 10);
       obj.nFeaturesToSample = defopts(modelOptions, 'nFeaturesToSample', -1);
       obj.sampleWithReplacement = defopts(modelOptions, 'sampleWithReplacement', true);
       obj.inBagFraction = defopts(modelOptions, 'inBagFraction', 1);
       obj.boosting = defopts(modelOptions, 'boosting', false);
-      obj.shrinkage = defopts(modelOptions, 'shrinkage', 0.1);
+      obj.shrinkage = defopts(modelOptions, 'shrinkage', 0.5);
       obj.lossFunc = defopts(modelOptions, 'lossFunc', @immse);
     end
     
@@ -62,7 +62,7 @@ classdef RandomForestModel < WeakModel
           sample.yPred = yPred(sample.idx, :);
           r = sample.y - sample.yPred;
           obj.trees(iTree).model = obj.trees(iTree).model.trainModel(...
-              sample.X, r, sample.xMean, generation);
+              sample.X, r);
           % find the best weight (simplified gradient of objective function)
           yPredNew = obj.trees(iTree).model.modelPredict(X(:, sample.features));
           w = 1;
@@ -85,7 +85,7 @@ classdef RandomForestModel < WeakModel
           yPred = yPred + obj.trees(iTree).weight * yPredNew;
         else
           obj.trees(iTree).model = obj.trees(iTree).model.trainModel(...
-              sample.X, sample.y, sample.xMean, generation);
+              sample.X, sample.y);
           obj.trees(iTree).weight = 1 / obj.nTrees;
         end
       end

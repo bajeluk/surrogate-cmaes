@@ -1,184 +1,94 @@
-classdef RandomForestModelTest < matlab.unittest.TestCase
-  methods (Test)    
-    function testSchwefelFunctionConstantPredictor(testCase)
-      rng('default');
-      % Schwefel function
-      n = 1000;
-      d = 2;
-      f = @(A,B) 418.9829 * d - A .* sin(sqrt(abs(A))) - B .* sin(sqrt(abs(B)));
-      X = rand(n, d) * 1000 - 500;
-      y = f(X(:, 1), X(:, 2));
+classdef RandomForestModelTest < ModelTest
+
+  properties (TestParameter)
+    fNum = {2}; %{1, 2, 6, 8, 13, 14, 15, 17, 20, 21};
+    m = {10};
+    modelSpec = {'linear', 'quadratic'};
+    minLeafSize = {10};
+    minGain = {0.1};
+    splitGain0 = {'MSE'};
+    splitGain1 = {'MSE'};
+    fuzziness = {0};
+  end
+  
+  methods (TestClassSetup)
+    function setupClass(testCase)
+      testCase.drawEnabled = true;
+    end
+  end
+  
+  methods (Test)
+    function test0(testCase, fNum, m, ...
+        minLeafSize, minGain, splitGain0, fuzziness)
+      params = struct;
+      params.minLeafSize = minLeafSize;
+      params.minGain = minGain;
+      params.splitGain = splitGain0;
+      params.fuzziness = fuzziness;
+      testCase.reset(params, sprintf('_%02d_%03d', fNum, m));
       
-      treeOptions = struct;
-      treeFunc = @(xMean) TreeModel(treeOptions, xMean);
-      forestOptions = struct;
-      forestOptions.treeFunc = treeFunc;
-      modelFunc = @(xMean) RandomForestModel(forestOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
+      splitGainOptions = struct;
+      splitGainOptions.minSize = minLeafSize;
+      splitGainFunc = str2func(sprintf('%sSplitGain', splitGain0));
       
-      if ModelTest.drawEnabled
-        [A, B] = meshgrid(-500:10:500, -500:10:500);
-        C = f(A, B);
-        hold on;
-        surf(A, B, C);
-        hold off;
-      end
+      splits = {};
+      splitOptions = struct;
+      splitOptions.soft = fuzziness ~= 0;
+      splitOptions.lambda = 2;
+      splits{1} = AxisSplit(splitOptions);
       
-      % big error
-      verifyLessThan(testCase, train.err, 1e4);
-      verifyLessThan(testCase, test.err, 2e4);
+      treeModelOptions = struct;
+      treeModelOptions.minGain = minGain;
+      treeModelOptions.splitGain = splitGainFunc(splitGainOptions);
+      treeModelOptions.splits = splits;
+      treeModelOptions.fuzziness = fuzziness;
+      treeModelFunc = @() TreeModel(treeModelOptions);
+      
+      modelOptions = struct;
+      modelOptions.treeFunc = treeModelFunc;
+      modelFunc = @() RandomForestModel(modelOptions);
+      
+      [model, train, test, time] = testCase.testCoco(modelFunc, fNum, m);
     end
     
-    function testSchwefelFunctionLinearPredictor(testCase)
-      rng('default');
-      % Schwefel function
-      n = 1000;
-      d = 2;
-      f = @(A,B) 418.9829 * d - A .* sin(sqrt(abs(A))) - B .* sin(sqrt(abs(B)));
-      X = rand(n, d) * 1000 - 500;
-      y = f(X(:, 1), X(:, 2));
+    function test(testCase, fNum, m, ...
+        modelSpec, minLeafSize, minGain, splitGain1, fuzziness)
+      params = struct;
+      params.modelSpec = modelSpec;
+      params.minLeafSize = minLeafSize;
+      params.minGain = minGain;
+      params.splitGain = splitGain1;
+      params.fuzziness = fuzziness;
+      testCase.reset(params, sprintf('_%02d_%03d', fNum, m));
       
-      predictorOptions = struct('modelSpec', 'linear');
-      predictorFunc = @(xMean) PolynomialModel(predictorOptions, xMean);
-      splitEvaluator = PolynomialModelTreeSplitEvaluator(...
-        @gainMse, predictorOptions.modelSpec);
-      treeOptions = struct;
-      treeOptions.minLeafSize = 5;
-      treeOptions.predictorFunc = predictorFunc;
-      treeOptions.splitEvaluator = splitEvaluator;
-      treeFunc = @(xMean) TreeModel(treeOptions, xMean);
-      forestOptions = struct;
-      forestOptions.treeFunc = treeFunc;
-      modelFunc = @(xMean) RandomForestModel(forestOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
+      predictorOptions = struct;
+      predictorOptions.modelSpec = modelSpec;
+      predictorFunc = @() PolynomialModel(predictorOptions);
       
-      if ModelTest.drawEnabled
-        [A, B] = meshgrid(-500:10:500, -500:10:500);
-        C = f(A, B);
-        hold on;
-        surf(A, B, C);
-        hold off;
-      end
+      splitGainOptions = struct;
+      splitGainOptions.degree = modelSpec;
+      splitGainOptions.minSize = minLeafSize;
+      splitGainFunc = str2func(sprintf('%sSplitGain', splitGain1));
       
-      % big error
-      verifyLessThan(testCase, train.err, 3e3);
-      verifyLessThan(testCase, test.err, 4e4);
-    end
-    
-    function testSchwefelFunctionQuadraticPredictor(testCase)
-      rng('default');
-      % Schwefel function
-      n = 1000;
-      d = 2;
-      f = @(A,B) 418.9829 * d - A .* sin(sqrt(abs(A))) - B .* sin(sqrt(abs(B)));
-      X = rand(n, d) * 1000 - 500;
-      y = f(X(:, 1), X(:, 2));
+      splits = {};
+      splitOptions = struct;
+      splitOptions.soft = fuzziness ~= 0;
+      splitOptions.lambda = 2;
+      splits{1} = AxisSplit(splitOptions);
       
-      predictorOptions = struct('modelSpec', 'quadratic');
-      predictorFunc = @(xMean) PolynomialModel(predictorOptions, xMean);
-      splitEvaluator = PolynomialModelTreeSplitEvaluator(...
-        @gainMse, predictorOptions.modelSpec);
-      treeOptions = struct;
-      treeOptions.minLeafSize = 5;
-      treeOptions.predictorFunc = predictorFunc;
-      treeOptions.splitEvaluator = splitEvaluator;
-      treeFunc = @(xMean) TreeModel(treeOptions, xMean);
-      forestOptions = struct;
-      forestOptions.treeFunc = treeFunc;
-      modelFunc = @(xMean) RandomForestModel(forestOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
+      treeModelOptions = struct;
+      treeModelOptions.predictorFunc = predictorFunc;
+      treeModelOptions.minGain = minGain;
+      treeModelOptions.splitGain = splitGainFunc(splitGainOptions);
+      treeModelOptions.splits = splits;
+      treeModelOptions.fuzziness = fuzziness;
+      treeModelFunc = @() TreeModel(treeModelOptions);
       
-      if ModelTest.drawEnabled
-        [A, B] = meshgrid(-500:10:500, -500:10:500);
-        C = f(A, B);
-        hold on;
-        surf(A, B, C);
-        hold off;
-      end
+      modelOptions = struct;
+      modelOptions.treeFunc = treeModelFunc;
+      modelFunc = @() RandomForestModel(modelOptions);
       
-      % small train error, big test error
-      verifyLessThan(testCase, train.err, 30);
-      verifyGreaterThan(testCase, test.err, 3e4);
-    end
-    
-    function testSchwefelFunctionQuadraticPredictorRbfSplitter(testCase)
-      rng('default');
-      % Schwefel function
-      n = 1000;
-      d = 2;
-      f = @(A,B) 418.9829 * d - A .* sin(sqrt(abs(A))) - B .* sin(sqrt(abs(B)));
-      X = rand(n, d) * 1000 - 500;
-      y = f(X(:, 1), X(:, 2));
-      
-      predictorOptions = struct('modelSpec', 'quadratic');
-      predictorFunc = @(xMean) PolynomialModel(predictorOptions, xMean);
-      splitEvaluator = PolynomialModelTreeSplitEvaluator(...
-        @gainMse, predictorOptions.modelSpec);
-      splitGenerator = RandomRbfTreeSplitGenerator('euclidean', 2, 10);
-      treeOptions = struct;
-      treeOptions.minLeafSize = 5;
-      treeOptions.predictorFunc = predictorFunc;
-      treeOptions.splitEvaluator = splitEvaluator;
-      treeOptions.splitGenerators = {splitGenerator};
-      treeFunc = @(xMean) TreeModel(treeOptions, xMean);
-      forestOptions = struct;
-      forestOptions.nTrees = 10;
-      forestOptions.treeFunc = treeFunc;
-      modelFunc = @(xMean) RandomForestModel(forestOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
-      
-      if ModelTest.drawEnabled
-        [A, B] = meshgrid(-500:10:500, -500:10:500);
-        C = f(A, B);
-        hold on;
-        surf(A, B, C);
-        hold off;
-      end
-      
-      % small train error, big test error
-      verifyLessThan(testCase, train.err, 30);
-      verifyGreaterThan(testCase, test.err, 1e6);
-    end
-    
-    function testSchwefelFunctionQuadraticPredictorSample(testCase)
-      rng('default');
-      % Schwefel function
-      n = 1000;
-      d = 2;
-      f = @(A,B) 418.9829 * d - A .* sin(sqrt(abs(A))) - B .* sin(sqrt(abs(B)));
-      X = rand(n, d) * 1000 - 500;
-      y = f(X(:, 1), X(:, 2));
-      
-      predictorOptions = struct('modelSpec', 'quadratic');
-      predictorFunc = @(xMean) PolynomialModel(predictorOptions, xMean);
-      splitEvaluator = PolynomialModelTreeSplitEvaluator(...
-        @gainMse, predictorOptions.modelSpec);
-      splitGenerator1 = RandomRbfTreeSplitGenerator('euclidean', 2, 10);
-      splitGenerator2 = RandomPolynomialTreeSplitGenerator('quadratic', 2, 10);
-      treeOptions = struct;
-      treeOptions.minGain = 10;
-      treeOptions.minLeafSize = 10;
-      treeOptions.predictorFunc = predictorFunc;
-      treeOptions.splitEvaluator = splitEvaluator;
-      treeOptions.splitGenerators = {splitGenerator1, splitGenerator2};
-      treeFunc = @(xMean) TreeModel(treeOptions, xMean);
-      forestOptions = struct;
-      forestOptions.nTrees = 10;
-      forestOptions.treeFunc = treeFunc;
-      modelFunc = @(xMean) RandomForestModel(forestOptions, xMean);
-      [model, train, test, time] = ModelTest.testModel(X, y, modelFunc);
-      
-      if ModelTest.drawEnabled
-        [A, B] = meshgrid(-500:10:500, -500:10:500);
-        C = f(A, B);
-        hold on;
-        surf(A, B, C);
-        hold off;
-      end
-      
-      % small error
-      verifyLessThan(testCase, train.err, 7e2);
-      verifyLessThan(testCase, test.err, 6e4);
+      [model, train, test, time] = testCase.testCoco(modelFunc, fNum, m);
     end
   end
 end
