@@ -19,7 +19,6 @@ classdef PairObliqueSplit < Split
       if obj.allEqual
         return
       end
-      trans = obj.transformation;
       [n, d] = size(obj.X);
       for i = 1:n-1
         for j = i+1:n

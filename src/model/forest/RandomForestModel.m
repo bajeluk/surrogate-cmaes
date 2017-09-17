@@ -1,5 +1,5 @@
 classdef RandomForestModel < WeakModel
-  properties (Constant, Access = private)
+  properties (Constant, Access = protected)
     treeTemplate = struct(... % template for trees
         'model', [], ... % model
         'features', [], ... % used features in the model

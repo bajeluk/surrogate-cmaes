@@ -1,5 +1,5 @@
 classdef TreeModel < WeakModel
-  properties (Constant, Access = private)
+  properties (Constant, Access = protected)
     nodeTemplate = struct(... % template for nodes
         'leaf', true, ...
         'parent', 0, ...
@@ -71,10 +71,12 @@ classdef TreeModel < WeakModel
     end
   end
   
-  methods (Access = private)
+  methods (Access = protected)
     function trainModelRecursive(obj, X, y, iNode, depth)
       n = size(X, 1);
-      if depth < obj.maxDepth && n >= obj.minParentSize && n >= 2 * obj.minLeafSize && length(unique(y)) >= 2
+      if depth < obj.maxDepth ...
+          && n >= obj.minParentSize && n >= 2 * obj.minLeafSize ...
+          && size(unique(y, 'rows'), 1) >= 2
         best = struct('gain', -inf);
         splitGain = obj.splitGain.reset(X, y);
         for iSplit = 1:size(obj.splits, 2)
@@ -110,17 +112,17 @@ classdef TreeModel < WeakModel
             obj.nodes(iNode).splitter = best.splitter;
             obj.nodes(iNode).left = left.iNode;
             obj.nodes(iNode).right = right.iNode;
+            
             obj.nodes(left.iNode).parent = iNode;
             if obj.nodes(left.iNode).leaf
-              predictor = obj.predictorFunc();
-              obj.nodes(left.iNode).predictor = predictor.trainModel(left.X, left.y);
+              obj.nodes(left.iNode).predictor = obj.trainPredictor(left.X, left.y);
               %obj.nodes(left.iNode).X = left.X;
               %obj.nodes(left.iNode).y = left.y;
             end
+            
             obj.nodes(right.iNode).parent = iNode;
             if obj.nodes(right.iNode).leaf
-              predictor = obj.predictorFunc();
-              obj.nodes(right.iNode).predictor = predictor.trainModel(right.X, right.y);
+              obj.nodes(right.iNode).predictor = obj.trainPredictor(right.X, right.y);
               %obj.nodes(right.iNode).X = right.X;
               %obj.nodes(right.iNode).y = right.y;
             end
@@ -129,11 +131,15 @@ classdef TreeModel < WeakModel
       end
       if iNode == 1 && obj.nodes(iNode).leaf
         % predictor in root
-        predictor = obj.predictorFunc();
-        obj.nodes(iNode).predictor = predictor.trainModel(X, y);
+        obj.nodes(iNode).predictor = obj.trainPredictor(X, y);
         %obj.nodes(iNode).X = X;
         %obj.nodes(iNode).y = y;
       end
+    end
+    
+    function predictor = trainPredictor(obj, X, y)
+      predictor = obj.predictorFunc();
+      predictor = predictor.trainModel(X, y);
     end
     
     function [yPred, sd2] = modelPredictRecursive(obj, X, iNode)

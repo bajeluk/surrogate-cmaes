@@ -4,63 +4,27 @@ classdef GradientTreeModel < TreeModel
   end
   
   methods
-    function obj = GradientTreeModel(modelOptions, xMean)
+    function obj = GradientTreeModel(modelOptions)
       % constructor
       splitGainOptions.weightedGain = false;
       splitGainOptions.regularization = defopts(modelOptions, 'regularization', 0);
       modelOptions.splitGain = GradientSplitGain(splitGainOptions);
-      modelOptions.predictorFunc = @(xMean) ConstantModel(struct, xMean);
-      modelOptions.objectiveFunc = @immse;
-      obj = obj@TreeModel(modelOptions, xMean);
+      modelOptions.predictorFunc = @() ConstantModel(struct);
+      modelOptions.lossFunc = @immse;
+      obj = obj@TreeModel(modelOptions);
       
       % specific model options
       obj.regularization = defopts(modelOptions, 'regularization', 0);
     end
   end
   
-  methods (Access = private)
-    function trainModelRecursive(obj, X, y, iNode, depth)
-      [N, D] = size(X);
-      if depth < obj.maxDepth && N >= obj.minParentSize && N >= 2 * obj.minLeafSize && length(unique(y)) >= 2
-        best = struct('gain', -inf);
-        obj.splitGain.reset(X, y);
-        for iSplit = 1:size(obj.splits, 2)
-          split = obj.splits{iSplit};
-          split.reset(X, y);
-          candidate = split.get();
-          idx = candidate.splitter(X);
-          if sum(idx) >= obj.minLeafSize && sum(~idx) >= obj.minLeafSize
-            if candidate.gain > best.gain
-              best = candidate;
-            end
-          end
-        end
-        if best.gain >= obj.minGain
-          obj.nodes(iNode).splitter = best.splitter;
-          idx = best.splitter(X);
-          
-          left = struct('idx', idx, 'iNode', obj.addNode());
-          obj.nodes(iNode).left = left.iNode;
-          obj.nodes(left.iNode).parent = iNode;
-          obj.trainModelRecursive(X(left.idx, :), y(left.idx, :), left.iNode, depth+1);
-          
-          right = struct('idx', ~idx, 'iNode', obj.addNode());
-          obj.nodes(iNode).right = right.iNode;
-          obj.nodes(right.iNode).parent = iNode;
-          obj.trainModelRecursive(X(right.idx, :), y(right.idx, :), right.iNode, depth+1);
-          
-          return;
-        end
-      end
-      if isempty(obj.nodes(iNode).predictor)
-        G = sum(obj.y(:, 1));
-        H = sum(obj.y(:, 2));
-        w = repmat(-G/(H + obj.regularization), size(X, 1), 1);
-        obj.nodes(iNode).predictor = obj.predictorFunc(mean(X));
-        obj.nodes(iNode).predictor.trainModel(X, w, mean(X), 0);
-        obj.nodes(iNode).X = X;
-        obj.nodes(iNode).y = y;
-      end
+  methods (Access = protected)
+    function predictor = trainPredictor(obj, X, y)
+      G = sum(y(:, 1));
+      H = sum(y(:, 2));
+      w = repmat(-G/(H + obj.regularization), size(y, 1), 1);
+      predictor = obj.predictorFunc();
+      predictor = predictor.trainModel(X, w);
     end
     
     function pruneRecursive(obj, X, y, iNode)

@@ -23,11 +23,7 @@ classdef (Abstract) SplitGain
     function obj = SplitGain(options)
     % constructor
     % evaluates functions based on constant model
-    %   (y, yPred, variancePred)
     % if 'degree' or 'modelFunc' is specified, uses custom model
-    %   (y, yPred, variancePred)
-    % if also 'probabilistic' is specified
-    %   (y, yPred, variancePred, confidenceIntervalPred, probabilityPred)
     % options
     %   'minSize'       - specifies the min size of either side
     %   'degree'        - uses polynomial model of given degree

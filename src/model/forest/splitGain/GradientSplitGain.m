@@ -3,7 +3,7 @@ classdef GradientSplitGain < SplitGain
 % 1st and 2nd gradients of the loss function
 
   properties
-    regularization
+    regularization % regularization
   end
 
   methods
@@ -16,10 +16,11 @@ classdef GradientSplitGain < SplitGain
   methods (Access = protected)
     function value = getValue(obj, data)
     % evaluates data using custom metric
+      GH = sum(data.y);
       % first derivatives
-      G = sum(data.y(:, 1));
+      G = GH(1);
       % second derivatives
-      H = sum(data.y(:, 2));
+      H = GH(2);
       value = -0.5 * G*G / (H + obj.regularization);
     end
   end
