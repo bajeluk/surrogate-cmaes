@@ -5,6 +5,7 @@ classdef DESplitGain < SplitGain
   methods
     function obj = DESplitGain(options)
       obj = obj@SplitGain(options);
+      obj.computeSd2 = true;
     end
   end
   

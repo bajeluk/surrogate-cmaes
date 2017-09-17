@@ -26,10 +26,14 @@ classdef PolynomialModel < WeakModel
       rank = sum(s > tol);
       if rank < size(M, 2)
         % remove dependent columns
-        [~, obj.features] = rref(M);
+        % [~, obj.features] = rref(M);
+        [~, R, E] = qr(M, 0);
+        s = abs(diag(R));
+        tol = max(size(M)) * eps(max(s));
+        obj.features = E(s > tol);
         XP = XP(:, obj.features);
         M = M(obj.features, obj.features);
-        [U, S, V] = svd(M);
+        [U, S, V] = svd(M, 'econ');
       end
       %warning('off', 'MATLAB:rankDeficientMatrix');
       %warning('off', 'MATLAB:singularMatrix');

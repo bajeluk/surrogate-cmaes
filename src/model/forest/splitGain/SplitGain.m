@@ -15,6 +15,8 @@ classdef (Abstract) SplitGain
     allEqual % whether all y values are equal
     current % struct holding data for current node
     polyMethod % method for computing polynomial model - 'regress' or ''
+    computeSd2 = false % computes sd2
+    computeMse = false % computes mse
   end
   
   methods
@@ -102,10 +104,14 @@ classdef (Abstract) SplitGain
       elseif isempty(obj.modelFunc) && isempty(obj.degree)
         % constant model
         mu = sum(data.y) / numel(data.y);
-        r = data.y - mu;
-        sd2 = r' * r / numel(r);
         data.yPred = repmat(mu, size(data.y));
-        data.sd2 = repmat(sd2, size(data.y));
+        if obj.computeMse || obj.computeSd2
+          r = data.y - mu;
+          data.mse = r' * r / numel(r);
+        end
+        if obj.computeSd2
+          data.sd2 = repmat(data.mse, size(data.y));
+        end
       elseif isempty(obj.modelFunc) && strcmpi(obj.polyMethod, 'regress')
         % polynomial model using regress
         XP = obj.XP(idx, :);
@@ -114,7 +120,12 @@ classdef (Abstract) SplitGain
         warning('on', 'stats:regress:RankDefDesignMat');
         data.yPred = data.y - r;
         ci = bsxfun(@plus, data.yPred - r, rint);
-        data.sd2 = confidenceToVar(ci);
+        if obj.computeMse
+          data.mse = r' * r / numel(r);
+        end
+        if obj.computeSd2
+          data.sd2 = confidenceToVar(ci);
+        end
       elseif isempty(obj.modelFunc)
         % polynomial model
         XP = obj.XP(idx, :);
@@ -122,10 +133,14 @@ classdef (Abstract) SplitGain
         warning('off', 'MATLAB:singularMatrix');
         warning('off', 'MATLAB:nearlySingularMatrix');
         data.yPred = XP * (XP \ data.y);
-        % var(b) = E(b^2) * (X'*X)^-1
-        r = data.y - data.yPred;
-        mse = r' * r / numel(r);
-        data.sd2 = mse * sum(XP / (XP' * XP) .* XP, 2);
+        if obj.computeMse || obj.computeSd2
+          % var(b) = E(b^2) * (X'*X)^-1
+          r = data.y - data.yPred;
+          data.mse = r' * r / numel(r);
+        end
+        if obj.computeSd2
+          data.sd2 = data.mse * sum(XP / (XP' * XP) .* XP, 2);
+        end
         warning('on', 'MATLAB:rankDeficientMatrix');
         warning('on', 'MATLAB:singularMatrix');
         warning('on', 'MATLAB:nearlySingularMatrix');
@@ -134,8 +149,15 @@ classdef (Abstract) SplitGain
         X = obj.X(idx, :);
         model = obj.modelFunc();
         model = model.trainModel(X, data.y);
-        [data.yPred, data.sd2] = ...
-          model.modelPredict(X);
+        if obj.computeSd2
+          [data.yPred, data.sd2] = model.modelPredict(X);
+        else
+          [data.yPred] = model.modelPredict(X);
+        end
+        if obj.computeMse
+          r = data.y - data.yPred;
+          data.mse = r' * r / numel(r);
+        end
       end
       data.value = obj.getValue(data);
     end

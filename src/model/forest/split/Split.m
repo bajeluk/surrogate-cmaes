@@ -54,7 +54,9 @@ classdef Split
         % normalize first
         r = splitter(obj.X);
         idx = r <= 0;
-        mm = [mean(-r(idx)), mean(r(~idx))];
+        rLeft = r(idx);
+        rRight = r(~idx);
+        mm = [-sum(rLeft) / numel(rLeft), sum(rRight) / numel(rRight)];
         splitter = @(X) Split.normalize(splitter(X), mm);
 
         lambda = obj.lambda;

@@ -53,7 +53,8 @@ classdef (Abstract) ModelTest < Test
       test.err = sqrt(immse(test.y, test.yPred));
       
       result = struct;
-      result.name = sprintf('%s(%s)', ...
+      result.name = testCase.name{2};
+      result.description = sprintf('%s(%s)', ...
           testCase.name{2}, ...
           testCase.joinedParams);
       result.params = testCase.params;

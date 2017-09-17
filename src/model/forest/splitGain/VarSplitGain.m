@@ -5,6 +5,7 @@ classdef VarSplitGain < SplitGain
   methods
     function obj = VarSplitGain(options)
       obj = obj@SplitGain(options);
+      obj.computeSd2 = true;
     end
   end
   

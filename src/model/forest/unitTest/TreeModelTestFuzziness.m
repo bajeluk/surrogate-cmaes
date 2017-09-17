@@ -6,12 +6,12 @@ classdef TreeModelTestFuzziness < ModelTest
     modelSpec = {'linear', 'quadratic'};
     minLeafSize = {10};
     minGain = {0.1};
+    splitGain0 = {'MSE'};
     splitGain1 = {'MSE'};
-    splitGain2 = {'MSE'};
     %fuzziness = {0};
     %lambda = {0};
     fuzziness = {0.05, 1/6, 1/2};
-    lambda = {1, 2, 5};
+    steepness = {1, 2, 5};
   end
   
   methods (TestClassSetup)
@@ -21,25 +21,25 @@ classdef TreeModelTestFuzziness < ModelTest
   end
   
   methods (Test)
-    function test1(testCase, fNum, m, ...
-        minLeafSize, minGain, splitGain1, fuzziness, lambda)
+    function test0(testCase, fNum, m, ...
+        minLeafSize, minGain, splitGain0, fuzziness, steepness)
       params = struct;
       params.minLeafSize = minLeafSize;
       params.minGain = minGain;
-      params.splitGain = splitGain1;
+      params.splitGain = splitGain0;
       params.fuzziness = fuzziness;
-      params.lambda = lambda;
+      params.steepness = steepness;
       testCase.reset(params, sprintf('_%02d_%03d', fNum, m));
       
       splitGainOptions = struct;
       splitGainOptions.minSize = minLeafSize;
-      splitGainFunc = str2func(sprintf('%sSplitGain', splitGain1));
+      splitGainFunc = str2func(sprintf('%sSplitGain', splitGain0));
       splitGain = splitGainFunc(splitGainOptions);
       
       splits = {};
       splitOptions = struct;
       splitOptions.soft = fuzziness ~= 0;
-      splitOptions.lambda = lambda;
+      splitOptions.lambda = steepness;
       splits{1} = AxisSplit(splitOptions);
       
       modelOptions = struct;
@@ -52,15 +52,15 @@ classdef TreeModelTestFuzziness < ModelTest
       [model, train, test, time] = testCase.testCoco(modelFunc, fNum, m);
     end
     
-    function test2(testCase, fNum, m, ...
-        modelSpec, minLeafSize, minGain, splitGain2, fuzziness, lambda)
+    function test1(testCase, fNum, m, ...
+        modelSpec, minLeafSize, minGain, splitGain1, fuzziness, steepness)
       params = struct;
       params.modelSpec = modelSpec;
       params.minLeafSize = minLeafSize;
       params.minGain = minGain;
-      params.splitGain = splitGain2;
+      params.splitGain = splitGain1;
       params.fuzziness = fuzziness;
-      params.lambda = lambda;
+      params.steepness = steepness;
       testCase.reset(params, sprintf('_%02d_%03d', fNum, m));
       
       predictorOptions = struct;
@@ -70,13 +70,13 @@ classdef TreeModelTestFuzziness < ModelTest
       splitGainOptions = struct;
       splitGainOptions.degree = modelSpec;
       splitGainOptions.minSize = minLeafSize;
-      splitGainFunc = str2func(sprintf('%sSplitGain', splitGain2));
+      splitGainFunc = str2func(sprintf('%sSplitGain', splitGain1));
       splitGain = splitGainFunc(splitGainOptions);
       
       splits = {};
       splitOptions = struct;
       splitOptions.soft = fuzziness ~= 0;
-      splitOptions.lambda = lambda;
+      splitOptions.lambda = steepness;
       splits{1} = AxisSplit(splitOptions);
       
       modelOptions = struct;
