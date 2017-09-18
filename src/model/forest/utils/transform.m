@@ -30,7 +30,8 @@ function [X, y, trans] = transform(X, y, opt)
   end
   valuesIdx = datasample(1:n, opt.nValues, ...
     'Replace', false);
-  X = X(valuesIdx, trans.featuresIdx);
+  
+  X = X(valuesIdx, :);
   if ~isempty(opt.polynomial) && ~strcmpi(opt.polynomial, 'linear')
     trans.polynomial = opt.polynomial;
     X = generateFeatures(X, opt.polynomial, false);

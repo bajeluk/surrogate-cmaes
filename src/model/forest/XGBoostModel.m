@@ -6,7 +6,7 @@ classdef XGBoostModel < RandomForestModel
   end
   
   methods
-    function obj = XGBoostModel(modelOptions, xMean)
+    function obj = XGBoostModel(modelOptions)
       % constructor
       modelOptions.boosting = true;
       modelOptions.treeFunc = defopts(modelOptions, 'treeFunc', ...

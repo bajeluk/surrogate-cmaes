@@ -28,6 +28,8 @@ classdef ModelFactory
           obj = GprModel(modelOptions, xMean);
         case 'rf'
           obj = RfModel(modelOptions, xMean);
+        case 'forest'
+          obj = ForestModel(modelOptions, xMean);
         case 'bbob'
           obj = PreciseModel(modelOptions, xMean);
         case 'modelpool'
