@@ -43,6 +43,10 @@ https://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pd
 Hyperparameter tuning - random search
 http://www.jmlr.org/papers/volume13/bergstra12a/bergstra12a.pdf
 
+Hyperparameter tuning - Matlab bayesopt
+https://www.mathworks.com/help/stats/bayesian-optimization-workflow.html
+https://www.mathworks.com/help/stats/bayesian-optimization-algorithm.html
+
 Hyperparameter tuning - BayesOpt
 https://github.com/rmcantin/bayesopt
 http://jmlr.org/papers/v15/martinezcantin14a.html
