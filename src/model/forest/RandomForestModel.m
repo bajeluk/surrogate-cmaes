@@ -26,7 +26,7 @@ classdef RandomForestModel < WeakModel
       
       % model specific options
       obj.treeFunc = defopts(modelOptions, 'treeFunc', @() TreeModel(struct));
-      obj.nTrees = defopts(modelOptions, 'nTrees', 10);
+      obj.nTrees = defopts(modelOptions, 'nTrees', 100);
       obj.nFeaturesToSample = defopts(modelOptions, 'nFeaturesToSample', -1);
       obj.sampleWithReplacement = defopts(modelOptions, 'sampleWithReplacement', true);
       obj.inBagFraction = defopts(modelOptions, 'inBagFraction', 1);

@@ -10,6 +10,10 @@ function [X, y, trans] = transform(X, y, opt)
   % remove constant features
   varX = var(X);
   trans.featuresIdx = find(varX >= eps(max(varX)) * n);
+  % but don't remove everything
+  if isempty(trans.featuresIdx)
+    trans.featuresIdx = 1:1;
+  end
   X = X(:, trans.featuresIdx);
   d = size(X, 2);
   opt.nFeatures = min(opt.nFeatures, d);
@@ -17,24 +21,26 @@ function [X, y, trans] = transform(X, y, opt)
   if opt.zscore
     [X, trans.mu, trans.sigma] = zscore(X);
   end
+  featuresSampleIdx = 1:d;
   if opt.pca
     warning('off', 'stats:pca:ColRankDefX');
     [trans.coeff, X, ~, ~, explained, trans.mu] = pca(X);
     warning('on', 'stats:pca:ColRankDefX');
     % prefer features with higher explained value
-    trans.featuresIdx = datasample(trans.featuresIdx, opt.nFeatures, ...
+    featuresSampleIdx = datasample(featuresSampleIdx, opt.nFeatures, ...
       'Replace', false, 'Weights', explained);
   else
-    trans.featuresIdx = datasample(trans.featuresIdx, opt.nFeatures, ...
+    featuresSampleIdx = datasample(featuresSampleIdx, opt.nFeatures, ...
       'Replace', false);
   end
-  valuesIdx = datasample(1:n, opt.nValues, ...
+  trans.featuresIdx = trans.featuresIdx(featuresSampleIdx);
+  valuesSampleIdx = datasample(1:n, opt.nValues, ...
     'Replace', false);
   
-  X = X(valuesIdx, :);
+  X = X(valuesSampleIdx, featuresSampleIdx);
   if ~isempty(opt.polynomial) && ~strcmpi(opt.polynomial, 'linear')
     trans.polynomial = opt.polynomial;
     X = generateFeatures(X, opt.polynomial, false);
   end
-  y = y(valuesIdx, :);
+  y = y(valuesSampleIdx, :);
 end

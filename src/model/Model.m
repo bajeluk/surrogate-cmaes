@@ -202,7 +202,6 @@ classdef (Abstract) Model
       else
         XtransfReduce = XTransf;
       end
-
       [y, sd2] = modelPredict(obj,XtransfReduce);
 
     end

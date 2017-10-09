@@ -61,8 +61,8 @@ classdef ForestModel < Model
       obj.forestModel = obj.forestModel.trainModel(X, y);
         
       % count train MSE
-      % trainMSE = mean((y - obj.predict(X)).^2);
-      % fprintf('  TreeBagger: train MSE = %f\n', trainMSE);
+      trainMSE = mean((y - obj.forestModel.modelPredict(X)).^2);
+      fprintf('  ForestModel: train MSE = %f\n', trainMSE);
     end
 
     function [y, sd2] = modelPredict(obj, X)
