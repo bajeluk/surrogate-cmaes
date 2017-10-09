@@ -36,3 +36,18 @@ https://stat.ethz.ch/education/semesters/ss2012/ams/slides/v10.2.pdf
 
 Overview of tree algorithms from decision tree to xgboost 
 https://www.google.cz/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&uact=8&ved=0ahUKEwi928H-5aHWAhUD1xQKHe0tDSMQFggsMAA&url=https%3A%2F%2Fwww.slideshare.net%2Ftkm2261%2Foverview-of-tree-algorithms-from-decision-tree-to-xgboost&usg=AFQjCNGoC75JFVCuBZOeg8LBYI505hRrow
+
+Hyperparameter tuning algorithms
+https://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf
+
+Hyperparameter tuning - random search
+http://www.jmlr.org/papers/volume13/bergstra12a/bergstra12a.pdf
+
+Hyperparameter tuning - BayesOpt
+https://github.com/rmcantin/bayesopt
+http://jmlr.org/papers/v15/martinezcantin14a.html
+
+Hyperparameter importance
+https://dl.acm.org/citation.cfm?id=3044891
+http://aad.informatik.uni-freiburg.de/papers/14-ICML-HyperparameterAssessment-longversion.pdf
+
