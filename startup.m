@@ -13,3 +13,9 @@ addpath(fullfile(pwd, 'exp/experiments'));
 
 % run('src/vendor/gpml-matlab-v3.2/startup.m');
 run('src/vendor/gpml_v4.0/startup.m');
+
+% CEDA
+disp('executing Copula-EDA startup script...');
+addpath(fullfile(pwd, '../copula-eda/exp/vendor'));
+addpath(fullfile(pwd, '../copula-eda/exp/vendor/bntstructlearn'));
+run('../copula-eda/exp/vendor/startup.m');
