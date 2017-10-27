@@ -57,7 +57,7 @@ function [rankTable, ranks] = rankingTable(data, varargin)
   extraFields = {'DataNames', 'ResultFile'};
   fieldID = isfield(settings, extraFields);
   createSettings = rmfield(settings, extraFields(fieldID));
-  createSettings.Mode = 'target';
+  % createSettings.Mode = 'target';
   [rankTable, ranks] = createRankingTable(data, createSettings);
   
   % print table

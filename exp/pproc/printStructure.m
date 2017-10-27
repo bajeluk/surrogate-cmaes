@@ -207,11 +207,13 @@ function str = printStruct(str, s)
 
   sf = fieldnames(s);
   str = prt(str, 'struct(');
-  str = prt(str, '''%s'', ', sf{1});
-  str = printVal(str, s.(sf{1}));
-  for fnum = 2 : length(sf)
-    str = prt(str, ', ''%s'', ', sf{fnum});
-    str = printVal(str, s.(sf{fnum}));
+  if (~isempty(sf))
+    str = prt(str, '''%s'', ', sf{1});
+    str = printVal(str, s.(sf{1}));
+    for fnum = 2 : length(sf)
+      str = prt(str, ', ''%s'', ', sf{fnum});
+      str = printVal(str, s.(sf{fnum}));
+    end
   end
   str = prt(str, ')');
 end
