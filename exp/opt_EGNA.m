@@ -56,7 +56,7 @@ function [x, y_evals, stopflag, varargout] = opt_EGNA(FUN, dim, ftarget, maxfune
       {ceil(maxfunevals/myeval(cmOptions.PopSize)), ftarget}};
   edaparams{7} = {'verbose_method', 'none', {}};
 
-  % CEDA itself
+  % EGNA itself
   %
   [AllStat,Cache]=RunEDA(myeval(cmOptions.PopSize),dim,fitness,bounds,cache,edaparams);
 

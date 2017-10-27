@@ -18,16 +18,16 @@ cache  = [0,0,1,0,1];
 
 maxfunevals = 150000;
 ftarget = 0;
-fitness = @(x) -1e6 + EvalSaga(x');
+fitness = @(x) -1e6 + EvalSaga(x);
 
 cmOptions = struct( ...
   'PopSize', '200*dim', ...
   'CopulaType', 'Gaussian', ...
   'SelectionRatio', 0.1);
 
-learning_params(1:5) = {'vars','ClusterPointsKmeans',10,'sqEuclidean',1};
-edaparams{1} = {'learning_method','LearnMixtureofFullGaussianModels',learning_params};
-edaparams{2} = {'sampling_method','SampleMixtureofFullGaussianModels',{myeval(cmOptions.PopSize),3}};
+learning_params = {cmOptions.CopulaType};
+edaparams{1} = {'learning_method','LearnCopulaModel',learning_params};
+edaparams{2} = {'sampling_method','SampleCopulaModel',{myeval(cmOptions.PopSize),3}};
 edaparams{3} = {'replacement_method','best_elitism',{'fitness_ordering'}};
 selparams(1:2) = {cmOptions.SelectionRatio,'fitness_ordering'};
 edaparams{4} = {'selection_method','truncation_selection',selparams};
