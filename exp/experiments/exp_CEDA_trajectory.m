@@ -1,3 +1,4 @@
+[x_min, f_min, y_evals] = CEDA_trajectory
 % EXAMPLE 15:  Continuous EDAs that learn mixtures of distributions
 %              for  the trajectory problem (see previous examples for
 %              details on this problem)
@@ -10,11 +11,8 @@ cd(thisDir);
 clear thisDir;
 
 dim = 12;
-PopSize = 5000; 
-fitness = 'EvalSaga';
 bounds(1,:) = [7000,0,0,0,50,300,0.01,0.01,1.05,8,-1*pi,-1*pi];
 bounds(2,:) = [9100,7,1,1,2000,2000,0.90,0.90,7.00,500,pi,pi]; 
-cache  = [0,0,1,0,1]; 
 
 maxfunevals = 150000;
 ftarget = 0;
@@ -25,6 +23,7 @@ cmOptions = struct( ...
   'CopulaType', 'Gaussian', ...
   'SelectionRatio', 0.1);
 
+cache  = [0,0,1,0,1]; 
 learning_params = {cmOptions.CopulaType};
 edaparams{1} = {'learning_method','LearnCopulaModel',learning_params};
 edaparams{2} = {'sampling_method','SampleCopulaModel',{myeval(cmOptions.PopSize),3}};
