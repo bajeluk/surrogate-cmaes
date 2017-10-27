@@ -66,7 +66,7 @@
 %%%-------------------------------------------------------------%%%
 function [res, res2] = benchmarks(x, strfun, DIM) 
 %
-  Nfcts = 25;
+  Nfcts = 26;
 
   % return valid function IDs (ie numbers)
   if nargin < 1 || ( ...
@@ -108,9 +108,9 @@ function [res, res2] = benchmarks(x, strfun, DIM)
       try  % exist does not work under Octave
         eval(['f' num2str(i) '([1; 2]);']);
         res{i} = str2func(['f' num2str(i)]); % eval(['@f' num2str(i)]);
-      catch
+      catch ee
         if i <= Nfcts 
-          disp(sprintf('execution of function %d produces an error', i));
+          disp(sprintf('execution of function %d produces an error: %s', i, ee.message));
         end
       end
     end
@@ -2647,6 +2647,154 @@ function [Fval, Ftrue] = f25(x, DIM, ntrial)
 end % function
 
 
+%%%%%%%%%%%%% F26: EdEdJ/SAGAS optimiz. problem %%%%%%%%%%%%%%%%%%%
+%%%-------------------------------------------------------------%%%
+function [Fval, Ftrue] = f26(x, DIM, ntrial)
+% last change: 09/01/29
+  persistent Fopt Xopt linearTF rotation rseed scales
+  persistent lastSize arrXopt arrScales arrExpo 
+
+  funcID = 26; 
+  condition = 10;  % for linear transformation
+%  alpha = 1;      % 
+%  beta = 0.25;       % 
+  rrseed = funcID; 
+  
+  %----- CHECK INPUT -----
+  if ischar(x) % initialize or return Fopt Xopt or linearTF 
+    flginputischar = 1;
+    strinput = x;
+    if nargin < 2 || isempty(DIM)
+      DIM = 12;
+    end
+    x = ones(DIM,1);  % for setting all persistent variables
+  else
+    flginputischar = 0;
+  end
+  
+  % from here on x is assumed a numeric variable
+  [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
+  if DIM == 1 
+    error('1-D input is not supported');
+  end
+  
+  %----- INITIALIZATION -----
+  if nargin > 2     % set seed depending on trial index
+    Fopt = [];      % clear previous settings for Fopt
+    lastSize = [];  % clear other previous settings
+    rseed = rrseed + 1e4 * ntrial; 
+  elseif isempty(rseed)
+    rseed = rrseed;  % like for ntrial==0
+  end
+  if isempty(Fopt)
+    % The best known point has f-value fopt = 18.1923
+    Fopt = 1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100));
+  end 
+  Fadd = Fopt;  % value to be added on the "raw" function value
+
+  % bajeluk: instead of random shift/rotate
+  %{
+  % DIM-dependent initialization
+  if isempty(lastSize) || lastSize.DIM ~= DIM  
+    Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
+    rotation = computeRotation(rseed+1e6, DIM); 
+    scales = sqrt(condition).^linspace(0, 1, DIM)'; 
+    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    % decouple scaling from function definition
+    % linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
+  end
+  %}
+  % take just always the same function
+  linearTF = eye(DIM);
+  rotation = eye(DIM);
+  scales = ones(DIM);
+  arrXopt = zeros(DIM, POPSI); 
+  % Reported values from the article:
+  % Fopt = 18.1923;
+  origXopt = [7020.49, 5.34817, 1, 0.498915, 788.763, 484.349, 0.4873, 0.01, 1.05, 10.8516, -1.57191, -0.685429]';
+  % Optimized values by the CMA-ES
+  % origXopt = [7020.41154782763, 5.34747000005888, 1.00009999982852, 0.499014999883567, 788.887681312824, 484.179010293478, 0.487388999826139, 0.00991100000323123, 1.049405, 10.8518035466853, -1.57236404627626, -0.685902790495242]';
+  origBounds(1,:) = [7000,0,0,0,50,300,0.01,0.01,1.05,8,-1*pi,-1*pi];
+  origBounds(2,:) = [9100,7,1,1,2000,2000,0.90,0.90,7.00,500,pi,pi]; 
+
+  origWidth = (origBounds(2,:) - origBounds(1,:))';
+  Xopt = ((origXopt - origBounds(1,:)') ./ origWidth) * 10 - 5;
+
+  % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
+  if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
+    lastSize.POPSI = POPSI; 
+    lastSize.DIM = DIM; 
+    % arrXopt = repmat(Xopt, 1, POPSI); 
+    % arrExpo = repmat(beta * linspace(0, 1, DIM)', 1, POPSI); 
+    % arrScales = repmat(scales, 1, POPSI); 
+  end
+
+  %----- BOUNDARY HANDLING -----
+  xoutside = max(0, abs(x) - 5) .* sign(x); 
+  Fpen = 100 * sum(xoutside.^2, 1);  % penalty
+  % Fpen(Fpen > 0) = NaN;  % rejection boundary handling 
+  % x(xoutside ~= 0) = x(xoutside ~= 0) - xoutside(xoutside ~= 0);  % into [-5, 5]
+  Fadd = Fadd + Fpen; 
+
+  if (DIM == 12)
+
+    %----- TRANSFORMATION IN SEARCH SPACE -----
+    x = x - arrXopt;  % shift optimum to zero 
+    % x = rotation * x;  % no scaling here, because it would go to the arrExpo
+    % x = monotoneTFosc(x); 
+    % idx = x > 0;
+    % x(idx) = x(idx).^(1 + arrExpo(idx) .* sqrt(x(idx)));  % smooth in zero
+    % x = rotation' * x;   % back-rotation
+    % x = arrScales .* x;  % scaling, Xopt should be 0 
+    % x = linearTF * x;    % rotate/scale
+
+    %----- COMPUTATION core -----
+
+    scaleMatrix = repmat((origBounds(2,:)' - origBounds(1,:)') / 10, 1, POPSI);
+    xScaled = origBounds(1,:)' + (x + 5) .* scaleMatrix;
+
+    Ftrue = zeros(1,POPSI);
+    for ii = 1:POPSI
+      Ftrue(ii) = 1e6 - 18.185314 - EvalSaga(xScaled(:,ii)');
+    end
+
+  elseif (DIM == 2 && all(x == [1;2]))
+    % just initialization
+    Ftrue = NaN;
+  else
+    fprintf('Dimension other than 12 is not supported.\n');
+    Ftrue = NaN(1, POPSI);
+  end
+
+  Fval = Ftrue;  % without noise
+
+  %----- NOISE -----
+  % Fval = FGauss(Ftrue, 1); 
+  % Fval = FUniform(Ftrue, 0.49 + 1/DIM, 1); 
+  % Fval = FCauchy(Ftrue, 1); 
+
+  %----- FINALIZE -----
+  Ftrue = Ftrue + Fadd;
+  Fval = Fval + Fadd;
+
+  %----- RETURN INFO ----- 
+  if flginputischar  
+    if strcmpi(strinput, 'xopt')
+      Fval = Fopt;
+      Ftrue = Xopt;
+    elseif strcmpi(strinput, 'linearTF')
+      Fval = Fopt;
+      Ftrue = {};
+      Ftrue{1} = linearTF; 
+      Ftrue{2} = rotation; 
+    else  % if strcmpi(strinput, 'info')
+      Ftrue = []; % benchmarkinfos(funcID); 
+      Fval = Fopt;
+    end
+  end
+
+end % function
+
 % qqq
 %%%%%%%%%%%%%%%%%%%%%%% TEMPLATE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%-------------------------------------------------------------%%%
@@ -2675,8 +2823,8 @@ function [Fval, Ftrue] = template(x, DIM, ntrial)
   
   % from here on x is assumed a numeric variable
   [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
-  if DIM == 1 
-    error('1-D input is not supported');
+  if DIM < 2
+    error('lower than 2-D input is not supported');
   end
   
   %----- INITIALIZATION -----

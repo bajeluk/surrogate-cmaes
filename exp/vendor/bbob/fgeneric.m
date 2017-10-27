@@ -191,6 +191,17 @@ function Fvalue = fgeneric(x, FUNC_ID, itrial, dataPath, PARAMS)
       end
 
       actFunc = handlesF{FUNC_ID};
+      
+      if (FUNC_ID == 26)
+        % bajeluk for f26 (12-D SAGAS problem)
+        global MGADSMproblem;
+        thisDir = pwd();
+        cd('exp/vendor/mga'); % The spacecraft-trajectory problem instance directory
+        load('EdEdJ.mat');
+        cd(thisDir);
+        clear thisDir;
+      end
+      
       Fopt = feval(actFunc, 'init', [], itrial);
       % if ~(nargin > 3 && ~isempty(itrial))
       %   Fopt = feval(actFunc, 'fopt');
