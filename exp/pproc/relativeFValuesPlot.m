@@ -119,6 +119,7 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
   plotSet.plotGrid = defopts(settings, 'PlotGrid', []);
   plotSet.scaleY08 = defopts(settings, 'ScaleY08', true);
+  plotSet.logY = defopts(settings, 'LogY', true);
   % plot-line settings
   defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
   plotSet.lineSpec = defopts(settings, 'LineSpec', defaultLine);
@@ -269,7 +270,11 @@ function handle = relativePlot(data_stats, settings)
         % count f-values ratio
         actualData = cell2mat(arrayfun(@(D) data_stats{nonEmptyId(D)}{f,d}, 1:nUsefulData, 'UniformOutput', false));
         nData = min(settings.maxEval, size(actualData, 1));
-        actualData = log10( actualData(1:nData, :) );
+        if (settings.logY)
+          actualData = log10( actualData(1:nData, :) );
+        else
+          actualData = actualData(1:nData, :);
+        end
         actualMin = min(min(actualData));
         actualMax = max(max(actualData));
 

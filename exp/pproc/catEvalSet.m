@@ -1,4 +1,4 @@
-function [evals, settings, results] = catEvalSet(folders, funcSet)
+function [evals, settings, results] = catEvalSet(folders, funcSet, defaultMaxFE)
 % Finds unique settings and prepares its data for further processing.
 % [evals, settings] = catEvalSet(folders, funcSet) returns cell array 
 % 'data' of size functions x dimensions x unique settings and appropriate 
@@ -27,7 +27,10 @@ function [evals, settings, results] = catEvalSet(folders, funcSet)
   if ~iscell(folders)
     folders = {folders};
   end
-  
+  if (nargin < 3) || ~isnumeric(defaultMaxFE)
+    defaultMaxFE = 250;
+  end
+
   % initialize
   nFolders = length(folders);
   exp_evals = cell(1, nFolders);
@@ -36,7 +39,7 @@ function [evals, settings, results] = catEvalSet(folders, funcSet)
 
   % load data from all folders
   for s = 1:length(folders)
-    [exp_evals{s}, settings{s}, exp_results1{s}] = dataReady(folders{s}, funcSet);
+    [exp_evals{s}, settings{s}, exp_results1{s}] = dataReady(folders{s}, funcSet, defaultMaxFE);
   end
   
   % not empty settings

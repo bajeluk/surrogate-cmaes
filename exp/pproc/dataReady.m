@@ -1,4 +1,4 @@
-function [data, settings, exp_results] = dataReady(datapath, funcSet)
+function [data, settings, exp_results] = dataReady(datapath, funcSet, defaultMaxFE)
 % Prepares data for further processing.
 % [data, settings] = dataReady(datapath, funcSet) returns cell array 'data'
 % of size functions x dimensions x settings and appropriate 'settings'.
@@ -7,6 +7,8 @@ function [data, settings, exp_results] = dataReady(datapath, funcSet)
 %   datapath - path to data | string
 %   funcSet  - structure with fields 'BBfunc' (numbers of BBOB functions) 
 %              and 'dims' (numbers of dimensions) | structure
+%   defaultMaxFE - default maximum FE/D for BBOB raw data loading (ie., if
+%              this number cannot be loaded from scmaes_params.mat)
 %
 % Output:
 %   data     - aggregated data of size functions x dimensions x settings 
@@ -50,7 +52,11 @@ function [data, settings, exp_results] = dataReady(datapath, funcSet)
   exp_results = cell(nFunc, nDim);
   exp_results(:, :) = {{}};
   if isempty(datalist)
-    data = bbobDataReady(datapath, funcSet);
+    % Load the data from BBOB raw text files
+    if (nargin < 3) || ~isnumeric(defaultMaxFE) || (defaultMaxFE < 0)
+      defaultMaxFE = 250;
+    end
+    data = bbobDataReady(datapath, funcSet, defaultMaxFE);
     return
   end
   

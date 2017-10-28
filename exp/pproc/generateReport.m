@@ -26,6 +26,8 @@ function reportFile = generateReport(expFolder, varargin)
 %     'AlgNames'       - cell array of names of algorithms | {}
 %     'RemoveAlgs'     - remove these algorithms from report, defined by
 %                        their indices in a row vector| []
+%     'MaxEval'        - maximum number of function evaluations to consider
+%                        (default: 250 FE/D)
 %
 % Output:
 %   reportFile - name of m-file containing report | string
@@ -55,6 +57,7 @@ function reportFile = generateReport(expFolder, varargin)
   quantilePlots = defopts(reportSettings, 'QuantilePlots', false);
   algNames = defopts(reportSettings, 'AlgNames', {});
   removeAlgs = defopts(reportSettings, 'RemoveAlgs', []);
+  maxFE = defopts(reportSettings, 'MaxEval', 250);
 
   if ~iscell(expFolder)
     expFolder = {expFolder};
@@ -75,7 +78,8 @@ function reportFile = generateReport(expFolder, varargin)
   BBfunc   = cell(nFolders, 1);
   dims     = cell(nFolders, 1);
   % evaluations and quantiles to show
-  showEval     = [25, 50, 100, 200];
+  % showEval     = [25, 50, 100, 200];
+  showEval     = floor([0.1, 0.2, 0.4, 0.8] * maxFE);
   showQuantile = [0.25, 0.5, 0.75];
   % load data
   for f = 1 : nFolders
@@ -193,7 +197,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%% loading results\n');
   fprintf(FID, 'funcSet.BBfunc = %s;\n', printStructure(BBfunc, FID, 'Format', 'value'));
   fprintf(FID, 'funcSet.dims = %s;\n', printStructure(dims, FID, 'Format', 'value'));
-  fprintf(FID, '[expData, expSettings] = catEvalSet(expFolder, funcSet);\n');
+  fprintf(FID, '[expData, expSettings] = catEvalSet(expFolder, funcSet, %d);\n', maxFE);
   if ~isempty(removeAlgs)
     fprintf(FID, 'expData(:,:,[%s]) = [];\n', num2str(removeAlgs));
     fprintf(FID, 'expSettings([%s]) = [];\n', num2str(removeAlgs));
@@ -325,7 +329,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%%\n');
   fprintf(FID, '%% where $f_{\\textrm{min}}$ is the best reached function value, $\\Delta f_T\n');
   fprintf(FID, '%% = 10^{-8}$ is target value, $\\textrm{FE/D}$ are function evaluations\n');
-  fprintf(FID, '%% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = 250$.\n');
+  fprintf(FID, '%% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = %d$.\n', maxFE);
   fprintf(FID, '%% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
   fprintf(FID, '%%\n');
   % relativeFValuesPlots
@@ -345,6 +349,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                            ''FunctionNames'', true, ...\n');
   fprintf(FID, '                            ''LegendOption'', ''%s'', ...\n', legendOption);
   fprintf(FID, '                            ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
+  fprintf(FID, '                            ''MaxEval'', %d, ...\n', maxFE);
   if (quantilePlots)
     fprintf(FID, '                            ''Statistic'', ''quantile'');\n');
   else
@@ -423,7 +428,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  %%\n');
   fprintf(FID, '  %% where $f_{\\textrm{min}}$ is the best reached function value, $\\Delta f_T\n');
   fprintf(FID, '  %% = 10^{-8}$ is target value, $\\textrm{FE/D}$ are function evaluations\n');
-  fprintf(FID, '  %% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = 250$.\n');
+  fprintf(FID, '  %% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = %d$.\n', maxFE);
   fprintf(FID, '  %% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
   fprintf(FID, '  %%\n');
   % relativeFValuesPlots
@@ -443,6 +448,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                              ''FunctionNames'', true, ...\n');
   fprintf(FID, '                              ''LegendOption'', ''%s'', ...\n', legendOption);
   fprintf(FID, '                              ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
+  fprintf(FID, '                              ''MaxEval'', %d, ...\n', maxFE);
   fprintf(FID, '                              ''Statistic'', @median);\n');
   fprintf(FID, '  end\n');
   fprintf(FID, '  \n');
@@ -460,6 +466,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                          ''FunctionNames'', true, ...\n');
   fprintf(FID, '                          ''LegendOption'', ''%s'', ...\n', legendOption);
   fprintf(FID, '                          ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
+  fprintf(FID, '                          ''MaxEval'', %d, ...\n', maxFE);
   fprintf(FID, '                          ''Statistic'', @median);\n');
   fprintf(FID, 'else\n');
   fprintf(FID, '  warning(''Could not load %%s.\\n');
