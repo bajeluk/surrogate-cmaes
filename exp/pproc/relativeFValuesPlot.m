@@ -455,7 +455,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
 
   nRelativeData = length(relativeData);
   if (~exist('omitXLabel', 'var') || isempty(omitXLabel))
-    omitXLabel = false
+    omitXLabel = false;
   end
 
   % parsing settings
