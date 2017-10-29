@@ -266,7 +266,7 @@ classdef LatexTable < handle
       end
       if (~isempty(this.headerRow))
         stringTable = this.headerRow;
-        isHeaderRow = 1;
+        isHeaderRow = size(this.headerRow, 1);
       end
 
       for row = 1:(this.getNRows())
@@ -369,7 +369,7 @@ classdef LatexTable < handle
         end
         latex{end+1} = [thisRow ' \\'];
 
-        if (i == 1)
+        if (~isempty(this.headerRow) && (i == size(this.headerRow, 1)))
           if (this.opts.booktabs)
             latex{end+1} = '\midrule';
           elseif (this.opts.tableBorders)
