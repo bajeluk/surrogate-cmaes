@@ -413,3 +413,63 @@ print2pdf(han, pdfNames, 1)
 
 %% final clearing
 close all
+
+%% Radial function pictures
+
+pdfName = fullfile(plotResultsFolder, 'radial_func');
+figuresPosition = [1, 1, 9, 7.5];
+
+x = linspace(-3, 3, 201);
+
+fgauss = @(x, p) exp(-p.*(x.^2));
+fthinplate = @(x) (x.^2).*log(abs(x));
+fmultiq = @(x, p) sqrt(x.^2 + p.^2);
+
+% Gaussian
+han1 = figure('Units', 'centimeters', 'Position', figuresPosition);
+p = [1, 0.25, 0.5, 2];
+for i = 1:length(p)
+  y = fgauss(x, p(i));
+  if (p(i) == 1)
+    plot(x, y, 'k-', 'LineWidth', 2);
+    hold on;
+  else
+    plot(x, y, 'k-', 'LineWidth', 1);
+  end
+end
+hold off;
+grid on;
+ax = gca();
+ax.XLim = [x(1), x(end)];
+print2pdf(han1, [pdfName '_gauss'], 1);
+
+% Thin plate
+clear('y');
+han2 = figure('Units', 'centimeters', 'Position', figuresPosition);
+y(x ~= 0) = fthinplate(x(x ~= 0));
+y(x == 0) = 0;
+plot(x, y, 'k-', 'LineWidth', 2);
+grid on;
+ax = gca();
+ax.XLim = [x(1), x(end)];
+print2pdf(han2, [pdfName '_thinp'], 1);
+
+% Multiqadric
+han3 = figure('Units', 'centimeters', 'Position', figuresPosition);
+for i = 1:length(p)
+  y = fmultiq(x, p(i));
+  if (p(i) == 1)
+    plot(x, y, 'k-', 'LineWidth', 2);
+    hold on;
+  else
+    plot(x, y, 'k-', 'LineWidth', 1);
+  end
+end
+hold off;
+grid on;
+ax = gca();
+ax.XLim = [x(1), x(end)];
+print2pdf(han3, [pdfName '_multiq'], 1);
+
+pause(2);
+close all;
