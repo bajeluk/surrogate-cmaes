@@ -473,3 +473,117 @@ print2pdf(han3, [pdfName '_multiq'], 1);
 
 pause(2);
 close all;
+
+%% Gaussian processes priors
+
+close all;
+pdfName = fullfile(plotResultsFolder, 'gp_cov_prior1');
+% figuresPosition = [1, 1, 12.5, 6];
+figuresPosition = [1, 1, 9, 7.5];
+
+
+N = 30;         % number of sampled points in x-axis
+Ns = 100;       % number of smoothed data points
+x = linspace(-5, 5, N)';  % input space points
+xs = linspace(-5, 5, Ns)';
+% x(2:(end-1)) = x(2:(end-1)) + 0.2*rand(N-2,1);
+% x = sort(-5 + 10*rand(N, 1));
+
+% GP definition:
+covfunc = {{@covSEiso}, {@covMaterniso, 3}, {@covMaterniso, 5}};
+covfunc_name = {'SE', 'Mat3', 'Mat5'};
+meanfunc = {@meanZero};
+likfunc = @likGauss;
+hyp = struct('mean', [], 'cov', [0 0], 'lik', log(0.1));
+
+for covi = 1:length(covfunc)
+  han = figure('Units', 'centimeters', 'Position', figuresPosition);
+  
+  % prior covariance matrix
+  K = feval(covfunc{covi}{:}, hyp.cov, x);
+  % prior mean
+  mu = feval(meanfunc{:}, hyp.mean, x);
+
+  maxy = 3;
+
+  [K1, p] = chol(K);
+  if (p > 0)
+    K1 = K;
+    fprintf('Using the matrix itself...\n');
+  end
+  y = K1'*randn(N, 1);
+  % plot(x, y, 'k-', 'LineWidth', 2);
+
+  % fit and plot a smoothing spline
+  f = fit(x, y, 'smoothingspline');
+  ys = f(xs);
+  plot(xs, ys, 'k-', 'LineWidth', 2);
+
+  % hand the maximal y-value to set proper y-limits
+  maxy = max(maxy, max(abs(ys)));
+
+  hold on;
+  % colors = 'brgmy';
+  colors = 'kkkkk';
+  for i = 1:2
+    y = K1'*randn(N, 1);
+    % plot(x, y, [colors(i) '-'], 'LineWidth', 2);
+
+    % fit and plot a smoothing spline
+    f = fit(x, y, 'smoothingspline');
+    ys = f(xs);
+    plot(xs, ys, [colors(i) '-'], 'LineWidth', 1);
+
+    maxy = max(maxy, max(abs(ys)));
+  end
+
+  ax = gca();
+  ax.YLim = [-(1.1*maxy), 1.1*maxy];
+  grid on;
+
+  print2pdf(han, [pdfName '_' covfunc_name{covi}], 1);
+end
+%% Gaussian processes posteriors
+
+close all;
+pdfName = fullfile(plotResultsFolder, 'gp_cov_poster1');
+% figuresPosition = [1, 1, 12.5, 6];
+figuresPosition = [1, 1, 9, 7.5];
+
+
+Ntrain = 4;     % number of training points in x-axis
+xtrain = [-3, -2, 3, 1]';  % input space points
+ytrain = 2*sin(xtrain);
+
+Ns = 101;       % number of smoothed data points
+xs = linspace(-5, 5, Ns)';
+% x(2:(end-1)) = x(2:(end-1)) + 0.2*rand(N-2,1);
+% x = sort(-5 + 10*rand(N, 1));
+
+% GP definition:
+covfunc = {{@covSEiso}, {@covMaterniso, 3}, {@covMaterniso, 5}};
+covfunc_name = {'SE', 'Mat3', 'Mat5'};
+meanfunc = {@meanZero};
+likfunc = @likGauss;
+hyp = struct('mean', [], 'cov', [0 0], 'lik', log(0.1));
+
+% for covi = 1:length(covfunc)
+covi = 1;
+for npoints = 2:Ntrain
+  han = figure('Units', 'centimeters', 'Position', figuresPosition);
+  
+  [mu, s2] = gp(hyp, @infGaussLik, meanfunc, covfunc{covi}, likfunc, ...
+      xtrain(1:npoints), ytrain(1:npoints), xs);
+
+  f_bar = [mu + 2*sqrt(s2); flipdim(mu-2*sqrt(s2),1)]; 
+  fill([xs; flipdim(xs,1)], f_bar, [7 7 7]/8);
+  hold on;
+  plot(xs, mu, 'k-', 'LineWidth', 2);
+  plot(xtrain(1:npoints), ytrain(1:npoints), 'k+', 'LineWidth', 1);
+
+  ax = gca();
+  ax.YLim = [-2.7, 2.7];
+  grid on;
+
+  print2pdf(han, [pdfName '_' covfunc_name{covi} '_' num2str(npoints)], 1);
+end
