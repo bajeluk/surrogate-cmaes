@@ -567,6 +567,8 @@ meanfunc = {@meanZero};
 likfunc = @likGauss;
 hyp = struct('mean', [], 'cov', [0 0], 'lik', log(0.1));
 
+ylim = 3.0;
+
 % for covi = 1:length(covfunc)
 covi = 1;
 for npoints = 2:Ntrain
@@ -575,15 +577,19 @@ for npoints = 2:Ntrain
   [mu, s2] = gp(hyp, @infGaussLik, meanfunc, covfunc{covi}, likfunc, ...
       xtrain(1:npoints), ytrain(1:npoints), xs);
 
-  f_bar = [mu + 2*sqrt(s2); flipdim(mu-2*sqrt(s2),1)]; 
-  fill([xs; flipdim(xs,1)], f_bar, [7 7 7]/8);
+  % f_bar = [mu + 2*sqrt(s2); flipdim(mu-2*sqrt(s2),1)];
+  % fill([xs; flipdim(xs,1)], f_bar, [7 7 7]/8);
+  area(xs, mu+2*sqrt(s2), -ylim, 'FaceColor', [7 7 7]/8);
   hold on;
+  grid on;
+  area(xs, mu-2*sqrt(s2), -ylim, 'FaceColor', [1 1 1]);
   plot(xs, mu, 'k-', 'LineWidth', 2);
   plot(xtrain(1:npoints), ytrain(1:npoints), 'k+', 'LineWidth', 1);
 
   ax = gca();
-  ax.YLim = [-2.7, 2.7];
-  grid on;
+  ax.YLim = [-ylim, ylim];
+  ax.XGrid = 'on';
+  ax.Layer = 'top';
 
   print2pdf(han, [pdfName '_' covfunc_name{covi} '_' num2str(npoints)], 1);
 end
