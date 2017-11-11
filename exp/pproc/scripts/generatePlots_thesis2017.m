@@ -586,6 +586,54 @@ for npoints = 2:Ntrain
   plot(xs, mu, 'k-', 'LineWidth', 2);
   plot(xtrain(1:npoints), ytrain(1:npoints), 'k+', 'LineWidth', 1);
 
+  Nposter = 30;
+  Xposter = linspace(-5, 5, Nposter)';
+
+  % covariance matrices
+  K   = feval(covfunc{covi}{:}, hyp.cov, xtrain(1:npoints));
+  Kss = feval(covfunc{covi}{:}, hyp.cov, Xposter);
+  Kts = feval(covfunc{covi}{:}, hyp.cov, xtrain(1:npoints), Xposter);
+  Kst = Kts';
+  % Kall = [K,   Kts;
+  %         Kst, Kss];
+
+  % sample from posterior distribution
+  sn2 = exp(2*hyp.lik); W = ones(npoints,1)/sn2;
+  sW = sqrt(W);
+  L = chol(eye(npoints)+sW*sW'.*K);
+  
+  % Cholesky factor of covariance with noise
+  % L = chol(K/sn2 + eye(npoints) + 0.0001*eye(npoints));
+  % inv(K+noise) * (y_N - mean)
+  mt = feval(meanfunc{:}, hyp.mean, xtrain(1:npoints));
+  alpha = solve_chol(L, ytrain(1:npoints) - mt); % / sn2;
+  
+  % evaluate mean function for test points X_star
+  ms = feval(meanfunc{:}, hyp.mean, Xposter);
+  % Predictive conditional mean fs|f (shorter form, using calculated alpha)
+  Fmu  = ms + Kst * alpha;
+  % the same:
+  % Fmu = gp(hyp, @infGaussLik, meanfunc, covfunc{covi}, likfunc, ...
+  %     xtrain(1:npoints), ytrain(1:npoints), Xposter);
+  
+  L1 = inv(L);
+  covMatrix = Kss - Kst*(L1*L1')*Kts;
+  [K1, p] = chol(covMatrix);
+  if (p > 0)
+    K1 = covMatrix;
+    fprintf('Using the matrix itself...\n');
+  end
+  
+  for j = 1:3
+    y = Fmu + K1'*randn(Nposter, 1);
+    % plot(Xposter, y, 'r.', 'LineWidth', 2);
+
+    % fit and plot a smoothing spline
+    f = fit(Xposter, y, 'smoothingspline');
+    ys = f(xs);
+    plot(xs, ys, 'r-', 'LineWidth', 1);
+  end
+  
   ax = gca();
   ax.YLim = [-ylim, ylim];
   ax.XGrid = 'on';
