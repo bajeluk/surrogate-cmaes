@@ -482,8 +482,8 @@ pdfName = fullfile(plotResultsFolder, 'gp_cov_prior1');
 figuresPosition = [1, 1, 9, 7.5];
 
 
-N = 30;         % number of sampled points in x-axis
-Ns = 100;       % number of smoothed data points
+N = 101;         % number of sampled points in x-axis
+Ns = 101;       % number of smoothed data points
 x = linspace(-5, 5, N)';  % input space points
 xs = linspace(-5, 5, Ns)';
 % x(2:(end-1)) = x(2:(end-1)) + 0.2*rand(N-2,1);
@@ -506,18 +506,36 @@ for covi = 1:length(covfunc)
 
   maxy = 3;
 
+  %{
   [K1, p] = chol(K);
   if (p > 0)
     K1 = K;
     fprintf('Using the matrix itself...\n');
   end
-  y = K1'*randn(N, 1);
-  % plot(x, y, 'k-', 'LineWidth', 2);
+  % y = K1'*randn(N, 1);
+  %}
+  
+  % y = mvnrnd(mu', K)';
+  
+  [K1, err] = cholcov(K);
+  condNum = cond(K);
+  fprintf('Condition number of K is %e.\n', condNum);
+  nValid = size(K1, 1);
+  if (nValid < size(K1, 2))
+    fprintf(['K is not positive definite, only %d < %d non-negative '...
+        'eigenvalues are used.\n'], nValid, size(K1, 2));
+  end
+  if (err > 0)
+    fprintf(2, 'Cholesky factorization cannot be completed.\n');
+  end
+  y = mu + K1' * randn(nValid, 1);
+  
+  plot(x, y, 'k-', 'LineWidth', 2);
 
   % fit and plot a smoothing spline
-  f = fit(x, y, 'smoothingspline');
-  ys = f(xs);
-  plot(xs, ys, 'k-', 'LineWidth', 2);
+  % f = fit(x, y, 'smoothingspline');
+  % ys = f(xs);
+  % plot(xs, ys, 'k-', 'LineWidth', 2);
 
   % hand the maximal y-value to set proper y-limits
   maxy = max(maxy, max(abs(ys)));
@@ -526,19 +544,20 @@ for covi = 1:length(covfunc)
   % colors = 'brgmy';
   colors = 'kkkkk';
   for i = 1:2
-    y = K1'*randn(N, 1);
-    % plot(x, y, [colors(i) '-'], 'LineWidth', 2);
+    % y = mvnrnd(mu', K)';
+    y = mu + K1' * randn(nValid, 1);
+    plot(x, y, [colors(i) '-'], 'LineWidth', 1);
 
     % fit and plot a smoothing spline
-    f = fit(x, y, 'smoothingspline');
-    ys = f(xs);
-    plot(xs, ys, [colors(i) '-'], 'LineWidth', 1);
+    % f = fit(x, y, 'smoothingspline');
+    % ys = f(xs);
+    % plot(xs, ys, [colors(i) '-'], 'LineWidth', 1);
 
     maxy = max(maxy, max(abs(ys)));
   end
 
   ax = gca();
-  ax.YLim = [-(1.1*maxy), 1.1*maxy];
+  ax.YLim = [-maxy, maxy];
   grid on;
 
   print2pdf(han, [pdfName '_' covfunc_name{covi}], 1);
@@ -579,15 +598,17 @@ for npoints = 2:Ntrain
 
   % f_bar = [mu + 2*sqrt(s2); flipdim(mu-2*sqrt(s2),1)];
   % fill([xs; flipdim(xs,1)], f_bar, [7 7 7]/8);
-  area(xs, mu+2*sqrt(s2), -ylim, 'FaceColor', [7 7 7]/8);
+  area(xs, mu+2*sqrt(s2), -ylim, 'FaceColor', [7 7 7]/8, 'LineStyle', 'none');
   hold on;
   grid on;
-  area(xs, mu-2*sqrt(s2), -ylim, 'FaceColor', [1 1 1]);
-  plot(xs, mu, 'k-', 'LineWidth', 2);
+  area(xs, mu-2*sqrt(s2), -ylim, 'FaceColor', [1 1 1], 'LineStyle', 'none');
+  plot(xs, mu, 'k-', 'LineWidth', 3);
   plot(xtrain(1:npoints), ytrain(1:npoints), 'k+', 'LineWidth', 1);
 
-  Nposter = 30;
-  Xposter = linspace(-5, 5, Nposter)';
+  % Nposter = 30;
+  % Xposter = linspace(-5, 5, Nposter)';
+  Xposter = xs;
+  Nposter = length(Xposter);
 
   % covariance matrices
   K   = feval(covfunc{covi}{:}, hyp.cov, xtrain(1:npoints));
@@ -600,8 +621,10 @@ for npoints = 2:Ntrain
   % sample from posterior distribution
   sn2 = exp(2*hyp.lik); W = ones(npoints,1)/sn2;
   sW = sqrt(W);
-  L = chol(eye(npoints)+sW*sW'.*K);
+  C_N = eye(npoints)+sW*sW'.*K;
+  L = chol(C_N);
   
+  %{
   % Cholesky factor of covariance with noise
   % L = chol(K/sn2 + eye(npoints) + 0.0001*eye(npoints));
   % inv(K+noise) * (y_N - mean)
@@ -615,6 +638,8 @@ for npoints = 2:Ntrain
   % the same:
   % Fmu = gp(hyp, @infGaussLik, meanfunc, covfunc{covi}, likfunc, ...
   %     xtrain(1:npoints), ytrain(1:npoints), Xposter);
+
+  L = chol(K);
   
   L1 = inv(L);
   covMatrix = Kss - Kst*(L1*L1')*Kts;
@@ -623,15 +648,36 @@ for npoints = 2:Ntrain
     K1 = covMatrix;
     fprintf('Using the matrix itself...\n');
   end
+  %}
+  
+  [K1, err] = cholcov(Kss - Kst/K*Kts);
+  nValid = size(K1, 1);
+  condNum = cond(Kss - Kst/K*Kts);
+  fprintf('Condition number of K is %e.\n', condNum);
+  if (nValid < size(K1, 2))
+    fprintf(['K is not positive definite, only %d < %d non-negative '...
+        'eigenvalues are used.\n'], nValid, size(K1, 2));
+  end
+  if (err > 0)
+    fprintf(2, 'Cholesky factorization cannot be completed.\n');
+  end
+
   
   for j = 1:3
-    y = Fmu + K1'*randn(Nposter, 1);
-    % plot(Xposter, y, 'r.', 'LineWidth', 2);
+    % y = Fmu + K1'*randn(Nposter, 1);
+    % y = mvnrnd(mu, covMatrix);
+
+    % % this is with noise:
+    % y = mvnrnd(mu, Kss - Kst/C_N*Kts);
+
+    y = mu + (K1'*randn(nValid, 1));
+
+    plot(Xposter, y, 'k-', 'LineWidth', 1);
 
     % fit and plot a smoothing spline
-    f = fit(Xposter, y, 'smoothingspline');
-    ys = f(xs);
-    plot(xs, ys, 'r-', 'LineWidth', 1);
+    % f = fit(Xposter, y, 'smoothingspline');
+    % ys = f(xs);
+    % plot(xs, ys, 'r-', 'LineWidth', 1);
   end
   
   ax = gca();
