@@ -1,11 +1,3 @@
-%GPRMODEL -- Gaussian Process model for S-CMA-ES using Matlab GPs
-%
-% original from:   https://github.com/repjak/surrogate-cmaes/blob/ce14b4ec2079e310c4c465f4473debf6757095c2/src/model/GprModel.m
-% Author: repjak <j.repicky@gmail.com>
-% Date:   Wed Aug 3 22:14:34 2016 +0200
-%
-%     Add the GprModel (fitrgp).
-%
 classdef GprModel < Model
   % Implements GP with RegressionGP from MATLAB
   properties    % inherited from abstract class "Model"
@@ -152,7 +144,7 @@ classdef GprModel < Model
             'Standardize', obj.options.normalizeX ...
           );
         end
-        
+
         obj.trainGeneration = generation;
       catch err
         disp(getReport(err));

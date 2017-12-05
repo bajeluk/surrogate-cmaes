@@ -16,18 +16,19 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   exppath = [exppath_short filesep exp_id];
   load([exppath filesep 'scmaes_params.mat']);
   [bbParams, surrogateParams, cmaesParams, nNonBbobValues] = getParamsFromIndex(id, bbParamDef, sgParamDef, cmParamDef);
-  
+
   % BBOB parameters
   minfunevals = 'dim + 2';      % PUT MINIMAL SENSIBLE NUMBER OF EVALUATIONS for a restart
   bbobpath = 'vendor/bbob';     % should point to fgeneric.m etc.
   maxrestarts = defopts(bbParams, 'maxrestarts', 1e4); % SET to zero for an entirely deterministic algorithm 
+  bbParams.runPureCMAES = defopts(bbParams, 'runPureCMAES', false); % run also the pure CMA-ES
   % PROGRESS_LOG = defopts(bbParams, 'progressLog', false); % surrogateModel progress log
 
   localDatapath = [];       % directory in the shared folder where results of each instance will be copied through the progress
   if (nargin >= 4 && ~isempty(varargin{1}))
     % datapath is typically on the computing node in   $SCRATCHDIR/job_output/bbob_output:
-    datapath = [varargin{1} filesep 'bbob_output'];
-    if (isempty(strfind(datapath, exppath_short)))
+    datapath_1p = [varargin{1} filesep 'bbob_output'];
+    if (isempty(strfind(datapath_1p, exppath_short)))
       % localDatapath is typically on the NFS server in
       %   $HOME/prg/surrogate-cmaes/exp/experiments/$EXPID/bbob_output_tmp
       % and the BBOB results are stored here after each completed instance
@@ -35,9 +36,9 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
       [~, ~] = mkdir(localDatapath);
     end
   else
-    datapath = [exppath filesep 'bbob_output'];
+    datapath_1p = [exppath filesep 'bbob_output'];
   end
-  [~, ~] = mkdir(datapath);
+  [~, ~] = mkdir(datapath_1p);
 
   % opt.algName = exp_description;
   opt.comments = '';
@@ -70,7 +71,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
       expFileID = [num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
       resultsFile = [exppath filesep exp_id '_results_' expFileID];
       opt.algName = [exp_id '_' expFileID];
-      datapath = [datapath filesep expFileID];
+      datapath = [datapath_1p filesep expFileID];
       [~, ~] = mkdir(datapath);
       cmaes_out = [];
 
@@ -81,47 +82,49 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
       save([resultsFile '.mat'], 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams', 'bbParams', 'cmaes_out');
 
       % ===== PURE CMAES RESULTS =====
+      if (bbParams.runPureCMAES)
 
-      % Tripple the number of pure CMA-ES instances
-      exp_settings.instances = [instances instances+50 instances+100];
+        % Tripple the number of pure CMA-ES instances
+        exp_settings.instances = [instances instances+50 instances+100];
 
-      cmaesId = floor((id-1) / nNonBbobValues) * nNonBbobValues + 1;
-      % test if pure CMA-ES results exist; if no, generate them
-      cmaesResultsFile = [exppath filesep 'cmaes_results' filesep exp_id '_purecmaes_' num2str(ifun) '_' num2str(dim) 'D_' num2str(cmaesId) '.mat'];
-      if (~ exist(cmaesResultsFile, 'file'))
-        opt.algName = [exp_id '_' expFileID '_cmaes'];
-        exp_cmaes_results = runTestsForAllInstances(@opt_cmaes, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath, localDatapath, true);
-
-        % test if the results still doesn't exist, if no, save them :)
+        cmaesId = floor((id-1) / nNonBbobValues) * nNonBbobValues + 1;
+        % test if pure CMA-ES results exist; if no, generate them
+        cmaesResultsFile = [exppath filesep 'cmaes_results' filesep exp_id '_purecmaes_' num2str(ifun) '_' num2str(dim) 'D_' num2str(cmaesId) '.mat'];
         if (~ exist(cmaesResultsFile, 'file'))
-          y_evals = exp_cmaes_results.y_evals;
-          save(cmaesResultsFile, 'exp_id', 'exp_settings', 'exp_cmaes_results', 'y_evals', 'surrogateParams', 'cmaesParams');
+          opt.algName = [exp_id '_' expFileID '_cmaes'];
+          exp_cmaes_results = runTestsForAllInstances(@opt_cmaes, id, exp_settings, datapath, opt, maxrestarts, eval(maxfunevals), eval(minfunevals), t0, exppath, localDatapath, true);
+
+          % test if the results still doesn't exist, if no, save them :)
+          if (~ exist(cmaesResultsFile, 'file'))
+            y_evals = exp_cmaes_results.y_evals;
+            save(cmaesResultsFile, 'exp_id', 'exp_settings', 'exp_cmaes_results', 'y_evals', 'surrogateParams', 'cmaesParams');
+          end
         end
-      end
 
-      % Set the number of instances back to the original value
-      exp_settings.instances = instances;
+        % Set the number of instances back to the original value
+        exp_settings.instances = instances;
 
-      % ===== GENERATE PICTURE =====
+        % ===== GENERATE PICTURE =====
 
-      % Load the pure CMA-ES results
-      load(cmaesResultsFile, 'exp_cmaes_results');
+        % Load the pure CMA-ES results
+        load(cmaesResultsFile, 'exp_cmaes_results');
 
-      % Save the data for gnuplot
-      gnuplotFile = [exppath filesep exp_id '_gnuplot_' num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
-      generateGnuplotDataExtended([gnuplotFile '.dat'], exp_results, exp_cmaes_results, eval(maxfunevals));
+        % Save the data for gnuplot
+        gnuplotFile = [exppath filesep exp_id '_gnuplot_' num2str(ifun) '_' num2str(dim) 'D_' num2str(id)];
+        generateGnuplotDataExtended([gnuplotFile '.dat'], exp_results, exp_cmaes_results, eval(maxfunevals));
 
-      % save gnuplot script
-      if (isfield(surrogateParams, 'modelType')); modelType = surrogateParams.modelType;
-      else modelType = ''; end
-      if (isfield(surrogateParams, 'evoControl')); evoControl = surrogateParams.evoControl;
-      else evoControl = ''; end
+        % save gnuplot script
+        if (isfield(surrogateParams, 'modelType')); modelType = surrogateParams.modelType;
+        else modelType = ''; end
+        if (isfield(surrogateParams, 'evoControl')); evoControl = surrogateParams.evoControl;
+        else evoControl = ''; end
 
-      gnuplotScriptCommand = ['sed "s#\<DATAFILE\>#' gnuplotFile '.dat#; s#\<OUTPUTFILE\>#' resultsFile '#; s#\<TITLE\>#f' num2str(ifun) ', ' num2str(dim) 'D#; s#\<DATALINETITLE\>#' modelType ' surrogate, ' evoControl ' EC#; s#\<PARAMS1\>#' sprintfStruct(surrogateParams, 'escape') '#; s#\<PARAMS2\>#' sprintfStruct(exp_settings, 'escape') '#" ' gnuplotScript ' > ' gnuplotFile '.gpi'];
-      disp(gnuplotScriptCommand);
-      system(gnuplotScriptCommand);
-      % call gnuplot
-      system(['LD_LIBRARY_PATH="" gnuplot ' gnuplotFile '.gpi']);
+        gnuplotScriptCommand = ['sed "s#\<DATAFILE\>#' gnuplotFile '.dat#; s#\<OUTPUTFILE\>#' resultsFile '#; s#\<TITLE\>#f' num2str(ifun) ', ' num2str(dim) 'D#; s#\<DATALINETITLE\>#' modelType ' surrogate, ' evoControl ' EC#; s#\<PARAMS1\>#' sprintfStruct(surrogateParams, 'escape') '#; s#\<PARAMS2\>#' sprintfStruct(exp_settings, 'escape') '#" ' gnuplotScript ' > ' gnuplotFile '.gpi'];
+        disp(gnuplotScriptCommand);
+        system(gnuplotScriptCommand);
+        % call gnuplot
+        system(['LD_LIBRARY_PATH="" gnuplot ' gnuplotFile '.gpi']);
+      end  % if ! ===== PURE CMAES RESULTS =====
 
       % print out settings into the text-file
       fid = fopen([resultsFile '.txt'], 'w');
@@ -206,7 +209,7 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
   for iinstance = exp_settings.instances((nCompletedInstances+1):end)   % 15 function instances
     fmin = Inf;
 
-    fgeneric('initialize', exp_settings.bbob_function, iinstance, datapath, opt); 
+    fgeneric('initialize', exp_settings.bbob_function, iinstance, datapath, opt);
     yeRestarts = [];
     cmaes_out{end+1}  = {};
     t = tic;
@@ -237,12 +240,17 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
       evalsRestartCorrection = fgeneric('evaluations');
 
       if fgeneric('fbest') < fgeneric('ftarget') || ...
-        fgeneric('evaluations') + minfunevals > restartMaxfunevals
+        fgeneric('evaluations') + minfunevals > maxfunevals
         break;
       else
-        % try to improve the best foud solution
-        xstart = xopt;
-        restartMaxfunevals = restartMaxfunevals - fgeneric('evaluations');
+        if (mod((restarts+1), 5) ~= 0)
+          % try to improve the best foud solution
+          xstart = xopt;
+        else
+          % or generate a new point once in 5 generations
+          xstart = 8 * rand(exp_settings.dim, 1) - 4;
+        end
+        restartMaxfunevals = maxfunevals - fgeneric('evaluations');
       end  
     end
 
@@ -294,7 +302,8 @@ function printSettings(fid, exp_settings, exp_results, surrogateParams, cmaesPar
   fprintf(fid, '\n== CMA-ES parameters: ==\n');
   fprintf(fid, sprintfStruct(cmaesParams));
   fprintf(fid, '\n== CMA-ES surrogate model options: ==\n');
-  if (isfield(surrogateParams, 'modelOpts'))
+  if (isfield(surrogateParams, 'modelOpts') && ~isempty(surrogateParams.modelOpts) ...
+      && ~isempty(fieldnames(surrogateParams.modelOpts)))
     fprintf(fid, sprintfStruct(surrogateParams.modelOpts)); end
   fprintf(fid, '\n== Numerical results: ==\n\n');
   fprintf(fid, 'fbests:\n%s\n\n', num2str(exp_results.fbests));

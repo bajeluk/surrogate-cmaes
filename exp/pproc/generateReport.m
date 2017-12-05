@@ -20,6 +20,7 @@ function reportFile = generateReport(expFolder, varargin)
 %                      - to disable publishing set option to 'off' 
 %                        (default)
 %     'Dimensions'     - generate output only for this dimensions | []
+%     'Functions'      - generate output only for this functions | []
 %     'QuantilePlots'  - whether use quantile plots for showing algorithms
 %                        differencies | false
 %     'AlgNames'       - cell array of names of algorithms | {}
@@ -50,6 +51,7 @@ function reportFile = generateReport(expFolder, varargin)
   omitEmptyPlots = defopts(reportSettings, 'OmitEmptyPlots', false);
   reportDescription = defopts(reportSettings, 'Description', []);
   paramDimensions = defopts(reportSettings, 'Dimensions', []);
+  paramFunctions = defopts(reportSettings, 'Functions', []);
   quantilePlots = defopts(reportSettings, 'QuantilePlots', false);
   algNames = defopts(reportSettings, 'AlgNames', {});
   removeAlgs = defopts(reportSettings, 'RemoveAlgs', []);
@@ -103,11 +105,15 @@ function reportFile = generateReport(expFolder, varargin)
         1:length(tdatSplit)); % dimension numbers
     end
   end
-  BBfunc = unique([BBfunc{:}]);
   if isempty(paramDimensions)
     dims = unique([dims{:}]);
   else
     dims = paramDimensions;
+  end
+  if isempty(paramFunctions)
+    BBfunc = unique([BBfunc{:}]);
+  else
+    BBfunc = paramFunctions;
   end
   
   % create report name

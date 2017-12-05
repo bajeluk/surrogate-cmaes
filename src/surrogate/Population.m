@@ -98,6 +98,9 @@ classdef Population
       idxToUpdate = find(~obj.isEvaled(1:obj.nPoints));
       if (nargin >= 6 && ~isempty(varargin{2}))
         idxToUpdate = varargin{2};
+        if (islogical(idxToUpdate))
+          idxToUpdate = find(idxToUpdate);
+        end
       end
       if (nargin >= 5 && ~isempty(varargin{1}))
         thisPhase = varargin{1};
@@ -153,6 +156,25 @@ classdef Population
       y = obj.y((obj.isEvaled & ~obj.origEvaled));
     end
 
+    function [obj, xRemoved] = remove(obj, isToRemove)
+      xRemoved = obj.x(:, isToRemove);
+      obj.x(:, isToRemove)     = [];
+      obj.y(isToRemove)        = [];
+      obj.isEvaled(isToRemove) = [];
+      obj.arx(:, isToRemove)   = [];
+      obj.arz(:, isToRemove)   = [];
+      obj.origEvaled(isToRemove) = [];
+      obj.phase(isToRemove)    = [];
+
+      if (islogical(isToRemove))
+        nToRemove = sum(isToRemove);
+      else
+        nToRemove = length(isToRemove);
+      end
+
+      obj.nPoints = obj.nPoints - nToRemove;
+    end
+
     function [obj, xRemoved] = removeNotOrigEvaluated(obj, n, varargin)
       % remove specified number of not original-evaluated points
       % (ie. which have origEvaled == false)
@@ -171,16 +193,7 @@ classdef Population
       n = min(n, length(idxToRemove));
       idxToRemove = idxToRemove(1:n);
 
-      xRemoved = obj.x(:, idxToRemove);
-      obj.x(:, idxToRemove)     = [];
-      obj.y(idxToRemove)        = [];
-      obj.isEvaled(idxToRemove) = [];
-      obj.arx(:, idxToRemove)   = [];
-      obj.arz(:, idxToRemove)   = [];
-      obj.origEvaled(idxToRemove) = [];
-      obj.phase(idxToRemove)    = [];
-
-      obj.nPoints = obj.nPoints - n;
+      [obj, xRemoved] = obj.remove(idxToRemove);
     end
 
     function [obj, sInd] = sort(obj)

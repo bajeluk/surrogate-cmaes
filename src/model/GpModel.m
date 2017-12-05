@@ -103,6 +103,10 @@ classdef GpModel < Model
       end
       obj.likBounds = defopts(obj.options, 'likBounds', log([1e-6, 10]));
 
+      % wrap the starting point for hyperparameters inside corresponding bounds
+      obj.hyp.cov = min(obj.covBounds(:, 2), max(obj.covBounds(:,1), obj.hyp.cov));
+      obj.hyp.lik = min(obj.likBounds(2), max(obj.likBounds(1), obj.hyp.lik));
+
       % general model prediction options
       obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
       obj.transformCoordinates = defopts(modelOptions, 'transformCoordinates', true);
@@ -178,17 +182,24 @@ classdef GpModel < Model
 
       elseif (strcmpi(alg, 'fmincon') ...
               || strcmp(alg, 'cmaes'))
-        % gp() with linearized version of the hyper-parameters
-        f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain);
-
-        linear_hyp = unwrap(obj.hyp)';
-        l_cov = length(obj.hyp.cov);
-
         % lower and upper bounds
         [lb_hyp, ub_hyp] = obj.getLUBounds(yTrain, obj.hyp);
         lb = unwrap(lb_hyp)';
         ub = unwrap(ub_hyp)';
         opt = [];
+
+        linear_hyp = unwrap(obj.hyp)';
+        l_cov = length(obj.hyp.cov);
+
+        % if some parameters are held constant
+        const_hyp_idx = (lb == ub);
+        linear_hyp_start = linear_hyp;
+        linear_hyp = linear_hyp(~const_hyp_idx);
+        lb = lb(~const_hyp_idx);
+        ub = ub(~const_hyp_idx);
+
+        % gp() with linearized version of the hyper-parameters
+        f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, linear_hyp_start, const_hyp_idx);
 
         if (strcmpi(alg, 'fmincon'))
           [obj, opt, trainErr] = obj.trainFmincon(linear_hyp, obj.getDataset_X(), yTrain, lb, ub, f);
@@ -207,6 +218,8 @@ classdef GpModel < Model
           end
         end
 
+        linear_hyp_start(~const_hyp_idx) = opt;
+        opt = linear_hyp_start;
         obj.trainGeneration = generation;
         obj.hyp = rewrap(obj.hyp, opt);
 
@@ -285,7 +298,7 @@ classdef GpModel < Model
       trainErr = false;
       opt = [];
 
-      [fminconOpts, nonlnc] = obj.defaultFminconOpts();
+      [fminconOpts, nonlnc] = obj.defaultFminconOpts(lb, ub);
       try
         initial = f(linear_hyp');
       catch err
@@ -377,7 +390,7 @@ classdef GpModel < Model
     end
 
 
-    function [opts, nonlnc] = defaultFminconOpts(obj)
+    function [opts, nonlnc] = defaultFminconOpts(obj, lb, ub)
       % return the optimization parameters for fmincon()
       %
       opts = optimset('fmincon');
@@ -391,7 +404,7 @@ classdef GpModel < Model
         );
       covarianceDim = length(obj.hyp.cov) - 1;
       if (covarianceDim > 1)
-        % ARD
+        % ARD or a parameter with fixed value
         opts = optimset(opts, 'Algorithm', 'interior-point');
         nonlnc = @nonlincons;
       else
@@ -448,10 +461,16 @@ function [post, nlZ, dnlZ] = infExactCountErrors(hyp, mean, cov, lik, x, y)
   end
 end
 
-function [nlZ, dnlZ] = linear_gp(linear_hyp, s_hyp, inf, mean, cov, lik, x, y)
+function [nlZ, dnlZ] = linear_gp(linear_hyp, s_hyp, inf, mean, cov, lik, x, y, linear_hyp_start, const_hyp_idx)
+  % extend the vector of parameters by constant (i.e. not optimized) elements
+  % taken from the vector of initial values
+  linear_hyp_start(~const_hyp_idx) = linear_hyp;
+  linear_hyp = linear_hyp_start;
+
   hyp = rewrap(s_hyp, linear_hyp');
   [nlZ, s_dnlZ] = gp(hyp, inf, mean, cov, lik, x, y);
   dnlZ = unwrap(s_dnlZ)';
+  dnlZ = dnlZ(~const_hyp_idx);
 end
 
 function [c, ceq] = nonlincons(x)
