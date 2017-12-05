@@ -1,0 +1,3 @@
+[submodule "src/vendor/usefun"]
+	path = src/vendor/usefun
+	url = https://github.com/jdgregorian/usefun.git
