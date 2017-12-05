@@ -311,8 +311,8 @@ disp(tBestValues)
 covCol  = regexprep(modelsSettings(:,3), '([{,@} ]|cov|iso)', '');
 covCol  = strrep(covCol, 'Matern5', '$\covMatern{5/2}$');
 covCol  = strrep(covCol, 'SE',      '$\covSE$');
-meanCol = strrep(modelsSettings(:,4), 'meanConst', 'ML estimate');
-meanCol = strrep(meanCol, 'meanZero', '$m_\mu = \mathbf{0}$');
+meanCol = strrep(modelsSettings(:,4), 'meanConst', '$m_\mu$');
+meanCol = strrep(meanCol, 'meanZero', '$\mathbf{0}$');
 ellCol  = cellfun(@(x) num2str(x(1,1)), modelsSettings(:,end), 'UniformOutput', false);
 ellCol  = strrep(ellCol, '-2', 'ML estimate');
 ellCol  = strrep(ellCol, '0',  '$\ell = 1$');
@@ -363,7 +363,7 @@ overallMean = nanmean([errorsForStd{:}], 2);
 overallStd  = nanstd([errorsForStd{:}], 0, 2);
 
 header = {'covf', 'meanf', 'ell', 'D2m', 'D2std', 'D3m', 'D3std', ...
-          'D5m', 'D5std', 'D10m', 'D10std', 'D20m', 'D20std'}; % , 'avg_m', 'avg_std'};
+          'D5m', 'D5std', 'D10m', 'D10std', 'D20m', 'D20std', 'avg_m', 'avg_std'};
 numericData = zeros(length(hashes), 2*length(dimensions));
 for di = 1:length(dimensions)
   numericData(:,(di-1)*2+1) = dimensionMean(:,di);
@@ -377,11 +377,11 @@ fixedHypersTable = cell2table(data, 'VariableNames', header);
 writetable(fixedHypersTable, '../latex_scmaes/ec2016paper/data/fixedHypers.csv');
 
 lt = LatexTable(fixedHypersTable);
-lt.headerRow = {'covar. fun.', '$\meanf(\xx)$', '$\ell$', '\multicolumn{2}{c}{2-D}', '', ...
-                '\multicolumn{2}{c}{3-D}', '', '\multicolumn{2}{c}{5-D}', '', ...
-                '\multicolumn{2}{c}{10-D}', '', '\multicolumn{2}{c}{20-D}', ''}; % , ...
-                % '\multicolumn{2}{c}{\textbf{average}}', ''};
-lt.opts.tableColumnAlignment = num2cell('lcc cc cc cc cc cc'); % cc');
+lt.headerRow = {'covar. fun.', '$\meanf(\xx)$', '$\ell$', '\multicolumn{2}{c}{$2D$}', '', ...
+                '\multicolumn{2}{c}{$3D$}', '', '\multicolumn{2}{c}{$5D$}', '', ...
+                '\multicolumn{2}{c}{$10D$}', '', '\multicolumn{2}{c}{$20D$}', '', ...
+                '\multicolumn{2}{c}{\textbf{average}}', ''}';
+lt.opts.tableColumnAlignment = num2cell('lcc cc cc cc cc cc cc');
 lt.opts.numericFormat = '$%.2f$';
 lt.opts.booktabs = 1;
 lt.opts.latexHeader = 0;

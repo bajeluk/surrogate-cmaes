@@ -1,5 +1,5 @@
 #!/bin/sh
-#PBS -l select=1:ncpus=1:mem=1500mb:scratch_local=1gb
+#PBS -l select=1:ncpus=1:mem=2500mb:scratch_local=1gb
 
 # a bit restrictive: PBS -l select=1:ncpus=1:mem=1500mb:scratch_local=1gb:cl_minos=False:cl_mudrc=False:cl_mandos=False:cl_losgar=False:cl_haldir=False
 # very restrictive: PBS -l select=1:ncpus=1:mem=1500mb:scratch_local=1gb:cl_minos=False:cl_mudrc=False:cl_krux=False:cl_perian=False:cl_phi=False:cl_zewura=False:cl_zebra=False:cl_mandos=False:cl_loslab=False:cl_losgar=False:cl_haldir=False
