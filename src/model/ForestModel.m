@@ -35,22 +35,24 @@ classdef ForestModel < Model
       obj.transformCoordinates = defopts(modelOptions, 'transformCoordinates', false);
       
       % forest options
-      obj.forestModel = defopts(modelOptions, 'forestModel', []);
-      if isempty(obj.forestModel)
-        modelOptions = struct;
-        modelOptions.nTrees = 10;
-        obj.forestModel = RandomForestModel(modelOptions);
-      end
+%       obj.forestModel = defopts(modelOptions, 'forestModel', []);
+%       if isempty(obj.forestModel)
+%         modelOptions = struct;
+%         modelOptions.nTrees = 10;
+%       end
+      % construct random forest model
+      obj.forestModel = RandomForestModel(modelOptions);
     end
 
     function nData = getNTrainData(obj)
       % returns the required number of data for training the model
-      % TODO: check correctness of the following expression
-      nData = 1;
+      % TODO: *write this* properly according to dimension and
+      %       weak learner set in options
+      nData = 2 * obj.dim;
     end
 
     function obj = trainModel(obj, X, y, xMean, generation)
-      % train the GP model based on the data (X,y)
+      % train the forest model based on the data (X,y)
 
       assert(size(xMean,1) == 1, 'ForestModel.train(): xMean is not a row-vector.');
       obj.trainGeneration = generation;
@@ -76,7 +78,7 @@ classdef ForestModel < Model
         y = y + obj.shiftY;
       else
         y = []; sd2 = [];
-        fprintf(2, 'RfModel.predict(): the model is not yet trained!\n');
+        fprintf(2, 'ForestModel.predict(): the model is not yet trained!\n');
       end
     end
   end

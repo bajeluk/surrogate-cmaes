@@ -28,11 +28,11 @@ classdef (Abstract) SplitGain
     %   'minSize'       - specifies the min size of either side
     %   'degree'        - uses polynomial model of given degree
     %   'polyMethod'    - method for computing polynomial model
-    %     ''            - defualt model
+    %     ''            - default model
     %     'regress'     - regress function
     %   'modelFunc'     - uses custom model
     %   'weightedGain'  - whether gain is weighted by number of examples
-      if nargin >= 1
+      if nargin > 0
         obj.minSize = defopts(options, 'minSize', 1);
         obj.degree = defopts(options, 'degree', []);
         obj.polyMethod = defopts(options, 'polyMethod', '');

@@ -7,16 +7,17 @@ classdef RandomForestModel < WeakModel
   end
   
   properties %(Access = protected)
+    boosting              % whether boosting is enabled
+    inBagFraction         % percentage of the data to use for training
+    lossFunc              % loss function
+    nFeaturesToSample     % number of variables
+    nTrees                % number of trees
+    oobError              % out of bag error
     sampleWithReplacement % whether to use sampling with replacement
-    inBagFraction % percentage of the data to use for training
-    nFeaturesToSample % number of variables
-    treeFunc % function which creates a new tree
-    nTrees % number of trees
-    trees % trained trees
-    oobError % out of bag error
-    boosting % whether boosting is enabled
-    shrinkage % shrinkage parameter
-    lossFunc % loss function
+    shrinkage             % shrinkage parameter
+    treeFunc              % function which creates a new tree
+    treeOptions           % tree settings and options
+    trees                 % trained trees
   end
   
   methods
@@ -25,7 +26,8 @@ classdef RandomForestModel < WeakModel
       obj = obj@WeakModel(modelOptions);
       
       % model specific options
-      obj.treeFunc = defopts(modelOptions, 'treeFunc', @() TreeModel(struct));
+      obj.treeOptions = defopts(modelOptions, 'treeOptions', struct());
+      obj.treeFunc = defopts(modelOptions, 'treeFunc', @(x) TreeModel(x));
       obj.nTrees = defopts(modelOptions, 'nTrees', 100);
       obj.nFeaturesToSample = defopts(modelOptions, 'nFeaturesToSample', -1);
       obj.sampleWithReplacement = defopts(modelOptions, 'sampleWithReplacement', true);
@@ -56,7 +58,7 @@ classdef RandomForestModel < WeakModel
         sample.X = X(sample.idx, sample.features);
         sample.y = y(sample.idx, :);
         obj.trees(iTree).features = sample.features;
-        obj.trees(iTree).model = obj.treeFunc();
+        obj.trees(iTree).model = obj.treeFunc(obj.treeOptions);
         if obj.boosting
           % fit to residuals
           sample.yPred = yPred(sample.idx, :);
