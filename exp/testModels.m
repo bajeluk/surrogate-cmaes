@@ -6,27 +6,35 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 %
 % Input:
 %   modelOptions - model options to test | struct (cell-array of struct)
-%   opts         - other options and settings
-%       .modelType      - type of model (from ECFactory) | string
-%       .exp_id         - exp_id of the _model testing_ experiment | string
-%       .dataset        - filename (w/o extension) | string
-%       .maxEvals       - maximal number of FE per dimensions to consider | integer
-%       .exppath_short  - directory with experiments subdirectories | string
-%       .statistics     - cell-array of statistics' names | cell array of strings
+%   opts         - other options and settings | struct
+%     Compulsory fields:
+%       .dataset         - filename (w/o extension) | string
+%       .exp_id          - exp_id of the _model testing_ experiment | 
+%                          string
+%       .modelType       - type of model (from ECFactory) | string
+%     Optional fields:
+%       .alwaysRetrain   - let always be the models be retrained 
+%                          (efectively deletes models in the 'data')
+%       .exppath_short   - directory with experiments subdirectories | 
+%                          string
+%       .maxEvals        - maximal number of FE per dimensions to consider 
+%                          | integer
 %       .rewrite_results - whether to rewrite already saved results | bool
-%       .saveModels     - whether the models should be saved, too, default FALSE | bool
-%       .alwaysRetrain  - let always be the models be retrained (efectively
-%                         deletes models in the 'data')
-%   funcToTest         - functions to test | array of integers
-%   dimsToTest         - dimensions to test | array of integers
-%   instToTest         - dimensions to test | array of integers
+%       .saveModels      - whether the models should be saved, too, default 
+%                          FALSE | bool
+%       .scratch         - scrath directory | string
+%       .statistics      - cell-array of statistics' names | cell array of 
+%                          strings
+%   funcToTest   - functions  to test | array of integers
+%   dimsToTest   - dimensions to test | array of integers
+%   instToTest   - instances  to test | array of integers
 %
 % Output:
 %   modelFolder  - list of folders containing results | cell-array of 
 %                  string
 %
 % See Also:
-%   modelTestSet, testOneModel
+%   modelTestSets, testOneModel
 
   % Default input parameters settings
   if nargin < 5
@@ -35,11 +43,20 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
       dimsToTest = 2;
       if nargin < 3
         funcToTest = 1;
+        if nargin < 2
+          if nargout > 0
+            modelFolder = {};
+          end
+          help testModels
+          return
+        end
       end
     end
   end
 
   % Ensure input parameters as cell arrays
+  assert(isfield(opts, 'modelType'), 'opts does not include a modelType field');
+  assert(isfield(opts, 'exp_id'), 'opts does not include a experiment ID (exp_id)');
   modelType = opts.modelType;
   if ~iscell(modelType),        modelType = {modelType}; end
   if ~iscell(modelOptions),     modelOptions = {modelOptions}; end
@@ -56,11 +73,14 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
   opts.exppath_short = defopts(opts, 'exppath_short', fullfile('exp', 'experiments'));
   opts.statistics = defopts(opts, 'statistics', { 'mse' });
   opts.saveModels = defopts(opts, 'saveModels', false);
+  opts.scratch    = defopts(opts, 'scratch', fullfile(opts.exppath_short, opts.exp_id));
+  opts.rewrite_results = defopts(opts, 'rewrite_results', false);
 
   % Load the dataset and its parameters
   assert(isfield(opts, 'dataset'), 'opts does not include a dataset');
   if ischar(opts.dataset)
     assert(exist(opts.dataset, 'file')==2, 'Dataset %s does not exist', opts.dataset)
+    fprintf('Loading %s\n', opts.dataset)
     loadData = load(opts.dataset);
   else
     assert(iscell(opts.dataset), 'Dataset has to be string or cell')
@@ -124,7 +144,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
             warning('File %s is corrupted. Will be rewritten. Error: %s', modelFile, err.message);
           end
           if (all(finishedInstances))
-            fprintf('All instances in %s already calculated. Skipping model testing.\n', modelFile);
+            fprintf('All instances in %s already calculated. \nSkipping model testing.\n', modelFile);
             continue;
           end
         end
@@ -156,7 +176,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
         end
 
         % print what you are going to test
-        printStructure(modelOptions{m});
+        printStructure(modelOptions{m}, 'StructName', 'modelOptions')
 
         % instances loop
         for ii = startInstanceIdx:length(instToTest)
@@ -225,6 +245,8 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
     end  % function loop
   end  % dimension loop
 
+  
+  fprintf('****************************  FINISH  ****************************\n')
 end
 
 
