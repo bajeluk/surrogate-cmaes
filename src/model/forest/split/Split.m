@@ -9,35 +9,35 @@ classdef Split
   end
   
   properties %(Access = protected)
-    transformationOptions % transform options
-    transformation % transformation
-    X % input data
-    y % output data
-    allEqual % whether all y values are equal
-    soft % use soft split
-    lambda % lambda steepness in soft logit function
+    split_transformationOptions % transform options
+    split_transformation        % transformation
+    split_X                     % input data
+    split_y                     % output data
+    split_allEqual              % whether all y values are equal
+    split_soft                  % use soft split
+    split_lambda                % lambda steepness in soft logit function
   end
   
   methods
     function obj = Split(options)
-      obj.transformationOptions = defopts(options, 'transformationOptions', struct);
-      obj.soft = defopts(options, 'soft', false);
-      obj.lambda = defopts(options, 'lambda', 1);
+      obj.split_transformationOptions = defopts(options, 'split_transformationOptions', struct);
+      obj.split_soft = defopts(options, 'split_soft', false);
+      obj.split_lambda = defopts(options, 'split_lambda', 1);
     end
     
     function obj = reset(obj, X, y)
     % sets new transformed input
-      [obj.X, obj.y, obj.transformation] = ...
-        transform(X, y, obj.transformationOptions);
+      [obj.split_X, obj.split_y, obj.split_transformation] = ...
+        transform(X, y, obj.split_transformationOptions);
       n = size(X, 1);
       varY = var(y);
-      obj.allEqual = any(isnan(varY)) || all(varY < eps(max(varY)) * n);
+      obj.split_allEqual = any(isnan(varY)) || all(varY < eps(max(varY)) * n);
     end
     
     function best = get(obj, splitGain)
     % returns the split with max splitGain
       best = obj.splitCandidate;
-      if obj.allEqual
+      if obj.split_allEqual
         return
       end
       candidate = obj.splitCandidate;
@@ -48,18 +48,18 @@ classdef Split
   
   methods (Access = protected)
     function f = createSplitter(obj, splitter)
-      trans = obj.transformation;
-      if obj.soft
+      trans = obj.split_transformation;
+      if obj.split_soft
         % soft splitter using logit
         % normalize first
-        r = splitter(obj.X);
+        r = splitter(obj.split_X);
         idx = r <= 0;
         rLeft = r(idx);
         rRight = r(~idx);
         mm = [-sum(rLeft) / numel(rLeft), sum(rRight) / numel(rRight)];
         splitter = @(X) Split.normalize(splitter(X), mm);
 
-        lambda = obj.lambda;
+        lambda = obj.split_lambda;
         f = @(X) 1 ./ (1 + exp(-lambda * splitter(transformApply(X, trans))));
       else
         % hard splitter
@@ -68,8 +68,8 @@ classdef Split
     end
     
     function f = createModelSplitter(obj, model)
-      trans = obj.transformation;
-      if obj.soft
+      trans = obj.split_transformation;
+      if obj.split_soft
         % soft splitter
         f = @(X) Split.modelProbability(model, transformApply(X, trans));
       else

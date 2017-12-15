@@ -4,33 +4,33 @@ classdef RandomRbfSplit < RandomSplit
 % sphere with given metric
 
   properties %(Access = protected)
-    metric % metric
+    split_metric % metric
   end
   
   methods
     function obj = RandomRbfSplit(options)
       obj = obj@RandomSplit(options);
-      obj.metric = defopts(options, 'metric', 'euclidean');
+      obj.split_metric = defopts(options, 'split_metric', 'euclidean');
     end
     
     function best = get(obj, splitGain)
     % returns the split with max splitGain
       best = obj.splitCandidate;
-      if obj.allEqual
+      if obj.split_allEqual
         return
       end
-      [n, d] = size(obj.X);
-      for iRepeats = 1:obj.nRepeats
+      [n, d] = size(obj.split_X);
+      for iRepeats = 1:obj.split_nRepeats
         candidate = obj.splitCandidate;
-        featuresMin = min(obj.X);
-        featuresMax = max(obj.X);
+        featuresMin = min(obj.split_X);
+        featuresMax = max(obj.split_X);
         % select point where the RBF oiginates
         origin = rand(1, d) ...
           .* (featuresMax - featuresMin) ...
           + featuresMin;
         %origin = datasample(X, 1);
-        metric = obj.metric;
-        distances = pdist2(obj.X, origin, metric);
+        metric = obj.split_metric;
+        distances = pdist2(obj.split_X, origin, metric);
         maxDistance = max(distances);
         minDistance = min(distances);
         treshold = rand() * (maxDistance - minDistance) + minDistance;

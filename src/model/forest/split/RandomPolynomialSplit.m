@@ -4,28 +4,28 @@ classdef RandomPolynomialSplit < RandomSplit
 % hyperplane passing through the origin.
   
   properties %(Access = protected)
-    degree % degree of polynomial
+    split_degree % degree of polynomial
   end
   
   methods
     function obj = RandomPolynomialSplit(options)
       obj = obj@RandomSplit(options);
-      obj.degree = defopts(options, 'degree', 'linear');
+      obj.split_degree = defopts(options, 'split_degree', 'linear');
     end
     
     function best = get(obj, splitGain)
     % returns the split with max splitGain
       best = obj.splitCandidate;
-      if obj.allEqual
+      if obj.split_allEqual
         return
       end
-      [n, d] = size(obj.X);
+      [~, d] = size(obj.split_X);
       dPoly = -1;
-      for iRepeats = 1:obj.nRepeats
+      for iRepeats = 1:obj.split_nRepeats
         candidate = obj.splitCandidate;
-        featuresMin = min(obj.X);
-        featuresMax = max(obj.X);
-        switch obj.degree
+        featuresMin = min(obj.split_X);
+        featuresMax = max(obj.split_X);
+        switch obj.split_degree
           case 'linear2'
             % each column has values within [min(column), max(column)]
             featuresRand = rand(d, d) ...
@@ -39,15 +39,15 @@ classdef RandomPolynomialSplit < RandomSplit
             origin = rand(1, d) ...
               .* (featuresMax - featuresMin) ...
               + featuresMin;
-            %origin = datasample(obj.X, 1);
+            %origin = datasample(obj.split_X, 1);
             if dPoly < 0
-              dPoly = size(generateFeatures(1:d, obj.degree, false), 2);
+              dPoly = size(generateFeatures(1:d, obj.split_degree, false), 2);
             end
             % select a direction of the hyperplane
             angles = rand(dPoly, 1) * pi - pi/2;
             % convert direction to weights
             weights = tan(angles);
-            degree = obj.degree;
+            degree = obj.split_degree;
             candidate.splitter = obj.createSplitter(@(X) ...
               generateFeatures(bsxfun(@minus, X, origin), degree, false)...
               * weights);

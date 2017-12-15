@@ -5,7 +5,7 @@ classdef DEMSDSplitGain < SplitGain
   methods
     function obj = DEMSDSplitGain(options)
       obj = obj@SplitGain(options);
-      obj.computeSd2 = true;
+      obj.splitGain_computeSd2 = true;
     end
   end
   

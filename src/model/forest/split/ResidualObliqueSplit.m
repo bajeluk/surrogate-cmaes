@@ -3,27 +3,27 @@ classdef ResidualObliqueSplit < Split
 % two classes based on which side of the line they lie
 
   properties %(Access = protected)
-    modelSpec % degree for fitted polynomial
+    split_modelSpec % degree for fitted polynomial
   end
     
   methods
     function obj = ResidualObliqueSplit(options)
       obj = obj@Split(options);
-      obj.modelSpec = defopts(options, 'degree', 'constant');
+      obj.split_modelSpec = defopts(options, 'split_degree', 'constant');
     end
     
     function best = get(obj, splitGain)
     % returns the split with max splitGain
       best = obj.splitCandidate;
-      if obj.allEqual
+      if obj.split_allEqual
         return
       end
       % linear regression
-      model = PolynomialModel(struct('modelSpec', obj.modelSpec));
-      model = model.trainModel(obj.X, obj.y);
-      c = model.modelPredict(obj.X) < obj.y;
+      model = PolynomialModel(struct('modelSpec', obj.split_modelSpec));
+      model = model.trainModel(obj.split_X, obj.split_y);
+      c = model.modelPredict(obj.split_X) < obj.split_y;
       
-      switch obj.modelSpec
+      switch obj.split_modelSpec
         case 'constant'
           discrimTypes = {'linear', 'quadratic'};
         case 'linear'
@@ -36,11 +36,11 @@ classdef ResidualObliqueSplit < Split
       for i = 1:numel(discrimTypes)
         discrimType = discrimTypes{i};
         try
-          model = fitcdiscr(obj.X, c, 'DiscrimType', discrimType);
+          model = fitcdiscr(obj.split_X, c, 'DiscrimType', discrimType);
         catch
           % singular covariance matrix
           pseudoDiscrimType = strcat('pseudo', discrimType);
-          model = fitcdiscr(obj.X, c, 'DiscrimType', pseudoDiscrimType);
+          model = fitcdiscr(obj.split_X, c, 'DiscrimType', pseudoDiscrimType);
         end
         candidate = obj.splitCandidate;
         candidate.splitter = obj.createModelSplitter(model);

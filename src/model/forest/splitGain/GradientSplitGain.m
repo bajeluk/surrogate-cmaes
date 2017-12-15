@@ -3,13 +3,13 @@ classdef GradientSplitGain < SplitGain
 % 1st and 2nd gradients of the loss function
 
   properties
-    regularization % regularization
+    splitGain_regularization % regularization
   end
 
   methods
     function obj = GradientSplitGain(options)
       obj = obj@SplitGain(options);
-      obj.regularization = defopts(options, 'regularization', 0);
+      obj.splitGain_regularization = defopts(options, 'splitGain_regularization', 0);
     end
   end
   
@@ -21,7 +21,7 @@ classdef GradientSplitGain < SplitGain
       G = GH(1);
       % second derivatives
       H = GH(2);
-      value = -0.5 * G*G / (H + obj.regularization);
+      value = -0.5 * G*G / (H + obj.splitGain_regularization);
     end
   end
   

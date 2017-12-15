@@ -1,8 +1,8 @@
 classdef LmfitPolynomialModel < WeakModel
   
   properties %(Access = protected)
-    modelSpec % model specification (https://www.mathworks.com/help/stats/fitlm.html#inputarg_modelspec)
-    model % trained model
+    weak_modelSpec % model specification (https://www.mathworks.com/help/stats/fitlm.html#inputarg_modelspec)
+    weak_model     % trained model
   end
   
   methods
@@ -10,7 +10,7 @@ classdef LmfitPolynomialModel < WeakModel
       % constructor
       obj = obj@WeakModel(modelOptions);
       % specific model options
-      obj.modelSpec = defopts(modelOptions, 'modelSpec', 'constant');
+      obj.weak_modelSpec = defopts(modelOptions, 'weak_modelSpec', 'constant');
     end
 
     function obj = trainModel(obj, X, y)
@@ -20,13 +20,13 @@ classdef LmfitPolynomialModel < WeakModel
         y = [y; y];
       end
       warning('off', 'stats:LinearModel:RankDefDesignMat');
-      obj.model = fitlm(X, y, obj.modelSpec);
+      obj.weak_model = fitlm(X, y, obj.weak_modelSpec);
       warning('on', 'stats:LinearModel:RankDefDesignMat');
     end
     
     function [yPred, sd2, ci] = modelPredict(obj, X)
       % predicts the function values in new points X
-      [yPred, ci] = obj.model.predict(X);
+      [yPred, ci] = obj.weak_model.predict(X);
       if nargout >= 2
         sd2 = confidenceToVar(ci);
       end

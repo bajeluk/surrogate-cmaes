@@ -49,8 +49,8 @@ classdef (Abstract) ModelTest < Test
         model.modelPredict(train.XN);
       [test.yPred, test.sd2] = ...
         model.modelPredict(test.XN);
-      train.err = sqrt(immse(train.y, train.yPred));
-      test.err = sqrt(immse(test.y, test.yPred));
+      train.err = sqrt(mseLossFunc(train.y, train.yPred));
+      test.err = sqrt(mseLossFunc(test.y, test.yPred));
       
       result = struct;
       result.name = testCase.name{2};

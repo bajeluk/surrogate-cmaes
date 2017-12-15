@@ -4,7 +4,7 @@ classdef MSESplitGain < SplitGain
   methods
     function obj = MSESplitGain(options)
       obj = obj@SplitGain(options);
-      obj.computeMse = true;
+      obj.splitGain_computeMse = true;
     end
   end
   

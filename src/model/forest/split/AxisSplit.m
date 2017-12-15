@@ -2,28 +2,28 @@ classdef AxisSplit < Split
 % AxisSplit finds the best axis parallel split
   
   properties %(Access = protected)
-    nQuantize % quantization of tresholds
+    split_nQuantize % quantization of tresholds
   end
 
   methods
     function obj = AxisSplit(options)
       obj = obj@Split(options);
-      obj.nQuantize = defopts(options, 'nQuantize', 0);
+      obj.split_nQuantize = defopts(options, 'split_nQuantize', 0);
     end
 
     function best = get(obj, splitGain)
     % returns the split with max splitGain
       best = obj.splitCandidate;
-      if obj.allEqual
+      if obj.split_allEqual
         return
       end
-      [n, d] = size(obj.X);
+      [~, d] = size(obj.split_X);
       for feature = 1:d
         featureSelector = (1:d == feature)';
-        values = obj.X(:, feature)';
-        if obj.nQuantize > 0 && numel(values) > obj.nQuantize
+        values = obj.split_X(:, feature)';
+        if obj.split_nQuantize > 0 && numel(values) > obj.split_nQuantize
           mm = minmax(values);
-          tresholds = linspace(mm(1), mm(2), obj.nQuantize);
+          tresholds = linspace(mm(1), mm(2), obj.split_nQuantize);
         else
           tresholds = unique(values);
         end
