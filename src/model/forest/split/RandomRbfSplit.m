@@ -4,13 +4,14 @@ classdef RandomRbfSplit < RandomSplit
 % sphere with given metric
 
   properties %(Access = protected)
-    split_metric % metric
+    split_randrbf_metric % metric (according to the matlab pdist2 
+                         % distances)
   end
   
   methods
     function obj = RandomRbfSplit(options)
       obj = obj@RandomSplit(options);
-      obj.split_metric = defopts(options, 'split_metric', 'euclidean');
+      obj.split_randrbf_metric = defopts(options, 'split_randrbf_metric', 'euclidean');
     end
     
     function best = get(obj, splitGain)
@@ -29,7 +30,7 @@ classdef RandomRbfSplit < RandomSplit
           .* (featuresMax - featuresMin) ...
           + featuresMin;
         %origin = datasample(X, 1);
-        metric = obj.split_metric;
+        metric = obj.split_randrbf_metric;
         distances = pdist2(obj.split_X, origin, metric);
         maxDistance = max(distances);
         minDistance = min(distances);
