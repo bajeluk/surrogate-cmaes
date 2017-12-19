@@ -25,7 +25,7 @@ classdef (Abstract) ModelTest < Test
       catch
         results = testCase.results;
       end
-      numel(results)
+      fprintf('\nNumber of results in %s:  %d\n\n', filename, numel(results))
       save(filename, 'results');
     end
   end

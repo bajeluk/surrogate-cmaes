@@ -9,11 +9,11 @@ classdef TreeModelTest < ModelTest
     
     % minGain = {0.2};
     % minLeafSize = {10};
-    modelSpec = {'linear', 'quadratic'};
-    splitGain0 = {'MSE'};
-    splitGain1 = {'DENN'};
+    % modelSpec = {'linear', 'quadratic'};
+    % splitGain0 = {'MSE'};
+    % splitGain1 = {'DENN'};
     % fuzziness = {0, 0.1};
-    steepness = {5};
+    % steepness = {5};
     % growFull = {false, true};
     
     % new model parameters
@@ -39,7 +39,7 @@ classdef TreeModelTest < ModelTest
                  'ResidualOblique'};
     split_transformationOptions = {struct};
     split_soft = {false};
-    split_lambda = {1};
+    split_lambda = {1, 5};
     split_nRepeats = {1}; % RandomSplit
     split_nQuantize = {0}; % AxisSplit, HillClimbingObliqueSplit, PairObliqueSplit
     split_discrimType = {{'linear', 'quadratic'}}; % GaussianSplit, KMeansSplit
@@ -49,19 +49,16 @@ classdef TreeModelTest < ModelTest
     split_randrbf_metric = {'euclidean'}; % RandomRbfSplit
     split_degree = {'linear'}; % RandomPolynomialSplit, ResidualObliqueSplit
     
-    %TODO: splitGain
+    % splitGain
     splitGain = {'DEMSD', 'DENN', 'DE', 'Gradient', 'MSE', 'Var'};
     splitGain_minSize = {1};
     splitGain_degree = {[]};
     splitGain_polyMethod = {''};
     splitGain_modelFunc = {[]};
     splitGain_weightedGain = {true};
-               
-               
+    splitGain_k = {1}; % DENNSplitGain
+    splitGain_regularization = {0}; % GradientSplitGain
     
-    
-    
-    steepness = {5};
   end
   
   methods (TestClassSetup)
@@ -144,37 +141,95 @@ classdef TreeModelTest < ModelTest
 %     end
     
     function test2(testCase, fNum, m, ...
-        modelSpec, minLeafSize, minGain, splitGain1, growFull, fuzziness, steepness)
+        minGain, minLeafSize, minParentSize, maxDepth, growFull, lossFunc, fuzziness, ...
+        weakFunc, weak_coeff, weak_modelSpec, ...
+        splitFunc, split_transformationOptions, split_soft, split_lambda, ...
+        split_nRepeats, split_nQuantize, split_discrimType, split_includeInput, ...
+        split_nRandomPerturbations, split_kmeans_metric, split_randrbf_metric, split_degree, ...
+        splitGain, splitGain_minSize, splitGain_degree, splitGain_polyMethod, ...
+        splitGain_modelFunc, splitGain_weightedGain, splitGain_k, splitGain_regularization)
+      
+      % prepare parameter structure
       params = struct;
-      params.modelSpec = modelSpec;
-      params.tree_minLeafSize = minLeafSize;
+
+      % tree parameters
       params.tree_minGain = minGain;
-      params.tree_splitGainFunc = splitGain1;
+      params.tree_minLeafSize = minLeafSize;
+      params.tree_minParentSize = minParentSize;
+      params.tree_maxDepth = maxDepth;
       params.tree_growFull = growFull;
+      params.tree_lossFunc = lossFunc;
       params.tree_fuzziness = fuzziness;
-      params.tree_steepness = steepness;
+      % weak model parameters
+      params.tree_weakFunc = weakFunc;
+      params.weak_coeff = weak_coeff;
+      params.week_modelSpec = weak_modelSpec;
+      % splitting parameters
+      params.tree_splitFunc = splitFunc;
+      params.split_transformationOptions = split_transformationOptions;
+      params.split_soft = split_soft;
+      params.split_lambda = split_lambda;
+      params.split_nRepeats = split_nRepeats;
+      params.split_nQuantize = split_nQuantize;
+      params.split_discrimType = split_discrimType;
+      params.split_includeInput = split_includeInput;
+      params.split_nRandomPerturbations = split_nRandomPerturbations;
+      params.split_kmeans_metric = split_kmeans_metric;
+      params.split_randrbf_metric = split_randrbf_metric;
+      params.split_degree = split_degree;
+      % splitGain parameters
+      params.tree_splitGainFunc = splitGain;
+      params.splitGain_minSize = splitGain_minSize;
+      params.splitGain_degree = splitGain_degree;
+      params.splitGain_polyMethod = splitGain_polyMethod;
+      params.splitGain_modelFunc = splitGain_modelFunc;
+      params.splitGain_weightedGain = splitGain_weightedGain;
+      params.splitGain_k = splitGain_k;
+      params.splitGain_regularization = splitGain_regularization;
+      
       testCase.reset(params, sprintf('_%02d_%03d', fNum, m));
       
       % tree model settings
       treeModelOptions = struct;
       
-      predictorFunc = @PolynomialModel;
-      
-      treeModelOptions.splitGain_degree = modelSpec;
-      treeModelOptions.splitGain_minSize = minLeafSize;
-      treeModelOptions.splitGain_k = 3;
-      treeModelOptions.tree_splitGainFunc = str2func(sprintf('%sSplitGain', splitGain1));
-      
-      splits = {};
-      treeModelOptions.split_soft = fuzziness ~= 0;
-      treeModelOptions.split_lambda = steepness;
-      splits{1} = @AxisSplit;
-      
-      treeModelOptions.tree_predictorFunc = predictorFunc;
+      % tree options
       treeModelOptions.tree_minGain = minGain;
-      treeModelOptions.tree_splits = splits;
+      treeModelOptions.tree_minLeafSize = minLeafSize;
+      treeModelOptions.tree_minParentSize = minParentSize;
+      treeModelOptions.tree_maxDepth = maxDepth;
       treeModelOptions.tree_growFull = growFull;
+      treeModelOptions.tree_lossFunc = str2func(sprintf('%sLossFunc', lossFunc));
       treeModelOptions.tree_fuzziness = fuzziness;
+      % weak model options
+      treeModelOptions.tree_weakFunc = str2func(sprintf('%sModel', weakFunc));
+      treeModelOptions.weak_coeff = weak_coeff;
+      treeModelOptions.week_modelSpec = weak_modelSpec;
+      % split options
+      treeModelOptions.tree_splitFunc = str2func(sprintf('%sSplit', splitFunc));
+      treeModelOptions.split_transformationOptions = split_transformationOptions;
+      treeModelOptions.split_soft = split_soft;
+      treeModelOptions.split_lambda = split_lambda;
+      treeModelOptions.split_nRepeats = split_nRepeats;
+      treeModelOptions.split_nQuantize = split_nQuantize;
+      treeModelOptions.split_discrimType = split_discrimType;
+      treeModelOptions.split_includeInput = split_includeInput;
+      treeModelOptions.split_nRandomPerturbations = split_nRandomPerturbations;
+      treeModelOptions.split_kmeans_metric = split_kmeans_metric;
+      treeModelOptions.split_randrbf_metric = split_randrbf_metric;
+      treeModelOptions.split_degree = split_degree;
+      % splitGain options
+      treeModelOptions.tree_splitGainFunc = str2func(sprintf('%sSplitGain', splitGain));
+      treeModelOptions.splitGain_minSize = splitGain_minSize;
+      treeModelOptions.splitGain_degree = splitGain_degree;
+      treeModelOptions.splitGain_polyMethod = splitGain_polyMethod;
+      treeModelOptions.splitGain_modelFunc = splitGain_modelFunc;
+      treeModelOptions.splitGain_weightedGain = splitGain_weightedGain;
+      treeModelOptions.splitGain_k = splitGain_k;
+      treeModelOptions.splitGain_regularization = splitGain_regularization;
+      
+      fprintf('***************** f%02d  %dD *****************\n', fNum, m)
+      printStructure(params);
+      
       modelFunc = @() TreeModel(treeModelOptions);
       
       [model, train, test, time] = testCase.testCoco(modelFunc, fNum, m);

@@ -44,6 +44,9 @@ classdef TreeModel < WeakModel
       obj.tree_predictor = obj.tree_predictorFunc(modelOptions);
       obj.tree_splitFunc = defopts(modelOptions, 'tree_splitFunc', ...
         {@AxisSplit}); 
+      if ~iscell(obj.tree_splitFunc)
+        obj.tree_splitFunc = {obj.tree_splitFunc};
+      end
       obj.tree_splits = cellfun(@(x) x(modelOptions), obj.tree_splitFunc, 'UniformOutput', false);
       obj.tree_splitGainFunc = defopts(modelOptions, 'tree_splitGainFunc', ...
         @MSESplitGain);

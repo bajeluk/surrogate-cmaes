@@ -50,7 +50,7 @@ classdef (Abstract) Test < matlab.unittest.TestCase
       testCase.name = strsplit(name, '.');
       testCase.params = params;
       
-      testCase.joinedParams = Test.struct2str(testCase.params);
+      testCase.joinedParams = printStructure(params);
     end
   end
   
