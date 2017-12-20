@@ -2,7 +2,10 @@ classdef AxisSplit < Split
 % AxisSplit finds the best axis parallel split
   
   properties %(Access = protected)
-    split_nQuantize % quantization of tresholds
+    split_nQuantize % quantization of tresholds 
+                    %   0 - all tresholds for one dimension
+                    %   1, 2, 3, ... number of linearly distributed 
+                    %   tresholds per dimension
   end
 
   methods

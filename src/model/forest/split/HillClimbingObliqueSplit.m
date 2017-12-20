@@ -8,7 +8,10 @@ classdef HillClimbingObliqueSplit < RandomSplit
   
   properties
     split_X1 % X with intercept
-    split_nQuantize % quantization of tresholds
+    split_nQuantize % quantization of tresholds 
+                    %   0 - all tresholds for one dimension or perturbation
+                    %   1, 2, 3, ... number of linearly distributed 
+                    %   tresholds per dimension or perturbation
     split_nRandomPerturbations % number of random perturbations
   end
 
@@ -49,7 +52,7 @@ classdef HillClimbingObliqueSplit < RandomSplit
     function best = getAxisHyperplane(obj, splitGain)
       best = obj.splitCandidate;
       trans = obj.split_transformation;
-      [n, d] = size(obj.split_X);
+      [~, d] = size(obj.split_X);
       for feature = 1:d
         featureSelector = (1:d == feature)';
         values = obj.split_X(:, feature)';
@@ -77,7 +80,7 @@ classdef HillClimbingObliqueSplit < RandomSplit
     end
     
     function candidate = getRandomHyperplane(obj, splitGain)
-      [n, d] = size(obj.split_X);
+      [~, d] = size(obj.split_X);
       H = tan(rand(1, d+1)' * pi - pi/2);
       candidate = obj.getSplit(splitGain, H);
       candidate.H = H;

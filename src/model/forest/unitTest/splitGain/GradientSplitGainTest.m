@@ -9,12 +9,12 @@ classdef GradientSplitGainTest < SplitGainTest
     function test(testCase, testMethod, ...
         regularization)
       params = struct;
-      params.regularization = int2str(regularization);
+      params.splitGain_regularization = int2str(regularization);
       testCase.reset(params, testMethod);
       
       options = struct;
       options.weightedGain = false;
-      options.regularization = regularization;
+      options.splitGain_regularization = regularization;
       splitGain = GradientSplitGain(options);
       g1 = @(y, yPred) 2*(yPred - y);
       g2 = @(y, yPred) y*0 + 2;

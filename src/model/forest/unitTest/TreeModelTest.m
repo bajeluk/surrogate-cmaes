@@ -3,7 +3,8 @@ classdef TreeModelTest < ModelTest
   properties (TestParameter)
     % functional parameters
     fNum = {2}; %{1, 2, 6, 8, 13, 14, 15, 17, 20, 21};
-    m = {10};
+    dim = {2};
+    m = {5};
     
     % old model parameters
     
@@ -25,7 +26,7 @@ classdef TreeModelTest < ModelTest
     maxDepth = {inf};
     growFull = {false, true};
     lossFunc  = {'mse'};
-    fuzziness = {0, 0.1};
+    fuzziness = {0.1};
     
     % predictor
     weakFunc = {'Constant', 'LmfitPolynomial', 'Polynomial', ...
@@ -39,9 +40,11 @@ classdef TreeModelTest < ModelTest
                  'ResidualOblique'};
     split_transformationOptions = {struct};
     split_soft = {false};
-    split_lambda = {1, 5};
+    split_lambda = {1};
     split_nRepeats = {1}; % RandomSplit
-    split_nQuantize = {0}; % AxisSplit, HillClimbingObliqueSplit, PairObliqueSplit
+    split_nQuantize = {5}; % AxisSplit, HillClimbingObliqueSplit, PairObliqueSplit
+    split_pairFcn = {@(x) x*log(x)}; % PairObliqueSplit
+    split_pairRatio = {0.01}; % PairObliqueSplit
     split_discrimType = {{'linear', 'quadratic'}}; % GaussianSplit, KMeansSplit
     split_includeInput = {true}; % GaussianSplit, KMeansSplit
     split_nRandomPerturbations = {10}; % HillClimbingObliqueSplit
@@ -50,7 +53,8 @@ classdef TreeModelTest < ModelTest
     split_degree = {'linear'}; % RandomPolynomialSplit, ResidualObliqueSplit
     
     % splitGain
-    splitGain = {'DEMSD', 'DENN', 'DE', 'Gradient', 'MSE', 'Var'};
+    splitGain = {'DEMSD', 'DENN', 'DE', 'MSE', 'Var'}; % {'DEMSD', 'DENN', 'DE', 'Gradient', 'MSE', 'Var'}; 
+      % GradientSplitGain useful only in case of second derivatives
     splitGain_minSize = {1};
     splitGain_degree = {[]};
     splitGain_polyMethod = {''};
@@ -140,7 +144,7 @@ classdef TreeModelTest < ModelTest
 %       [model, train, test, time] = testCase.testCoco(modelFunc, fNum, m);
 %     end
     
-    function test2(testCase, fNum, m, ...
+    function test2(testCase, fNum, dim, m, ...
         minGain, minLeafSize, minParentSize, maxDepth, growFull, lossFunc, fuzziness, ...
         weakFunc, weak_coeff, weak_modelSpec, ...
         splitFunc, split_transformationOptions, split_soft, split_lambda, ...
@@ -187,7 +191,7 @@ classdef TreeModelTest < ModelTest
       params.splitGain_k = splitGain_k;
       params.splitGain_regularization = splitGain_regularization;
       
-      testCase.reset(params, sprintf('_%02d_%03d', fNum, m));
+      testCase.reset(params, sprintf('_%02d_%03d', fNum, dim));
       
       % tree model settings
       treeModelOptions = struct;
@@ -227,12 +231,12 @@ classdef TreeModelTest < ModelTest
       treeModelOptions.splitGain_k = splitGain_k;
       treeModelOptions.splitGain_regularization = splitGain_regularization;
       
-      fprintf('***************** f%02d  %dD *****************\n', fNum, m)
+      fprintf('***************** f%02d  %dD  [-%d, %d] *****************\n', fNum, dim, m, m)
       printStructure(params);
       
       modelFunc = @() TreeModel(treeModelOptions);
       
-      [model, train, test, time] = testCase.testCoco(modelFunc, fNum, m);
+      [model, train, test, time] = testCase.testCoco(modelFunc, fNum, dim, m);
     end
   end
 end

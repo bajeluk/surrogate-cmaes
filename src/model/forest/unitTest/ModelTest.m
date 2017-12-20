@@ -52,12 +52,17 @@ classdef (Abstract) ModelTest < Test
       train.err = sqrt(mseLossFunc(train.y, train.yPred));
       test.err = sqrt(mseLossFunc(test.y, test.yPred));
       
+      % prepare results
       result = struct;
       result.name = testCase.name{2};
       result.description = sprintf('%s(%s)', ...
           testCase.name{2}, ...
           testCase.joinedParams);
       result.params = testCase.params;
+      result.model = model;
+      result.train = train;
+      result.test = test;
+      result.time = time;
       result.trainRMSE = train.err;
       result.testRMSE = test.err;
       if isempty(testCase.results)
@@ -91,14 +96,22 @@ classdef (Abstract) ModelTest < Test
       end
     end
     
-    function [model, train, test, time] = testCoco(testCase, modelFunc, fNum, m)
-      if nargin < 4
-        m = 5;
+    function [model, train, test, time] = testCoco(testCase, modelFunc, fNum, dim, m, ptsPerDim)
+      if nargin < 6
+        ptsPerDim = 100;
+        if nargin < 5
+          m = 5;
+          if nargin < 4
+            dim = 2;
+            if nargin < 3
+              fNum = 2;
+            end
+          end
+        end
       end
       % random points
-      d = 2;
-      n = 250 * d;
-      X = testCase.generateInput(n, d, -m, m);
+      n = ptsPerDim * dim;
+      X = testCase.generateInput(n, dim, -m, m);
       y = benchmarks(X', fNum)';
       
       [model, train, test, time] = testCase.testModel(X, y, modelFunc);
