@@ -25,7 +25,6 @@ classdef KMeansSplit < RandomSplit
       ZX = zscore(obj.split_X);
       Zy = zscore(obj.split_y);
       for iRepeats = 1:obj.split_nRepeats
-        candidate = obj.splitCandidate;
         % fit 2 clusters in input-output space
         if obj.split_includeInput
           % select random features
@@ -44,21 +43,8 @@ classdef KMeansSplit < RandomSplit
         else
           discrimTypes = {obj.split_discrimType};
         end
-        for i = 1:numel(discrimTypes)
-          discrimType = discrimTypes{i};
-          try
-            model = fitcdiscr(obj.split_X, c, 'DiscrimType', discrimType);
-          catch
-            % singular covariance matrix
-            pseudoDiscrimType = strcat('pseudo', discrimType);
-            model = fitcdiscr(obj.split_X, c, 'DiscrimType', pseudoDiscrimType);
-          end
-          candidate.splitter = obj.createModelSplitter(model);
-          candidate.gain = splitGain.get(candidate.splitter);
-          if candidate.gain > best.gain
-            best = candidate;
-          end
-        end
+        best = obj.getDiscrAnal(splitGain, c, best, discrimTypes);
+        
       end
     end
   end

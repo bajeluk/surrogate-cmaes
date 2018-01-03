@@ -3,7 +3,7 @@ classdef TreeModelTest < ModelTest
   properties (TestParameter)
     % functional parameters
     fNum = {2}; %{1, 2, 6, 8, 13, 14, 15, 17, 20, 21};
-    dim = {2};
+    dim = {2, 5, 10, 20, 40};
     m = {5};
     
     % old model parameters
@@ -167,7 +167,7 @@ classdef TreeModelTest < ModelTest
       % weak model parameters
       params.tree_weakFunc = weakFunc;
       params.weak_coeff = weak_coeff;
-      params.week_modelSpec = weak_modelSpec;
+      params.weak_modelSpec = weak_modelSpec;
       % splitting parameters
       params.tree_splitFunc = splitFunc;
       params.split_transformationOptions = split_transformationOptions;
@@ -207,7 +207,7 @@ classdef TreeModelTest < ModelTest
       % weak model options
       treeModelOptions.tree_weakFunc = str2func(sprintf('%sModel', weakFunc));
       treeModelOptions.weak_coeff = weak_coeff;
-      treeModelOptions.week_modelSpec = weak_modelSpec;
+      treeModelOptions.weak_modelSpec = weak_modelSpec;
       % split options
       treeModelOptions.tree_splitFunc = str2func(sprintf('%sSplit', splitFunc));
       treeModelOptions.split_transformationOptions = split_transformationOptions;

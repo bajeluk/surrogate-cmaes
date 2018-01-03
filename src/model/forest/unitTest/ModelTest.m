@@ -16,9 +16,8 @@ classdef (Abstract) ModelTest < Test
     function saveResults(testCase)   
       path = 'results';
       [~,~,~] = mkdir(path);
-      filename = sprintf('%s/%s.mat', ...
-        path, ...
-        testCase.name{1});
+      filename = fullfile(path, ...
+        sprintf('%s_f%02d_%dD.mat', testCase.name{1}, testCase.fNum{1}, testCase.dim{1}));
       try
         load(filename);
         results = [results; testCase.results];

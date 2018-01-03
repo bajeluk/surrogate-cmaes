@@ -44,6 +44,42 @@ classdef Split
       candidate.gain = splitGain(candidate.splitter);
       best = candidate;
     end
+    
+    function best = getDiscrAnal(obj, splitGain, c, best, discrimTypes)
+    % returns split using discriminant analysis
+      for i = 1:numel(discrimTypes)
+        discrimType = discrimTypes{i};
+        try
+          model = fitcdiscr(obj.split_X, c, 'DiscrimType', discrimType);
+          modelTrained = true;
+        catch
+          modelTrained = false;
+        end
+        
+        cl = unique(c);
+        % singular covariance matrix
+        if ~modelTrained && ...
+            sum(cl(1) == c) > 1 && sum(cl(2) == c) > 1 && ...
+            any(strcmp(discrimType, {'linear', 'quadratic'}))
+            
+          pseudoDiscrimType = strcat('pseudo', discrimType);
+          try
+            model = fitcdiscr(obj.split_X, c, 'DiscrimType', pseudoDiscrimType);
+            modelTrained = true;
+          catch
+          end
+        end
+        
+        % model trained => create candidate
+        if modelTrained
+          candidate.splitter = obj.createModelSplitter(model);
+          candidate.gain = splitGain.get(candidate.splitter);
+          if candidate.gain > best.gain
+            best = candidate;
+          end
+        end
+      end
+    end
   end
   
   methods (Access = protected)

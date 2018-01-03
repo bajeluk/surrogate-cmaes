@@ -25,5 +25,6 @@ doc/*/*.pdf
 tags
 ownUtil/
 doc/gecco2015workshop/ppdata/
+test/local/
 exp_*.o[0-9][0-9][0-9]*
 exp_*.e[0-9][0-9][0-9]*
