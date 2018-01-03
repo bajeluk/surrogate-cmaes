@@ -50,6 +50,9 @@ function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_st
     opts.dataset = dataset;
   end
 
+  % snapshots to test
+  opts.snapshots = defopts(opts, 'snapshotsToTest', [ 5, 6, 7, 18, 19, 20 ]);
+
   % type of model to test according to the ModelFactory | string
   opts.modelType = defopts(opts, 'modelType', 'gp');
 
@@ -124,7 +127,8 @@ function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_st
   modelFolders = testModels(modelOptions_fullfact, opts, func, dims, instances);
 
   %% load and calculate results
-  [rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, func, dims, instances);
+  [rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, func, dims, ...
+    instances, opts.snapshots, opts.exp_id);
 
   save(fullfile(opts.exppath, 'stats.mat'), 'modelFolders', 'rdeTable', 'mseTable', 'RDEs', 'MSEs');
 
