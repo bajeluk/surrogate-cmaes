@@ -22,10 +22,11 @@ classdef GaussianSplit < RandomSplit
     function best = get(obj, splitGain)
     % returns the split with max splitGain
       best = obj.splitCandidate;
-      if obj.split_allEqual
+      [n, d] = size(obj.split_X);
+      % all equal or too few data to model Gaussian mixture 
+      if obj.split_allEqual || n < d + 1
         return
       end
-      [~, d] = size(obj.split_X);
       % clusters are fit in scaled input-output space
       ZX = zscore(obj.split_X);
       Zy = zscore(obj.split_y);
