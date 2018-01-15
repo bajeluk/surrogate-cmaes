@@ -28,12 +28,14 @@ classdef (Abstract) Test < matlab.unittest.TestCase
           testCase.joinedParams);
         set(testCase.fig, 'Name', title, 'NumberTitle', 'off');
         
-        path = sprintf('figures/%s', testCase.name{1});
+        unitTestFolder = fullfile('exp', 'experiments', 'UnitTesting');
+        [~,~,~] = mkdir(unitTestFolder);
+        path = fullfile(unitTestFolder, 'figures', testCase.name{1});
         [~,~,~] = mkdir(path);
-        filename = sprintf('%s/%s(%s).png', ...
-          path, ...
+        filename = fullfile(path, ...
+          sprintf('%s(%s).png', ...
           testCase.name{2}, ...
-          testCase.joinedParams);
+          testCase.joinedParams));
         print(testCase.fig, filename, '-dpng');
         close(testCase.fig);
       end

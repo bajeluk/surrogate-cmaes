@@ -14,14 +14,16 @@ classdef (Abstract) ModelTest < Test
   
   methods (TestMethodTeardown)
     function saveResults(testCase)   
-      path = 'results';
+      unitTestFolder = fullfile('exp', 'experiments', 'UnitTesting');
+      [~,~,~] = mkdir(unitTestFolder);
+      path = fullfile(unitTestFolder, 'results');
       [~,~,~] = mkdir(path);
       filename = fullfile(path, ...
-        sprintf('%s_f%02d_%dD.mat', testCase.name{1}, testCase.fNum{1}, testCase.dim{1}));
-      try
+        sprintf('%s_%s.mat', testCase.name{1}, testCase.results.name));
+      if isfile(filename)
         load(filename);
         results = [results; testCase.results];
-      catch
+      else
         results = testCase.results;
       end
       fprintf('\nNumber of results in %s:  %d\n\n', filename, numel(results))

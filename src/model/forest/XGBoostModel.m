@@ -10,7 +10,7 @@ classdef XGBoostModel < RandomForestModel
       % constructor
       modelOptions.boosting = true;
       modelOptions.treeFunc = defopts(modelOptions, 'treeFunc', ...
-      @() GradientTreeModel(struct));
+      @(x) GradientTreeModel(x));
       obj = obj@RandomForestModel(modelOptions);
       
       % model specific options

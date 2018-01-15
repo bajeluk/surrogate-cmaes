@@ -24,7 +24,7 @@ classdef ForestModel < Model
       assert(size(xMean,1) == 1, 'ForestModel (constructor): xMean is not a row-vector.');
       obj.options = modelOptions;
       
-      % computed values
+      % computed valuesWeakMo
       obj.useShift  = defopts(obj.options, 'useShift', false);
       obj.dim       = size(xMean, 2);
       obj.shiftMean = zeros(1, obj.dim);
@@ -48,7 +48,7 @@ classdef ForestModel < Model
       % returns the required number of data for training the model
       % TODO: *write this* properly according to dimension and
       %       weak learner set in options
-      nData = 2 * obj.dim;
+      nData = obj.forestModel.getMinTrainPoints(obj.dim);
     end
 
     function obj = trainModel(obj, X, y, xMean, generation)

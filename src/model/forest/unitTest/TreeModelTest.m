@@ -2,7 +2,7 @@ classdef TreeModelTest < ModelTest
 
   properties (TestParameter)
     % functional parameters
-    fNum = {2}; %{1, 2, 6, 8, 13, 14, 15, 17, 20, 21};
+    fNum = {2}; % {1, 2, 6, 8, 13, 14, 15, 17, 20, 21};
     dim = {2, 5, 10, 20, 40};
     m = {5};
     
@@ -29,10 +29,10 @@ classdef TreeModelTest < ModelTest
     fuzziness = {0.1};
     
     % predictor
-    weakFunc = {'Constant', 'LmfitPolynomial', 'Polynomial', ...
-                'RegressPolynomial'};
+    predictorFunc = {'Constant', 'LmfitPolynomial', 'Polynomial', ...
+                     'RegressPolynomial'};
     weak_coeff = {NaN}; % ConstantModel
-    weak_modelSpec = {'linear', 'quadratic'}; % LmfitPolynomial, Polynomial, RegressPolynomial
+    weak_modelSpec = {'constant', 'linear', 'purequadratic', 'interactions', 'quadratic'}; % LmfitPolynomial, Polynomial, RegressPolynomial
     
     % split
     splitFunc = {'Axis', 'Gaussian', 'HillClimbingOblique', 'KMeans', ...
@@ -146,7 +146,7 @@ classdef TreeModelTest < ModelTest
     
     function test2(testCase, fNum, dim, m, ...
         minGain, minLeafSize, minParentSize, maxDepth, growFull, lossFunc, fuzziness, ...
-        weakFunc, weak_coeff, weak_modelSpec, ...
+        predictorFunc, weak_coeff, weak_modelSpec, ...
         splitFunc, split_transformationOptions, split_soft, split_lambda, ...
         split_nRepeats, split_nQuantize, split_discrimType, split_includeInput, ...
         split_nRandomPerturbations, split_kmeans_metric, split_randrbf_metric, split_degree, ...
@@ -165,7 +165,7 @@ classdef TreeModelTest < ModelTest
       params.tree_lossFunc = lossFunc;
       params.tree_fuzziness = fuzziness;
       % weak model parameters
-      params.tree_weakFunc = weakFunc;
+      params.tree_predictorFunc = predictorFunc;
       params.weak_coeff = weak_coeff;
       params.weak_modelSpec = weak_modelSpec;
       % splitting parameters
@@ -191,7 +191,7 @@ classdef TreeModelTest < ModelTest
       params.splitGain_k = splitGain_k;
       params.splitGain_regularization = splitGain_regularization;
       
-      testCase.reset(params, sprintf('_%02d_%03d', fNum, dim));
+      testCase.reset(params, sprintf('_f%02d_%dD', fNum, dim));
       
       % tree model settings
       treeModelOptions = struct;
@@ -205,7 +205,7 @@ classdef TreeModelTest < ModelTest
       treeModelOptions.tree_lossFunc = str2func(sprintf('%sLossFunc', lossFunc));
       treeModelOptions.tree_fuzziness = fuzziness;
       % weak model options
-      treeModelOptions.tree_weakFunc = str2func(sprintf('%sModel', weakFunc));
+      treeModelOptions.tree_predictorFunc = str2func(sprintf('%sModel', predictorFunc));
       treeModelOptions.weak_coeff = weak_coeff;
       treeModelOptions.weak_modelSpec = weak_modelSpec;
       % split options

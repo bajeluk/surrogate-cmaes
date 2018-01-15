@@ -32,6 +32,11 @@ classdef ConstantModel < WeakModel
         end
       end
     end
+    
+    function N = getMinTrainPoints(obj, dim)
+    % returns minimal number of points necessary to train the model
+      N = ones(size(dim));
+    end
   end
   
 end

@@ -1,7 +1,9 @@
 classdef RegressPolynomialModel < WeakModel
   
   properties %(Access = protected)
-    weak_modelSpec % model specification (https://www.mathworks.com/help/stats/fitlm.html#inputarg_modelspec)
+    weak_modelSpec % model specification from MATLAB fitlm function
+    % (https://www.mathworks.com/help/stats/fitlm.html#inputarg_modelspec)
+    % except 'polyijk' settings
     weak_coeff % coefficients
     weak_coeffCov % coefficient covariance
     weak_features % used features
@@ -13,6 +15,10 @@ classdef RegressPolynomialModel < WeakModel
       obj = obj@WeakModel(modelOptions);
       % specific model options
       obj.weak_modelSpec = defopts(modelOptions, 'weak_modelSpec', 'constant');
+      modelSpec_types = {'constant', 'linear', 'interactions', 'purequadratic', 'quadratic'};
+      assert(any(strcmp(obj.weak_modelSpec, modelSpec_types)), ...
+        'Model ''%s'' cannot be specified as weak_modelSpec property for RegressPolynomialModel', ...
+        obj.weak_modelSpec);
     end
 
     function obj = trainModel(obj, X, y)
@@ -30,7 +36,7 @@ classdef RegressPolynomialModel < WeakModel
       % var(b) = E(b^2) * (X'*X)^-1
       r = y - yPred;
       mse = r' * r / numel(r);
-      obj.weak_coeffCov = mse * Mi;
+      obj.weak_coeffCov =  mse * Mi;
     end
     
     function [yPred, sd2, ci] = modelPredict(obj, X)
@@ -48,6 +54,25 @@ classdef RegressPolynomialModel < WeakModel
         end
       end
     end
+    
+    function N = getMinTrainPoints(obj, dim)
+    % returns minimal number of points necessary to train the model
+      switch obj.weak_modelSpec
+        case 'constant'
+          N = ones(size(dim));
+        case 'linear'
+          N = 1 + dim;
+        case 'interactions'
+          N = 1 + dim + dim.*(dim-1)/2;
+        case 'purequadratic'
+          N = 1 + 2*dim;
+        case 'quadratic'
+          N = 1 + 2*dim + dim.*(dim-1)/2;
+        otherwise
+          N = [];
+      end
+    end
+    
   end
   
 end

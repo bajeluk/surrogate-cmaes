@@ -34,7 +34,7 @@ classdef RandomForestModel < WeakModel
       obj.rf_inBagFraction = defopts(modelOptions, 'inBagFraction', 1);
       obj.rf_boosting = defopts(modelOptions, 'boosting', false);
       obj.rf_shrinkage = defopts(modelOptions, 'shrinkage', 0.5);
-      obj.rf_lossFunc = defopts(modelOptions, 'lossFunc', @immse);
+      obj.rf_lossFunc = defopts(modelOptions, 'lossFunc', @mseLossFunc);
     end
     
     function obj = trainModel(obj, X, y)
@@ -113,6 +113,18 @@ classdef RandomForestModel < WeakModel
       % TODO can we do this?
       sd2 = sd2 * (weights.^2);
     end
+    
+    function N = getMinTrainPoints(obj, dim)
+    % returns minimal number of points necessary to train the model
+      sampleTree = obj.rf_treeFunc(obj.rf_treeOptions);
+      if obj.rf_nFeaturesToSample > 0
+        nFeatures = min(obj.rf_nFeaturesToSample, dim);
+      else
+        nFeatures = dim;
+      end
+      N = sampleTree.getMinTrainPoints(nFeatures);
+    end
+    
   end
   
 end

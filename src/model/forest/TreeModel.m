@@ -75,6 +75,11 @@ classdef TreeModel < WeakModel
       end
     end
     
+    function N = getMinTrainPoints(obj, dim)
+    % returns minimal number of points necessary to train the model
+      N = obj.tree_predictor.getMinTrainPoints(dim) + 1;
+    end
+    
     function obj = prune(obj, X, y)
       obj.pruneRecursive(X, y, 1);
     end
@@ -82,9 +87,12 @@ classdef TreeModel < WeakModel
   
   methods (Access = protected)
     function trainModelRecursive(obj, X, y, iNode, depth)
-      n = size(X, 1);
+      [n, dim] = size(X);
+      % count actual minimal leaf size according to data dimension
+      minLeafSize = max(obj.tree_minLeafSize, obj.getMinTrainPoints(dim));
       if depth < obj.tree_maxDepth ...
-          && n >= obj.tree_minParentSize && n >= 2 * obj.tree_minLeafSize ...
+          && n >= obj.tree_minParentSize ...
+          && n >= 2 * minLeafSize ...
           && size(unique(y, 'rows'), 1) >= 2
         best = struct('gain', -inf);
         splitGain = obj.tree_splitGain.reset(X, y);
@@ -92,7 +100,7 @@ classdef TreeModel < WeakModel
           split = obj.tree_splits{iSplit}.reset(X, y);
           candidate = split.get(splitGain);
           idx = candidate.splitter(X) <= 0.5;
-          if sum(idx) >= obj.tree_minLeafSize && sum(~idx) >= obj.tree_minLeafSize
+          if sum(idx) >= minLeafSize && sum(~idx) >= minLeafSize
             if candidate.gain > best.gain
               best = candidate;
             end

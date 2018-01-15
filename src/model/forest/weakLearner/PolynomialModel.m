@@ -1,7 +1,9 @@
 classdef PolynomialModel < WeakModel
   
   properties %(Access = protected)
-    weak_modelSpec % model specification (https://www.mathworks.com/help/stats/fitlm.html#inputarg_modelspec)
+    weak_modelSpec % model specification from MATLAB fitlm function
+    % (https://www.mathworks.com/help/stats/fitlm.html#inputarg_modelspec)
+    % except 'polyijk' settings
     weak_coeff % coefficients
     weak_coeffCov % coefficient covariance
     weak_features % used features
@@ -13,6 +15,10 @@ classdef PolynomialModel < WeakModel
       obj = obj@WeakModel(modelOptions);
       % specific model options
       obj.weak_modelSpec = defopts(modelOptions, 'weak_modelSpec', 'constant');
+      modelSpec_types = {'constant', 'linear', 'interactions', 'purequadratic', 'quadratic'};
+      assert(any(strcmp(obj.weak_modelSpec, modelSpec_types)), ...
+        'Model ''%s'' cannot be specified as weak_modelSpec property for PolynomialModel', ...
+        obj.weak_modelSpec);
     end
 
     function obj = trainModel(obj, X, y)
@@ -35,7 +41,7 @@ classdef PolynomialModel < WeakModel
         M = M(obj.weak_features, obj.weak_features);
         [U, S, V] = svd(M, 'econ');
       end
-      %warning('off', 'MATLAB:rankDeficientMatrix');
+      %warning('off', 'MATdimLAB:rankDeficientMatrix');
       %warning('off', 'MATLAB:singularMatrix');
       warning('off', 'MATLAB:nearlySingularMatrix');
       %Mi = inv(M);
@@ -68,6 +74,25 @@ classdef PolynomialModel < WeakModel
         end
       end
     end
+    
+    function N = getMinTrainPoints(obj, dim)
+    % returns minimal number of points necessary to train the model
+      switch obj.weak_modelSpec
+        case 'constant'
+          N = ones(size(dim));
+        case 'linear'
+          N = 1 + dim;
+        case 'interactions'
+          N = 1 + dim + dim.*(dim-1)/2;
+        case 'purequadratic'
+          N = 1 + 2*dim;
+        case 'quadratic'
+          N = 1 + 2*dim + dim.*(dim-1)/2;
+        otherwise
+          N = [];
+      end
+    end
+    
   end
   
 end

@@ -24,7 +24,7 @@ classdef GaussianSplit < RandomSplit
       best = obj.splitCandidate;
       [n, d] = size(obj.split_X);
       % all equal or too few data to model Gaussian mixture 
-      if obj.split_allEqual || n < d + 1
+      if obj.split_allEqual || n < d + 2
         return
       end
       % clusters are fit in scaled input-output space

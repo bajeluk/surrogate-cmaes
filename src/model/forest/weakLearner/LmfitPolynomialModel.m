@@ -1,7 +1,8 @@
 classdef LmfitPolynomialModel < WeakModel
   
   properties %(Access = protected)
-    weak_modelSpec % model specification (https://www.mathworks.com/help/stats/fitlm.html#inputarg_modelspec)
+    weak_modelSpec % model specification for MATLAB fitlm function
+    % (https://www.mathworks.com/help/stats/fitlm.html#inputarg_modelspec)
     weak_model     % trained model
   end
   
@@ -31,6 +32,28 @@ classdef LmfitPolynomialModel < WeakModel
         sd2 = confidenceToVar(ci);
       end
     end
+    
+    function N = getMinTrainPoints(obj, dim)
+    % returns minimal number of points necessary to train the model
+      switch obj.weak_modelSpec
+        case 'constant'
+          N = ones(size(dim));
+        case 'linear'
+          N = 1 + dim;
+        case 'interactions'
+          N = 1 + dim + dim.*(dim-1)/2;
+        case 'purequadratic'
+          N = 1 + 2*dim;
+        case 'quadratic'
+          N = 1 + 2*dim + dim.*(dim-1)/2;
+        otherwise
+          warning(['Minimal number of training points is not properly ', ...
+            'defined for such ''weak_modelSpec'' property of LmfitPolynomialModel. ', ... 
+            'The returned minimal number is 1 + dim.'])
+          N = 1 + dim;
+      end
+    end
+    
   end
   
 end

@@ -14,6 +14,9 @@ classdef (Abstract) WeakModel < handle
 
     [yPred, sd2, ci] = modelPredict(obj, X)
     % predicts the function values in new points X
+    
+    N = getMinTrainPoints(obj, dim)
+    % returns minimal number of points necessary to train the model
   end
   
 end
