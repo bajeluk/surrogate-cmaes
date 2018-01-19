@@ -180,7 +180,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, 'else\n');
   fprintf(FID, '  resFolder = reportLocation;\n');
   fprintf(FID, 'end\n');
-  fprintf(FID, 'if ~isdir(resFolder)\n');
+  fprintf(FID, 'if ~isdir(resFolder) && ~isempty(resFolder)\n');
   fprintf(FID, '  mkdir(resFolder)\n');
   fprintf(FID, 'end\n');
   fprintf(FID, '\n');
@@ -245,12 +245,15 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, 'if sum(anonymAlg) > 1\n');
   fprintf(FID, '  fprintf(''Algorithm settings differences:\\n\\n'')\n');
   fprintf(FID, '  [dFields, dValues] = difField(expSettings(anonymAlg));\n');
-  fprintf(FID, '  if ~isempty(dFields)\n');
+  fprintf(FID, '  notEmptyFields = ~all(cellfun(@isempty, dValues), 2);\n');
+  fprintf(FID, '  if any(notEmptyFields)\n');
+  fprintf(FID, '    dFields = dFields(notEmptyFields);\n');
+  fprintf(FID, '    dValues = dValues(notEmptyFields, :);\n');
   fprintf(FID, '    for s = 1:nSettings\n');
   fprintf(FID, '      fprintf(''  %%s:\\n'', expAlgNames{s})\n');
   fprintf(FID, '      if anonymAlg(s)\n');
   fprintf(FID, '        for f = 1:length(dFields)\n');
-  fprintf(FID, '          fprintf(''    %%s = %%s;\\n'', dFields{f}, printStructure(dValues{f, s}, 1, ''Format'', ''value''))\n');
+  fprintf(FID, '          fprintf(''    %%s = %%s;\\n'', dFields{f}, printStructure(dValues{f, sum(anonymAlg(1:s))}, 1, ''Format'', ''value''))\n');
   fprintf(FID, '        end\n');
   fprintf(FID, '        fprintf(''\\n'')\n');
   fprintf(FID, '      end\n');
