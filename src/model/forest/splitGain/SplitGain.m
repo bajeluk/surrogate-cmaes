@@ -9,6 +9,7 @@ classdef (Abstract) SplitGain
     splitGain_y % output data
     splitGain_minSize % min size of one side of the split
     splitGain_modelFunc % function which creates new model
+    splitGain_modelOpts % options for newly created model (if specified in splitGain_modelFunc)
     splitGain_weightedGain % whether gain is weighted by number of examples
     splitGain_degree % degree of polynomial features
     splitGain_XP % generated polynomial features
@@ -38,13 +39,14 @@ classdef (Abstract) SplitGain
         obj.splitGain_degree = defopts(options, 'splitGain_degree', []);
         obj.splitGain_polyMethod = defopts(options, 'splitGain_polyMethod', '');
         obj.splitGain_modelFunc = defopts(options, 'splitGain_modelFunc', []);
+        obj.splitGain_modelOpts = defopts(options, 'splitGain_modelOpts', options);
         obj.splitGain_weightedGain = defopts(options, 'splitGain_weightedGain', true);
       end
     end
     
     function obj = reset(obj, X, y)
     % resets the evaluator with new data (X, y)
-      [n, ~] = size(X);
+      [n, dim] = size(X);
       obj.splitGain_X = X;
       obj.splitGain_y = y;
       varY = var(y);
@@ -54,7 +56,7 @@ classdef (Abstract) SplitGain
       end
       if ~isempty(obj.splitGain_degree)
         obj.splitGain_XP = generateFeatures(X, obj.splitGain_degree, true);
-        obj.splitGain_minSize = max(obj.splitGain_minSize, size(obj.splitGain_XP, 2));
+        obj.splitGain_minSize = max(obj.splitGain_minSize(dim), size(obj.splitGain_XP, 2));
       end
       obj.splitGain_current = obj.getData(true(n, 1));
     end
@@ -66,7 +68,8 @@ classdef (Abstract) SplitGain
         return;
       end
       idx = splitter(obj.splitGain_X) <= 0.5;
-      if sum(idx) < obj.splitGain_minSize || sum(~idx) < obj.splitGain_minSize
+      minSize = obj.splitGain_minSize(size(obj.splitGain_X, 2));
+      if sum(idx) < minSize || sum(~idx) < minSize
         gain = -inf;
         return;
       end
@@ -144,7 +147,7 @@ classdef (Abstract) SplitGain
       else
         % custom model
         X = obj.splitGain_X(idx, :);
-        model = obj.splitGain_modelFunc();
+        model = obj.splitGain_modelFunc(obj.splitGain_modelOpts);
         model = model.trainModel(X, data.y);
         if obj.splitGain_computeSd2
           [data.yPred, data.sd2] = model.modelPredict(X);
@@ -152,8 +155,17 @@ classdef (Abstract) SplitGain
           [data.yPred] = model.modelPredict(X);
         end
         if obj.splitGain_computeMse
-          r = data.y - data.yPred;
-          data.mse = r' * r / numel(r);
+          if iscell(data.yPred)
+            % multiple models
+            for m = 1:numel(data.yPred)
+              r = data.y - data.yPred{m};
+              data.mse(m) = r' * r / numel(r);
+            end
+          else
+            % one model
+            r = data.y - data.yPred;
+            data.mse = r' * r / numel(r);
+          end
         end
       end
       data.value = obj.getValue(data);
