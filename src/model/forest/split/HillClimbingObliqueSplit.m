@@ -66,7 +66,7 @@ classdef HillClimbingObliqueSplit < RandomSplit
           candidate = obj.splitCandidate;
           candidate.splitter = @(X)...
             transformApply(X, trans) * featureSelector <= treshold;
-          candidate.gain = splitGain.get(candidate.splitter);
+          [candidate.gain, candidate.leftID, candidate.rightID] = splitGain.get(candidate.splitter);
           candidate.feature = feature;
           candidate.treshold = treshold;
           if candidate.gain > best.gain
@@ -157,7 +157,7 @@ classdef HillClimbingObliqueSplit < RandomSplit
       candidate = obj.splitCandidate;
       candidate.splitter = obj.createSplitter(@(X) ...
         generateFeatures(X, 'linear', true, true) * H);
-      candidate.gain = splitGain.get(candidate.splitter);
+      [candidate.gain, candidate.leftID, candidate.rightID] = splitGain.get(candidate.splitter);
       candidate.H = H;
     end
   end

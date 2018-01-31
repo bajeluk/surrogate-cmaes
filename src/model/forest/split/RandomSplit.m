@@ -25,7 +25,7 @@ classdef RandomSplit < Split
         candidate = obj.splitCandidate;
         candidate.splitter = obj.createSplitter(@(X) ...
           X * featureSelector - treshold);
-        candidate.gain = splitGain.get(candidate.splitter);
+        [candidate.gain, candidate.leftID, candidate.rightID] = splitGain.get(candidate.splitter);
         if candidate.gain > best.gain
           best = candidate;
         end

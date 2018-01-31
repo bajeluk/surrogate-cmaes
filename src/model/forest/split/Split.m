@@ -4,7 +4,9 @@ classdef Split
   properties (Constant)
     splitCandidate = struct( ...
       'splitter', @(X) zeros(size(X, 1), 1), ...
-      'gain', -inf ...
+      'gain', -inf, ...
+      'leftID', 1, ...
+      'rightID', 1 ...
       );
   end
   
@@ -42,6 +44,7 @@ classdef Split
       end
       candidate = obj.splitCandidate;
       candidate.gain = splitGain(candidate.splitter);
+%       candidate.modelID = 0;
       best = candidate;
     end
     
@@ -73,7 +76,7 @@ classdef Split
         % model trained => create candidate
         if modelTrained
           candidate.splitter = obj.createModelSplitter(model);
-          candidate.gain = splitGain.get(candidate.splitter);
+          [candidate.gain, candidate.leftID, candidate.rightID] = splitGain.get(candidate.splitter);
           if candidate.gain > best.gain
             best = candidate;
           end

@@ -20,7 +20,7 @@ classdef RandomRbfSplit < RandomSplit
       if obj.split_allEqual
         return
       end
-      [n, d] = size(obj.split_X);
+      [~, d] = size(obj.split_X);
       for iRepeats = 1:obj.split_nRepeats
         candidate = obj.splitCandidate;
         featuresMin = min(obj.split_X);
@@ -29,7 +29,7 @@ classdef RandomRbfSplit < RandomSplit
         origin = rand(1, d) ...
           .* (featuresMax - featuresMin) ...
           + featuresMin;
-        %origin = datasample(X, 1);
+        % origin = datasample(X, 1);
         metric = obj.split_randrbf_metric;
         distances = pdist2(obj.split_X, origin, metric);
         maxDistance = max(distances);
@@ -44,7 +44,7 @@ classdef RandomRbfSplit < RandomSplit
             candidate.splitter = obj.createSplitter(@(X) ...
               pdist2(X, origin, metric) - treshold);
         end
-        candidate.gain = splitGain.get(candidate.splitter);
+        [candidate.gain, candidate.leftID, candidate.rightID] = splitGain.get(candidate.splitter);
         if candidate.gain > best.gain
           best = candidate;
         end

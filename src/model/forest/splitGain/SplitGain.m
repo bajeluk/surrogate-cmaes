@@ -10,6 +10,7 @@ classdef (Abstract) SplitGain
     splitGain_minSize % min size of one side of the split
     splitGain_modelFunc % function which creates new model
     splitGain_modelOpts % options for newly created model (if specified in splitGain_modelFunc)
+    splitGain_bestmodelID % id of the best model
     splitGain_weightedGain % whether gain is weighted by number of examples
     splitGain_degree % degree of polynomial features
     splitGain_XP % generated polynomial features
@@ -58,26 +59,31 @@ classdef (Abstract) SplitGain
         obj.splitGain_XP = generateFeatures(X, obj.splitGain_degree, true);
         obj.splitGain_minSize = max(obj.splitGain_minSize(dim), size(obj.splitGain_XP, 2));
       end
-      obj.splitGain_current = obj.getData(true(n, 1));
+      [obj.splitGain_current, obj.splitGain_bestmodelID] = obj.getData(true(n, 1));
     end
     
-    function gain = get(obj, splitter)
+    function [gain, leftID, rightID] = get(obj, splitter)
     % evaluates splitter function
+      
+      % initialize output
+      gain = -inf;
+      leftID = 1;
+      rightID = 1;
       if obj.splitGain_allEqual
-        gain = -inf;
         return;
       end
       idx = splitter(obj.splitGain_X) <= 0.5;
-      minSize = obj.splitGain_minSize(size(obj.splitGain_X, 2));
-      if sum(idx) < minSize || sum(~idx) < minSize
-        gain = -inf;
+%       minSize = obj.splitGain_minSize(size(obj.splitGain_X, 2));
+      if sum(idx) < obj.splitGain_minSize || sum(~idx) < obj.splitGain_minSize
         return;
       end
-      left = obj.getData(idx);
-      right = obj.getData(~idx);
+      % calculate gain in children
+      [left, leftID] = obj.getData(idx);
+      [right, rightID] = obj.getData(~idx);
       n = size(obj.splitGain_y, 1);
       nLeft = size(left.y, 1);
       nRight = size(right.y, 1);
+      % calculate overall gain
       if obj.splitGain_weightedGain
         gain = obj.splitGain_current.value ...
           - nLeft/n * left.value ...
@@ -85,6 +91,11 @@ classdef (Abstract) SplitGain
       else
         gain = obj.splitGain_current.value - left.value - right.value;
       end
+    end
+    
+    function obj = updateMinSize(obj, newMin)
+      % update minimal size of split
+      obj.splitGain_minSize = newMin;
     end
   end
   
@@ -94,8 +105,9 @@ classdef (Abstract) SplitGain
   end
   
   methods (Access = protected)
-    function data = getData(obj, idx)
+    function [data, modelID] = getData(obj, idx)
     % returns portion of data given by idx and stores its value
+    % furthermore, returns id of model with maximum gain
       data = struct;
       data.idx = idx;
       data.y = obj.splitGain_y(idx, :);
@@ -158,8 +170,14 @@ classdef (Abstract) SplitGain
           if iscell(data.yPred)
             % multiple models
             for m = 1:numel(data.yPred)
-              r = data.y - data.yPred{m};
-              data.mse(m) = r' * r / numel(r);
+              if isempty(data.yPred{m})
+                % model not-trained
+                data.mse(m) = NaN;
+              else
+                % model trained
+                r = data.y - data.yPred{m};
+                data.mse(m) = r' * r / numel(r);
+              end
             end
           else
             % one model
@@ -168,7 +186,8 @@ classdef (Abstract) SplitGain
           end
         end
       end
-      data.value = obj.getValue(data);
+      % return minimal value
+      [data.value, modelID] = min(obj.getValue(data));
     end
   end
 end

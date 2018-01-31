@@ -42,16 +42,17 @@ classdef TreeModel < WeakModel
       obj.tree_lossFunc = defopts(modelOptions, 'tree_lossFunc', @mseLossFunc);
       obj.tree_predictorFunc = defopts(modelOptions, 'tree_predictorFunc', ...
         @ConstantModel);
-      obj.tree_predictorModel = defopts(modelOptions, 'tree_predictorModel', ...
-        defopts(modelOptions, 'weak_modelSpec', 'constant'));
-      if ~iscell(obj.tree_predictorModel)
-        obj.tree_predictorModel = {obj.tree_predictorModel};
-      end
-      for c = 1:numel(obj.tree_predictorModel)
-        weakOptions = modelOptions;
-        weakOptions.weak_modelSpec = obj.tree_predictorModel{c};
-        obj.tree_predictor{c} = obj.tree_predictorFunc(weakOptions);
-      end
+      obj.tree_predictor = obj.tree_predictorFunc(modelOptions);
+%       obj.tree_predictorModel = defopts(modelOptions, 'tree_predictorModel', ...
+%         defopts(modelOptions, 'weak_modelSpec', 'constant'));
+%       if ~iscell(obj.tree_predictorModel)
+%         obj.tree_predictorModel = {obj.tree_predictorModel};
+%       end
+%       for c = 1:numel(obj.tree_predictorModel)
+%         weakOptions = modelOptions;
+%         weakOptions.weak_modelSpec = obj.tree_predictorModel{c};
+%         obj.tree_predictor{c} = obj.tree_predictorFunc(weakOptions);
+%       end
       obj.tree_splitFunc = defopts(modelOptions, 'tree_splitFunc', ...
         {@AxisSplit}); 
       if ~iscell(obj.tree_splitFunc)
@@ -60,9 +61,10 @@ classdef TreeModel < WeakModel
       obj.tree_splits = cellfun(@(x) x(modelOptions), obj.tree_splitFunc, 'UniformOutput', false);
       obj.tree_splitGainFunc = defopts(modelOptions, 'tree_splitGainFunc', ...
         @MSESplitGain);
-      modelOptions.splitGain_minSize = defopts(modelOptions, 'splitGain_minSize', ...
-        @(dim) min(arrayfun(@(x) obj.tree_predictor{x}.getMinTrainPoints(dim), ...
-               1:numel(obj.tree_predictor))) + 1);
+%       modelOptions.splitGain_minSize = defopts(modelOptions, 'splitGain_minSize', ...
+%         obj.tree_predictor.getMinTrainPoints(dim) + 1);
+%         @(dim) min(arrayfun(@(x) obj.tree_predictor{x}.getMinTrainPoints(dim), ...
+%                1:numel(obj.tree_predictor))) + 1);
       obj.tree_splitGain = obj.tree_splitGainFunc(modelOptions);
       obj.tree_fuzziness = defopts(modelOptions, 'tree_fuzziness', 0);
     end
@@ -90,8 +92,9 @@ classdef TreeModel < WeakModel
     
     function N = getMinTrainPoints(obj, dim)
     % returns minimal number of points necessary to train the model
-      N = min(arrayfun(@(x) obj.tree_predictor{x}.getMinTrainPoints(dim), ...
-                       1:numel(obj.tree_predictor))) + 1;
+%       N = min(arrayfun(@(x) obj.tree_predictor{x}.getMinTrainPoints(dim), ...
+%                        1:numel(obj.tree_predictor))) + 1;
+        N = obj.tree_predictor.getMinTrainPoints(dim) + 1;
     end
     
     function obj = prune(obj, X, y)
@@ -109,6 +112,7 @@ classdef TreeModel < WeakModel
           && n >= 2 * minLeafSize ...
           && size(unique(y, 'rows'), 1) >= 2
         best = struct('gain', -inf);
+        obj.tree_splitGain = obj.tree_splitGain.updateMinSize(minLeafSize);
         splitGain = obj.tree_splitGain.reset(X, y);
         % find split with maximal gain among different types of splitting
         for iSplit = 1:size(obj.tree_splits, 2)
@@ -121,6 +125,7 @@ classdef TreeModel < WeakModel
             end
           end
         end
+        % perform split if possible
         if best.gain > -inf && (best.gain >= obj.tree_minGain || obj.tree_growFull)
           idx = best.splitter(X) <= 0.5;
           
@@ -147,14 +152,14 @@ classdef TreeModel < WeakModel
             
             obj.tree_nodes(left.iNode).parent = iNode;
             if obj.tree_nodes(left.iNode).leaf
-              obj.tree_nodes(left.iNode).predictor = obj.trainPredictor(left.X, left.y);
+              obj.tree_nodes(left.iNode).predictor = obj.trainPredictor(left.X, left.y, best.leftID);
               %obj.tree_nodes(left.iNode).X = left.X;
               %obj.tree_nodes(left.iNode).y = left.y;
             end
             
             obj.tree_nodes(right.iNode).parent = iNode;
             if obj.tree_nodes(right.iNode).leaf
-              obj.tree_nodes(right.iNode).predictor = obj.trainPredictor(right.X, right.y);
+              obj.tree_nodes(right.iNode).predictor = obj.trainPredictor(right.X, right.y, best.rightID);
               %obj.tree_nodes(right.iNode).X = right.X;
               %obj.tree_nodes(right.iNode).y = right.y;
             end
@@ -163,14 +168,17 @@ classdef TreeModel < WeakModel
       end
       if iNode == 1 && obj.tree_nodes(iNode).leaf
         % predictor in root
-        obj.tree_nodes(iNode).predictor = obj.trainPredictor(X, y);
+        obj.tree_nodes(iNode).predictor = obj.trainPredictor(X, y, splitGain.splitGain_bestmodelID);
         %obj.tree_nodes(iNode).X = X;
         %obj.tree_nodes(iNode).y = y;
       end
     end
     
-    function predictor = trainPredictor(obj, X, y)
+    function predictor = trainPredictor(obj, X, y, modelID)
       predictor = obj.tree_predictor();
+      if isprop(predictor, 'weak_models') % && (numel(predictor.weak_models) > 1)
+        predictor = predictor.setUseModel(modelID);
+      end
       predictor = predictor.trainModel(X, y);
     end
     
