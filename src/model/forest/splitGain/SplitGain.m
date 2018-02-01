@@ -186,8 +186,15 @@ classdef (Abstract) SplitGain
           end
         end
       end
+      getValData = data;
+      if iscell(data.yPred)
+        getValData.yPred = cell2mat(getValData.yPred);
+        if obj.splitGain_computeSd2
+          getValData.sd2   = cell2mat(getValData.sd2);
+        end
+      end
       % return minimal value
-      [data.value, modelID] = min(obj.getValue(data));
+      [data.value, modelID] = min(obj.getValue(getValData));
     end
   end
 end
