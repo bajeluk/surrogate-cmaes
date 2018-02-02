@@ -16,8 +16,7 @@ function Y = evalDesign(X, funId, instId)
    fgeneric('initialize', funId, instId, bbob_dir);
 
    % scales into BBOB search interval
-   X_scaled = -5 + 10 * X;
-   Y = fgeneric(X_scaled);
+   Y = fgeneric(X);
    fgeneric('finalize');
    
 %    try

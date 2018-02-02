@@ -6,8 +6,9 @@ instIds = [1:5 40:50];
 Ns = {'50 * dim'};
 exppath = fullfile('exp', 'experiments');
 output_path = fullfile(exppath, 'data_metalearn');
-rewrite_files = false;
-designs = {'lhs'}; % {'lhs', 'lhsnorm'}
+rewrite_files = true;
+designs = {'lhs', 'lhsnorm'};
+smooth = false;
 
 if ~exist(output_path, 'dir')
   mkdir(output_path)
@@ -15,30 +16,31 @@ end
 
 fname_template = strjoin({'data_metalearn_', ...
                           '%dD_', ...
+                          'funId%d_', ...
                           'instId%d_', ...
                           'N%d_', ...
-                          'funId%d_', ...
-                          'design-%s'}, '');
+                          'design-%s.mat'}, '');
 
 for dim = dims
-  for Nstr = Ns
-    for design = designs
-      N = myeval(Nstr{:});
-      X = makeDesign(N, dim, design{:})';
+  for N_cell = Ns
+    for design_cell = designs
+      design = design_cell{:};
+      N = myeval(N_cell{:});
+      X = makeDesign(N, dim, smooth, design)';
 
       for funId = funIds
         for instId = instIds
           Y = evalDesign(X, funId, instId);
           
           % save data
-          fname = sprintf(fname_template, dim, instId, N, funId, design{:});
+          fname = sprintf(fname_template, dim, instId, N, funId, design);
           fname = fullfile(output_path, fname);
           
           if exist(fname, 'file') && ~rewrite_files
-            warning('Dataset %s already exists, skipping.');
+            warning('Dataset already exists, skipping. File: %s', fname);
             continue;
           elseif exist(fname, 'file')
-            warning('Rewriting dataset %s');
+            warning('Rewriting file %s', fname);
           end
           
           save(fname, 'X', 'Y', 'funId', 'instId');
