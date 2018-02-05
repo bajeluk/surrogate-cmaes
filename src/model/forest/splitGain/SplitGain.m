@@ -73,7 +73,7 @@ classdef (Abstract) SplitGain
         return;
       end
       idx = splitter(obj.splitGain_X) <= 0.5;
-%       minSize = obj.splitGain_minSize(size(obj.splitGain_X, 2));
+      % return if the number of data in children is not big enough
       if sum(idx) < obj.splitGain_minSize || sum(~idx) < obj.splitGain_minSize
         return;
       end

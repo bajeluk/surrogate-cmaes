@@ -75,8 +75,14 @@ classdef HillClimbingObliqueSplit < RandomSplit
         end
       end
       
-      best.H = [zeros(1, d), -best.treshold]';
-      best.H(best.feature) = 1;
+      % successful splits
+      if best.gain > -Inf
+        best.H = [zeros(1, d), -best.treshold]';
+        best.H(best.feature) = 1;
+      else
+        % axis splitting not successful, try random hyperplane
+        best = obj.getRandomHyperplane(splitGain);
+      end
     end
     
     function candidate = getRandomHyperplane(obj, splitGain)
@@ -87,6 +93,7 @@ classdef HillClimbingObliqueSplit < RandomSplit
     end
     
     function best = hillClimb(obj, splitGain, best)
+    % OC1 Hill Climbing
       d = size(obj.split_X, 2);
       pStag = 0.1;
       pMove = pStag;
@@ -96,6 +103,7 @@ classdef HillClimbingObliqueSplit < RandomSplit
         while improvement
           improvement = false;
           for feature = 1:d+1
+          % perturbation for a single coefficient
             candidate = obj.deterministicPerturb(splitGain, best, feature);
             if candidate.gain > best.gain
               best = candidate;
@@ -110,8 +118,9 @@ classdef HillClimbingObliqueSplit < RandomSplit
           end
         end
         while J > 0
+          % random perturbation
           candidate = obj.randomPerturb(splitGain, best);
-          if candidate.gain >= best.gain
+          if candidate.gain > best.gain
             best = candidate;
             break;
           end
