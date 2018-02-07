@@ -1,6 +1,6 @@
 function X = makeDesign(N, dim, smooth_flag, varargin)
 %MAKEDESIGN Generate a design for metalearning.
-%   X   = MAKEDESIGN(dim, N, smooth) generate dim-dimensional sample
+%   X   = MAKEDESIGN(N, dim, smooth_flag) generate dim-dimensional sample
 %   of size N. If smooth_flag is enabled, the points are placed
 %   randomly within each (k*(1/N), (k+1)*(1/N)) interval.
 %   X   = MAKEDESIGN(__, __, __, designType) specify design type

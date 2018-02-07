@@ -16,24 +16,28 @@ end
 
 fname_template = strjoin({'data_metalearn_', ...
                           '%dD_', ...
-                          'funId%d_', ...
-                          'instId%d_', ...
+                          'f%d_', ...
+                          'inst%d_', ...
                           'N%d_', ...
                           'design-%s.mat'}, '');
-
+% dimension loop
 for dim = dims
+  % number of points loop
   for N_cell = Ns
+    % design of points generating loop
     for design_cell = designs
       design = design_cell{:};
       N = myeval(N_cell{:});
       X = makeDesign(N, dim, smooth, design)';
 
+      % function loop
       for funId = funIds
+        % instances loop
         for instId = instIds
           Y = evalDesign(X, funId, instId);
           
           % save data
-          fname = sprintf(fname_template, dim, instId, N, funId, design);
+          fname = sprintf(fname_template, dim, funId, instId, N, design);
           fname = fullfile(output_path, fname);
           
           if exist(fname, 'file') && ~rewrite_files
@@ -41,6 +45,8 @@ for dim = dims
             continue;
           elseif exist(fname, 'file')
             warning('Rewriting file %s', fname);
+          else
+            fprintf('Saving file %s\n', fname);
           end
           
           save(fname, 'X', 'Y', 'funId', 'instId');
