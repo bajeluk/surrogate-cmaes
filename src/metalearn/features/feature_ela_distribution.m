@@ -1,5 +1,5 @@
 function ft = feature_ela_distribution(~, y)
-% ft = feature_ela_distribution(X, y) returns ELA y-distribution features
+% ft = FEATURE_ELA_DISTRIBUTION(X, y) returns ELA y-distribution features
 % for dataset [X, y].
 %
 % Features:
