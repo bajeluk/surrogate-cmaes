@@ -5,12 +5,12 @@ Surrogate CMA-ES (S-CMA-ES) is a surrogate-based optimizing evolution strategy. 
 
 ## Authors ##
 
-2018 (c) Lukáš Bajer (bajeluk at gmail), Zbyněk Pitra, Jakub Repický
+(c) Lukáš Bajer (bajeluk at gmail), Zbyněk Pitra, Jakub Repický
 
 The source code uses the following libraries (all three published under the (simplified 2-clause) BSD license):
 
 - **CMA-ES** by N. Hansen, [https://www.lri.fr/~hansen/](https://www.lri.fr/~hansen/cmaes_inmatlab.html#matlab)
-- **GPML** by Carl Edward Rasmussen and Hannes Nickisch, http://www.gaussianprocess.org/gpml/code/matlab
+- **GPML** by C. E. Rasmussen and H. Nickisch, http://www.gaussianprocess.org/gpml/code/matlab
 - **COCO** by N. Hansen, A. Auger, O. Mersmann, T. Tušar, D. Brockhoff, https://github.com/numbbo/coco
 
 ## Log and News ##
