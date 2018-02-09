@@ -3,6 +3,16 @@ Surrogate CMA-ES
 
 Surrogate CMA-ES (S-CMA-ES) is a surrogate-based optimizing evolution strategy. It is based on the N. Hansen's CMA-ES algorithm which is interconnected with Gaussian processes or random forests.
 
+## Authors ##
+
+2018 (c) Lukáš Bajer (bajeluk at gmail), Zbyněk Pitra, Jakub Repický
+
+The source code uses the following libraries (all three published under the (simplified 2-clause) BSD license):
+
+- **CMA-ES** by N. Hansen, [https://www.lri.fr/~hansen/](https://www.lri.fr/~hansen/cmaes_inmatlab.html#matlab)
+- **GPML** by Carl Edward Rasmussen and Hannes Nickisch, http://www.gaussianprocess.org/gpml/code/matlab
+- **COCO** by N. Hansen, A. Auger, O. Mersmann, T. Tušar, D. Brockhoff, https://github.com/numbbo/coco
+
 ## Log and News ##
 
 2017/03/22: Metacentrum interface migrated to the newer [PBS Pro](https://wiki.metacentrum.cz/wiki/PBS_Professional), default memory limit raised to 1.5GB
