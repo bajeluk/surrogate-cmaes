@@ -7,6 +7,8 @@ Surrogate CMA-ES (S-CMA-ES) is a surrogate-based optimizing evolution strategy. 
 
 (c) Lukáš Bajer (bajeluk at gmail), Zbyněk Pitra, Jakub Repický
 
+**License**: not decided yet, so all rights for reuse reserved. Please contact the authors if interested in reuse for other than research/academical purpuses.
+
 The source code uses the following libraries (all three published under the (simplified 2-clause) BSD license):
 
 - **CMA-ES** by N. Hansen, [https://www.lri.fr/~hansen/](https://www.lri.fr/~hansen/cmaes_inmatlab.html#matlab)
