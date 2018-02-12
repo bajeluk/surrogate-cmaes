@@ -19,8 +19,8 @@ function testELALevelset(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_ela_levelset()));
   % test data
-  X = rand(5, 3);
-  y = randn(5, 1);
+  X = rand(30, 3);
+  y = randn(30, 1);
   qnt = [10, 25, 50];
   % output fields
   featFields = {'mmce_lda_10', 'mmce_lda_25', 'mmce_lda_50', ...
@@ -42,4 +42,18 @@ function testELALevelset(testCase)
                 ft.(sprintf('lda_qda_%d', q)), ...
                 ft.(sprintf('mmce_lda_%d', q)) / ft.(sprintf('mmce_qda_%d', q)))
   end
+end
+
+function testELAMetamodel(testCase)
+  % empty input should not generate error
+  verifyEmpty(testCase, fieldnames(feature_ela_metamodel()));
+  % test data
+  X = rand(30, 3);
+  y = randn(30, 1);
+  % output fields
+  featFields = {'lin_simple', 'lin_w_interact', 'quad_simple', 'quad_w_interact'};
+  returnedFields = fieldnames(feature_ela_metamodel(X, y));
+  printStructure(feature_ela_metamodel(X, y))
+ 
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
 end
