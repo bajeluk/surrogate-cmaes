@@ -57,3 +57,17 @@ function testELAMetamodel(testCase)
  
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
 end
+
+function testBasic(testCase)
+  % empty input should not generate error
+  verifyEmpty(testCase, fieldnames(feature_basic()));
+  % test data
+  X = rand(30, 3);
+  y = randn(30, 1);
+  % output fields without settings
+  featFields = {'dim', 'observations', 'lower_min', 'lower_max', 'upper_min', ...
+                'upper_max', 'objective_min', 'objective_max', 'blocks_min', ...
+                'blocks_max', 'cells_total', 'cells_filled', 'minimize_fun'};
+  returnedFields = fieldnames(feature_basic(X, y));
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+end
