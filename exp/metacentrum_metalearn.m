@@ -75,10 +75,13 @@ function status = metacentrum_metalearn(exp_id, exppath_short, dim_str, func_str
   % Load a full factorial design for each model
   modelOptions_fullfact = struct();
   
-  for i = 1:length(modelParamDef)
+  nModels = length(modelParamDef);
+  for i = 1:nModels
     name = modelParamDef(i).name;
     values = modelParamDef(i).values;
-    modelOptions_fullfact.(name) = values;
+    if ismember(name, models)
+      modelOptions_fullfact.(name) = values;
+    end
   end
 
   nOptions = 0;
@@ -90,12 +93,18 @@ function status = metacentrum_metalearn(exp_id, exppath_short, dim_str, func_str
     nOptions = nOptions + length(modelOptions_fullfact.(model));
   end
   
-%   % restrict the full factorial design only to some indices
-%   % if specified in opts
-%   if (isfield(opts, 'modelOptionsIndices') && ~isempty(opts.modelOptionsIndices))
-%     opts.modelOptionsIndices = myeval(opts.modelOptionsIndices);
-%     modelOptions_fullfact = modelOptions_fullfact(opts.modelOptionsIndices);
-%   end
+  % restrict the full factorial design only to some indices
+  % if specified in opts
+  if (isfield(opts, 'modelOptionsIndices') && ~isempty(opts.modelOptionsIndices))
+    opts.modelOptionsIndices = myeval(opts.modelOptionsIndices);
+    assert(length(opts.modelOptionsIndices) == length(fields(modelOptionsFullFact)));
+    for i = 1:nModels
+      modelName = models{i};
+      idx = opts.modelOptionsIndices{i};
+      fullFact = modelOptions_fullfact.(modelName);
+      modelOptions_fullfact.(modelName) = fullFact(idx);
+    end
+  end
 
   %% create testing dataset
   fprintf('== Summary of the testing assignment ==\n');
@@ -109,7 +118,7 @@ function status = metacentrum_metalearn(exp_id, exppath_short, dim_str, func_str
   fprintf('=======================================\n');
 
   %% test chosen models
-  %modelFolders = testModels(modelOptions_fullfact, opts, func, dims, instances);
+  testMetalearn(modelOptions_fullfact, opts, func, dims, instances, Ns, models, designs);
 
   status = 0;
   return;

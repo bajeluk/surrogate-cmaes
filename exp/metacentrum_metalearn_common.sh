@@ -65,6 +65,8 @@ export ID
 export DIM
 export FUNC
 export INST
+export MODEL
+export DESIGN
 export OPTS
 export MATLAB_FCN
 
@@ -75,7 +77,7 @@ subtask() {
     JOBNAME_SUFFIX=""
   fi
 
-  echo "MCR binary submit: ID=$ID : DIM=$DIM : FUNC=$FUNC : INST=$INST : OPTS=$OPTS : DATASET=$DATASET"
+  echo "MCR binary submit: ID=$ID : DIM=$DIM : FUNC=$FUNC : INST=$INST : MODEL=$MODEL : DESIGN=$DESIGN : OPTS=$OPTS : DATASET=$DATASET"
   if [ "$DRY_RUN" = 0 ]; then
     qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,OPTS,EXPID,EXPPATH_SHORT,DATASET $EXPPATH_SHORT/../metalearn_binary_metajob.sh
   else
@@ -110,8 +112,8 @@ function submit_sequence()
   for i in ${SEQ}; do
     thisL=$i
     thisH=$((i+STEP-1))
-    OPTS="struct(%modelOptionsIndices%|${thisL}:${thisH})"
-    echo modelOptionsIndices: ${thisL}:${thisH}
+    OPTS="struct(%modelOptionsIndices%|{${thisL}:${thisH}})"
+    echo modelOptionsIndices: {${thisL}:${thisH}}
     subtask "${thisL}_${thisH}"
   done
 }
