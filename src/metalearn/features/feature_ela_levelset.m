@@ -1,6 +1,6 @@
-function ft = feature_ela_levelset(X, y)
-% ft = FEATURE_ELA_LEVELSET(X, y) returns ELA levelset features
-% for dataset [X, y]. 
+function ft = feature_ela_levelset(X, y, settings)
+% ft = FEATURE_ELA_LEVELSET(X, y, settings) returns ELA levelset features
+% for dataset [X, y] according to settings. 
 % 
 % The dataset [X, y] is split into two classes by a specific treshold
 % calculated using different quantiles. Linear and quadratic discriminant 
@@ -9,8 +9,12 @@ function ft = feature_ela_levelset(X, y)
 % the distribution of the resulting cross-validated mean misclassification 
 % errors of each classifier.
 %
-% Quantiles: 0.1, 0.25, 0.5
-% Methods:   lda, qda (future work: mda)
+% settings:
+%   methods   - discriminant analysis methods | default: {'lda', 'qda'} 
+%               (future work: mda)
+%   nfolds    - number of folds in cross-validation | default: 10
+%   quantiles - quantiles to calculate tresholds | default: [0.1, 0.25,
+%               0.5]
 % 
 % Features:
 %   mmce_[method]_[quantile]       - mean misclassification error of 
@@ -20,18 +24,21 @@ function ft = feature_ela_levelset(X, y)
 %                                    errors of two methods using defined 
 %                                    quantile
 
-  if nargin < 2
-    help feature_ela_levelset
-    if nargout > 0
-      ft = struct();
+  if nargin < 3
+    if nargin < 2
+      help feature_ela_levelset
+      if nargout > 0
+        ft = struct();
+      end
+      return
     end
-    return
+    settings = struct();
   end
   
   % initialize
-  qnt = [0.1, 0.25, 0.5];
-  classMethods = {'lda', 'qda'};
-  nFolds = 10;
+  qnt = defopts(settings, 'quantiles', [0.1, 0.25, 0.5]);
+  classMethods = defopts(settings, 'methods', {'lda', 'qda'});
+  nFolds = defopts(settings, 'nfolds', 10);
   
   nData = numel(y);
   nQuant = numel(qnt);
@@ -41,7 +48,7 @@ function ft = feature_ela_levelset(X, y)
   if nData < nFolds
     nFolds = nData;
   end
-  % create instances for 10-fold CV
+  % create instances for n-fold CV
   cp = cvpartition(nData, 'KFold', nFolds);
   % quantile tresholds
   y_tresh = quantile(y, qnt);
@@ -70,7 +77,7 @@ function ft = feature_ela_levelset(X, y)
     % mmce combination features
     combId = nchoosek(1:nClassMet, 2);
     for ci = 1:size(combId, 1)
-      combiName = sprintf('%s_%s_%d', ...
+      combiName = sprintf('%s_%s_%02d', ...
                           classMethods{combId(ci, 1)}, ...
                           classMethods{combId(ci, 2)}, ...
                           100*qnt(q));

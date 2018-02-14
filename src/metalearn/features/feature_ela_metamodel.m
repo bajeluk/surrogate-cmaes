@@ -1,12 +1,15 @@
-function ft = feature_ela_metamodel(X, y)
-% ft = FEATURE_ELA_METAMODEL(X, y) returns ELA metamodel features
-% for dataset [X, y].
+function ft = feature_ela_metamodel(X, y, ~)
+% ft = FEATURE_ELA_METAMODEL(X, y, settings) returns ELA metamodel features
+% for dataset [X, y] according to settings.
 %
 % Linear and quadratic regression models with or without interactions 
 % are fitted to the initial dataset [X, y]. The adjusted coefficient of 
 % determination R^2 is returned in each case as an indicator for model 
 % accuracy. Features reflecting the size relations of the model 
 % coefficients are extracted.
+%
+% settings: - there are no settings, the field is implemented due to
+%             compatibility with the rest of features
 %
 % Features:
 %   lin_simple.adj_r2          - adjusted R^2 of simple linear model

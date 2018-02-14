@@ -1,34 +1,75 @@
 function ft = feature_ela_distribution(~, y)
-% ft = FEATURE_ELA_DISTRIBUTION(X, y) returns ELA y-distribution features
-% for dataset [X, y].
+% ft = FEATURE_ELA_DISTRIBUTION(X, y, settings) returns ELA y-distribution 
+% features for dataset [X, y].
+%
+% settings:
+%   modemass_treshold - treshold for the mass represented by a potential 
+%                       peak | default: 0.01
+%   skewness_type - 1: MATLAB skewness (flag = 1)
+%                   2: MATLAB skewness (flag = 0)
+%                   3: skewness according to R-package e1071 v1.6-8 
+%                      skewness type 3 (default)
+%   kurtosis_type - 1: MATLAB kurtosis (flag = 1)
+%                   2: MATLAB kurtosis (flag = 0)
+%                   3: skewness according to R-package e1071 v1.6-8 
+%                      skewness type 3 (default)
 %
 % Features:
-%   skewness        - skewness of y values (R-package e1071 v1.6-8 type 3)
-%   kurtosis        - kurtosis of y values (R-package e1071 v1.6-8 type 3)
+%   skewness        - skewness of y values
+%   kurtosis        - kurtosis of y values
 %   number_of_peaks - number of y-distribution peaks
 
-  if nargin < 2
-    help feature_ela_distribution
-    if nargout > 0
-      ft = struct();
+  if nargin < 3
+    if nargin < 2
+      help feature_ela_distribution
+      if nargout > 0
+        ft = struct();
+      end
+      return
     end
-    return
+    settings = struct();
   end
+  
+  % parse settings
+  modemass_treshold = defopts(settings, 'modemass_treshold', 0.01);
+  skewness_type = defopts(settings, 'skewness_type', 3);
+  kurtosis_type = defopts(settings, 'kurtosis_type', 3);
   
   n = numel(y);
 
-  % skewness according to R-package e1071 v1.6-8 skewness type 3
-  ft.skewness = ((n-1)/n)^(3/2) * skewness(y, 1);
-  % kurtosis according to R-package e1071 v1.6-8 kurtosis type 3
-  ft.kurtosis = (1-1/n)^2 * kurtosis(y, 1) - 3;
+  % calculate skewness
+  switch skewness_type
+    case 1
+      ft.skewness = skewness(y, 1);
+    case 2
+      ft.skewness = skewness(y, 0);
+    case 3
+      % skewness according to R-package e1071 v1.6-8 skewness type 3
+      ft.skewness = ((n-1)/n)^(3/2) * skewness(y, 1);
+    otherwise
+      error('Wrong skewness_type')
+  end
+  
+  % calculate kurtosis
+  switch kurtosis_type
+    case 1
+      ft.kurtosis = kurtosis(y, 1);
+    case 2
+      ft.kurtosis = kurtosis(y, 0);
+    case 3
+      % kurtosis according to R-package e1071 v1.6-8 kurtosis type 3
+      ft.kurtosis = (1-1/n)^2 * kurtosis(y, 1) - 3;
+    otherwise
+      error('Wrong kurtosis_type')
+  end
+
   % number of peaks
-  ft.number_of_peaks = numberOfPeaks(y);
+  ft.number_of_peaks = numberOfPeaks(y, modemass_treshold);
 end
 
-function numOfPeaks = numberOfPeaks(x)
+function numOfPeaks = numberOfPeaks(x, modemass_treshold)
 % Estimate the number of peaks in x distribution
 
-  modemass_treshold = 0.01;
   % estimate density
   % TODO: proper settings of ksdensity function
   [y_dens, xi_dens] = ksdensity(x);

@@ -3,6 +3,22 @@ function tests = metafeatureTest
   tests = functiontests(localfunctions);
 end
 
+function testDispersion(testCase)
+  % empty input should not generate error
+  verifyEmpty(testCase, fieldnames(feature_dispersion()));
+  % test data
+  X = rand(30, 3);
+  y = randn(30, 1);
+  % test settings
+  settings.distance = 'minkowski';
+  settings.quantiles = [0.1, 0.25];
+  % output fields without settings
+  featFields = {'ratio_mean_10', 'ratio_median_10', 'diff_mean_10', 'diff_median_10', ...
+                'ratio_mean_25', 'ratio_median_25', 'diff_mean_25', 'diff_median_25'};
+  returnedFields = fieldnames(feature_dispersion(X, y, settings));
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+end
+
 function testELADistribution(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_ela_distribution()));

@@ -1,12 +1,15 @@
-function ft = feature_basic(X, y, dataSettings)
-% ft = FEATURE_BASIC(X, y, dataSettings) returns basic features for dataset
-% [X, y]. Features provide obvious information of the initial design.
+function ft = feature_basic(X, y, settings)
+% ft = FEATURE_BASIC(X, y, settings) returns basic features for dataset
+% [X, y] according to settings. Features provide obvious information of the
+% initial design.
 %
-% dataSettings:
-%   lb     - lower bounds
-%   ub     - upper bounds
-%   blocks - numbers of blocks per dimension
-%   filled - indicator of filled blocks
+% settings:
+%   lb       - lower bounds | default: min(X)
+%   ub       - upper bounds | default: max(X)
+%   blocks   - numbers of blocks per dimension | default: 1
+%   filled   - indicator of filled blocks | default: true
+%   minimize - binary flag stating whether the objective function should be
+%              minimized | default: true
 %
 % Features:
 %   dim           - dimension of dataset
@@ -32,26 +35,29 @@ function ft = feature_basic(X, y, dataSettings)
       end
       return
     end
-    % TODO: proper settings
-    dataSettings.lb = min(X);
-    dataSettings.ub = max(X);
-    dataSettings.blocks = 1;
-    dataSettings.filled = ~isempty(X);
+    settings = struct();
   end
+  
+  % TODO: proper settings
+  lb = defopts(settings, 'lb', min(X));
+  ub = defopts(settings, 'ub', max(X));
+  blocks = defopts(settings, 'blocks', 1);
+  filled = defopts(settings, 'filled', ~isempty(X));
+  min_fun = defopts(settings, 'minimize', true);
   
   ft.dim = size(X, 2);
   ft.observations = numel(y);
-  ft.lower_min = min(dataSettings.lb);
-  ft.lower_max = max(dataSettings.lb);
-  ft.upper_min = min(dataSettings.ub);
-  ft.upper_max = max(dataSettings.ub);
+  ft.lower_min = min(lb);
+  ft.lower_max = max(lb);
+  ft.upper_min = min(ub);
+  ft.upper_max = max(ub);
   ft.objective_min = min(y);
   ft.objective_max = max(y);
   % TODO: write following lines properly
-  ft.blocks_min = min(dataSettings.blocks);
-  ft.blocks_max = max(dataSettings.blocks);
-  ft.cells_total = prod(dataSettings.blocks);
-  ft.cells_filled = sum(dataSettings.filled);
-  ft.minimize_fun = false;
+  ft.blocks_min = min(blocks);
+  ft.blocks_max = max(blocks);
+  ft.cells_total = prod(blocks);
+  ft.cells_filled = sum(filled);
+  ft.minimize_fun = min_fun;
 
 end
