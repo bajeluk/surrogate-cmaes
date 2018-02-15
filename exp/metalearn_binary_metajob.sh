@@ -14,6 +14,7 @@
 #   INST           -- list of instances to process
 #   DESIGN         -- design types to test
 #   MODEL          -- list of model types to test
+#   DATASIZE       -- list of data sizes to test
 #   OPTS           -- string with options to be eval()-ed
 #   EXPID          -- string with the experiment name
 #   FNAME_TEMPLATE -- template for data set file name
@@ -34,7 +35,7 @@ elif ! grep -q '/.*$' <<< "$DATASET_PATH"; then
   echo "There was no path to dataset directory, setting to: $DATASET_PATH"
 fi
 
-if [ ! -d DATASET_PATH ]; then
+if [ ! -d $DATASET_PATH ]; then
   echo "Error: Data set path \"$DATASET_PATH\" not found."; exit 1
 fi
 
@@ -58,6 +59,9 @@ fi
 if [ -z "$MODEL" ]; then
   echo "Error: Model types not known"; exit 1
 fi
+if [ -z "$DATASIZE" ]; then
+  echo "Error: Data sizes not known"; exit 1
+fi
 if [ -z "$FNAME_TEMPLATE" ]; then
   echo "Warning: FNAME_TEMPLATE empty, using a default."
   FNAME_TEMPLATE='data_metalearn_%dD_f%d_inst%d_N%d_design-%s'
@@ -72,7 +76,7 @@ OPTS=`echo $OPTS | tr '%|:' "',;"`
 
 ####### PREPARE DATA #####
 #
-cd "$EXPPATH_SHORT/../.."
+echo "PWD: `pwd`"
 DST_DIR=$SCRATCHDIR/`basename "$DATASET_PATH"`
 mkdir -p $DST_DIR
 
@@ -81,15 +85,18 @@ for dim in $( eval_matlab_array "$DIM" ); do
 
   for func in $( eval_matlab_array "$FUNC" ); do
     for inst in $( eval_matlab_array "$INST" ); do
-      for design in $( eval_matlab_cell "$DESIGN" ); do
-        FNAME=$( fprintf $FNAME_TEMPLATE $dim $func $inst $design )
-        SRC_FILE="$DATASET_PATH/${DIM}D/$FNAME"
+      for N_expr in $( eval_matlab_cell "$DATASIZE" ); do
+        N=$(( N_expr ))
+        for design in $( eval_matlab_cell "$DESIGN" ); do
+          FNAME=$( fprintf $FNAME_TEMPLATE $dim $func $inst $design $N )
+          SRC_FILE="$DATASET_PATH/${DIM}D/$FNAME"
 
-        if [ ! -f $SRC_FILE ]; then
-          echo "Error: Data set \"$SRC_FILE\" not found, exiting."; exit 1
-        fi
-        echo cp $SRC_FILE $DST_DIR/${DIM}D
-        cp $SRC_FILE $DST_DIR/${DIM}D
+          if [ ! -f $SRC_FILE ]; then
+            echo "Error: Data set \"$SRC_FILE\" not found, exiting."; exit 1
+          fi
+          echo cp $SRC_FILE $DST_DIR/${DIM}D
+          cp $SRC_FILE $DST_DIR/${DIM}D
+        done
       done
     done
   done
@@ -109,10 +116,10 @@ echo "====================="
 ######### CALL #########
 #
 echo '##############'
-echo Will be called: $MATLAB_BINARY_CALL \"$EXPID\" \"$EXPPATH_SHORT\" \"$FUNC\" \"$DIM\" \"$INST\" \"$OPTS\" \"$DATASET_PATH\"
+echo "Will be called: $MATLAB_BINARY_CALL \"$EXPID\" \"$EXPPATH_SHORT\" \"$DIM\" \"$FUNC\" \"$INST\" \"$DATASIZE\" \"$DESIGN\" \"$MODEL\" \"$OPTS\" \"$DATASET_PATH\""
 echo '##############'
 
-$MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" "$FUNC" "$DIM" "$INST" "$OPTS" "$DATASET_PATH"
+$MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" "$DIM" "$FUNC" "$INST" "$DATASIZE" "$DESIGN" "$MODEL" "$OPTS" "$DATASET_PATH"
 #
 ########################
 

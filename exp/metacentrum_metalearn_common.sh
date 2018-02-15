@@ -49,7 +49,7 @@ if [ "$useMCR" = 1 ]  &&  ! make -q metalearn; then
   echo "Warning: the binary $METACENTRUM_METALEARN_BINARY"
   echo "         is out of date."
   echo "         Running MCR compilation (make metalearn) in 5 sec..."
-  sleep 5
+  #sleep 5
   make metalearn
 else
   echo "###############################################################"
@@ -67,6 +67,7 @@ export FUNC
 export INST
 export MODEL
 export DESIGN
+export DATASIZE
 export OPTS
 export MATLAB_FCN
 
@@ -77,11 +78,11 @@ subtask() {
     JOBNAME_SUFFIX=""
   fi
 
-  echo "MCR binary submit: ID=$ID : DIM=$DIM : FUNC=$FUNC : INST=$INST : MODEL=$MODEL : DESIGN=$DESIGN : OPTS=$OPTS : DATASET=$DATASET"
+  echo "MCR binary submit: ID=$ID : DIM=$DIM : FUNC=$FUNC : INST=$INST : MODEL=$MODEL : DESIGN=$DESIGN : DATASIZE=$DATASIZE : OPTS=$OPTS : DATASET=`basename $DATASET_PATH`"
   if [ "$DRY_RUN" = 0 ]; then
-    qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,OPTS,EXPID,EXPPATH_SHORT,DATASET $EXPPATH_SHORT/../metalearn_binary_metajob.sh
+    qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,MODEL,DESIGN,DATASIZE,OPTS,EXPID,EXPPATH_SHORT,DATASET $EXPPATH_SHORT/../metalearn_binary_metajob.sh
   else
-    echo qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,OPTS,EXPID,EXPPATH_SHORT,DATASET $EXPPATH_SHORT/../metalearn_binary_metajob.sh
+    echo qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,MODEL,DESIGN,DATASIZE,OPTS,EXPID,EXPPATH_SHORT,DATASET $EXPPATH_SHORT/../metalearn_binary_metajob.sh
   fi
 }
 
@@ -118,3 +119,49 @@ function submit_sequence()
   done
 }
 
+function submit_model() {
+  # submit_model MODEL DIMS FUNCS INSTS DESIGNS DATASIZES
+  #
+  # read option ids for given model type
+  #
+  # submits all model options for each data set configuration
+  #
+  # data set configurations are given by cartesian product
+  # of following sequences:
+  #   * DIMS      -- dimensionalities
+  #   * FUNCS     -- BBOB functions
+  #   * INSTS     -- BBOB instances
+  #   * DESIGNS   -- sampling designs
+  #   * DATASIZES -- sample sizes
+  MODEL=`echo $1 | tr '[:upper:]' '[:lower:]'`
+  DIMS=$2
+  FUNCS=$3
+  INSTS=$4
+  DESIGNS=$5
+  DATASIZES=$6
+
+  FNAME=$( echo $EXPPATH_SHORT/$EXPID/${MODEL}_ids.txt )
+
+  if [ ! -f $FNAME ]; then
+    echo "Error: model option indices file $FNAME not found."
+    exit 1
+  fi
+
+  read OPT_IND < $FNAME
+  OPT_IND=( $OPT_IND ) # bash array
+  N_OPTS=${#OPT_IND[@]}
+
+  for DIM in $DIMS; do
+    for FUNC in $FUNCS; do
+      for INST in $INSTS; do
+        for DESIGN in $DESIGNS; do
+          for DATASIZE in $DATASIZES; do
+            LO=${OPT_IND[0]}
+            HI=${OPT_IND[(($N_OPTS - 1))]}
+            submit_sequence $LO 1 $HI
+          done # data sizes
+        done # designs
+      done # instances
+    done # functions
+  done # dims
+}
