@@ -68,6 +68,7 @@ export INST
 export MODEL
 export DESIGN
 export DATASIZE
+export DATASET_PATH
 export OPTS
 export MATLAB_FCN
 
@@ -78,11 +79,11 @@ subtask() {
     JOBNAME_SUFFIX=""
   fi
 
-  echo "MCR binary submit: ID=$ID : DIM=$DIM : FUNC=$FUNC : INST=$INST : MODEL=$MODEL : DESIGN=$DESIGN : DATASIZE=$DATASIZE : OPTS=$OPTS : DATASET=`basename $DATASET_PATH`"
+  echo "MCR binary submit: ID=$ID : DIM=$DIM : FUNC=$FUNC : INST=$INST : MODEL=$MODEL : DESIGN=$DESIGN : DATASIZE=$DATASIZE : OPTS=$OPTS : DATASET_PATH=`basename $DATASET_PATH`"
   if [ "$DRY_RUN" = 0 ]; then
-    qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,MODEL,DESIGN,DATASIZE,OPTS,EXPID,EXPPATH_SHORT,DATASET $EXPPATH_SHORT/../metalearn_binary_metajob.sh
+    qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,MODEL,DESIGN,DATASIZE,OPTS,EXPID,EXPPATH_SHORT,DATASET_PATH $EXPPATH_SHORT/../metalearn_binary_metajob.sh
   else
-    echo qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,MODEL,DESIGN,DATASIZE,OPTS,EXPID,EXPPATH_SHORT,DATASET $EXPPATH_SHORT/../metalearn_binary_metajob.sh
+    echo qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,MODEL,DESIGN,DATASIZE,OPTS,EXPID,EXPPATH_SHORT,DATASET_PATH $EXPPATH_SHORT/../metalearn_binary_metajob.sh
   fi
 }
 
