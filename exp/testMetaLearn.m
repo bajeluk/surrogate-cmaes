@@ -1,9 +1,14 @@
-function testMetaLearn(modelOptions, opts, funcs, dims, ...
-  insts, Ns, models, designs)
+function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
+  insts, Ns, modelTypes, designTypes)
 %TESTMETALEARN Test models on metalearning data sets.
 
-  if ~iscell(models), models = {models}; end
-  if ~iscell(designs), designs = {designs}; end
+  if ~iscell(Ns), Ns = {Ns}; end
+  if ~iscell(modelTypes), modelTypes = {modelTypes}; end
+  if ~iscell(designTypes), designTypes = {designTypes}; end
+
+  assert(isnumeric(funcs), '''funcs'' has to be numeric');
+  assert(isnumeric(dims), '''dims'' has to be numeric');
+  assert(isnumeric(insts), '''insts'' has to be numeric');
 
   % Default options
   opts.cv_type = defopts(opts, 'cv_type', 'KFold');
@@ -31,11 +36,6 @@ function testMetaLearn(modelOptions, opts, funcs, dims, ...
   ));
   opts.rewrite_results = defopts(opts, 'rewrite_results', false);
 
-  % rng init
-  if opts.use_rng_seed
-    rng(opts.rng_seed);
-  end
-
   % parpool init
   if opts.use_parpool
     poolobj = parpool(opts.parpool_size);
@@ -43,28 +43,26 @@ function testMetaLearn(modelOptions, opts, funcs, dims, ...
     poolobj = [];
   end
 
-  % CV partitioning
-  cv = cvpartition(N, opts.cv_type, opts.cv_param);
-  nTestSets = cv.NumTestSets;
-
   % dimension loop
   for dim = dims
-
     % function loop
     for func = funcs
-
       % instance loop
       for inst = insts
 
         % dataset sizes loop
         for N_cell = Ns
+          N = myeval(N_cell{:});
+
+          % CV partitioning
+          cv = make_cvpartition(opts, N);
 
           % design types loop
-          for design_cell = designs
-            design = design_cell{:};
+          for design_cell = designTypes
+            designType = design_cell{:};
 
             % load the dataset
-            fname = sprintf(opts.fname_template, dim, fun, inst, N, design);
+            fname = sprintf(opts.fname_template, dim, fun, inst, N, designType);
             fname = fullfile(opts.dataset_path, sprintf('%dD', dim), fname);
             data = load(fname);
 
@@ -75,19 +73,52 @@ function testMetaLearn(modelOptions, opts, funcs, dims, ...
             assert(data.funId == func, 'Unexpected function id.');
             assert(data.instId == inst, 'Unexpected instance id.');
 
-            % models loop
-            for model_cell = models
-              model = model_cell{:};
+            % model types loop
+            for modelType_cell = modelTypes
+              modelType = modelType_cell{:};
+
+              % array of option designs to test for the current model type
+              modelOpts = modelOptions.(modelType);
+              modelOptsInd = modelOptionsInd.(modelType);
 
               % options loop
-              for opt_cell = modelOptions
-                opt = opt_cell{:};
-                testOneModel(dim, func, inst, N_cell, opt, 
+              for optInd = modelOptsInd
+                modelOpt = modelOpts{optInd};
+
+                % prepare output files
+                % hash = modelHash(modelOpts);
+                res_fname = sprintf(opts.res_fname_template, dim, func, inst, N, ...
+                  designType, modelType, optInd);
+                res_dir = fullfile(opts.exppath, 'results');
+
+                if ~exist(res_dir, 'dir')
+                  mkdir(res_dir);
+                end
+
+                res_fname = fullfile(res_dir, res_fname);
+
+                if exist(res_fname, 'file')
+                  if opts.rewrite_results
+                    warning('Overwriting file ''%s''', res_fname);
+                  else
+                    warning('File ''%s'' exists, skipping the CV loop.', ...
+                      res_fname);
+                    continue;
+                  end
+                end
+
+                results = testOneModel(dim, func, inst, N, modelType, modelOpt, cv);
+
+                if ~isempty(results) && opts.rewrite_results || ~exist(res_fname, 'file')
+                  save(res_fname, 'dim', 'func', 'inst', 'N_cell', 'N', 'designType', ...
+                    'Y', 'cv', 'results', 'modelType', 'optInd', 'modelOpt');
+                end
               end % options loop
 
-            end % models loop
-          end % design loop
+            end % model types loop
+          end % design types loop
         end % dataset sizes loop
+
       end % instance loop
     end % function loop
   end % dimension loop
@@ -100,35 +131,11 @@ function testMetaLearn(modelOptions, opts, funcs, dims, ...
 end % function
 
 
-function testOneModel(dim, func, inst, N_cell, model, ...
-)
-  N = myeval(N_cell{:});
+function results = testOneModel(dim, func, inst, N, modelType, opt, cv)
+  % the result structure, one row per each CV fold
+  nTestSets = cv.NumTestSets;
 
-  % the result structure, one cell per CV fold
-  cv_trained = cell(1, nTestSets);
-
-  % prepare output files
-  hash = modelHash(opt);
-  res_fname = sprintf(opts.res_fname_template, dim, func, inst, N, ...
-    design, model, hash);
-  res_dir = fullfile(opts.exppath_short, opts.exp_id);
-
-  if ~exist(res_dir, 'dir')
-    mkdir(res_dir);
-  end
-
-  res_fname = fullfile(res_dir, res_fname);
-
-  if exist(res_fname, 'file')
-    if opts.rewrite_results
-      warning('Overwriting file ''%s''', res_fname);
-    else
-      warning('File ''%s'' exists, skipping the CV loop.', ...
-        res_fname);
-    end
-
-    continue;
-  end
+  results = struct('model', [], 'Y', [], 'Ypred', []);
 
   % parallel loop over CV folds
   parfor i = 1:nTestSets
@@ -137,24 +144,36 @@ function testOneModel(dim, func, inst, N_cell, model, ...
 
     Xtr = data.X(:, cv.train(i));
     Ytr = data.Y(:, cv.train(i));
+    Xte = data.X(:, cv.test(i));
+    Yte = data.Y(:, cv.test(i));
 
     try
-      mdl = ModelFactory.createModel(model, opt, xmean, generation);
+      mdl = ModelFactory.createModel(modelType, opt, xmean, generation);
       mdl = mdl.trainModel(Xtr', Ytr', xmean, generation);
-      cv_trained{i} = mdl;
+
+      results(i).model = mdl;
+      results(i).Y = Yte';
+      results(i).Ypred = mdl.predict(Xte');
     catch err
       report = getReport(err);
-      warning(['Training of model ''%s'' on %dD, func %d, inst %d,' ...
+      warning(['Training of model ''%s'' on %dD, func %d, inst %d, N %d' ...
                ' failed with error:\n%s'], ...
-        model, dim, func, inst, report);
+        model, dim, func, inst, N, report);
     end
   end % CV loop
 
-  if opts.rewrite_results || ~exist(res_fname, 'file')
-    save(res_fname, 'dim', 'func', 'inst', 'N_cell', 'N', 'design', ...
-      'X', 'Y', 'cv', 'cv_trained', 'model', 'opt');
-  end
 end % function
+
+
+function cv = make_cvpartition(opts, N)
+  % rng init
+  if opts.use_rng_seed
+    rng(opts.rng_seed);
+  end
+
+  % CV partitioning
+  cv = cvpartition(N, opts.cv_type, opts.cv_param);
+end
 
 
 function res=myeval(s)

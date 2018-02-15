@@ -74,6 +74,7 @@ function status = metacentrum_metalearn(exp_id, exppath_short, dim_str, func_str
 
   % Load a full factorial design for each model
   modelOptions_fullfact = struct();
+  modelOptions_indices = struct();
   
   nModels = length(modelParamDef);
   for i = 1:nModels
@@ -103,6 +104,7 @@ function status = metacentrum_metalearn(exp_id, exppath_short, dim_str, func_str
       idx = opts.modelOptionsIndices{i};
       fullFact = modelOptions_fullfact.(modelName);
       modelOptions_fullfact.(modelName) = fullFact(idx);
+      modelOptions_indices.(modelName) = idx;
     end
   end
 
@@ -118,7 +120,7 @@ function status = metacentrum_metalearn(exp_id, exppath_short, dim_str, func_str
   fprintf('=======================================\n');
 
   %% test chosen models
-  testMetalearn(modelOptions_fullfact, opts, func, dims, instances, Ns, models, designs);
+  testMetalearn(modelOptions_fullfact, modelOptions_indices, func, dims, instances, Ns, models, designs);
 
   status = 0;
   return;
