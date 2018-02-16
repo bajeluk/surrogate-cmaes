@@ -58,7 +58,7 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 #     e.g.: submit_model "GP" DIMS FUNCS INSTS DESIGNS DATASIZES
 
 # critical characters has to be replaced in $OPTS:
-# '|' with ',' and "%" with "'" and ':' with ';'
+# '|' with ',' and "%" with "'" and '@' with ';'
 OPTS=""
 
 DATASET_PATH=$CWD/data_metalearn

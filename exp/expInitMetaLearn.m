@@ -22,7 +22,7 @@ function expInitMetaLearn(exp_id)
 %   metaParamDef = generateParamDefStruct(metaParams);
 
   % prepare a directory for experiments settings and results: exp/experiments/[exp_id]
-  experimentPath = fullfile(exppath_short, 'experiments', exp_id);
+  experimentPath = fullfile(exppath_short, exp_id);
   mkdir(experimentPath);
   
   % Model settings

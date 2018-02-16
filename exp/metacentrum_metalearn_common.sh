@@ -114,8 +114,8 @@ function submit_sequence()
   for i in ${SEQ}; do
     thisL=$i
     thisH=$((i+STEP-1))
-    OPTS="struct(%modelOptionsIndices%|{${thisL}:${thisH}})"
-    echo modelOptionsIndices: {${thisL}:${thisH}}
+    OPTS="struct(%modelOptionsIndices%|{${thisL}:${thisH}}| %modelTypes%|{{%$MODEL%}})"
+    echo modelOptionsIndices: {{${thisL}:${thisH}}}
     subtask "${thisL}_${thisH}"
   done
 }
@@ -155,8 +155,11 @@ function submit_model() {
   for DIM in $DIMS; do
     for FUNC in $FUNCS; do
       for INST in $INSTS; do
-        for DESIGN in $DESIGNS; do
-          for DATASIZE in $DATASIZES; do
+        for DES in $DESIGNS; do
+          for DS in $DATASIZES; do
+            DESIGN="{%$DES%}"
+            DATASIZE="{%$DS%}"
+
             LO=${OPT_IND[0]}
             HI=${OPT_IND[(($N_OPTS - 1))]}
             submit_sequence $LO 1 $HI

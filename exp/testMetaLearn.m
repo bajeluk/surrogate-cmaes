@@ -1,9 +1,8 @@
 function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
-  insts, Ns, modelTypes, designTypes)
+  insts, Ns, designTypes)
 %TESTMETALEARN Test models on metalearning data sets.
 
   if ~iscell(Ns), Ns = {Ns}; end
-  if ~iscell(modelTypes), modelTypes = {modelTypes}; end
   if ~iscell(designTypes), designTypes = {designTypes}; end
 
   assert(isnumeric(funcs), '''funcs'' has to be numeric');
@@ -11,8 +10,10 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
   assert(isnumeric(insts), '''insts'' has to be numeric');
 
   % Default options
+  opts.modelTypes = defopts(opts, 'modelTypes', {'rf', 'gp'});
   opts.cv_type = defopts(opts, 'cv_type', 'KFold');
   opts.cv_param = defopts(opts, 'cv_param', 10);
+  opts.cv_ind = defopts(opts, 'cv_ind', 1:opts.cv_param);
   opts.use_rng_seed = defopts(opts, 'use_rng_seed', true);
   opts.rng_seed = defopts(opts, 'rng_seed', 42);
   opts.use_parpool = defopts(opts, 'use_parpool', true);
@@ -38,7 +39,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
 
   % parpool init
   if opts.use_parpool
-    poolobj = parpool(opts.parpool_size);
+    parpool(opts.parpool_size);
   else
     poolobj = [];
   end
@@ -62,7 +63,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
             designType = design_cell{:};
 
             % load the dataset
-            fname = sprintf(opts.fname_template, dim, fun, inst, N, designType);
+            fname = sprintf(opts.fname_template, dim, func, inst, N, designType);
             fname = fullfile(opts.dataset_path, sprintf('%dD', dim), fname);
             data = load(fname);
 
@@ -74,7 +75,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
             assert(data.instId == inst, 'Unexpected instance id.');
 
             % model types loop
-            for modelType_cell = modelTypes
+            for modelType_cell = opts.modelTypes
               modelType = modelType_cell{:};
 
               % array of option designs to test for the current model type
@@ -89,7 +90,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
                 % hash = modelHash(modelOpts);
                 res_fname = sprintf(opts.res_fname_template, dim, func, inst, N, ...
                   designType, modelType, optInd);
-                res_dir = fullfile(opts.exppath, 'results');
+                res_dir = fullfile(opts.exppath, 'results', sprintf('%dD', dim));
 
                 if ~exist(res_dir, 'dir')
                   mkdir(res_dir);
@@ -107,11 +108,13 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
                   end
                 end
 
-                results = testOneModel(dim, func, inst, N, modelType, modelOpt, cv);
+                results = testOneModel(data, dim, func, inst, N, ...
+                                       modelType, modelOpt, ...
+                                       cv, opts.cv_ind);
 
-                if ~isempty(results) && opts.rewrite_results || ~exist(res_fname, 'file')
+                if ~isempty(results) && (opts.rewrite_results || ~exist(res_fname, 'file'))
                   save(res_fname, 'dim', 'func', 'inst', 'N_cell', 'N', 'designType', ...
-                    'Y', 'cv', 'results', 'modelType', 'optInd', 'modelOpt');
+                    'cv', 'results', 'modelType', 'optInd', 'modelOpt');
                 end
               end % options loop
 
@@ -131,24 +134,34 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
 end % function
 
 
-function results = testOneModel(dim, func, inst, N, modelType, opt, cv)
-  % the result structure, one row per each CV fold
-  nTestSets = cv.NumTestSets;
+function results = testOneModel(data, dim, func, inst, N, ...
+  modelType, modelOptions, ...
+  cv, cv_ind)
 
+  fprintf('======= Cross-validation =======\n');
+  fprintf('      # of folds:  %d\n', length(cv_ind));
+  fprintf('      function:    %d\n', func);
+  fprintf('      dimension:   %d\n', dim);
+  fprintf('      instance:    %d\n', inst);
+  fprintf('      data size:   %d\n', N);
+  fprintf('      model type:  %s\n', modelType);
+  fprintf('================================\n');
+
+  % the result structure, one row per each CV fold
   results = struct('model', [], 'Y', [], 'Ypred', []);
 
-  % parallel loop over CV folds
-  parfor i = 1:nTestSets
+  % parallel loop over specified CV folds
+  parfor i = cv_ind
     xmean = zeros(1, dim);
     generation = 0;
 
-    Xtr = data.X(:, cv.train(i));
-    Ytr = data.Y(:, cv.train(i));
+    Xtr = data.X(:, cv.training(i));
+    Ytr = data.Y(:, cv.training(i));
     Xte = data.X(:, cv.test(i));
     Yte = data.Y(:, cv.test(i));
 
     try
-      mdl = ModelFactory.createModel(modelType, opt, xmean, generation);
+      mdl = ModelFactory.createModel(modelType, modelOptions, xmean, generation);
       mdl = mdl.trainModel(Xtr', Ytr', xmean, generation);
 
       results(i).model = mdl;
@@ -171,12 +184,15 @@ function cv = make_cvpartition(opts, N)
     rng(opts.rng_seed);
   end
 
-  % CV partitioning
   cv = cvpartition(N, opts.cv_type, opts.cv_param);
+
+  % check that cv indices specified in options are valid
+  assert(all(1 <= opts.cv_ind & opts.cv_ind <= cv.NumTestSets), ...
+    sprintf('Invalid cross-validation indices: %s.', num2str(opts.cv_ind)));
 end
 
 
-function res=myeval(s)
+function res = myeval(s)
   if ischar(s)
     res = evalin('caller', s);
   else

@@ -1,5 +1,5 @@
 function status = metacentrum_metalearn(exp_id, exppath_short, dim_str, func_str, ...
-  inst_str, size_str, design_str, model_str, opts_str, dataset_path)
+  inst_str, size_str, design_str, opts_str, dataset_path)
 %METACENTRUM_METALEARN Top-level function for running meta learning experiments. Supposed to be
 %   run as a MCR-compiled binary.
 %   METACENTRUM_METALEARN(exp_id, exppath_short, func_str, dim_str, inst_str, opts_str, dataset_path)
@@ -10,7 +10,6 @@ function status = metacentrum_metalearn(exp_id, exppath_short, dim_str, func_str
 %      inst_str      -- instances to test (string)
 %      size_str      -- dataset sizes to test (string)
 %      design_str    -- design types to test (string)
-%      model_str     -- model types to test (string)
 %      opts_str      -- options with model parameters grid
 %      dataset_path  -- path to metalearning data sets
 
@@ -22,7 +21,6 @@ function status = metacentrum_metalearn(exp_id, exppath_short, dim_str, func_str
   if (~exist('inst_str', 'var')), inst_str = []; end
   if (~exist('size_str', 'var')), size_str = []; end
   if (~exist('design_str', 'var')), design_str = []; end
-  if (~exist('model_str', 'var')), model_str = []; end
   if (~exist('opts_str', 'var')), opts_str = []; end
 
   dims          = parseCmdParam('dim_str',  dim_str,  [2, 5, 10, 20]);
@@ -30,7 +28,6 @@ function status = metacentrum_metalearn(exp_id, exppath_short, dim_str, func_str
   instances     = parseCmdParam('inst_str', inst_str, [1:5, 41:50]);
   Ns            = parseCmdParam('size_str', size_str, {'50 * dim'});
   designs       = parseCmdParam('design_str', design_str, {'lhs'});
-  models        = parseCmdParam('model_str', model_str, {'gp', 'rf'});
   cmd_opts      = parseCmdParam('opts_str', opts_str, struct());
 
   % load options and full factorial designs for model settings
@@ -72,43 +69,36 @@ function status = metacentrum_metalearn(exp_id, exppath_short, dim_str, func_str
     opts.dataset_path = fullfile(opts.scratch, opts.dataset_path);
   end
 
-  % Load a full factorial design for each model
+  opts.modelTypes = defopts(opts, 'modelTypes', {'rf', 'gp'});
+
+  % load a full factorial design for each specified model type
   modelOptions_fullfact = struct();
-  modelOptions_indices = struct();
-  
-  nModels = length(modelParamDef);
-  for i = 1:nModels
+
+  for i = 1:length(modelParamDef)
     name = modelParamDef(i).name;
     values = modelParamDef(i).values;
-    if ismember(name, models)
+    if ismember(name, opts.modelTypes)
       modelOptions_fullfact.(name) = values;
     end
   end
 
-  nOptions = 0;
-  for model_cell = models
-    model = model_cell{:};
-    if ~isfield(modelOptions_fullfact, model)
-      error('Options for model ''%s'' not defined', model);
-    end
-    nOptions = nOptions + length(modelOptions_fullfact.(model));
-  end
-  
   % restrict the full factorial design only to some indices
   % if specified in opts
+  nOptions = 0;
   if (isfield(opts, 'modelOptionsIndices') && ~isempty(opts.modelOptionsIndices))
     opts.modelOptionsIndices = myeval(opts.modelOptionsIndices);
-    assert(length(opts.modelOptionsIndices) == length(fields(modelOptionsFullFact)));
-    for i = 1:nModels
-      modelName = models{i};
+    assert(length(opts.modelTypes) == length(opts.modelOptionsIndices), ...
+      "No. of model types must match size of model option indices cell array.");
+    for i = 1:length(opts.modelTypes)
+      modelName = opts.modelTypes{i};
       idx = opts.modelOptionsIndices{i};
       fullFact = modelOptions_fullfact.(modelName);
       modelOptions_fullfact.(modelName) = fullFact(idx);
       modelOptions_indices.(modelName) = idx;
+      nOptions = nOptions + length(idx);
     end
   end
 
-  %% create testing dataset
   fprintf('== Summary of the testing assignment ==\n');
   fprintf('   # of models:  %d\n', nOptions);
   fprintf('   functions:    %s\n', num2str(func));
@@ -116,11 +106,13 @@ function status = metacentrum_metalearn(exp_id, exppath_short, dim_str, func_str
   fprintf('   instances:    %s\n', num2str(instances));
   fprintf('   sizes:        %s\n', strjoin(Ns));
   fprintf('   designs:      %s\n', strjoin(designs));
-  fprintf('   models:       %s\n', strjoin(models));
+  fprintf('   models:       %s\n', strjoin(opts.modelTypes));
+  fprintf('   all options:\n');
+  disp(opts);
   fprintf('=======================================\n');
 
   %% test chosen models
-  testMetalearn(modelOptions_fullfact, modelOptions_indices, func, dims, instances, Ns, models, designs);
+  testMetaLearn(modelOptions_fullfact, modelOptions_indices, opts, func, dims, instances, Ns, designs);
 
   status = 0;
   return;
