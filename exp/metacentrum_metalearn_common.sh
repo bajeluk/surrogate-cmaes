@@ -114,7 +114,7 @@ function submit_sequence()
   for i in ${SEQ}; do
     thisL=$i
     thisH=$((i+STEP-1))
-    OPTS="struct(%modelOptionsIndices%|{${thisL}:${thisH}}| %modelTypes%|{{%$MODEL%}})"
+    OPTS="struct(%modelOptionsIndices%|{{${thisL}:${thisH}}}| %modelTypes%|{{%$MODEL%}})"
     echo modelOptionsIndices: {{${thisL}:${thisH}}}
     subtask "${thisL}_${thisH}"
   done
