@@ -88,7 +88,7 @@ function status = metacentrum_metalearn(exp_id, exppath_short, dim_str, func_str
   if (isfield(opts, 'modelOptionsIndices') && ~isempty(opts.modelOptionsIndices))
     opts.modelOptionsIndices = myeval(opts.modelOptionsIndices);
     assert(length(opts.modelTypes) == length(opts.modelOptionsIndices), ...
-      "No. of model types must match size of model option indices cell array.");
+      'No. of model types must match the size of model option indices cell array.');
     for i = 1:length(opts.modelTypes)
       modelName = opts.modelTypes{i};
       idx = opts.modelOptionsIndices{i};
