@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -l select=1:ncpus=1:mem=2500mb:scratch_local=1gb:cgroups=cpuacct
+#PBS -l select=1:ncpus=10:mem=500mb:scratch_local=1gb:cgroups=cpuacct
 
 # cgroups option limits resources usage on PBS nodes, see:
 # https://wiki.metacentrum.cz/wiki/Cgroupy
@@ -105,6 +105,8 @@ DESIGN=`echo $DESIGN | tr '%|@' "',;"`
 # DESIGN=`echo $DESIGN | sed s"/%/''/g"`
 # OPTS=`echo $OPTS | sed s"/%/''/g" | sed s"/|/,/g"`
 
+cd "$EXPPATH_SHORT/../.."
+
 ####### PREPARE DATA #####
 #
 DST_DIR="$SCRATCHDIR/`basename $DATASET_PATH`"
@@ -130,9 +132,10 @@ for dim in $( eval_matlab_array "$DIM" ); do
     done
   done
 done
-DATASET_PATH=$DST_DIR
 #
 ########################
+
+DATASET_PATH=$DST_DIR
 
 echo "====================="
 echo -n "Current dir:    "; pwd
