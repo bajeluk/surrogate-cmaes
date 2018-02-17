@@ -28,8 +28,8 @@ opts.cv_param = 10;
 opts.cv_ind = 1:opts.cv_param;
 
 % the CV can be run in a parallel worker pool
-opts.use_parpool = false;
-opts.parpool_size = 10;
+opts.use_parpool = true;
+opts.parpool_size = 5;
 
 % RNG options
 opts.use_rng_seed = true;
