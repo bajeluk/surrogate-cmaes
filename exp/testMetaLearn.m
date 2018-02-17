@@ -39,7 +39,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
 
   % parpool init
   if opts.use_parpool
-    parpool(opts.parpool_size);
+    poolobj = parpool(opts.parpool_size);
   else
     poolobj = [];
   end
@@ -83,13 +83,14 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
               modelOptsInd = modelOptionsInd.(modelType);
 
               % options loop
-              for optInd = modelOptsInd
+              for optInd = 1:length(modelOptsInd)
                 modelOpt = modelOpts{optInd};
+                modelOptInd = modelOptsInd(optInd);
 
                 % prepare output files
                 % hash = modelHash(modelOpts);
                 res_fname = sprintf(opts.res_fname_template, dim, func, inst, N, ...
-                  designType, modelType, optInd);
+                  designType, modelType, modelOptInd);
                 res_dir = fullfile(opts.exppath, 'results', sprintf('%dD', dim));
 
                 if ~exist(res_dir, 'dir')
@@ -114,7 +115,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
 
                 if ~isempty(results) && (opts.rewrite_results || ~exist(res_fname, 'file'))
                   save(res_fname, 'dim', 'func', 'inst', 'N_cell', 'N', 'designType', ...
-                    'cv', 'results', 'modelType', 'optInd', 'modelOpt');
+                    'cv', 'results', 'modelType', 'modelOptInd', 'modelOpt');
                 end
               end % options loop
 
