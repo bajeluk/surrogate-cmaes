@@ -23,7 +23,7 @@ function ft = feature_basic(X, y, settings)
 %   blocks_min    - minimal number of blocks per dimension
 %   blocks_max    - maximal number of blocks per dimension
 %   cells_total   - total number of cells
-%   cells_fille   - number of filled cells
+%   cells_filled  - number of filled cells
 %   minimize_fun  - binary flag stating whether the objective function
 %                   should be minimized
 

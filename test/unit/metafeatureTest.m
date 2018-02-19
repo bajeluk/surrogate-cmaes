@@ -3,6 +3,21 @@ function tests = metafeatureTest
   tests = functiontests(localfunctions);
 end
 
+function testNearestBetterClustering(testCase)
+  % empty input should not generate error
+  verifyEmpty(testCase, fieldnames(feature_nearest_better()));
+  % test data
+  X = rand(30, 3);
+  y = randn(30, 1);
+  % test settings
+  settings.distance = 'minkowski';
+  % output fields without settings
+  featFields = {'nb_std_ratio', 'nb_mean_ratio', 'nb_cor', 'dist_ratio', ...
+                'nb_fitness_cor'};
+  returnedFields = fieldnames(feature_nearest_better(X, y, settings));
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+end
+
 function testDispersion(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_dispersion()));
