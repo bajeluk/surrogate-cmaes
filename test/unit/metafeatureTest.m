@@ -3,6 +3,27 @@ function tests = metafeatureTest
   tests = functiontests(localfunctions);
 end
 
+function testPCA(testCase)
+  % empty input should not generate error
+  verifyEmpty(testCase, fieldnames(feature_pca()));
+  % test data
+  X = rand(30, 10);
+  y = randn(30, 1);
+  % output fields without settings
+  featFields = {'pca_cov_x', 'pca_corr_x', 'pca_cov_init', 'pca_corr_init', ...
+                'pca_pc1_cov_x', 'pca_pc1_corr_x', 'pca_pc1_cov_init', ...
+                'pca_pc1_corr_init'};
+  ft = feature_pca(X, y);
+  returnedFields = fieldnames(ft);
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+  % test percentage values
+  for m = 1:4
+    verifyGreaterThanOrEqual(testCase, ft.(featFields{m}), 0)
+    verifyLessThanOrEqual(testCase, ft.(featFields{m}), 1)
+  end
+end
+
+
 function testNearestBetterClustering(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_nearest_better()));
@@ -11,7 +32,7 @@ function testNearestBetterClustering(testCase)
   y = randn(30, 1);
   % test settings
   settings.distance = 'minkowski';
-  % output fields without settings
+  % output fields with settings
   featFields = {'nb_std_ratio', 'nb_mean_ratio', 'nb_cor', 'dist_ratio', ...
                 'nb_fitness_cor'};
   returnedFields = fieldnames(feature_nearest_better(X, y, settings));
@@ -27,7 +48,7 @@ function testDispersion(testCase)
   % test settings
   settings.distance = 'minkowski';
   settings.quantiles = [0.1, 0.25];
-  % output fields without settings
+  % output fields with settings
   featFields = {'ratio_mean_10', 'ratio_median_10', 'diff_mean_10', 'diff_median_10', ...
                 'ratio_mean_25', 'ratio_median_25', 'diff_mean_25', 'diff_median_25'};
   returnedFields = fieldnames(feature_dispersion(X, y, settings));
