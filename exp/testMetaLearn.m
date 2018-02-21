@@ -39,9 +39,8 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
 
   % parpool init
   if opts.use_parpool
-    poolobj = parpool(opts.parpool_size);
-  else
-    poolobj = [];
+    w = MetaParPool('open');
+    fprintf('Started metacentrum pool with %d workers.\n', w);
   end
 
   % dimension loop
@@ -128,8 +127,8 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
   end % dimension loop
 
   % clean up parpool
-  if ~isempty(poolobj)
-    delete(poolobj)
+  if opts.use_parpool
+    MetaParPool('close');
   end
 
 end % function
