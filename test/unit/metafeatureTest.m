@@ -3,6 +3,24 @@ function tests = metafeatureTest
   tests = functiontests(localfunctions);
 end
 
+function testInfocontent(testCase)
+  % empty input should not generate error
+  verifyEmpty(testCase, fieldnames(feature_infocontent()));
+  % test data
+  X = rand(30, 10);
+  y = randn(30, 1);
+  % output fields without settings
+  featFields = {'h_max', 'eps_s', 'eps_max', 'eps_ratio', 'm0'};
+  ft = feature_infocontent(X, y);
+  returnedFields = fieldnames(ft);
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+  % test random sorting
+  settings.sorting = 'random';
+  ft = feature_infocontent(X, y, settings);
+  returnedFields = fieldnames(ft);
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+end
+
 function testPCA(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_pca()));
@@ -22,7 +40,6 @@ function testPCA(testCase)
     verifyLessThanOrEqual(testCase, ft.(featFields{m}), 1)
   end
 end
-
 
 function testNearestBetterClustering(testCase)
   % empty input should not generate error
