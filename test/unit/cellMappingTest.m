@@ -7,7 +7,15 @@ function testCMCell(testCase)
 % testing cell mapping objects
 
   % empty input
-  verifyInstanceOf(testCase, CMCell(), 'CMCell')
+  cm = CMCell();
+  verifyInstanceOf(testCase, cm, 'CMCell')
+  verifyEmpty(testCase, cm.getMin)
+  verifyEmpty(testCase, cm.getMax)
+  verifyEmpty(testCase, cm.getDistCtr2Min)
+  verifyEmpty(testCase, cm.getDistCtr2Max)
+  verifyEmpty(testCase, cm.getMaxMinAngle)
+  verifyEmpty(testCase, cm.getMaxMinDiff)
+  
   % random input without settings
   X = rand(30, 3);
   y = rand(30, 1);
@@ -17,6 +25,7 @@ function testCMCell(testCase)
   for f = 1:numel(cmFields)
     verifyNotEmpty(testCase, cm.(cmFields{f}))
   end
+  
   % random input with settings
   settings.lb = [-1, 0, min(X(:, 3))];
   settings.ub = [max(X(:, 1)), 1, 0];

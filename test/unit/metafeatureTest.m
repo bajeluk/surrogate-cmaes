@@ -3,6 +3,26 @@ function tests = metafeatureTest
   tests = functiontests(localfunctions);
 end
 
+function testCMAngle(testCase)
+  % empty input should not generate error
+  verifyEmpty(testCase, fieldnames(feature_cm_angle()));
+  % test data
+  X = rand(30, 10);
+  y = randn(30, 1);
+  settings.ub = zeros(1, 10);
+  settings.ub = ones(1, 10);
+  settings.blocks = randi(3, 1, 10);
+  % output fields without settings
+  featFields = {'dist_ctr2best_mean', 'dist_ctr2best_std', ...
+                'dist_ctr2worst_mean', 'dist_ctr2worst_std', ...
+                'angle_mean', 'angle_std', ...
+                'y_best2worst_mean', 'y_best2worst_std'};
+  ft = feature_cm_angle(X, y, settings);
+  returnedFields = fieldnames(ft);
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+end
+
+
 function testInfocontent(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_infocontent()));

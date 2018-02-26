@@ -1,5 +1,50 @@
 function [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks)
-% creates grid for calculating metafeatures
+% createCMGrid creates grid for calculating cell mapping metafeatures.
+% 
+% [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks)
+%
+% Input:
+%   X - input features
+%   y - input values
+%   lb - lower bounds of input space
+%   ub - upper bounds of input space
+%   blocks - number of blocks (cells) per dimension 
+%
+% Output:
+%   cmCells - array of mapping cells
+%   cmId    - cell coordinates in discretized input space
+%
+% Example:
+%   
+%   X = rand(30, 3);
+%   y = rand(30, 1);
+%   lb = [0, 0, 0];
+%   ub = [1, 1, 1];
+%   blocks = [2, 3, 2];
+%
+%   [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks)
+% 
+%   cmCells = 
+% 
+%     1×12 CMCell array with properties:
+% 
+%       center
+%       dim
+%       lb
+%       ub
+%       minx
+%       maxx
+%       miny
+%       maxy
+%       X
+%       y
+% 
+% 
+%   cmId =
+% 
+%        1     2     1     2     1     2     1     2     1     2     1     2
+%        1     1     2     2     3     3     1     1     2     2     3     3
+%        1     1     1     1     1     1     2     2     2     2     2     2
 
   if nargin < 5
     if nargin < 4
@@ -23,8 +68,11 @@ function [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks)
   
   % checkout blocks settings input
   lb = checkBlockVal(lb, 'lb', dim);
+  assert(all(lb <= min(X)), 'Some points are out of lower bounds. Check your settings.')
   ub = checkBlockVal(ub, 'ub', dim);
+  assert(all(ub >= max(X)), 'Some points are out of upper bounds. Check your settings.')
   blocks = checkBlockVal(blocks, 'blocks', dim);
+  assert(all(blocks > 0 & mod(blocks, 1) == 0), 'Block numbers has to be natural.')
   
   % init
   blockLB = cell(1, dim);

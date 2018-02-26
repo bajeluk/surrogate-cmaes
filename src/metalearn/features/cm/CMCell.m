@@ -67,15 +67,23 @@ classdef CMCell
     function ang = getMaxMinAngle(obj)
       % get angle between the point with maximal objective value, the cell 
       % center, and the point with minimal objective value within the cell
-      u = obj.minx - obj.center;
-      v = obj.maxx - obj.center;
-      ang = acos(dot(u, v) / (norm(u)*norm(v)));
+      if isempty(obj.X)
+        ang = [];
+      else
+        u = obj.minx - obj.center;
+        v = obj.maxx - obj.center;
+        ang = abs(acos(dot(u, v) / (norm(u)*norm(v))));
+      end
     end
     
     function df = getMaxMinDiff(obj)
       % get difference between the points with minimal and maximal
       % objective values
-      df = obj.maxy - obj.miny;
+      if isempty(obj.X)
+        df = [];
+      else
+        df = obj.maxy - obj.miny;
+      end
     end
   end
 end
