@@ -15,6 +15,8 @@ function testCMCell(testCase)
   verifyEmpty(testCase, cm.getDistCtr2Max)
   verifyEmpty(testCase, cm.getMaxMinAngle)
   verifyEmpty(testCase, cm.getMaxMinDiff)
+  verifyEmpty(testCase, cm.getNearCtrPoint)
+  verifyEmpty(testCase, cm.getGradHomogeneity)
   
   % random input without settings
   X = rand(30, 3);
@@ -33,6 +35,14 @@ function testCMCell(testCase)
   for f = 1:numel(cmFields)
     verifyNotEmpty(testCase, cm.(cmFields{f}))
   end
+  verifyNotEmpty(testCase, cm.getMin)
+  verifyNotEmpty(testCase, cm.getMax)
+  verifyNotEmpty(testCase, cm.getDistCtr2Min)
+  verifyNotEmpty(testCase, cm.getDistCtr2Max)
+  verifyNotEmpty(testCase, cm.getMaxMinAngle)
+  verifyNotEmpty(testCase, cm.getMaxMinDiff)
+  verifyNotEmpty(testCase, cm.getNearCtrPoint)
+  verifyNotEmpty(testCase, cm.getGradHomogeneity)
 end
 
 function testCreateCMGrid(testCase)

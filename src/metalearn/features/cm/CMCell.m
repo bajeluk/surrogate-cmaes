@@ -85,5 +85,61 @@ classdef CMCell
         df = obj.maxy - obj.miny;
       end
     end
+    
+    function [x, y] = getNearCtrPoint(obj, cl_distance, dist_param)
+      % get point nearest to the cell center
+      if isempty(obj.X)
+        x = [];
+        y = [];
+      else
+        % default distance
+        if nargin < 2
+          cl_distance = 'euclidean';
+        end
+        % minkowski and mahalanobis settings
+        if any(strcmp(cl_distance, {'minkowski', 'mahalanobis'})) && nargin == 3
+          [~, id] = pdist2(obj.X, obj.center, cl_distance, dist_param, 'Smallest', 1);
+        % other distances
+        else
+          [~, id] = pdist2(obj.X, obj.center, cl_distance, 'Smallest', 1);
+        end
+        x = obj.X(id, :);
+        y = obj.y(id);
+      end
+    end
+    
+    function gradHomo = getGradHomogeneity(obj, cl_distance, dist_param)
+      % get gradient homogeneity of the cell
+      nPoints = numel(obj.y);
+      
+      if nPoints < 3
+        % 2 or less points are not helpful
+        gradHomo = [];
+      else
+        % default distance
+        if nargin < 2
+          cl_distance = 'euclidean';
+        end
+        % minkowski and mahalanobis settings
+        if any(strcmp(cl_distance, {'minkowski', 'mahalanobis'})) && nargin == 3
+          [pDistances, id] = pdist2(obj.X, obj.X, cl_distance, dist_param, 'Smallest', 2);
+        % other distances
+        else
+          [pDistances, id] = pdist2(obj.X, obj.X, cl_distance, 'Smallest', 2);
+        end
+        % the second row contains required ids, the first row are point ids
+        % themselves
+        pDistances = pDistances(2, :)';
+        % calculate "gradient"
+        y_direction = (obj.y(id(1,:)) < obj.y(id(2, :)));
+        % calculate direction
+        X_direction = obj.X(id(2,:), :) - obj.X(id(1,:), :);
+        % compute normalized vectors
+        nv = repmat(((1./pDistances) .* (2*y_direction - 1)), 1, obj.dim) .* X_direction;
+        % calculate lenght of sum of all vectors
+        gradHomo = norm(sum(nv)) / nPoints;
+      end
+    end
+    
   end
 end
