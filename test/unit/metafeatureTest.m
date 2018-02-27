@@ -3,6 +3,24 @@ function tests = metafeatureTest
   tests = functiontests(localfunctions);
 end
 
+function testCMGradHomo(testCase)
+  % empty input should not generate error
+  verifyEmpty(testCase, fieldnames(feature_cm_gradhomo()));
+  % test data
+  dim = 10;
+  nData = 300;
+  X = rand(nData, dim);
+  y = randn(nData, 1);
+  settings.ub = zeros(1, dim);
+  settings.ub = ones(1, dim);
+  settings.blocks = 2*ones(1, dim);
+  % output fields without settings
+  featFields = {'grad_mean', 'grad_std'};
+  ft = feature_cm_gradhomo(X, y, settings);
+  returnedFields = fieldnames(ft);
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+end
+
 function testCMAngle(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_cm_angle()));
@@ -21,7 +39,6 @@ function testCMAngle(testCase)
   returnedFields = fieldnames(ft);
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
 end
-
 
 function testInfocontent(testCase)
   % empty input should not generate error

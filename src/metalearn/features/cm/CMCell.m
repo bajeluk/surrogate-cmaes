@@ -121,7 +121,8 @@ classdef CMCell
           cl_distance = 'euclidean';
         end
         % minkowski and mahalanobis settings
-        if any(strcmp(cl_distance, {'minkowski', 'mahalanobis'})) && nargin == 3
+        if any(strcmp(cl_distance, {'minkowski', 'mahalanobis'})) && ...
+            nargin == 3 && ~isempty(dist_param)
           [pDistances, id] = pdist2(obj.X, obj.X, cl_distance, dist_param, 'Smallest', 2);
         % other distances
         else
