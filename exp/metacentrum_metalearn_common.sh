@@ -164,7 +164,7 @@ function submit_model() {
             HI=${OPT_IND[(($N_OPTS - 1))]}
             submit_sequence $LO 1 $HI
 
-            ID=(($ID + 1))
+            ID=$((ID + 1))
           done # data sizes
         done # designs
       done # instances
