@@ -63,7 +63,7 @@ OPTS=""
 
 DATASET_PATH=$CWD/data_metalearn
 
-ID="1" # TODO: is this needed?
+ID="1"
 DIMS="2 5 10"
 FUNCS=`echo {1..4}`
 INSTS=`echo {1..5}`
