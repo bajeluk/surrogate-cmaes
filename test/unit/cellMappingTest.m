@@ -3,6 +3,28 @@ function tests = cellMappingTest
   tests = functiontests(localfunctions);
 end
 
+function testCMGrid(testCase)
+  % testing cell mapping grid object
+  
+  % empty input
+  cmg = CMGrid();
+  verifyInstanceOf(testCase, cmg, 'CMGrid')
+  fnGrid = fieldnames(cmg);
+  for f = 1:numel(fnGrid)
+    verifyEmpty(testCase, cmg.(fnGrid{f}))
+  end
+  
+  % random input
+  dim = 20;
+  nData = 50*dim;
+  X = rand(nData, dim);
+  y = randn(nData, 1);
+  lb = zeros(1, dim);
+  ub = ones(1, dim);
+  blocks = [4, 4, 3*ones(1, dim-2)];
+  cmg = CMGrid(X, y, lb, ub, blocks);
+end
+
 function testCMCell(testCase)
 % testing cell mapping objects
 

@@ -15,7 +15,7 @@ function ft = feature_cm_convexity(X, y, settings)
 % value of the three neighboring cells, we have an indication for (hard) 
 % convexity/concavity. Averaging these values across all combinations of 
 % three neighboring cells, results in the estimated “probabilities” for 
-% (soft/hard) convexity or concavity. (Kerschke et al., 2017)
+% (soft/hard) convexity or concavity. (Kerschke et al., 2014)
 %
 % settings:
 %   blocks     - number of cell blocks per dimension

@@ -1,4 +1,4 @@
-function [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks)
+function [cmCells, cmId, cmEmpty] = createCMGrid(X, y, lb, ub, blocks)
 % createCMGrid creates grid for calculating cell mapping metafeatures.
 % 
 % [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks)
@@ -13,6 +13,7 @@ function [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks)
 % Output:
 %   cmCells - array of mapping cells
 %   cmId    - cell coordinates in discretized input space
+%   cmEmpty - vector indicating emptyness of cells
 %
 % Example:
 %   
@@ -76,12 +77,13 @@ function [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks)
   
   % init
   maxBlocks = max(blocks);
+  nCells = prod(blocks);
   blockLB = NaN(dim, maxBlocks);
   blockUB = NaN(dim, maxBlocks);
   pointCellId = zeros(nData, dim);
   cellIdVec = cell(1, dim);
   
-  % calculate centers
+  % find cells for each point
   blockSize = (ub-lb)./blocks;
   for d = 1 : dim
     % lower bounds
@@ -102,14 +104,22 @@ function [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks)
   % create cells
   cellLB = NaN(1, dim);
   cellUB = NaN(1, dim);
-  for c = 1:prod(blocks)
+  cmEmpty = true(1, nBlocks);
+  for c = 1:nBlocks
     % find points related to actual cell
     actualPointId = all((repmat(cmId(:, c)', nData, 1) == pointCellId), 2);
-    cellX = X(actualPointId, :);
-    celly = y(actualPointId);
     for d = 1:dim
       cellLB(d) = blockLB(d, (cmId(d, c)));
       cellUB(d) = blockUB(d, (cmId(d, c)));
+    end
+    % not empty cell
+    if any(actualPointId)
+      cellX = X(actualPointId, :);
+      celly = y(actualPointId);
+      cmEmpty(c) = false;
+    else
+      cellX = [];
+      celly = [];
     end
     cmCells(c) = CMCell(cellX, celly, dim, cellLB, cellUB);
   end

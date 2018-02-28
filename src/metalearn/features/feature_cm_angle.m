@@ -5,7 +5,7 @@ function ft = feature_cm_angle(X, y, settings)
 % The cell mapping features discretizes the continuous input space
 % utilizing a pre-defined number of blocks (cells) per dimension. Angle
 % features extract information based on the location of the best and worst
-% point of the cell considering the cell center.
+% point of the cell considering the cell center. (Kerschke et al., 2014)
 %
 % settings:
 %   blocks   - number of cell blocks per dimension

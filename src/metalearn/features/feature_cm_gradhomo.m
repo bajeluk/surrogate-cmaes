@@ -9,7 +9,7 @@ function ft = feature_cm_gradhomo(X, y, settings)
 % each point within a cell, we compute the gradient towards its nearest 
 % neighbor, normalize it, point it towards the better one of the two 
 % neighboring points and afterwards sum up all the normalized gradients 
-% (per cell). (Kerschke et al., 2017)
+% (per cell). (Kerschke et al., 2014)
 %
 % settings:
 %   blocks     - number of cell blocks per dimension

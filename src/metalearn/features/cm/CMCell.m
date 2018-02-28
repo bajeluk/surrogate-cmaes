@@ -18,6 +18,9 @@ classdef CMCell
         if nargin < 1
           X = [];
           y = [];
+          dim = 0;
+          lb = [];
+          ub = [];
         end
       % empty set
       if isempty(X)
@@ -54,6 +57,11 @@ classdef CMCell
       % get point with minimal objective value
       [y, id] = min(obj.y);
       x = obj.X(id, :);
+    end
+    
+    function y_mean = getMean(obj)
+      % get mean objective value
+      y_mean = mean(obj.y);
     end
     
     function d = getDistCtr2Max(obj, distance)
