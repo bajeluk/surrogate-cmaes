@@ -75,8 +75,9 @@ function [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks)
   assert(all(blocks > 0 & mod(blocks, 1) == 0), 'Block numbers has to be natural.')
   
   % init
-  blockLB = cell(1, dim);
-  blockUB = cell(1, dim);
+  maxBlocks = max(blocks);
+  blockLB = NaN(dim, maxBlocks);
+  blockUB = NaN(dim, maxBlocks);
   pointCellId = zeros(nData, dim);
   cellIdVec = cell(1, dim);
   
@@ -84,11 +85,13 @@ function [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks)
   blockSize = (ub-lb)./blocks;
   for d = 1 : dim
     % lower bounds
-    blockLB{d} = lb(d) + (0:(blocks(d)-1)) * blockSize(d);
+    blockLB(d, 1:blocks(d)) = lb(d) + (0:(blocks(d)-1)) * blockSize(d);
     % upper bounds
-    blockUB{d} = blockLB{d} + blockSize(d);
+    blockUB(d, :) = blockLB(d, :) + blockSize(d);
     % for each point find containing cells 
-    pointCellId(:, d) = arrayfun(@(i) find(X(i, d) <= blockUB{d}, 1, 'first'), 1:nData);
+    for i = 1:nData
+      pointCellId(i, d) = find(X(i, d) <= blockUB(d, 1:blocks(d)), 1, 'first');
+    end
     % create id vectors for cells
     cellIdVec{d} = 1:blocks(d);
   end
@@ -97,15 +100,18 @@ function [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks)
   cmId = combvec(cellIdVec{:});
   
   % create cells
+  cellLB = NaN(1, dim);
+  cellUB = NaN(1, dim);
   for c = 1:prod(blocks)
     % find points related to actual cell
     actualPointId = all((repmat(cmId(:, c)', nData, 1) == pointCellId), 2);
     cellX = X(actualPointId, :);
     celly = y(actualPointId);
-    cellSet.dim = dim;
-    cellSet.lb = arrayfun(@(d) blockLB{d}(cmId(d, c)), 1:dim);
-    cellSet.ub = arrayfun(@(d) blockUB{d}(cmId(d, c)), 1:dim);
-    cmCells(c) = CMCell(cellX, celly, cellSet);
+    for d = 1:dim
+      cellLB(d) = blockLB(d, (cmId(d, c)));
+      cellUB(d) = blockUB(d, (cmId(d, c)));
+    end
+    cmCells(c) = CMCell(cellX, celly, dim, cellLB, cellUB);
   end
 
 end

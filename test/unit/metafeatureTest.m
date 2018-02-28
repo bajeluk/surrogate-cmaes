@@ -3,6 +3,24 @@ function tests = metafeatureTest
   tests = functiontests(localfunctions);
 end
 
+function testCMConvexity(testCase)
+  % empty input should not generate error
+  verifyEmpty(testCase, fieldnames(feature_cm_convexity()));
+  % test data
+  dim = 10;
+  nData = 200;
+  X = rand(nData, dim);
+  y = randn(nData, 1);
+  settings.lb = zeros(1, dim);
+  settings.ub = ones(1, dim);
+  settings.blocks = [4, 4, 3*ones(1, dim-2)];
+  % output fields without settings
+  featFields = {'concave_soft', 'concave_hard', 'convex_soft', 'convex_hard'};
+  ft = feature_cm_convexity(X, y, settings);
+  returnedFields = fieldnames(ft);
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+end
+
 function testCMGradHomo(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_cm_gradhomo()));
@@ -11,7 +29,7 @@ function testCMGradHomo(testCase)
   nData = 300;
   X = rand(nData, dim);
   y = randn(nData, 1);
-  settings.ub = zeros(1, dim);
+  settings.lb = zeros(1, dim);
   settings.ub = ones(1, dim);
   settings.blocks = 2*ones(1, dim);
   % output fields without settings
@@ -27,7 +45,7 @@ function testCMAngle(testCase)
   % test data
   X = rand(30, 10);
   y = randn(30, 1);
-  settings.ub = zeros(1, 10);
+  settings.lb = zeros(1, 10);
   settings.ub = ones(1, 10);
   settings.blocks = randi(3, 1, 10);
   % output fields without settings

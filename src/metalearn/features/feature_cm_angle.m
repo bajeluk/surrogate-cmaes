@@ -49,7 +49,7 @@ function ft = feature_cm_angle(X, y, settings)
   min_fun = defopts(settings, 'minimize', true);
   lb = defopts(settings, 'lb', min(X));
   ub = defopts(settings, 'ub', max(X));
-  blocks = defopts(settings, 'blocks', 1);
+  blocks = defopts(settings, 'blocks', 2);
   
   if ~min_fun
     y = -y;

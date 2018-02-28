@@ -13,25 +13,35 @@ classdef CMCell
   end
   
   methods
-    function obj = CMCell(X, y, settings)
+    function obj = CMCell(X, y, dim, lb, ub)
       % constructor
-      if nargin < 3
         if nargin < 1
           X = [];
           y = [];
         end
-        settings = struct();
+      % empty set
+      if isempty(X)
+        obj.X = [];
+        obj.y = [];
+        obj.dim = dim;
+        obj.lb = lb;
+        obj.ub = ub;
+        obj.miny = [];
+        obj.minx = [];
+        obj.maxy = [];
+        obj.maxx = [];
+      else
+        obj.X = X;
+        obj.y = y;
+        obj.dim = dim;
+        obj.lb = lb;
+        obj.ub = ub;
+        [obj.miny, id] = min(y);
+        obj.minx = X(id, :);
+        [obj.maxy, id] = max(y);
+        obj.maxx = X(id, :);
       end
-      obj.X = X;
-      obj.y = y;
-      obj.dim = defopts(settings, 'dim', size(X, 2));
-      obj.lb = defopts(settings, 'lb', min(X));
-      obj.ub = defopts(settings, 'ub', max(X));
       obj.center = obj.lb + (obj.lb - obj.ub) / 2;
-      [obj.miny, id] = min(y);
-      obj.minx = X(id, :);
-      [obj.maxy, id] = max(y);
-      obj.maxx = X(id, :);
     end
     
     function [x, y] = getMax(obj)

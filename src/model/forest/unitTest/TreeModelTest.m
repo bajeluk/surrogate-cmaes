@@ -30,7 +30,7 @@ classdef TreeModelTest < ModelTest
     
     % predictor
     predictorFunc = {'Constant', 'LmfitPolynomial', 'Polynomial', ...
-                     'RegressPolynomial'};
+                     'RegressPolynomial', 'CombiPolynomial'};
     weak_coeff = {NaN}; % ConstantModel
     weak_modelSpec = {'constant', 'linear', 'purequadratic', 'interactions', 'quadratic'}; % LmfitPolynomial, Polynomial, RegressPolynomial
     
@@ -55,10 +55,10 @@ classdef TreeModelTest < ModelTest
     % splitGain
     splitGain = {'DEMSD', 'DENN', 'DE', 'MSE', 'Var'}; % {'DEMSD', 'DENN', 'DE', 'Gradient', 'MSE', 'Var'}; 
       % GradientSplitGain useful only in case of second derivatives
-    splitGain_minSize = {1};
+    splitGain_minSize = {[]};
     splitGain_degree = {[]};
     splitGain_polyMethod = {''};
-    splitGain_modelFunc = {[]};
+    splitGain_modelFunc = {@CombiPolynomialModel};
     splitGain_weightedGain = {true};
     splitGain_k = {1}; % DENNSplitGain
     splitGain_regularization = {0}; % GradientSplitGain
@@ -209,7 +209,11 @@ classdef TreeModelTest < ModelTest
       treeModelOptions.weak_coeff = weak_coeff;
       treeModelOptions.weak_modelSpec = weak_modelSpec;
       % split options
-      treeModelOptions.tree_splitFunc = str2func(sprintf('%sSplit', splitFunc));
+      if iscell(splitFunc)
+        treeModelOptions.tree_splitFunc = cellfun(@(x) str2func(sprintf('%sSplit', x)), splitFunc, 'UniformOutput', false);
+      else
+        treeModelOptions.tree_splitFunc = str2func(sprintf('%sSplit', splitFunc));
+      end
       treeModelOptions.split_transformationOptions = split_transformationOptions;
       treeModelOptions.split_soft = split_soft;
       treeModelOptions.split_lambda = split_lambda;

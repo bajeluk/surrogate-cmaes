@@ -39,7 +39,7 @@ function ft = feature_cm_gradhomo(X, y, settings)
   % parse settings
   lb = defopts(settings, 'lb', min(X));
   ub = defopts(settings, 'ub', max(X));
-  blocks = defopts(settings, 'blocks', 1);
+  blocks = defopts(settings, 'blocks', 2);
   metric = defopts(settings, 'distance', 'euclidean');
   % default dist_param value
   switch metric
@@ -64,7 +64,8 @@ function ft = feature_cm_gradhomo(X, y, settings)
                              
   % checkout number of filled cells
   if nCells > numel(gradHomo)
-    warning('%d out of %d cells (%0.2f%%) contain less than three observations.', ...
+    warning(['%d out of %d cells (%0.2f%%) contain less than three observations.', ...
+             'This may affect the results.'], ...
             nCells - numel(gradHomo), nCells, (nCells - numel(gradHomo))/nCells * 100)
   end
   
