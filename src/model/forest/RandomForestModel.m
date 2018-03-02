@@ -26,15 +26,15 @@ classdef RandomForestModel < WeakModel
       obj = obj@WeakModel(modelOptions);
       
       % model specific options
-      obj.rf_treeOptions = defopts(modelOptions, 'treeOptions', modelOptions);
-      obj.rf_treeFunc = defopts(modelOptions, 'treeFunc', @(x) TreeModel(x));
-      obj.rf_nTrees = defopts(modelOptions, 'nTrees', 100);
-      obj.rf_nFeaturesToSample = defopts(modelOptions, 'nFeaturesToSample', -1);
-      obj.rf_sampleWithReplacement = defopts(modelOptions, 'sampleWithReplacement', true);
-      obj.rf_inBagFraction = defopts(modelOptions, 'inBagFraction', 1);
-      obj.rf_boosting = defopts(modelOptions, 'boosting', false);
-      obj.rf_shrinkage = defopts(modelOptions, 'shrinkage', 0.5);
-      obj.rf_lossFunc = defopts(modelOptions, 'lossFunc', @mseLossFunc);
+      obj.rf_treeOptions = defopts(modelOptions, 'rf_treeOptions', modelOptions);
+      obj.rf_treeFunc = defopts(modelOptions, 'rf_treeFunc', @(x) TreeModel(x));
+      obj.rf_nTrees = defopts(modelOptions, 'rf_nTrees', 100);
+      obj.rf_nFeaturesToSample = defopts(modelOptions, 'rf_nFeaturesToSample', -1);
+      obj.rf_sampleWithReplacement = defopts(modelOptions, 'rf_sampleWithReplacement', true);
+      obj.rf_inBagFraction = defopts(modelOptions, 'rf_inBagFraction', 1);
+      obj.rf_boosting = defopts(modelOptions, 'rf_boosting', false);
+      obj.rf_shrinkage = defopts(modelOptions, 'rf_shrinkage', 0.5);
+      obj.rf_lossFunc = defopts(modelOptions, 'rf_lossFunc', @mseLossFunc);
     end
     
     function obj = trainModel(obj, X, y)
@@ -51,14 +51,19 @@ classdef RandomForestModel < WeakModel
       
       yPred = zeros(size(y));
       obj.rf_trees = repmat(obj.treeTemplate, obj.rf_nTrees, 1);
+      % tree training loop
       for iTree = 1:obj.rf_nTrees
+        % sample data for tree training
         sample = struct;
         sample.features = datasample(1:size(X, 2), nFeatures, 2, 'Replace', false);
         sample.idx = datasample((1:size(X, 1))', nRows, 1, 'Replace', obj.rf_sampleWithReplacement);
         sample.X = X(sample.idx, sample.features);
         sample.y = y(sample.idx, :);
+        % create tree
         obj.rf_trees(iTree).features = sample.features;
         obj.rf_trees(iTree).model = obj.rf_treeFunc(obj.rf_treeOptions);
+        
+        % boosting
         if obj.rf_boosting
           % fit to residuals
           sample.yPred = yPred(sample.idx, :);
@@ -85,6 +90,8 @@ classdef RandomForestModel < WeakModel
           end
           obj.rf_trees(iTree).weight = w * obj.rf_shrinkage;
           yPred = yPred + obj.rf_trees(iTree).weight * yPredNew;
+        
+        % bagging
         else
           obj.rf_trees(iTree).model = obj.rf_trees(iTree).model.trainModel(...
               sample.X, sample.y);
