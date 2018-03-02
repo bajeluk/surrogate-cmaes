@@ -166,12 +166,12 @@ function results = testOneModel(data, dim, func, inst, N, ...
 
       results(i).model = mdl;
       results(i).Y = Yte';
-      results(i).Ypred = mdl.predict(Xte');
+      results(i).Ypred = mdl.modelPredict(Xte');
     catch err
       report = getReport(err);
       warning(['Training of model ''%s'' on %dD, func %d, inst %d, N %d' ...
                ' failed with error:\n%s'], ...
-        model, dim, func, inst, N, report);
+        modelType, dim, func, inst, N, report);
     end
   end % CV loop
 
