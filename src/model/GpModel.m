@@ -26,6 +26,8 @@ classdef GpModel < Model
     infFcn
     nErrors
     trainLikelihood
+    cmaesCheckBounds
+    nRestarts
 
     % Dimensionality-reduction specific fields
     dimReduction          % Reduce dimensionality for model by eigenvectors
@@ -50,7 +52,7 @@ classdef GpModel < Model
       else
         obj.options = modelOptions;
       end
-      
+
       % computed settings
       obj.dim       = size(xMean, 2);
       obj.shiftMean = zeros(1, obj.dim);
@@ -60,13 +62,31 @@ classdef GpModel < Model
 
       % Optimization Toolbox check
       obj.options.trainAlgorithm = defopts(obj.options, 'trainAlgorithm', 'fmincon');
+
       if (strcmpi(obj.options.trainAlgorithm, 'fmincon') ...
           && ~license('checkout', 'optimization_toolbox'))
         warning('GpModel: Optimization Toolbox license not available. Switching to minimize().');
         obj.options.trainAlgorithm = 'minimize';
       end
 
+      obj.nRestarts = defopts(obj.options, 'nRestarts', 1);
+
       % GP hyper-parameter settings
+      if (isfield(obj.options, 'hypOptions'))
+        % if covariance function, starting points and bounds are all defined in a single struct, expand it
+        if (isfield(obj.options.hypOptions, 'hyp'))
+          obj.options.hyp = obj.options.hypOptions.hyp;
+        end
+
+        if (isfield(obj.options.hypOptions, 'covBounds'))
+          obj.options.covBounds = obj.options.hypOptions.covBounds;
+        end
+
+        if (isfield(obj.options.hypOptions, 'covFcn'))
+          obj.options.covFcn = obj.options.hypOptions.covFcn;
+        end
+      end
+
       if (~isfield(obj.options, 'hyp'))
         obj.options.hyp = struct();
       end
@@ -102,6 +122,7 @@ classdef GpModel < Model
         obj.covBounds = [repmat(obj.covBounds(1,:), obj.dim, 1); obj.covBounds(2:end,:)];
       end
       obj.likBounds = defopts(obj.options, 'likBounds', log([1e-6, 10]));
+      obj.cmaesCheckBounds = defopts(obj.options, 'cmaesCheckBounds', true);
 
       % wrap the starting point for hyperparameters inside corresponding bounds
       obj.hyp.cov = min(obj.covBounds(:, 2), max(obj.covBounds(:,1), obj.hyp.cov));
@@ -168,7 +189,6 @@ classdef GpModel < Model
       elseif (isequal(obj.meanFcn, @meanLinear))
         obj.hyp.mean = median(yTrain) / obj.dim * ones(obj.dim,1);
       end
-      
 
       alg = obj.options.trainAlgorithm;
 
@@ -198,34 +218,55 @@ classdef GpModel < Model
         lb = lb(~const_hyp_idx);
         ub = ub(~const_hyp_idx);
 
-        % gp() with linearized version of the hyper-parameters
-        f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, linear_hyp_start, const_hyp_idx);
-
-        if (strcmpi(alg, 'fmincon'))
-          [obj, opt, trainErr] = obj.trainFmincon(linear_hyp, obj.getDataset_X(), yTrain, lb, ub, f);
-
-          if (trainErr)
-            % fprintf('Trying CMA-ES...\n');
-            alg = 'cmaes';
-          end
+        if (obj.nRestarts > 1)
+          multi_start_points = lhsdesign(obj.nRestarts - 1, length(linear_hyp), 'smooth', 'off');
+          linear_hyp = [linear_hyp; multi_start_points];
         end
-        if (strcmpi(alg, 'cmaes'))
-          [obj, opt, trainErr] = obj.trainCmaes(linear_hyp, obj.getDataset_X(), yTrain, lb, ub, f);
-          if (trainErr)
+
+        trainErrs = false(obj.nRestarts);
+        for i = 1:obj.nRestarts
+          fprintf('%d / %d optimization trial\n', i, obj.nRestarts);
+
+          % gp() with linearized version of the hyper-parameters
+          f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, linear_hyp_start, const_hyp_idx);
+
+          if (strcmpi(alg, 'fmincon'))
+            [obj, opt, lik, trainErr] = obj.trainFmincon(linear_hyp(i, :), obj.getDataset_X(), yTrain, lb, ub, f);
+
+            if (trainErr)
+              fprintf('Trying CMA-ES...\n');
+              alg = 'cmaes';
+            end
+          end
+          if (strcmpi(alg, 'cmaes'))
+            [obj, opt, lik, trainErr] = obj.trainCmaes(linear_hyp(i, :), obj.getDataset_X(), yTrain, lb, ub, f);
+          end
+          trainErrs(i) = trainErr;
+
+          % update the optimum
+          if (~trainErr && lik < obj.trainLikelihood)
+            linear_hyp_start(~const_hyp_idx) = opt;
+            opt = linear_hyp_start;
+            obj.trainGeneration = generation;
+            obj.hyp = rewrap(obj.hyp, opt);
+            obj.trainLikelihood = lik;
+          elseif (trainErr)
             % DEBUG OUTPUT:
-            fprintf(2, '.. model is not successfully trained, likelihood = %f\n', obj.trainLikelihood);
-            return;
+            fprintf('Optimization trial failed.\n');
           end
-        end
 
-        linear_hyp_start(~const_hyp_idx) = opt;
-        opt = linear_hyp_start;
-        obj.trainGeneration = generation;
-        obj.hyp = rewrap(obj.hyp, opt);
+          i = i + 1;
+
+        end % multistart loop
 
         % DEBUG OUTPUT:
-        % fprintf('.. model-training likelihood = %f\n', obj.trainLikelihood);
+        fprintf('.. model-training likelihood = %f\n', obj.trainLikelihood);
         % disp(obj.hyp);
+
+        if (all(trainErrs))
+          % DEBUG OUTPUT:
+          fprintf(2, '.. model is not successfully trained, likelihood = %f\n', obj.trainLikelihood);
+        end
       else
         error('GpModel.train(): train algorithm "%s" is not known.\n', alg);
       end
@@ -291,7 +332,7 @@ classdef GpModel < Model
       obj.hyp = hyp_;
     end
 
-    function [obj, opt, trainErr] = trainFmincon(obj, linear_hyp, X, y, lb, ub, f)
+    function [obj, opt, fval, trainErr] = trainFmincon(obj, linear_hyp, X, y, lb, ub, f)
       % train with Matlab's fmincon() from the Optimization toolbox
       %
       global modelTrainNErrors;
@@ -310,12 +351,11 @@ classdef GpModel < Model
         trainErr = true;
       else
         % training itself
-        % fprintf('Model training (fmincon), init fval = %f\n', num2str(initial));
+        fprintf('Model training (fmincon), init fval = %.2f\n', initial);
         try
           modelTrainNErrors = 0;
           [opt, fval] = fmincon(f, linear_hyp', [], [], [], [], lb, ub, nonlnc, fminconOpts);
           obj.nErrors = modelTrainNErrors;
-          obj.trainLikelihood = fval;
           if (isnan(fval)  ||  initial - fval < 0.1)
             % final likelihood is not a valid value or
             % the shift in likelihood is almost none, the model is probably
@@ -330,7 +370,7 @@ classdef GpModel < Model
       end
     end
 
-    function [obj, opt, trainErr] = trainCmaes(obj, linear_hyp, X, y, lb, ub, f)
+    function [obj, opt, fval, trainErr] = trainCmaes(obj, linear_hyp, X, y, lb, ub, f)
       % train with CMA-ES
       %
       global modelTrainNErrors;
@@ -345,7 +385,7 @@ classdef GpModel < Model
       cmaesopt.Seed = 'inherit';
       sigma = [0.3*(ub - lb)]';
       % sigma(end) = min(10*mean(sigma(1:end-1)), sigma(end));
-      if (length(obj.hyp.cov) > 2)
+      if (length(obj.hyp.cov) > 2 && obj.cmaesCheckBounds)
         % there is ARD covariance
         % try run cmaes for 500 funevals to get bounds for covariances
         MAX_DIFF = 2.5;
@@ -386,7 +426,6 @@ classdef GpModel < Model
         trainErr = true;
       end
       obj.nErrors = modelTrainNErrors;
-      obj.trainLikelihood = fval;
     end
 
 
@@ -400,7 +439,7 @@ classdef GpModel < Model
         'TolX', 1e-7, ...
         'MaxIter', 500, ...
         'MaxFunEvals', 500, ...
-        'Display', 'off' ...
+        'Display', 'on' ...
         );
       covarianceDim = length(obj.hyp.cov) - 1;
       if (covarianceDim > 1)
