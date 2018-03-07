@@ -154,7 +154,7 @@ classdef RandomForestModelTest < ModelTest
       fprintf('***************** f%02d  %dD  [-%d, %d] *****************\n', fNum, dim, m, m)
       printStructure(params);
       
-      [model, train, test, time] = testCase.testCoco(modelFunc, fNum, m);
+      [model, train, test, time] = testCase.testCoco(modelFunc, fNum, dim, m);
     end
     
   end

@@ -124,7 +124,7 @@ classdef Split
       tresholds = unique(values);
       n = numel(tresholds);
       nQuant = obj.split_nQuantize;
-      if ~isnumeric(nQuand)
+      if ~isnumeric(nQuant)
         nQuant = eval(nQuant);
       end
       % quantization

@@ -40,10 +40,24 @@ classdef RandomForestModel < WeakModel
     function obj = trainModel(obj, X, y)
       % train the model based on the data (X,y)
       
-      nFeatures = obj.rf_nFeaturesToSample;
-      if nFeatures <= 0
-        nFeatures = size(X, 2);
+      dim = size(X, 2);
+      % checkout number of features for model training
+      if ischar(obj.rf_nFeaturesToSample)
+        try
+          % the following expression can contain dim value e.g.
+          % 'ceil(dim/3)'
+          nFeatures = eval(obj.rf_nFeaturesToSample);
+        catch err
+          warning('rf_nFeaturesToSample could not be evaluated due to the following error: %s', err.message)
+          nFeatures = dim;
+        end
+      else
+        nFeatures = obj.rf_nFeaturesToSample;
       end
+      if ~ismember(nFeatures, 1:dim)
+        nFeatures = dim;
+      end
+      % number of data
       nRows = round(size(X, 1) * obj.rf_inBagFraction);
       if nRows <= 0
         nRows = size(X, 1);
