@@ -6,24 +6,31 @@ classdef GradientTreeModel < TreeModel
   methods
     function obj = GradientTreeModel(modelOptions)
       % constructor
-      splitGainOptions.splitGain_weightedGain = false;
-      splitGainOptions.splitGain_regularization = defopts(modelOptions, 'splitGain_regularization', 0);
-      modelOptions.tree_splitGain = GradientSplitGain(splitGainOptions);
+      modelOptions.splitGain_weightedGain = false;
+      modelOptions.tree_regularization = defopts(modelOptions, 'tree_regularization', 0);
+      % splitGain_regularization and tree_regularization should have the
+      % same values
+      modelOptions.splitGain_regularization = defopts(modelOptions, ...
+        'splitGain_regularization', modelOptions.tree_regularization);
+      modelOptions.tree_splitGainFunc = @GradientSplitGain;
       modelOptions.tree_predictorFunc = @ConstantModel;
       modelOptions.tree_lossFunc = @mseLossFunc;
       obj = obj@TreeModel(modelOptions);
       
       % specific model options
-      obj.tree_regularization = defopts(modelOptions, 'tree_regularization', 0);
+      obj.tree_regularization = modelOptions.tree_regularization;
     end
   end
   
   methods (Access = protected)
-    function predictor = trainPredictor(obj, X, y)
+    function predictor = trainPredictor(obj, X, y, modelID)
       G = sum(y(:, 1));
       H = sum(y(:, 2));
       w = repmat(-G/(H + obj.tree_regularization), size(y, 1), 1);
-      predictor = obj.tree_predictorFunc();
+      predictor = obj.tree_predictor();
+      if isprop(predictor, 'weak_models')
+        predictor = predictor.setUseModel(modelID);
+      end
       predictor = predictor.trainModel(X, w);
     end
     

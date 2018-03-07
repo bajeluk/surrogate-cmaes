@@ -40,39 +40,14 @@ classdef RandomForestModel < WeakModel
     function obj = trainModel(obj, X, y)
       % train the model based on the data (X,y)
       
-      dim = size(X, 2);
-      % checkout number of features for model training
-      if ischar(obj.rf_nFeaturesToSample)
-        try
-          % the following expression can contain dim value e.g.
-          % 'ceil(dim/3)'
-          nFeatures = eval(obj.rf_nFeaturesToSample);
-        catch err
-          warning('rf_nFeaturesToSample could not be evaluated due to the following error: %s', err.message)
-          nFeatures = dim;
-        end
-      else
-        nFeatures = obj.rf_nFeaturesToSample;
-      end
-      if ~ismember(nFeatures, 1:dim)
-        nFeatures = dim;
-      end
-      % number of data
-      nRows = round(size(X, 1) * obj.rf_inBagFraction);
-      if nRows <= 0
-        nRows = size(X, 1);
-      end
+      [nRows, nFeatures] = obj.trainDataProperties(X);
       
       yPred = zeros(size(y));
       obj.rf_trees = repmat(obj.treeTemplate, obj.rf_nTrees, 1);
       % tree training loop
       for iTree = 1:obj.rf_nTrees
         % sample data for tree training
-        sample = struct;
-        sample.features = datasample(1:size(X, 2), nFeatures, 2, 'Replace', false);
-        sample.idx = datasample((1:size(X, 1))', nRows, 1, 'Replace', obj.rf_sampleWithReplacement);
-        sample.X = X(sample.idx, sample.features);
-        sample.y = y(sample.idx, :);
+        sample = obj.createSample(X, y, nFeatures, nRows);
         % create tree
         obj.rf_trees(iTree).features = sample.features;
         obj.rf_trees(iTree).model = obj.rf_treeFunc(obj.rf_treeOptions);
@@ -144,6 +119,48 @@ classdef RandomForestModel < WeakModel
         nFeatures = dim;
       end
       N = sampleTree.getMinTrainPoints(nFeatures);
+    end
+    
+  end
+  
+  methods(Access = protected)
+    
+    function [nData, nDim] = trainDataProperties(obj, X)
+    % returns number of data and number of dimensions (features) for forest
+    % training
+    
+      [N, dim] = size(X);
+      % check number of features
+      if ischar(obj.rf_nFeaturesToSample)
+        try
+          % the following expression can contain dim and N value e.g.
+          % 'ceil(dim/log(N))'
+          nDim = eval(obj.rf_nFeaturesToSample);
+          assert(isnumeric(nDim), 'Result of eval function is not numerical.')
+        catch err
+          warning('rf_nFeaturesToSample could not be evaluated due to the following error: %s', err.message)
+          nDim = dim;
+        end
+      else
+        nDim = obj.rf_nFeaturesToSample;
+      end
+      if ~ismember(nDim, 1:dim)
+        nDim = dim;
+      end
+      
+      % check number of data
+      nData = round(N * obj.rf_inBagFraction);
+      if ~ismember(nData, 1:nData)
+        nData = N;
+      end
+    end
+    
+    function sample = createSample(obj, X, y, nFeatures, nRows)
+    % creates sample of training data
+      sample.features = datasample(1:size(X, 2), nFeatures, 2, 'Replace', false);
+      sample.idx = datasample((1:size(X, 1))', nRows, 1, 'Replace', obj.rf_sampleWithReplacement);
+      sample.X = X(sample.idx, sample.features);
+      sample.y = y(sample.idx, :);
     end
     
   end

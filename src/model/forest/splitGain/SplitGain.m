@@ -113,6 +113,9 @@ classdef (Abstract) SplitGain
       data.y = obj.splitGain_y(idx, :);
       if size(data.y, 2) > 1
         % gradient model
+%         data.value = obj.getValue(data);
+%         modelID = 1;
+%         return
       elseif isempty(obj.splitGain_modelFunc) && isempty(obj.splitGain_degree)
         % constant model
         mu = sum(data.y) / numel(data.y);
@@ -187,7 +190,7 @@ classdef (Abstract) SplitGain
         end
       end
       getValData = data;
-      if iscell(data.yPred)
+      if isfield(data, 'yPred') && iscell(data.yPred)
         getValData.yPred = cell2mat(getValData.yPred);
         if obj.splitGain_computeSd2
           getValData.sd2   = cell2mat(getValData.sd2);

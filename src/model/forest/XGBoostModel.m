@@ -8,13 +8,16 @@ classdef XGBoostModel < RandomForestModel
   methods
     function obj = XGBoostModel(modelOptions)
       % constructor
-      modelOptions.boosting = true;
-      modelOptions.treeFunc = defopts(modelOptions, 'treeFunc', ...
+      modelOptions.rf_boosting = true;
+      modelOptions.rf_treeFunc = defopts(modelOptions, 'treeFunc', ...
       @(x) GradientTreeModel(x));
       obj = obj@RandomForestModel(modelOptions);
       
       % model specific options
       obj.rf_shrinkage = defopts(modelOptions, 'rf_shrinkage', 0.1);
+      if obj.rf_shrinkage > 1 || obj.rf_shrinkage < 0
+        obj.rf_shrinkage = 0.1;
+      end
       obj.rf_objectiveGrad1Func = defopts(modelOptions, 'rf_objectiveGrad1Func', ...
         @(y, yPred) 2*(yPred-y));
       obj.rf_objectiveGrad2Func = defopts(modelOptions, 'rf_objectiveGrad2Func', ...
@@ -23,23 +26,15 @@ classdef XGBoostModel < RandomForestModel
     
     function obj = trainModel(obj, X, y)
       % train the model based on the data (X,y)      
-      nFeatures = obj.rf_nFeaturesToSample;
-      if nFeatures <= 0
-        nFeatures = size(X, 2);
-      end
-      nRows = round(size(X, 1) * obj.rf_inBagFraction);
-      if nRows <= 0
-        nRows = size(X, 1);
-      end
+      
+      [nRows, nFeatures] = obj.trainDataProperties(X);
       
       yPred = zeros(size(y));
       obj.rf_trees = repmat(obj.treeTemplate, obj.rf_nTrees, 1);
       for iTree = 1:obj.rf_nTrees
-        sample = struct;
-        sample.features = datasample(1:size(X, 2), nFeatures, 2, 'Replace', false);
-        sample.idx = datasample((1:size(X, 1))', nRows, 1, 'Replace', obj.rf_sampleWithReplacement);
-        sample.X = X(sample.idx, sample.features);
-        sample.y = y(sample.idx, :);
+        % sample data for tree training
+        sample = obj.createSample(X, y, nFeatures, nRows);
+        % create tree
         obj.rf_trees(iTree).features = sample.features;
         obj.rf_trees(iTree).model = obj.rf_treeFunc(obj.rf_treeOptions);
 
@@ -50,6 +45,8 @@ classdef XGBoostModel < RandomForestModel
         obj.rf_trees(iTree).model = obj.rf_trees(iTree).model.trainModel(...
             sample.X, [g h]);
         yPredNew = obj.rf_trees(iTree).model.modelPredict(X(:, sample.features));
+        % scale newly added weights by rf_shringkage after each step of 
+        % tree boosting
         obj.rf_trees(iTree).weight = obj.rf_shrinkage;
         yPred = yPred + obj.rf_trees(iTree).weight * yPredNew;
       end
