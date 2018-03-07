@@ -4,6 +4,7 @@ classdef KMeansSplit < RandomSplit
     split_discrimType % degree for discriminant analysis ('linear', 'quadratic')
     split_includeInput % whether to include input space
     split_kmeans_metric % k-means metric (according to matlab kmeans)
+    split_kmeans_k      % k-means k parameter
   end
   
   methods
@@ -12,6 +13,7 @@ classdef KMeansSplit < RandomSplit
       obj.split_discrimType = defopts(options, 'split_discrimType', {'linear', 'quadratic'});
       obj.split_includeInput = defopts(options, 'split_includeInput', true);
       obj.split_kmeans_metric = defopts(options, 'split_kmeans_metric', 'sqeuclidean');
+      obj.split_kmeans_k      = defopts(options, 'split_kmeans_k', 2);
     end
     
     function best = get(obj, splitGain)
@@ -35,7 +37,7 @@ classdef KMeansSplit < RandomSplit
         else
           Z = Zy;
         end
-        c = kmeans(Z, 2, 'Distance', obj.split_kmeans_metric);
+        c = kmeans(Z, obj.split_kmeans_k, 'Distance', obj.split_kmeans_metric);
         
         % discriminant analysis of two clusters
         if iscell(obj.split_discrimType)

@@ -1,7 +1,7 @@
 classdef RandomRbfSplit < RandomSplit
 % RandomRbfSplit tries some random RBF splits and returns the
 % best split. It selects a random point from X as origin and generates a
-% sphere with given metric
+% sphere with given metric.
 
   properties %(Access = protected)
     split_randrbf_metric % metric (according to the matlab pdist2 
@@ -25,7 +25,7 @@ classdef RandomRbfSplit < RandomSplit
         candidate = obj.splitCandidate;
         featuresMin = min(obj.split_X);
         featuresMax = max(obj.split_X);
-        % select point where the RBF oiginates
+        % select point where the RBF originates
         origin = rand(1, d) ...
           .* (featuresMax - featuresMin) ...
           + featuresMin;

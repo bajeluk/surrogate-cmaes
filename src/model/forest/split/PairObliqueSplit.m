@@ -25,7 +25,7 @@ classdef PairObliqueSplit < Split
       if obj.split_allEqual
         return
       end
-      [n, ~] = size(obj.split_X);
+      [n, dim] = size(obj.split_X);
       % all combinations of pairs
       pair = nchoosek(1:n, 2);
       nPairs = max(floor(obj.split_pairFcn(n)), 1);
@@ -35,12 +35,7 @@ classdef PairObliqueSplit < Split
         v = obj.split_X(pair(pairIds(p), 1), :) - obj.split_X(pair(pairIds(p), 2), :);
         % project X onto v
         values = (obj.split_X * v')';
-        if obj.split_nQuantize > 0 && numel(values) > obj.split_nQuantize
-          mm = minmax(values);
-          tresholds = linspace(mm(1), mm(2), obj.split_nQuantize);
-        else
-          tresholds = unique(values);
-        end
+        tresholds = obj.calcTresholds(values, dim);
         for treshold = tresholds
           candidate = obj.splitCandidate;
           candidate.splitter = obj.createSplitter(@(X) ...

@@ -24,12 +24,8 @@ classdef AxisSplit < Split
       for feature = 1:d
         featureSelector = (1:d == feature)';
         values = obj.split_X(:, feature)';
-        if obj.split_nQuantize > 0 && numel(values) > obj.split_nQuantize
-          mm = minmax(values);
-          tresholds = linspace(mm(1), mm(2), obj.split_nQuantize);
-        else
-          tresholds = unique(values);
-        end
+        tresholds = obj.calcTresholds(values, d);
+        % calculate gain for each treshold
         for treshold = tresholds
           candidate = obj.splitCandidate;
           candidate.splitter = obj.createSplitter(@(X) ... 

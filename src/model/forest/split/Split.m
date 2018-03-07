@@ -116,6 +116,23 @@ classdef Split
         f = @(X) model.predict(transformApply(X, trans)) == 1;
       end
     end
+    
+    function tresholds = calcTresholds(obj, values, dim)
+    % Creates linear quantization of treshold values.
+    % Requires split_nQuantize property (AxisSplit, 
+    % HillClimbingObliqueSplit, and PairObliqueSplit).
+      tresholds = unique(values);
+      n = numel(tresholds);
+      nQuant = obj.split_nQuantize;
+      if ~isnumeric(nQuand)
+        nQuant = eval(nQuant);
+      end
+      % quantization
+      if nQuant > 0 && n > nQuant
+        treshQuantId = unique(round(linspace(1, n, nQuant + 2)));
+        tresholds = tresholds(treshQuantId(2:end-1)); 
+      end
+    end
   end
   
   methods (Access = private, Static)

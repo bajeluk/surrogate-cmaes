@@ -18,8 +18,8 @@ classdef ResidualObliqueSplit < Split
       if obj.split_allEqual
         return
       end
-      % linear regression
-      model = PolynomialModel(struct('modelSpec', obj.split_degree));
+      % polynomial regression
+      model = PolynomialModel(struct('weak_modelSpec', obj.split_degree));
       model = model.trainModel(obj.split_X, obj.split_y);
       c = model.modelPredict(obj.split_X) < obj.split_y;
       
