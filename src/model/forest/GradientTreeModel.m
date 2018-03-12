@@ -27,7 +27,7 @@ classdef GradientTreeModel < TreeModel
       G = sum(y(:, 1));
       H = sum(y(:, 2));
       w = repmat(-G/(H + obj.tree_regularization), size(y, 1), 1);
-      predictor = obj.tree_predictor();
+      predictor = obj.tree_predictorFunc(obj.tree_predictorOpts);
       if isprop(predictor, 'weak_models')
         predictor = predictor.setUseModel(modelID);
       end

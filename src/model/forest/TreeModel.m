@@ -23,8 +23,8 @@ classdef TreeModel < WeakModel
     tree_splitGainFunc % function defining splitGain
     tree_splitGain     % evaluator for split functions
     tree_predictorFunc % function which creates a model in leaf
-    tree_predictorModel% model of function in leaf ('constant', 'linear', ...)
-    tree_predictor     % predictor with appropriate settings
+    tree_predictorOpts % options of weak model in leaf
+    % tree_predictor     % predictor with appropriate settings
     tree_growFull      % grows a full tree then prunes, otherwise prunes during splitting
     tree_lossFunc      % loss function used for pruning
     tree_fuzziness     % use fuzzy splits (range [0,1])
@@ -42,17 +42,11 @@ classdef TreeModel < WeakModel
       obj.tree_lossFunc = defopts(modelOptions, 'tree_lossFunc', @mseLossFunc);
       obj.tree_predictorFunc = defopts(modelOptions, 'tree_predictorFunc', ...
         @ConstantModel);
-      obj.tree_predictor = obj.tree_predictorFunc(modelOptions);
-%       obj.tree_predictorModel = defopts(modelOptions, 'tree_predictorModel', ...
-%         defopts(modelOptions, 'weak_modelSpec', 'constant'));
-%       if ~iscell(obj.tree_predictorModel)
-%         obj.tree_predictorModel = {obj.tree_predictorModel};
-%       end
-%       for c = 1:numel(obj.tree_predictorModel)
-%         weakOptions = modelOptions;
-%         weakOptions.weak_modelSpec = obj.tree_predictorModel{c};
-%         obj.tree_predictor{c} = obj.tree_predictorFunc(weakOptions);
-%       end
+      % predictor is a weak model of WeakModel class the ancestor of handle
+      % class, i.e. it should be created when it is needed and not copied
+      obj.tree_predictorOpts = defopts(modelOptions, 'tree_predictorOpts', ...
+        modelOptions);
+      % obj.tree_predictor = obj.tree_predictorFunc(modelOptions);
       obj.tree_splitFunc = defopts(modelOptions, 'tree_splitFunc', ...
         {@AxisSplit}); 
       if ~iscell(obj.tree_splitFunc)
@@ -61,10 +55,6 @@ classdef TreeModel < WeakModel
       obj.tree_splits = cellfun(@(x) x(modelOptions), obj.tree_splitFunc, 'UniformOutput', false);
       obj.tree_splitGainFunc = defopts(modelOptions, 'tree_splitGainFunc', ...
         @MSESplitGain);
-%       modelOptions.splitGain_minSize = defopts(modelOptions, 'splitGain_minSize', ...
-%         obj.tree_predictor.getMinTrainPoints(dim) + 1);
-%         @(dim) min(arrayfun(@(x) obj.tree_predictor{x}.getMinTrainPoints(dim), ...
-%                1:numel(obj.tree_predictor))) + 1);
       obj.tree_splitGain = obj.tree_splitGainFunc(modelOptions);
       obj.tree_fuzziness = defopts(modelOptions, 'tree_fuzziness', 0);
     end
@@ -92,9 +82,8 @@ classdef TreeModel < WeakModel
     
     function N = getMinTrainPoints(obj, dim)
     % returns minimal number of points necessary to train the model
-%       N = min(arrayfun(@(x) obj.tree_predictor{x}.getMinTrainPoints(dim), ...
-%                        1:numel(obj.tree_predictor))) + 1;
-        N = obj.tree_predictor.getMinTrainPoints(dim) + 1;
+        treePredictor = obj.tree_predictorFunc(obj.tree_predictorOpts);
+        N = treePredictor.getMinTrainPoints(dim) + 1;
     end
     
     function obj = prune(obj, X, y)
@@ -175,7 +164,7 @@ classdef TreeModel < WeakModel
     end
     
     function predictor = trainPredictor(obj, X, y, modelID)
-      predictor = obj.tree_predictor();
+      predictor = obj.tree_predictorFunc(obj.tree_predictorOpts);
       if isprop(predictor, 'weak_models') % && (numel(predictor.weak_models) > 1)
         predictor = predictor.setUseModel(modelID);
       end
@@ -273,7 +262,7 @@ classdef TreeModel < WeakModel
         current = struct;
         current.X = [obj.tree_nodes(left.iNode).X; obj.tree_nodes(right.iNode).X];
         current.y = [obj.tree_nodes(left.iNode).y; obj.tree_nodes(right.iNode).y];
-        predictorNew = obj.tree_predictor();
+        predictorNew = obj.tree_predictorFunc(obj.tree_predictorOpts);
         predictorNew = predictorNew.trainModel(current.X, current.y);
         objectiveNew = obj.tree_growFull(y, predictorNew.modelPredict(X));
         

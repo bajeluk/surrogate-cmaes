@@ -30,18 +30,17 @@ classdef XGBoostModelTest < ModelTest
     lossFunc  = {'mse'};
     fuzziness = {0.1};
     
-    % predictor
-    predictorFunc = {'CombiPolynomial'};
+    % predictor - XGBoost should use only constant model
+    predictorFunc = {'Constant'};
     % predictorFunc = {'Constant', 'LmfitPolynomial', 'Polynomial', ...
     %                  'RegressPolynomial', 'CombiPolynomial'};
     weak_coeff = {NaN}; % ConstantModel
-    weak_modelSpec = {{'constant', 'linear', 'purequadratic', 'interactions', 'quadratic'}}; % LmfitPolynomial, Polynomial, RegressPolynomial
+    weak_modelSpec = {'constant'}; % {'constant', 'linear', 'purequadratic', 'interactions', 'quadratic'}}; % LmfitPolynomial, Polynomial, RegressPolynomial
     
     % split
-    splitFunc = {'Axis'};
-    % splitFunc = {'Axis', 'Gaussian', 'HillClimbingOblique', 'KMeans', ...
-    %              'PairOblique', 'RandomPolynomial', 'RandomRbf', ...
-    %              'ResidualOblique'};
+    splitFunc = {'Axis', 'Gaussian', 'HillClimbingOblique', 'KMeans', ...
+                 'PairOblique', 'RandomPolynomial', 'RandomRbf', ...
+                 'ResidualOblique'};
     split_transformationOptions = {struct};
     split_soft = {false};
     split_lambda = {1};
@@ -56,14 +55,12 @@ classdef XGBoostModelTest < ModelTest
     split_randrbf_metric = {'euclidean'}; % RandomRbfSplit
     split_degree = {'linear'}; % RandomPolynomialSplit, ResidualObliqueSplit
     
-    % splitGain
-    splitGain = {'DEMSD'};
-    % splitGain = {'DEMSD', 'DENN', 'DE', 'MSE', 'Var'}; % {'DEMSD', 'DENN', 'DE', 'Gradient', 'MSE', 'Var'}; 
-      % GradientSplitGain useful only in case of second derivatives
+    % splitGain - XGBoost uses gradientSplitGain
+    splitGain = {'Gradient'};
     splitGain_minSize = {[]};
     splitGain_degree = {[]};
     splitGain_polyMethod = {''};
-    splitGain_modelFunc = {@CombiPolynomialModel};
+    splitGain_modelFunc = {@Constant};
     splitGain_weightedGain = {true};
     splitGain_k = {1}; % DENNSplitGain
     splitGain_regularization = {0, 1}; % GradientSplitGain
