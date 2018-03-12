@@ -15,13 +15,16 @@ classdef ForestModel < Model
     sampleOpts            % options and settings for the CMA-ES sampling
     options
     
+    % forest model specific fields
     forestModel           % forest model
+    forestType            % type of forest | bagging, lsboost, xgboost
   end
 
   methods
     function obj = ForestModel(modelOptions, xMean)
       % constructor
-      assert(size(xMean,1) == 1, 'ForestModel (constructor): xMean is not a row-vector.');
+      assert(size(xMean,1) == 1, 'Forest:xnrw', ...
+        'ForestModel (constructor): xMean is not a row-vector.');
       obj.options = modelOptions;
       
       % computed valuesWeakMo
@@ -35,19 +38,22 @@ classdef ForestModel < Model
       obj.transformCoordinates = defopts(modelOptions, 'transformCoordinates', false);
       
       % forest options
-%       obj.forestModel = defopts(modelOptions, 'forestModel', []);
-%       if isempty(obj.forestModel)
-%         modelOptions = struct;
-%         modelOptions.nTrees = 10;
-%       end
+      obj.forestType = defopts(modelOptions, 'forestType', 'bagging');
       % construct random forest model
-      obj.forestModel = RandomForestModel(modelOptions);
+      switch obj.forestType
+        case 'bagging'
+          modelOptions.rf_boosting = false;
+          obj.forestModel = RandomForestModel(modelOptions);
+        case {'boosting', 'lsboost'}
+          modelOptions.rf_boosting = true;
+          obj.forestModel = RandomForestModel(modelOptions);
+        case 'xgboost'
+          obj.forestModel = XGBoostModel(modelOptions);
+      end
     end
 
     function nData = getNTrainData(obj)
       % returns the required number of data for training the model
-      % TODO: *write this* properly according to dimension and
-      %       weak learner set in options
       nData = obj.forestModel.getMinTrainPoints(obj.dim);
     end
 

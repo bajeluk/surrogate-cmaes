@@ -49,6 +49,7 @@ classdef XGBoostModel < RandomForestModel
         % tree boosting
         obj.rf_trees(iTree).weight = obj.rf_shrinkage;
         yPred = yPred + obj.rf_trees(iTree).weight * yPredNew;
+        fprintf('Forest MSE: %d\n', mseLossFunc(y, yPred)) 
       end
     end
   end

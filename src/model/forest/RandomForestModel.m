@@ -52,7 +52,7 @@ classdef RandomForestModel < WeakModel
         obj.rf_trees(iTree).features = sample.features;
         obj.rf_trees(iTree).model = obj.rf_treeFunc(obj.rf_treeOptions);
         
-        % boosting
+        % LS boosting
         if obj.rf_boosting
           % fit to residuals
           sample.yPred = yPred(sample.idx, :);

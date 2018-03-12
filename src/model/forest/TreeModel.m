@@ -24,7 +24,6 @@ classdef TreeModel < WeakModel
     tree_splitGain     % evaluator for split functions
     tree_predictorFunc % function which creates a model in leaf
     tree_predictorOpts % options of weak model in leaf
-    % tree_predictor     % predictor with appropriate settings
     tree_growFull      % grows a full tree then prunes, otherwise prunes during splitting
     tree_lossFunc      % loss function used for pruning
     tree_fuzziness     % use fuzzy splits (range [0,1])
@@ -46,7 +45,6 @@ classdef TreeModel < WeakModel
       % class, i.e. it should be created when it is needed and not copied
       obj.tree_predictorOpts = defopts(modelOptions, 'tree_predictorOpts', ...
         modelOptions);
-      % obj.tree_predictor = obj.tree_predictorFunc(modelOptions);
       obj.tree_splitFunc = defopts(modelOptions, 'tree_splitFunc', ...
         {@AxisSplit}); 
       if ~iscell(obj.tree_splitFunc)
