@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -l select=1:ncpus=6:mem=5000mb:scratch_local=1gb:cgroups=cpuacct
+#PBS -l select=1:ncpus=4:mem=7000mb:scratch_local=1gb:cgroups=cpuacct
 
 # cgroups option limits resources usage on PBS nodes, see:
 # https://wiki.metacentrum.cz/wiki/Cgroupy
