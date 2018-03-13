@@ -100,14 +100,21 @@ classdef GpModel < Model
         % something more complex, like '{@covMaterniso, 3}'
         obj.covFcn  = eval(covFcn);
       end
+      if (iscell(obj.covFcn))
+        covfcn = obj.covFcn{1};
+      else
+        covfcn = obj.covFcn;
+      end
+
       % expand covariance lengthscale hyperparameter according to
       % the dimension if ARD covariance specified and lengthscale is scalar
-      if (iscell(obj.covFcn)) covfcn = obj.covFcn{1};
-      else covfcn = obj.covFcn; end
-      if (length(obj.hyp.cov == 2) && (isequal(covfcn, @covSEard) ...
-          || isequal(covfcn, @covMaternard)))
-        obj.hyp.cov = [obj.hyp.cov(1)*ones(obj.dim, 1); obj.hyp.cov(2)];
+      if (length(obj.hyp.cov) >= 2 && (isequal(covfcn, @covSEard) ...
+           || isequal(covfcn, @covMaternard) || isequal(covfcn, @covRQard) ...
+           || isequal(covfcn, @covPERard) ...
+         ))
+        obj.hyp.cov = [repmat(obj.hyp.cov(1), obj.dim, 1); obj.hyp.cov(2:end)];
       end
+
       obj.meanFcn = str2func(defopts(obj.options, 'meanFcn', 'meanConst'));
       obj.likFcn  = str2func(defopts(obj.options, 'likFcn',  'likGauss'));
       obj.infFcn  = str2func(defopts(obj.options, 'infFcn',  'infExactCountErrors'));
@@ -117,16 +124,35 @@ classdef GpModel < Model
       obj.covBounds = defopts(obj.options, 'covBounds', ...
           [-2*ones(size(obj.hyp.cov)), 25*ones(size(obj.hyp.cov))]);
       % expand also covariance Bounds if they do not respect ARD covariance
-      if ((size(obj.covBounds,1) == 2) && (isequal(covfcn, @covSEard) ...
-          || isequal(covfcn, @covMaternard)))
+      if ((size(obj.covBounds,1) >= 2) && (isequal(covfcn, @covSEard) ...
+          || isequal(covfcn, @covMaternard) || isequal(covfcn, @covRQard) ...
+          || isequal(covfcn, @covPERard) ...
+         ))
         obj.covBounds = [repmat(obj.covBounds(1,:), obj.dim, 1); obj.covBounds(2:end,:)];
       end
+
+      if (isequal(covfcn, @covADD))
+        dgs = obj.covFcn{2}{1};
+        dgs = dgs(dgs <= obj.dim);
+        obj.covFcn{2}{1} = dgs;
+        r = length(dgs);
+
+        s = zeros(1, r);
+        for i = 1:r
+          % (d over dgs(i))
+          s(i) = prod(arrayfun(@(j) obj.dim - j, 0:(dgs(i) - 1))) / factorial(dgs(i));
+        end
+
+        obj.hyp.cov = [repmat(obj.hyp.cov(1), obj.dim, 1); ...
+          log(obj.hyp.cov{2} ./ s')];
+        obj.covBounds = [repmat(obj.covBounds(1, :), obj.dim, 1); ...
+                         [log(obj.covBounds(2, 1) * ones(r, 1)) ...
+                          log(obj.covBounds(2, 2) ./ s')] ...
+        ];
+      end
+
       obj.likBounds = defopts(obj.options, 'likBounds', log([1e-6, 10]));
       obj.cmaesCheckBounds = defopts(obj.options, 'cmaesCheckBounds', true);
-
-      % wrap the starting point for hyperparameters inside corresponding bounds
-      obj.hyp.cov = min(obj.covBounds(:, 2), max(obj.covBounds(:,1), obj.hyp.cov));
-      obj.hyp.lik = min(obj.likBounds(2), max(obj.likBounds(1), obj.hyp.lik));
 
       % general model prediction options
       obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
@@ -189,6 +215,27 @@ classdef GpModel < Model
       elseif (isequal(obj.meanFcn, @meanLinear))
         obj.hyp.mean = median(yTrain) / obj.dim * ones(obj.dim,1);
       end
+      
+      % eval hyperparameters
+      if ischar(obj.hyp.lik)
+        obj.hyp.lik = myeval(obj.hyp.lik);
+      end
+
+      if iscell(obj.hyp.cov)
+        hyp_evaled = zeros(length(obj.hyp.cov), 1);
+        i = 1;
+        while i <= length(obj.hyp.cov)
+          s = myeval(obj.hyp.cov{i});
+          k = length(s);
+          hyp_evaled(i:i+(k-1)) = s;
+          i = i + k;
+        end
+        obj.hyp.cov = hyp_evaled;
+      end
+
+      % wrap the starting point for hyperparameters inside corresponding bounds
+      obj.hyp.cov = min(obj.covBounds(:, 2), max(obj.covBounds(:,1), obj.hyp.cov));
+      obj.hyp.lik = min(obj.likBounds(2), max(obj.likBounds(1), obj.hyp.lik));
 
       alg = obj.options.trainAlgorithm;
 
@@ -219,8 +266,10 @@ classdef GpModel < Model
         ub = ub(~const_hyp_idx);
 
         if (obj.nRestarts > 1)
-          multi_start_points = lhsdesign(obj.nRestarts - 1, length(linear_hyp), 'smooth', 'off');
-          linear_hyp = [linear_hyp; multi_start_points];
+          multi_start_points = lhsdesign(obj.nRestarts - 1, length(linear_hyp), 'smooth', 'on');
+          multi_start_points = bsxfun(@times, multi_start_points, exp(ub)-exp(lb));
+          multi_start_points = bsxfun(@plus, multi_start_points, exp(lb));
+          linear_hyp = [linear_hyp; log(multi_start_points)];
         end
 
         trainErrs = false(obj.nRestarts);
@@ -437,8 +486,8 @@ classdef GpModel < Model
         'GradObj', 'on', ...
         'TolFun', 1e-6, ...
         'TolX', 1e-7, ...
-        'MaxIter', 500, ...
-        'MaxFunEvals', 500, ...
+        'MaxIter', 1000, ...
+        'MaxFunEvals', 3000, ...
         'Display', 'on' ...
         );
       covarianceDim = length(obj.hyp.cov) - 1;
