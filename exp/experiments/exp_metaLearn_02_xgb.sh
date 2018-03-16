@@ -63,20 +63,21 @@ OPTS=""
 
 DATASET_PATH=$CWD/data_metalearn
 
-ID="1"
+ID="2000"
 DIMS="2 5 10"
 FUNCS=`seq 1 24`
 INSTS="[1:5,41:50]"
 DESIGNS="lhs"
 DATASIZES="50*dim"
-OPTS=( 1 2 3 4 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 26 27 28 29 30 )
+OPTS=( 1 2 3 4 6 )
 
 QUEUE="24:00:00"
-submit_model "FOREST" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES" "${OPTS[@]}"
+submit_model "XGB" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES" "${OPTS[@]}"
 
-OPTS=( 21 22 23 24 25 )
+ID="4000"
+OPTS=( 5 )
 INSTS="`seq 1 5` `seq 41 50`"
 QUEUE="48:00:00"
-submit_model "FOREST" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES"
+submit_model "XGB" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES"
 
 exit 0

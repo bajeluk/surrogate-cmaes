@@ -154,6 +154,6 @@ opts.fname_template = strjoin({'data_metalearn_', ...
   'design-%s.mat'}, '' ...
 );
 opts.dataset_path = 'data_metalearning';
-opts.rewrite_results = true;
+opts.rewrite_results = false;
 
 % logDir = '/storage/plzen1/home/repjak/public';

@@ -134,12 +134,15 @@ function submit_model() {
   #   * INSTS     -- BBOB instances
   #   * DESIGNS   -- sampling designs
   #   * DATASIZES -- sample sizes
+  #   * OPTSIND   -- option indices (will be read from a file if empty)
   MODEL=`echo $1 | tr '[:upper:]' '[:lower:]'`
   DIMS=$2
   FUNCS=$3
   INSTS=$4
   DESIGNS=$5
   DATASIZES=$6
+  shift 6
+  OPTSIND=( $@ )
 
   FNAME=$( echo $EXPPATH_SHORT/$EXPID/${MODEL}_ids.txt )
 
@@ -148,9 +151,13 @@ function submit_model() {
     exit 1
   fi
 
-  read OPT_IND < $FNAME
-  OPT_IND=( $OPT_IND ) # bash array
-  N_OPTS=${#OPT_IND[@]}
+  if [ ! ${#OPTSIND[@]} -gt 0 ]; then
+    read OPT_IND < $FNAME
+    OPT_IND=( $OPT_IND ) # bash array
+    N_OPTS=${#OPT_IND[@]}
+  else
+    OPT_IND=( ${OPTSIND[@]} )
+  fi
 
   for DIM in $DIMS; do
     for FUNC in $FUNCS; do

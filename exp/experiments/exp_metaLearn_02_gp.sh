@@ -63,22 +63,15 @@ OPTS=""
 
 DATASET_PATH=$CWD/data_metalearn
 
-ID="1081"
-DIMS="2 5"
-FUNCS=`seq 1 24`
-INSTS="`seq 1 5` `seq 41 50`"
+ID="6001"
+DIMS="2"
+FUNCS=`seq 1 1`
+#INSTS="[1,2,3,4,5,41,42,43,44,45,46,47,48,49,50]"
+INSTS="[1:5|41:50]"
 DESIGNS="lhs"
 DATASIZES="50*dim"
 
 QUEUE="24:00:00"
-#submit_model "FOREST" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES"
-submit_model "XGB" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES"
-submit_model "GP" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES"
-
-DIMS="10"
-QUEUE="48:00:00"
-#submit_model "FOREST" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES"
-submit_model "XGB" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES"
 submit_model "GP" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES"
 
 exit 0

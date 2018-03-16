@@ -90,7 +90,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
                 % hash = modelHash(modelOpts);
                 res_fname = sprintf(opts.res_fname_template, dim, func, inst, N, ...
                   designType, modelType, modelOptInd);
-                res_dir = fullfile(opts.exppath, 'results', sprintf('%dD', dim));
+                res_dir = fullfile(opts.exppath, 'results', sprintf('%dD', dim), sprintf('f%d', func));
 
                 if ~exist(res_dir, 'dir')
                   mkdir(res_dir);

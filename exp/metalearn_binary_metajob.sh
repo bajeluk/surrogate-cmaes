@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -l select=1:ncpus=4:mem=7000mb:scratch_local=1gb:cgroups=cpuacct
+#PBS -l select=1:ncpus=6:mem=10000mb:scratch_local=1gb:cgroups=cpuacct
 
 # cgroups option limits resources usage on PBS nodes, see:
 # https://wiki.metacentrum.cz/wiki/Cgroupy
@@ -29,12 +29,12 @@ function eval_matlab_array() {
   # expand lo:hi expressions
   local COL_EXPR=$( echo "$S" | egrep --color=never -o "[0-9]+:[0-9]+" )
 
-  if [ ! -z $COL_EXPR ]; then
+  if [ ! -z "$COL_EXPR" ]; then
     while read E; do
       LO=$( echo $E | cut -d':' -f1 )
       HI=$( echo $E | cut -d':' -f2 )
       EXPANDED=$( eval echo {$LO..$HI} )
-      S=$( echo $S | sed -e s"/$E/$EXPANDED/g" )
+      S=$( echo $S | sed -e s"/$E/$EXPANDED/" )
     done <<< $( echo $COL_EXPR | tr ' ' '\n' )
   fi
 
@@ -77,7 +77,7 @@ if [ -z "$DIM" ] ; then
 fi
 if [ -z "$INST" ]; then
   echo "Warning: INST is empty, default instances will be used."
-  INST="[1:5 40:50]";
+  INST="[1:5 41:50]";
 fi
 if [ -z "$DESIGN" ]; then
   echo "Warning: DESIGN empty, default 'lhs' design will be used."
@@ -99,6 +99,7 @@ fi
 OPTS=`echo $OPTS | tr '%|@' "',;"`
 DATASIZE=`echo $DATASIZE | tr '%|@' "',;"`
 DESIGN=`echo $DESIGN | tr '%|@' "',;"`
+INST=`echo $INST | tr '|' ","`
 
 # debug:
 # DATASIZE=`echo $DATASIZE | sed s"/%/''/g"`

@@ -4,12 +4,12 @@ disp('executing surrogate-cmaes startup script...');
 
 addpath(genpath(fullfile(pwd, 'src')));
 addpath(genpath(fullfile(pwd, 'test')));
-addpath(fullfile(pwd, 'exp'));
+addpath(fullfile(pwd, 'exp'), '-frozen');
 addpath(genpath(fullfile(pwd, 'exp/pproc')));
 addpath(genpath(fullfile(pwd, 'exp/util')));
 addpath(genpath(fullfile(pwd, 'exp/vendor')));
 addpath(genpath(fullfile(pwd, 'exp/log')));
-addpath(fullfile(pwd, 'exp/experiments'));
+addpath(fullfile(pwd, 'exp/experiments'), '-frozen');
 
 % run('src/vendor/gpml-matlab-v3.2/startup.m');
 run('src/vendor/gpml_v4.0/startup.m');
