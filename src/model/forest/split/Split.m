@@ -18,6 +18,7 @@ classdef Split
     split_allEqual              % whether all y values are equal
     split_soft                  % use soft split
     split_lambda                % lambda steepness in soft logit function
+    split_maxHyp                % budget of hyperplanes to test
   end
   
   methods
@@ -25,6 +26,7 @@ classdef Split
       obj.split_transformationOptions = defopts(options, 'split_transformationOptions', struct);
       obj.split_soft = defopts(options, 'split_soft', false);
       obj.split_lambda = defopts(options, 'split_lambda', 1);
+      obj.split_maxHyp = defopts(options, 'split_maxHyp', Inf);
     end
     
     function obj = reset(obj, X, y)
@@ -117,20 +119,38 @@ classdef Split
       end
     end
     
-    function tresholds = calcTresholds(obj, values, dim)
+    function tresholds = calcTresholds(obj, values, dim, nQuant)
     % Creates linear quantization of treshold values.
     % Requires split_nQuantize property (AxisSplit, 
     % HillClimbingObliqueSplit, and PairObliqueSplit).
       tresholds = unique(values);
       n = numel(tresholds);
-      nQuant = obj.split_nQuantize;
-      if ~isnumeric(nQuant)
-        nQuant = eval(nQuant);
+      if nargin < 4
+        nQuant = obj.getNQuant(dim);
       end
       % quantization
       if nQuant > 0 && n > nQuant
         treshQuantId = unique(round(linspace(1, n, nQuant + 2)));
         tresholds = tresholds(treshQuantId(2:end-1)); 
+      end
+    end
+    
+    function nQuant = getNQuant(obj, dim)
+    % Evaluates the expression in obj.split_nQuantize to gain the number
+    % of treshold values
+      nQuant = obj.split_nQuantize;
+      if ~isnumeric(nQuant)
+        nQuant = eval(nQuant);
+      end
+    end
+    
+    function budget = getMaxHyp(obj, N, dim)
+    % Evaluates the expression in obj.split_maxHyp to gain the maximal
+    % number of hyperplanes to test (hyperplane budget)
+      if ischar(obj.split_maxHyp)
+        budget = eval(obj.split_maxHyp);
+      else
+        budget = obj.split_maxHyp;
       end
     end
   end
