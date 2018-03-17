@@ -145,6 +145,8 @@ function results = testOneModel(data, dim, func, inst, N, ...
   fprintf('      instance:    %d\n', inst);
   fprintf('      data size:   %d\n', N);
   fprintf('      model type:  %s\n', modelType);
+  fprintf('      model opts:\n');
+  disp(modelOptions);
   fprintf('================================\n');
 
   % the result structure, one row per each CV fold

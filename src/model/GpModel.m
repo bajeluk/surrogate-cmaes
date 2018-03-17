@@ -271,6 +271,8 @@ classdef GpModel < Model
           multi_start_points = bsxfun(@plus, multi_start_points, exp(lb));
           linear_hyp = [linear_hyp; log(multi_start_points)];
         end
+        fprintf('Linear hyp: ');
+        disp(linear_hyp);
 
         trainErrs = false(obj.nRestarts);
         for i = 1:obj.nRestarts
