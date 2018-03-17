@@ -28,6 +28,8 @@ function eval_matlab_array() {
 
   # expand lo:hi expressions
   local COL_EXPR=$( echo "$S" | egrep --color=never -o "[0-9]+:[0-9]+" )
+  OLDIFS=$IFS
+  IFS="\n"
 
   if [ ! -z "$COL_EXPR" ]; then
     while read E; do
@@ -35,8 +37,10 @@ function eval_matlab_array() {
       HI=$( echo $E | cut -d':' -f2 )
       EXPANDED=$( eval echo {$LO..$HI} )
       S=$( echo $S | sed -e s"/$E/$EXPANDED/" )
-    done <<< $( echo $COL_EXPR | tr ' ' '\n' )
+    done <<< $( echo "$COL_EXPR" | tr ' ' '\n' )
   fi
+
+  IFS=$OLDIFS
 
   S=$( echo $S | tr "[]," " " )
   echo $S
@@ -120,6 +124,7 @@ for dim in $( eval_matlab_array "$DIM" ); do
       for N_expr in $( eval_matlab_cell "$DATASIZE" ); do
         N=$(( N_expr ))
         for design in $( eval_matlab_cell "$DESIGN" ); do
+          echo "func = $func : inst = $inst : N = $N : design = $design"
           FNAME=$( printf $FNAME_TEMPLATE $dim $func $inst $N $design )
           SRC_FILE="$DATASET_PATH/${dim}D/$FNAME"
 
