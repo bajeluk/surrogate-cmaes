@@ -47,6 +47,36 @@ classdef PairObliqueSplit < Split
         end
       end
     end
+    
+    function pair = generatePairsNChoosek(obj, nData, nPairs)
+    % generate pairs sequentially
+      numAllPairs = nData*(nData-1)/2;
+      % TODO: test efficiency of the following condition properly
+      % all combinations of pairs
+      pair = nchoosek(1:nData, 2);
+      pairIds = randperm(numAllPairs, nPairs);
+      pair = pair(pairIds);
+    end
+    
+    function pair = generatePairsRandom(obj, nData, nPairs)
+    % generate pairs sequentially
+      numAllPairs = nData*(nData-1)/2;
+
+      % sequentially generate pairs
+      pairsDone = 0;
+      pair = [];
+      while pairsDone < nPairs
+        newPairs = randi(nData, nPairs - pairsDone, 2);
+        % find constant pairs
+        constPairs = newPairs(:, 1) == newPairs(:, 2);
+        % add existing pairs
+        newPairs = [pair; newPairs(~constPairs, :)];
+        % exclude redundant pairs
+        pair = unique(sort(newPairs, 2), 'rows');
+        pairsDone = size(pair, 1);
+      end
+    end
+    
   end
   
   methods (Access = protected)

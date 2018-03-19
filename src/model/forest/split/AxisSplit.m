@@ -21,20 +21,45 @@ classdef AxisSplit < Split
         return
       end
       [~, d] = size(obj.split_X);
+      nTreshPerDim = obj.getNTresh();
       for feature = 1:d
-        featureSelector = (1:d == feature)';
-        values = obj.split_X(:, feature)';
-        tresholds = obj.calcTresholds(values, d);
-        % calculate gain for each treshold
-        for treshold = tresholds
-          candidate = obj.splitCandidate;
-          candidate.splitter = obj.createSplitter(@(X) ... 
-            X * featureSelector - treshold);
-          [candidate.gain, candidate.leftID, candidate.rightID] = splitGain.get(candidate.splitter);
-          if candidate.gain > best.gain
-            best = candidate;
+        if nTreshPerDim(feature) > 0
+          featureSelector = (1:d == feature)';
+          values = obj.split_X(:, feature)';
+          % calculate tresholds
+          tresholds = obj.calcTresholds(values, d, nTreshPerDim(feature));
+          % calculate gain for each treshold
+          for treshold = tresholds
+            candidate = obj.splitCandidate;
+            candidate.splitter = obj.createSplitter(@(X) ... 
+              X * featureSelector - treshold);
+            [candidate.gain, candidate.leftID, candidate.rightID] = splitGain.get(candidate.splitter);
+            if candidate.gain > best.gain
+              best = candidate;
+            end
           end
         end
+      end
+    end
+  end
+  
+  methods (Access = protected)
+    function nTreshPerDim = getNTresh(obj)
+    % calculates the number of tresholds per dimension according to the 
+    % budget of hyperplanes
+      [n, dim] = size(obj.split_X);
+      % get prescribed number of tresholds
+      nTresh = obj.getNQuant(dim);
+      % calculate hyperplane budget
+      maxHyp = obj.getMaxHyp(n, dim);
+      % too many hyperplanes requires adjustment of treshold numbers
+      if dim*nTresh > maxHyp
+        nTreshPerDim = floor(maxHyp/dim)*ones(1, dim);
+        nRemain = mod(maxHyp, dim);
+        % choose dimensions with extra tresholds at random
+        nTreshPerDim(randperm(dim)) = nTreshPerDim + [ones(1, nRemain), zeros(1, dim - nRemain)];
+      else
+        nTreshPerDim = nTresh*ones(1, dim);
       end
     end
   end
