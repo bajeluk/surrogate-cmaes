@@ -13,6 +13,7 @@ classdef PairObliqueSplit < Split
   end
 
   methods
+    
     function obj = PairObliqueSplit(options)
       obj = obj@Split(options);
       obj.split_nQuantize = defopts(options, 'split_nQuantize', 0);
@@ -44,37 +45,8 @@ classdef PairObliqueSplit < Split
           if candidate.gain > best.gain
             best = candidate;
           end
-        end
-      end
-    end
-    
-    function pair = generatePairsNChoosek(obj, nData, nPairs)
-    % generate pairs sequentially
-      numAllPairs = nData*(nData-1)/2;
-      % TODO: test efficiency of the following condition properly
-      % all combinations of pairs
-      pair = nchoosek(1:nData, 2);
-      pairIds = randperm(numAllPairs, nPairs);
-      pair = pair(pairIds);
-    end
-    
-    function pair = generatePairsRandom(obj, nData, nPairs)
-    % generate pairs sequentially
-      numAllPairs = nData*(nData-1)/2;
-
-      % sequentially generate pairs
-      pairsDone = 0;
-      pair = [];
-      while pairsDone < nPairs
-        newPairs = randi(nData, nPairs - pairsDone, 2);
-        % find constant pairs
-        constPairs = newPairs(:, 1) == newPairs(:, 2);
-        % add existing pairs
-        newPairs = [pair; newPairs(~constPairs, :)];
-        % exclude redundant pairs
-        pair = unique(sort(newPairs, 2), 'rows');
-        pairsDone = size(pair, 1);
-      end
+        end 
+      end % pair loop
     end
     
   end
@@ -106,15 +78,17 @@ classdef PairObliqueSplit < Split
   methods (Access = private, Static)
     function pair = generatePairs(nData, nPairs)
     % generate pairs sequentially
-      numAllPairs = nData*(nData-1)/2;
-      % TODO: test efficiency of the following condition properly
-      if nPairs > floor(numAllPairs/2)
+      % the following condition was tested using pairObliqueSplitSpeedTest
+      if (nData < 50) || ...
+         (nData < 150 && nPairs > 0.2*nData^2 - 6.5*nData + 20) || ...
+         (nData > 150 && nPairs > 0.4*nData^2 - 90 *nData + 7243)
         % all combinations of pairs
         pair = nchoosek(1:nData, 2);
+        numAllPairs = nData*(nData-1)/2;
         pairIds = randperm(numAllPairs, nPairs);
         pair = pair(pairIds);
       else
-        % sequentially generate pairs
+        % sequentially generate pairs at random
         pairsDone = 0;
         pair = [];
         while pairsDone < nPairs
