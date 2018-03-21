@@ -23,6 +23,7 @@ classdef ResidualObliqueSplit < Split
       model = model.trainModel(obj.split_X, obj.split_y);
       c = model.modelPredict(obj.split_X) < obj.split_y;
       
+      % discriminant analysis
       switch obj.split_degree
         case 'constant'
           discrimTypes = {'linear', 'quadratic'};
@@ -32,6 +33,15 @@ classdef ResidualObliqueSplit < Split
           discrimTypes = {'quadratic'};
         otherwise
           discrimTypes = {};
+      end
+      nDiscrTypes = numel(discrimTypes);
+      [n, d] = size(obj.split_X);
+      % get maximal number of hyperplanes
+      maxHyp = obj.getMaxHyp(n, d);
+      % lack of hyperplanes solve through random sampling from discriminant
+      % types
+      if maxHyp < nDiscrTypes
+        discrimTypes = discrimTypes(randperm(nDiscrTypes, maxHyp));
       end
       best = obj.getDiscrAnal(splitGain, c, best, discrimTypes);
       

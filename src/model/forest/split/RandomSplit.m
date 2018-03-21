@@ -18,7 +18,9 @@ classdef RandomSplit < Split
         return
       end
       [n, d] = size(obj.split_X);
-      for iRepeats = 1:obj.split_nRepeats
+      % get number of repeats using only one hyperplane per repetition
+      nRepeats = obj.getRepeats(1);
+      for iRepeats = 1:nRepeats
         feature = randi(d);
         featureSelector = (1:d == feature)';
         treshold = obj.split_X(randi(n), feature);
@@ -30,6 +32,34 @@ classdef RandomSplit < Split
           best = candidate;
         end
       end
+    end
+  end
+  
+  methods (Access=protected)
+    function [nRepeats, maxHypRem] = getRepeats(obj, nHypPerRepeat, maxRepeats)
+    % calculate number of repeats and remaining hyperplanes in the last
+    % repetition according to the number of hyperplanes per repetition
+    
+      [n, d] = size(obj.split_X);
+      % get the number of hyperplanes
+      maxHyp = obj.getMaxHyp(n, d);
+      if nargin < 3
+        maxRepeats = maxHyp;
+      end
+      % the number of repeats is limited by its maximal value
+      nRepeats = min(obj.split_nRepeats, maxRepeats);
+      % gain the number of available repeats
+      if nRepeats*nHypPerRepeat > maxHyp
+        nRepeats = ceil(maxHyp / nHypPerRepeat);
+        % remaining hyperplanes in last repeat
+        maxHypRem = mod(maxHyp, nHypPerRepeat);
+        if maxHypRem == 0
+          maxHypRem = nHypPerRepeat;
+        end
+      else
+        maxHypRem = nHypPerRepeat;
+      end
+      
     end
   end
   

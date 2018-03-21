@@ -27,15 +27,28 @@ classdef GaussianSplit < RandomSplit
       if obj.split_allEqual || n < d + 2
         return
       end
+      % check types of discriminant analysis
+      if iscell(obj.split_discrimType)
+        discrimTypes = obj.split_discrimType;
+      else
+        discrimTypes = {obj.split_discrimType};
+      end
+      % get number of discriminant analysis types, number of repetitions,
+      % and number of hyperplanes in last repetition; higher number of
+      % repetitions than dimension is useless
+      nDiscrTypes = numel(discrimTypes);
+      [nRepeats, maxHypRem] = obj.getRepeats(nDiscrTypes, d);
+      
       % clusters are fit in scaled input-output space
       ZX = zscore(obj.split_X);
       Zy = zscore(obj.split_y);
-      for iRepeats = 1:obj.split_nRepeats
+      % repeat loop
+      for iRepeats = 1:nRepeats
         % fit 2 clusters in input-output space
         if obj.split_includeInput
           % select random features
           % the amount of features increases with iRepeats
-          nFeatures = ceil(d * iRepeats / obj.split_nRepeats);
+          nFeatures = ceil(d * iRepeats / nRepeats);
           features = datasample(1:d, nFeatures, 'Replace', false);
           Z = [ZX(:, features) Zy];
         else
@@ -46,16 +59,18 @@ classdef GaussianSplit < RandomSplit
         warning('on', 'stats:gmdistribution:FailedToConverge');
         c = model.cluster(Z);
         
-        % discriminant analysis of two clusters
-        if iscell(obj.split_discrimType)
-          discrimTypes = obj.split_discrimType;
-        else
-          discrimTypes = {obj.split_discrimType};
+        % in last repetition check the number of remaining hyperplanes
+        if iRepeats == nRepeats
+          discrimTypes = discrimTypes(randperm(nDiscrTypes, maxHypRem));
         end
-        best = obj.getDiscrAnal(splitGain, c, best, discrimTypes);
+        % discriminant analysis of two clusters
+        candidate = obj.getDiscrAnal(splitGain, c, best, discrimTypes);
+        if candidate.gain > best.gain
+          best = candidate;
+        end
         
       end
     end
   end
-  
+    
 end

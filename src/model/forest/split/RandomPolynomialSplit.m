@@ -20,8 +20,11 @@ classdef RandomPolynomialSplit < RandomSplit
         return
       end
       [~, d] = size(obj.split_X);
+      % get number of repeats using only one hyperplane per repetition
+      nRepeats = obj.getRepeats(1);
+      
       dPoly = -1;
-      for iRepeats = 1:obj.split_nRepeats
+      for iRepeats = 1:nRepeats
         candidate = obj.splitCandidate;
         featuresMin = min(obj.split_X);
         featuresMax = max(obj.split_X);

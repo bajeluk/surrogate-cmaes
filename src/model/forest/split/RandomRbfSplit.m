@@ -21,7 +21,9 @@ classdef RandomRbfSplit < RandomSplit
         return
       end
       [~, d] = size(obj.split_X);
-      for iRepeats = 1:obj.split_nRepeats
+      % get number of repeats using only one hyperplane per repetition
+      nRepeats = obj.getRepeats(1);
+      for iRepeats = 1:nRepeats
         candidate = obj.splitCandidate;
         featuresMin = min(obj.split_X);
         featuresMax = max(obj.split_X);
