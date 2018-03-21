@@ -108,6 +108,28 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
                   end
                 end
 
+                % sampling random parameters
+                if isfield(opts.rndModelOptions, modelType)
+                  rng('shuffle');
+                  paramDef = opts.rndModelOptions.(modelType);
+
+                  assert(isfield(opts.rndFullFact, modelType));
+                  fullFact = opts.rndFullFact.(modelType);
+
+                  k = randi(size(fullFact, 1));
+                  j = 1;
+                  for param_cell = fields(paramDef)'
+                    param = param_cell{:};
+                    vals = paramDef.(param);
+                    modelOpt.(param) = vals(fullFact(k, j));
+                    j = j + 1;
+                  end
+
+                  if opts.use_rng_seed
+                    rng(opts.rng_seed);
+                  end
+                end
+
                 results = testOneModel(data, dim, func, inst, N, ...
                                        modelType, modelOpt, ...
                                        cv, opts.cv_ind);

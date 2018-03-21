@@ -35,36 +35,36 @@ function expInitMetaLearn(exp_id)
     multiStruct = generateStructOpts(modelParamDef(i).values);
     modelParamDef(i).values = convertMultiStructToCell(multiStruct);
 
-    % append randomized settings
-    modelType = modelParamDef(i).name;
-    if isfield(opts, 'rndModelOptions') && isfield(opts.rndModelOptions, modelType)
-      ff = fullfact(structfun(@(x) numel(x), ...
-        opts.rndModelOptions.(modelType)));
-      rndOpts = fields(opts.rndModelOptions.(modelType));
-
-      nVals = numel(modelParamDef(i).values);
-      for j = 1:nVals
-        k = randi(size(ff, 1));
-        for l = 1:numel(rndOpts)
-          optName = rndOpts(l);
-          optVals = opts.rndModelOptions.(modelType).(optName{:});
-          modelParamDef(i).values{j}.(optName{:}) = optVals(ff(k, l));
-        end
-      end
-    end
+%     % append randomized settings
+%     modelType = modelParamDef(i).name;
+%     if isfield(opts, 'rndModelOptions') && isfield(opts.rndModelOptions, modelType)
+%       ff = fullfact(structfun(@(x) numel(x), ...
+%         opts.rndModelOptions.(modelType)));
+%       rndOpts = fields(opts.rndModelOptions.(modelType));
+% 
+%       nVals = numel(modelParamDef(i).values);
+%       for j = 1:nVals
+%         k = randi(size(ff, 1));
+%         for l = 1:numel(rndOpts)
+%           optName = rndOpts(l);
+%           optVals = opts.rndModelOptions.(modelType).(optName{:});
+%           modelParamDef(i).values{j}.(optName{:}) = optVals(ff(k, l));
+%         end
+%       end
+%     end
   end
 
-%   % Randomized settings full-fact
-%   fs = fields(opts.rndModelOptions);
-%   nFields = numel(fs);
-%   opts.rndFullFact = struct();
-%
-%   for i = 1:nFields
-%     modelType = fs{i};
-%     ff = fullfact(structfun(@(x) numel(x), ...
-%       opts.rndModelOptions.(modelType)));
-%     opts.rndFullFact.(modelType) = ff;
-%   end
+  % Randomized settings full-fact
+  fs = fields(opts.rndModelOptions);
+  nFields = numel(fs);
+  opts.rndFullFact = struct();
+
+  for i = 1:nFields
+    modelType = fs{i};
+    ff = fullfact(structfun(@(x) numel(x), ...
+      opts.rndModelOptions.(modelType)));
+    opts.rndFullFact.(modelType) = ff;
+  end
 
   % save the definition of the experiment into 'scmaes_params.mat'
   save([experimentPath filesep 'metalearn_params.mat'], ...
