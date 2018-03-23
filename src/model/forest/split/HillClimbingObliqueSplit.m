@@ -15,6 +15,8 @@ classdef HillClimbingObliqueSplit < RandomSplit
     split_nRandomPerturbations % number of random perturbations
     split_remainHyp % number of remaining hyperplanes available to test 
                     % (according to split_maxHyp property)
+    split_axisPhaseHyp % number of hyperplanes available for the phase of 
+                       % searching axis paralel hyperplane (initial phase)
   end
 
   methods
@@ -22,6 +24,7 @@ classdef HillClimbingObliqueSplit < RandomSplit
       obj = obj@RandomSplit(options);
       obj.split_nQuantize = defopts(options, 'split_nQuantize', 0);
       obj.split_nRandomPerturbations = defopts(options, 'split_nRandomPerturbations', 10);
+      obj.split_axisPhaseHyp = defopts(options, 'split_axisPhaseHyp', 'ceil(maxHyp/3)');
     end
     
     function obj = reset(obj, X, y)
@@ -59,32 +62,33 @@ classdef HillClimbingObliqueSplit < RandomSplit
       best = obj.splitCandidate;
       trans = obj.split_transformation;
       [~, d] = size(obj.split_X);
+      % get number of hyperplanes for axis paralel phase
+      nAxisHyp = min(obj.getAxisPhaseHyp(), obj.split_remainHyp);
+      % get number of thresholds per dimension
+      nTreshPerDim = obj.getNTresh(nAxisHyp);
       % dimension loop
-      % search dimensions in random order due to the limited number of 
-      % hyperplanes
-      for feature = randperm(d)
-        if obj.split_remainHyp > 0
+      for feature = 1:d
+        if nTreshPerDim(feature) > 0
           featureSelector = (1:d == feature)';
           values = obj.split_X(:, feature)';
-          tresholds = obj.calcTresholds(values, d);
-          % calculate gain for each treshold in random order due to the
-          % limited number of hyperplanes
-          for treshold = tresholds(randperm(numel(tresholds)))
-            if obj.split_remainHyp > 0
-              candidate = obj.splitCandidate;
-              candidate.splitter = @(X)...
-                transformApply(X, trans) * featureSelector <= treshold;
-              [candidate.gain, candidate.leftID, candidate.rightID] = splitGain.get(candidate.splitter);
-              candidate.feature = feature;
-              candidate.treshold = treshold;
-              if candidate.gain > best.gain
-                best = candidate;
-              end
-              obj.split_remainHyp = obj.split_remainHyp - 1;
+          % calculate tresholds
+          tresholds = obj.calcTresholds(values, d, nTreshPerDim(feature));
+          % calculate gain for each treshold
+          for treshold = tresholds
+            candidate = obj.splitCandidate;
+            candidate.splitter = @(X)...
+              transformApply(X, trans) * featureSelector <= treshold;
+            [candidate.gain, candidate.leftID, candidate.rightID] = splitGain.get(candidate.splitter);
+            candidate.feature = feature;
+            candidate.treshold = treshold;
+            if candidate.gain > best.gain
+              best = candidate;
             end
           end % treshold
         end
       end % dimension
+      % subtrack actually calculated hyperplanes
+      obj.split_remainHyp = obj.split_remainHyp - sum(nTreshPerDim);
       
       % successful splits
       if best.gain > -Inf
@@ -191,6 +195,39 @@ classdef HillClimbingObliqueSplit < RandomSplit
         generateFeatures(X, 'linear', true, true) * H);
       [candidate.gain, candidate.leftID, candidate.rightID] = splitGain.get(candidate.splitter);
       candidate.H = H;
+    end
+    
+    function nAxisPhaseHyp = getAxisPhaseHyp(obj)
+    % get the number of hyperplanes for the phase of finding axis paralel 
+    % hyperplane (initial HillClimbing phase)
+      if isnumeric(obj.split_axisPhaseHyp)
+        nAxisPhaseHyp = obj.split_axisPhaseHyp;
+      elseif ischar(obj.split_axisPhaseHyp)
+        [N, dim] = size(obj.split_X);
+        maxHyp = obj.getMaxHyp(N, dim);
+        nAxisPhaseHyp = eval(obj.split_axisPhaseHyp);
+      else
+        error('split_axisPhaseHyp parameter has to be numerical or char')
+      end 
+    end
+    
+    function nTreshPerDim = getNTresh(obj, maxHyp)
+    % calculates the number of tresholds per dimension according to the 
+    % budget of hyperplanes
+      [~, dim] = size(obj.split_X);
+      % get prescribed number of tresholds
+      nTresh = obj.getNQuant(dim);
+      % calculate hyperplane budget
+%       maxHyp = obj.getMaxHyp(n, dim);
+      % too many hyperplanes requires adjustment of treshold numbers
+      if dim*nTresh > maxHyp
+        nTreshPerDim = floor(maxHyp/dim)*ones(1, dim);
+        nRemain = mod(maxHyp, dim);
+        % choose dimensions with extra tresholds at random
+        nTreshPerDim(randperm(dim)) = nTreshPerDim + [ones(1, nRemain), zeros(1, dim - nRemain)];
+      else
+        nTreshPerDim = nTresh*ones(1, dim);
+      end
     end
   end
 end

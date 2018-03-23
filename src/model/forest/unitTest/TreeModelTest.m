@@ -41,13 +41,15 @@ classdef TreeModelTest < ModelTest
     split_transformationOptions = {struct};
     split_soft = {false};
     split_lambda = {1};
-    split_nRepeats = {1}; % RandomSplit
+    split_maxHyp = {'10*dim'};
+    split_nRepeats = {1000}; % RandomSplit
     split_nQuantize = {5}; % AxisSplit, HillClimbingObliqueSplit, PairObliqueSplit
     split_pairFcn = {@(x) x*log(x)}; % PairObliqueSplit
     split_pairRatio = {0.01}; % PairObliqueSplit
     split_discrimType = {{'linear', 'quadratic'}}; % GaussianSplit, KMeansSplit
     split_includeInput = {true}; % GaussianSplit, KMeansSplit
     split_nRandomPerturbations = {10}; % HillClimbingObliqueSplit
+    split_axisPhaseHyp = {'ceil(maxHyp/3)'}; % HillClimbingObliqueSplit
     split_kmeans_metric = {'sqeuclidean'}; % KMeansSplit
     split_randrbf_metric = {'euclidean'}; % RandomRbfSplit
     split_degree = {'linear'}; % RandomPolynomialSplit, ResidualObliqueSplit
@@ -149,7 +151,8 @@ classdef TreeModelTest < ModelTest
         predictorFunc, weak_coeff, weak_modelSpec, ...
         splitFunc, split_transformationOptions, split_soft, split_lambda, ...
         split_nRepeats, split_nQuantize, split_discrimType, split_includeInput, ...
-        split_nRandomPerturbations, split_kmeans_metric, split_randrbf_metric, split_degree, ...
+        split_nRandomPerturbations, split_kmeans_metric, split_randrbf_metric, ...
+        split_degree, split_maxHyp, split_axisPhaseHyp, ...
         splitGain, splitGain_minSize, splitGain_degree, splitGain_polyMethod, ...
         splitGain_modelFunc, splitGain_weightedGain, splitGain_k, splitGain_regularization)
       
@@ -173,11 +176,13 @@ classdef TreeModelTest < ModelTest
       params.split_transformationOptions = split_transformationOptions;
       params.split_soft = split_soft;
       params.split_lambda = split_lambda;
+      params.split_maxHyp = split_maxHyp;
       params.split_nRepeats = split_nRepeats;
       params.split_nQuantize = split_nQuantize;
       params.split_discrimType = split_discrimType;
       params.split_includeInput = split_includeInput;
       params.split_nRandomPerturbations = split_nRandomPerturbations;
+      params.split_axisPhaseHyp = split_axisPhaseHyp;
       params.split_kmeans_metric = split_kmeans_metric;
       params.split_randrbf_metric = split_randrbf_metric;
       params.split_degree = split_degree;
@@ -217,11 +222,13 @@ classdef TreeModelTest < ModelTest
       treeModelOptions.split_transformationOptions = split_transformationOptions;
       treeModelOptions.split_soft = split_soft;
       treeModelOptions.split_lambda = split_lambda;
+      treeModelOptions.split_maxHyp = split_maxHyp;
       treeModelOptions.split_nRepeats = split_nRepeats;
       treeModelOptions.split_nQuantize = split_nQuantize;
       treeModelOptions.split_discrimType = split_discrimType;
       treeModelOptions.split_includeInput = split_includeInput;
       treeModelOptions.split_nRandomPerturbations = split_nRandomPerturbations;
+      treeModelOptions.split_axisPhaseHyp = split_axisPhaseHyp;
       treeModelOptions.split_kmeans_metric = split_kmeans_metric;
       treeModelOptions.split_randrbf_metric = split_randrbf_metric;
       treeModelOptions.split_degree = split_degree;
