@@ -1,7 +1,7 @@
 function [cmCells, cmId, cmEmpty] = createCMGrid(X, y, lb, ub, blocks)
 % createCMGrid creates grid for calculating cell mapping metafeatures.
 % 
-% [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks)
+% [cmCells, cmId, cmEmpty] = createCMGrid(X, y, lb, ub, blocks)
 %
 % Input:
 %   X - input features
@@ -77,7 +77,6 @@ function [cmCells, cmId, cmEmpty] = createCMGrid(X, y, lb, ub, blocks)
   
   % init
   maxBlocks = max(blocks);
-  nCells = prod(blocks);
   blockLB = NaN(dim, maxBlocks);
   blockUB = NaN(dim, maxBlocks);
   pointCellId = zeros(nData, dim);
@@ -98,29 +97,33 @@ function [cmCells, cmId, cmEmpty] = createCMGrid(X, y, lb, ub, blocks)
     cellIdVec{d} = 1:blocks(d);
   end
   
+  % TODO: replace the following 
   % all possible cell coordinate combinations
-  cmId = combvec(cellIdVec{:});
+%   cmId = combvec(cellIdVec{:});
+  cmId = unique(pointCellId, 'rows');
+  nCells = size(cmId, 1);
   
   % create cells
   cellLB = NaN(1, dim);
   cellUB = NaN(1, dim);
-  cmEmpty = true(1, nBlocks);
-  for c = 1:nBlocks
+%   cmEmpty = true(1, nBlocks);
+  cmEmpty = false;
+  for c = 1:nCells
     % find points related to actual cell
-    actualPointId = all((repmat(cmId(:, c)', nData, 1) == pointCellId), 2);
+    actualPointId = all((repmat(cmId(c, :), nData, 1) == pointCellId), 2);
     for d = 1:dim
-      cellLB(d) = blockLB(d, (cmId(d, c)));
-      cellUB(d) = blockUB(d, (cmId(d, c)));
+      cellLB(d) = blockLB(d, (cmId(c, d)));
+      cellUB(d) = blockUB(d, (cmId(c, d)));
     end
     % not empty cell
-    if any(actualPointId)
+%     if any(actualPointId)
       cellX = X(actualPointId, :);
       celly = y(actualPointId);
-      cmEmpty(c) = false;
-    else
-      cellX = [];
-      celly = [];
-    end
+%       cmEmpty(c) = false;
+%     else
+%       cellX = [];
+%       celly = [];
+%     end
     cmCells(c) = CMCell(cellX, celly, dim, cellLB, cellUB);
   end
 
