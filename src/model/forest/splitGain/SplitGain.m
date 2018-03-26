@@ -197,6 +197,7 @@ classdef (Abstract) SplitGain
         end
       end
       % return minimal value
+      % TODO: return best model
       [data.value, modelID] = min(obj.getValue(getValData));
     end
   end

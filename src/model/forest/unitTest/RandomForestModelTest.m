@@ -35,11 +35,11 @@ classdef RandomForestModelTest < ModelTest
     fuzziness = {0.1};
     
     % predictor
-    predictorFunc = {'CombiPolynomial'};
+    predictorFunc = {'Constant'};
     % predictorFunc = {'Constant', 'LmfitPolynomial', 'Polynomial', ...
     %                  'RegressPolynomial', 'CombiPolynomial'};
     weak_coeff = {NaN}; % ConstantModel
-    weak_modelSpec = {{'constant', 'linear', 'purequadratic', 'interactions', 'quadratic'}}; % LmfitPolynomial, Polynomial, RegressPolynomial
+    weak_modelSpec = {'constant'}; % {'constant', 'linear', 'purequadratic', 'interactions', 'quadratic'}}; % LmfitPolynomial, Polynomial, RegressPolynomial
     
     % split
     splitFunc = {'Axis'};
@@ -67,7 +67,7 @@ classdef RandomForestModelTest < ModelTest
     splitGain_minSize = {[]};
     splitGain_degree = {[]};
     splitGain_polyMethod = {''};
-    splitGain_modelFunc = {@CombiPolynomialModel};
+    splitGain_modelFunc = {@ConstantModel};
     splitGain_weightedGain = {true};
     splitGain_k = {1}; % DENNSplitGain
     splitGain_regularization = {0}; % GradientSplitGain

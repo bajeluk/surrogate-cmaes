@@ -5,8 +5,10 @@ classdef TreeModel < WeakModel
         'parent', 0, ...
         'left', 0, ...
         'right', 0, ...
+        'depth', 0, ...
         'splitter', [], ...
         'predictor', [], ...
+        'error', NaN, ...
         'X', [], ...
         'y', []);
   end
@@ -64,6 +66,10 @@ classdef TreeModel < WeakModel
       obj.tree_nodes = repmat(TreeModel.nodeTemplate, initialSize, 1);
       iNodeRoot = obj.addNode();
       obj.trainModelRecursive(X, y, iNodeRoot, 0);
+      % prune fully grown tree
+      if obj.tree_growFull
+        obj.cvPrune(X, y)
+      end
     end
 
     function [yPred, sd2, ci] = modelPredict(obj, X)
@@ -84,6 +90,10 @@ classdef TreeModel < WeakModel
         N = treePredictor.getMinTrainPoints(dim) + 1;
     end
     
+    function obj = cvPrune(obj, X, y)
+      obj.getCostComplexity(X, y)
+    end
+    
     function obj = prune(obj, X, y)
       obj.pruneRecursive(X, y, 1);
     end
@@ -101,6 +111,8 @@ classdef TreeModel < WeakModel
         best = struct('gain', -inf);
         obj.tree_splitGain = obj.tree_splitGain.updateMinSize(minLeafSize);
         splitGain = obj.tree_splitGain.reset(X, y);
+        % TODO: splitGain should return best model here
+        % obj.tree_nodes(iNode).predictor = obj.trainPredictor(X, y, SplitGain.splitGain_bestmodelID);
         % find split with maximal gain among different types of splitting
         for iSplit = 1:size(obj.tree_splits, 2)
           split = obj.tree_splits{iSplit}.reset(X, y);
@@ -126,11 +138,11 @@ classdef TreeModel < WeakModel
           right.y = y(right.idx, :);
           obj.trainModelRecursive(right.X, right.y, right.iNode, depth+1);
           
-          if best.gain < obj.tree_minGain && obj.tree_nodes(left.iNode).leaf && obj.tree_nodes(right.iNode).leaf
+          % if best.gain < obj.tree_minGain && obj.tree_nodes(left.iNode).leaf && obj.tree_nodes(right.iNode).leaf
             % prune
-            obj.tree_nodes(left.iNode) = obj.nodeTemplate;
-            obj.tree_nodes(right.iNode) = obj.nodeTemplate;
-          else
+            % obj.tree_nodes(left.iNode) = obj.nodeTemplate;
+            % obj.tree_nodes(right.iNode) = obj.nodeTemplate;
+          % else
             % keep it
             obj.tree_nodes(iNode).leaf = false;
             obj.tree_nodes(iNode).splitter = best.splitter;
@@ -138,22 +150,24 @@ classdef TreeModel < WeakModel
             obj.tree_nodes(iNode).right = right.iNode;
             
             obj.tree_nodes(left.iNode).parent = iNode;
-            if obj.tree_nodes(left.iNode).leaf
+            % if obj.tree_nodes(left.iNode).leaf
               obj.tree_nodes(left.iNode).predictor = obj.trainPredictor(left.X, left.y, best.leftID);
+              obj.tree_nodes(left.iNode).depth = depth + 1;
               %obj.tree_nodes(left.iNode).X = left.X;
               %obj.tree_nodes(left.iNode).y = left.y;
-            end
+            % end
             
             obj.tree_nodes(right.iNode).parent = iNode;
-            if obj.tree_nodes(right.iNode).leaf
+            % if obj.tree_nodes(right.iNode).leaf
               obj.tree_nodes(right.iNode).predictor = obj.trainPredictor(right.X, right.y, best.rightID);
+              obj.tree_nodes(right.iNode).depth = depth + 1;
               %obj.tree_nodes(right.iNode).X = right.X;
               %obj.tree_nodes(right.iNode).y = right.y;
-            end
-          end
+            % end
+          % end
         end
       end
-      if iNode == 1 && obj.tree_nodes(iNode).leaf
+      if iNode == 1 % && obj.tree_nodes(iNode).leaf
         % predictor in root
         obj.tree_nodes(iNode).predictor = obj.trainPredictor(X, y, splitGain.splitGain_bestmodelID);
         %obj.tree_nodes(iNode).X = X;
@@ -226,8 +240,8 @@ classdef TreeModel < WeakModel
     
     function pruneRecursive(obj, X, y, iNode)
       if obj.tree_nodes(iNode).left > 0 && obj.tree_nodes(iNode).right > 0 ...
-        && obj.tree_nodes(obj.tree_nodes(iNode).left) == 0 ...
-        && obj.tree_nodes(obj.tree_nodes(iNode).right) == 0
+        && obj.tree_nodes(obj.tree_nodes(iNode).left).leaf ...
+        && obj.tree_nodes(obj.tree_nodes(iNode).right).leaf
         % internal node having two leaves
         % consider making this node a leaf
         yPred = zeros(size(X, 1), 1);
@@ -255,14 +269,14 @@ classdef TreeModel < WeakModel
           [yPred(both.idx)] = pLeft .* yLeft + pRight .* yRight;
         end
         
-        objective = obj.tree_growFull(y, yPred);
+        objective = obj.tree_lossFunc(y, yPred);
         
         current = struct;
         current.X = [obj.tree_nodes(left.iNode).X; obj.tree_nodes(right.iNode).X];
         current.y = [obj.tree_nodes(left.iNode).y; obj.tree_nodes(right.iNode).y];
         predictorNew = obj.tree_predictorFunc(obj.tree_predictorOpts);
         predictorNew = predictorNew.trainModel(current.X, current.y);
-        objectiveNew = obj.tree_growFull(y, predictorNew.modelPredict(X));
+        objectiveNew = obj.tree_lossFunc(y, predictorNew.modelPredict(X));
         
         if objectiveNew <= objective
           % remove children
@@ -277,11 +291,11 @@ classdef TreeModel < WeakModel
       end
       if obj.tree_nodes(iNode).left == 0 && obj.tree_nodes(iNode).right == 0
         % try to replace complex model in leaf with constant model
-        objective = obj.tree_growFull(y, obj.tree_nodes(iNode).predictor.modelPredict(X));
+        objective = obj.tree_lossFunc(y, obj.tree_nodes(iNode).predictor.modelPredict(X));
         
         predictorNew = ConstantModel(struct);
         predictorNew = predictorNew.trainModel(obj.tree_nodes(iNode).X, obj.tree_nodes(iNode).y);
-        objectiveNew = obj.tree_growFull(y, predictorNew.modelPredict(X));
+        objectiveNew = obj.tree_lossFunc(y, predictorNew.modelPredict(X));
         
         if objectiveNew <= objective
           obj.tree_nodes(iNode).predictor = predictorNew;
@@ -296,6 +310,96 @@ classdef TreeModel < WeakModel
       end
       iNode = obj.tree_nNodes;
     end
+    
+    function [T, alpha] = getCostComplexity(obj, X, y)
+    % get cost-complexity numbers and and appropriate order of the tree 
+    % nodes
+    
+      % predefine specific function handles
+      lt = @(t) obj.tree_nodes(t).left;
+      rt = @(t) obj.tree_nodes(t).right;
+%       fN  = @(t) obj.nSubtreeLeaves(t);
+      R  = @(t) obj.tree_lossFunc(y, obj.tree_nodes(t).predictor.modelPredict(X));
+%       S  = @(t) obj.tree_lossFunc(y, obj.modelPredictRecursive(X, t));
+      
+      % init
+      T = {};
+      alpha_0 = 0;
+      k = 1;
+      for t = obj.tree_nNodes:-1:1
+        if obj.tree_nodes(t).leaf
+          N(t) = 1;
+          S(t) = R(t);
+          g(t) = inf;
+          G(t) = inf;
+        else
+          N(t) = N(lt(t)) + N(rt(t));
+          S(t) = S(lt(t)) + S(rt(t));
+          g(t) = (R(t) - S(t)) / (N(t) - 1);
+          G(t) = min([g(t), G(lt(t)), G(rt(t))]);
+        end
+      end
+      
+      while N(1) ~= 1
+        % 2.
+        if G(1) > alpha_0
+          alpha(k) = alpha_0;
+          T{k} = [];
+          for tt = T{k-1}
+            if all(g(obj.getAncestors(tt)) > alpha(k))
+              T{k} = [T{k}, tt];
+            end
+          end
+          alpha_0 = G(1);
+          k = k + 1;
+        else
+          break
+        end
+        % 3.
+        t = 1;
+        while G(t) < g(t) 
+          if G(t) == G(lt(t))
+            t = lt(t);
+          else
+            t = rt(t);
+          end
+        end
+        % 4. Make current node t terminal by setting 
+        N(t) = 1;
+        S(t) = R(t);
+        g(t) = inf;
+        G(t) = inf;
+        % 5. Update ancestor’s information of current node t
+        while t > 1
+          t = obj.tree_nodes(t).parent;
+          N(t) = N(lt(t)) + N(rt(t));
+          S(t) = S(lt(t)) + S(rt(t));
+          g(t) = (R(t) - S(t)) / (N(t) - 1);
+          G(t) = min([g(t), G(lt(t)), G(rt(t))]);
+        end
+      end
+    end
+    
+    function res = nSubtreeLeaves(obj, t)
+    % returns number of current subtree leaves
+      if obj.tree_nodes(t).leaf
+        res = 1;
+      else
+        res = obj.nSubtreeLeaves(obj.tree_nodes(t).left) + ...
+              obj.nSubtreeLeaves(obj.tree_nodes(t).right);
+      end
+    end
+    
+    function ancId = getAncestors(obj, t)
+    % returns ancestors of node t
+      parent = obj.tree_node(t).parent;
+      if parent == 0
+        ancId = [];
+      else
+        ancId = [obj.getAncestors(obj, parent), parent];
+      end
+    end
+    
   end
   
 end
