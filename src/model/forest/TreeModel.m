@@ -8,7 +8,6 @@ classdef TreeModel < WeakModel
         'depth', 0, ...
         'splitter', [], ...
         'predictor', [], ...
-        'error', NaN, ...
         'X', [], ...
         'y', []);
   end
@@ -28,7 +27,9 @@ classdef TreeModel < WeakModel
     tree_predictorOpts % options of weak model in leaf
     tree_growFull      % grows a full tree then prunes, otherwise prunes during splitting
     tree_lossFunc      % loss function used for pruning
+    tree_kfoldPrune    % number of folds used for cross-validated pruning
     tree_fuzziness     % use fuzzy splits (range [0,1])
+    tree_inputOptions  % input tree model options
   end
   
   methods
@@ -57,6 +58,8 @@ classdef TreeModel < WeakModel
         @MSESplitGain);
       obj.tree_splitGain = obj.tree_splitGainFunc(modelOptions);
       obj.tree_fuzziness = defopts(modelOptions, 'tree_fuzziness', 0);
+      obj.tree_kfoldPrune = defopts(modelOptions, 'tree_kfoldPrune', 5);
+      obj.tree_inputOptions = modelOptions;
     end
 
     function obj = trainModel(obj, X, y)
@@ -91,7 +94,23 @@ classdef TreeModel < WeakModel
     end
     
     function obj = cvPrune(obj, X, y)
-      obj.getCostComplexity(X, y)
+    % cross-validated pruning 
+      pruneLevel = obj.getPruneLevel(X, y);
+      treeDepth = [obj.tree_nodes(1:obj.tree_nNodes).depth];
+      if pruneLevel < max(treeDepth)
+        % prune all nodes with depth > pruneLevel
+        obj.tree_nodes(treeDepth > pruneLevel) = ...
+          repmat(TreeModel.nodeTemplate, sum(treeDepth > pruneLevel), 1);
+        % all nodes on pruneLevel becomes leaves
+        newLeaves = find(treeDepth == pruneLevel);
+        for l = newLeaves
+          obj.tree_nodes(l).leaf = true;
+          obj.tree_nodes(l).left = 0;
+          obj.tree_nodes(l).right = 0;
+        end
+        % number of nodes has decreased
+        obj.tree_nNodes = sum(treeDepth <= pruneLevel);
+      end
     end
     
     function obj = prune(obj, X, y)
@@ -183,9 +202,15 @@ classdef TreeModel < WeakModel
       predictor = predictor.trainModel(X, y);
     end
     
-    function [yPred, sd2] = modelPredictRecursive(obj, X, iNode)
-      if obj.tree_nodes(iNode).leaf
+    function [yPred, sd2] = modelPredictRecursive(obj, X, iNode, maxDepth)
+    % predict objective values recursively
+      if nargin < 4
+        maxDepth = inf;
+      end
+      % return values for leaves or nodes with maximal depth
+      if obj.tree_nodes(iNode).leaf || obj.tree_nodes(iNode).depth == maxDepth
         [yPred, sd2] = obj.tree_nodes(iNode).predictor.modelPredict(X);
+      % or let predict all the children
       else
         yPred = zeros(size(X, 1), 1);
         sd2 = zeros(size(X, 1), 1);
@@ -193,12 +218,14 @@ classdef TreeModel < WeakModel
         
         left = struct('idx', idx, 'iNode', obj.tree_nodes(iNode).left);
         if any(left.idx)
-          [yPred(left.idx), sd2(left.idx)] = obj.modelPredictRecursive(X(left.idx, :), left.iNode);
+          [yPred(left.idx), sd2(left.idx)] = obj.modelPredictRecursive(...
+                                             X(left.idx, :), left.iNode, maxDepth);
         end
         
         right = struct('idx', ~idx, 'iNode', obj.tree_nodes(iNode).right);
         if any(right.idx)
-          [yPred(right.idx), sd2(right.idx)] = obj.modelPredictRecursive(X(right.idx, :), right.iNode);
+          [yPred(right.idx), sd2(right.idx)] = obj.modelPredictRecursive(...
+                                               X(right.idx, :), right.iNode, maxDepth);
         end
       end
     end
@@ -323,9 +350,7 @@ classdef TreeModel < WeakModel
 %       S  = @(t) obj.tree_lossFunc(y, obj.modelPredictRecursive(X, t));
       
       % init
-      T = {};
-      alpha_0 = 0;
-      k = 1;
+      alpha_0 = -inf;
       for t = obj.tree_nNodes:-1:1
         if obj.tree_nodes(t).leaf
           N(t) = 1;
@@ -340,12 +365,20 @@ classdef TreeModel < WeakModel
         end
       end
       
+      k = 1;
+      T_0 = 1:obj.tree_nNodes;
       while N(1) ~= 1
         % 2.
         if G(1) > alpha_0
           alpha(k) = alpha_0;
           T{k} = [];
-          for tt = T{k-1}
+          % k = 1
+          if k == 1
+            T_prev = T_0;
+          else
+            T_prev = T{k-1};
+          end
+          for tt = T_prev
             if all(g(obj.getAncestors(tt)) > alpha(k))
               T{k} = [T{k}, tt];
             end
@@ -380,6 +413,57 @@ classdef TreeModel < WeakModel
       end
     end
     
+    function [alpha, R] = getLevelCostComplexity(obj, X, y)
+    % get cost-complexity numbers of individual pruning levels
+      treeDepths = [obj.tree_nodes(1:obj.tree_nNodes).depth];
+      depthLevels = unique(treeDepths);
+      maxDepth = max(depthLevels);
+      R = NaN(maxDepth + 1, 1);
+      N = NaN(maxDepth + 1, 1);
+      for d = depthLevels
+        y_pred = obj.modelPredictRecursive(X, 1, d);
+        R(d+1) = obj.tree_lossFunc(y, y_pred);
+        % number of leaves per depth level
+        N(d+1) = sum(treeDepths == d) + sum([obj.tree_nodes(treeDepths < d).leaf]);
+      end
+      alpha = (R - R(end))./(N - 1);
+    end
+    
+    function pruneLevel = getPruneLevel(obj, X, y)
+    % get cross-validated pruning level
+      nData = size(X, 1);
+      foldId = crossvalind('kfold', nData, obj.tree_kfoldPrune);
+      % change settings not to perform pruning inside cross-validation
+      foldTreeOptions = obj.tree_inputOptions;
+      foldTreeOptions.tree_growFull = false;
+      foldTreeOptions.tree_minGain = -inf;
+      % prepare alpha and R tables
+      alpha = -Inf*ones(length(obj.tree_nodes), obj.tree_kfoldPrune);
+      R = Inf*ones(length(obj.tree_nodes), obj.tree_kfoldPrune);
+      for f = 1:obj.tree_kfoldPrune
+        trainId = foldId ~= f;
+        testId = ~trainId;
+        X_train = X(trainId, :);
+        y_train = y(trainId, :);
+        X_test = X(testId, :);
+        y_test = y(testId, :);
+        % create and train fold tree
+        T = TreeModel(foldTreeOptions);
+        T.trainModel(X_train, y_train);
+        % gain cost-complexities
+        [alpha_fold, R_fold] = T.getLevelCostComplexity(X_test, y_test);
+        alpha(1:numel(alpha_fold), f) = alpha_fold;
+        R(1:numel(R_fold), f) = R_fold;
+      end
+      % calculate original tree cost-complexities
+      % [treeAlpha, treeR] = obj.getLevelCostComplexity(X, y);
+      
+      % cv_alpha = mean(alpha, 2);
+      cv_R = mean(R, 2);
+      [~, pruneLevel] = min(cv_R);
+      pruneLevel = pruneLevel - 1;
+    end
+    
     function res = nSubtreeLeaves(obj, t)
     % returns number of current subtree leaves
       if obj.tree_nodes(t).leaf
@@ -392,11 +476,11 @@ classdef TreeModel < WeakModel
     
     function ancId = getAncestors(obj, t)
     % returns ancestors of node t
-      parent = obj.tree_node(t).parent;
+      parent = obj.tree_nodes(t).parent;
       if parent == 0
         ancId = [];
       else
-        ancId = [obj.getAncestors(obj, parent), parent];
+        ancId = [obj.getAncestors(parent), parent];
       end
     end
     
