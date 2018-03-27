@@ -345,17 +345,14 @@ classdef TreeModel < WeakModel
       % predefine specific function handles
       lt = @(t) obj.tree_nodes(t).left;
       rt = @(t) obj.tree_nodes(t).right;
-%       fN  = @(t) obj.nSubtreeLeaves(t);
       R  = @(t) obj.tree_lossFunc(y, obj.tree_nodes(t).predictor.modelPredict(X));
-%       S  = @(t) obj.tree_lossFunc(y, obj.modelPredictRecursive(X, t));
       
       % init
-      alpha_0 = -inf;
+      alpha_0 = -realmax;
       for t = obj.tree_nNodes:-1:1
         if obj.tree_nodes(t).leaf
           N(t) = 1;
           S(t) = R(t);
-          g(t) = inf;
           G(t) = inf;
         else
           N(t) = N(lt(t)) + N(rt(t));
@@ -367,12 +364,11 @@ classdef TreeModel < WeakModel
       
       k = 1;
       T_0 = 1:obj.tree_nNodes;
-      while N(1) ~= 1
+      while 1 > 0
         % 2.
-        if G(1) > alpha_0
+        if G(1) > alpha_0 + eps
           alpha(k) = alpha_0;
           T{k} = [];
-          % k = 1
           if k == 1
             T_prev = T_0;
           else
@@ -383,14 +379,17 @@ classdef TreeModel < WeakModel
               T{k} = [T{k}, tt];
             end
           end
+          % uncomment following line for debugging
+          % fprintf('%d %d %g %g\n', k, N(1), alpha(k), S(1))
           alpha_0 = G(1);
           k = k + 1;
-        else
+        end
+        if N(1) == 1
           break
         end
         % 3.
         t = 1;
-        while G(t) < g(t) 
+        while G(t) < g(t) - eps
           if G(t) == G(lt(t))
             t = lt(t);
           else
@@ -400,7 +399,6 @@ classdef TreeModel < WeakModel
         % 4. Make current node t terminal by setting 
         N(t) = 1;
         S(t) = R(t);
-        g(t) = inf;
         G(t) = inf;
         % 5. Update ancestor’s information of current node t
         while t > 1
@@ -431,6 +429,10 @@ classdef TreeModel < WeakModel
     
     function pruneLevel = getPruneLevel(obj, X, y)
     % get cross-validated pruning level
+      % TODO: make the following two lines functional (inspire by cvloss)
+      % [T, alpha] = obj.getCostComplexity(X, y);
+      % avgalpha = [sqrt(alpha(1:end-1) .* alpha(2:end)); Inf];
+    
       nData = size(X, 1);
       foldId = crossvalind('kfold', nData, obj.tree_kfoldPrune);
       % change settings not to perform pruning inside cross-validation
