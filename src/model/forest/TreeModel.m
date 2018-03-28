@@ -95,21 +95,27 @@ classdef TreeModel < WeakModel
     
     function obj = cvPrune(obj, X, y)
     % cross-validated pruning 
-      pruneLevel = obj.getPruneLevel(X, y);
-      treeDepth = [obj.tree_nodes(1:obj.tree_nNodes).depth];
-      if pruneLevel < max(treeDepth)
-        % prune all nodes with depth > pruneLevel
-        obj.tree_nodes(treeDepth > pruneLevel) = ...
-          repmat(TreeModel.nodeTemplate, sum(treeDepth > pruneLevel), 1);
-        % all nodes on pruneLevel becomes leaves
-        newLeaves = find(treeDepth == pruneLevel);
-        for l = newLeaves
-          obj.tree_nodes(l).leaf = true;
-          obj.tree_nodes(l).left = 0;
-          obj.tree_nodes(l).right = 0;
+    
+      prunedTreeNodes = obj.getPruneLevel(X, y);
+      % if the tree should be pruned
+      if numel(prunedTreeNodes) < obj.tree_nNodes
+        inTree = ismember(1:numel(obj.tree_nodes), prunedTreeNodes);
+        % replace all pruned nodes by empty nodes
+        obj.tree_nodes(~inTree) = ...
+          repmat(TreeModel.nodeTemplate, sum(~inTree), 1);
+        % find and set up leaves in remaining nodes
+        for n = prunedTreeNodes
+          % if the child does not know it has a parent => the parent is a
+          % leaf now
+          if ~obj.tree_nodes(n).leaf && ...
+              obj.tree_nodes(obj.tree_nodes(n).left).parent == 0
+            obj.tree_nodes(n).leaf = true;
+            obj.tree_nodes(n).left = 0;
+            obj.tree_nodes(n).right = 0;
+          end
+          % number of nodes has decreased
+          obj.tree_nNodes = numel(prunedTreeNodes);
         end
-        % number of nodes has decreased
-        obj.tree_nNodes = sum(treeDepth <= pruneLevel);
       end
     end
     
@@ -202,13 +208,15 @@ classdef TreeModel < WeakModel
       predictor = predictor.trainModel(X, y);
     end
     
-    function [yPred, sd2] = modelPredictRecursive(obj, X, iNode, maxDepth)
+    function [yPred, sd2] = modelPredictRecursive(obj, X, iNode, pruned)
     % predict objective values recursively
       if nargin < 4
-        maxDepth = inf;
+        pruned = 1:obj.tree_nNodes;
       end
-      % return values for leaves or nodes with maximal depth
-      if obj.tree_nodes(iNode).leaf || obj.tree_nodes(iNode).depth == maxDepth
+      % return values for leaves or nodes which became leaves through
+      % pruning
+      if obj.tree_nodes(iNode).leaf || ...
+         ~ismember(obj.tree_nodes(iNode).left, pruned)
         [yPred, sd2] = obj.tree_nodes(iNode).predictor.modelPredict(X);
       % or let predict all the children
       else
@@ -219,15 +227,36 @@ classdef TreeModel < WeakModel
         left = struct('idx', idx, 'iNode', obj.tree_nodes(iNode).left);
         if any(left.idx)
           [yPred(left.idx), sd2(left.idx)] = obj.modelPredictRecursive(...
-                                             X(left.idx, :), left.iNode, maxDepth);
+                                             X(left.idx, :), left.iNode, pruned);
         end
         
         right = struct('idx', ~idx, 'iNode', obj.tree_nodes(iNode).right);
         if any(right.idx)
           [yPred(right.idx), sd2(right.idx)] = obj.modelPredictRecursive(...
-                                               X(right.idx, :), right.iNode, maxDepth);
+                                               X(right.idx, :), right.iNode, pruned);
         end
       end
+    end
+    
+    function nodeErr = nodeErrRecursive(obj, X, y, iNode, nodeErr)
+      % predict objective values and computer error recursively in each 
+      % node
+      
+      % node prediction
+      [yPred, ~] = obj.tree_nodes(iNode).predictor.modelPredict(X);
+      nodeErr(iNode) = obj.tree_lossFunc(y, yPred);
+      
+      % childern prediction
+      if ~obj.tree_nodes(iNode).leaf
+        idx = obj.tree_nodes(iNode).splitter(X) <= 0.5;
+        nodeErr = obj.nodeErrRecursive(X(idx, :), y(idx, :), ...
+                                       obj.tree_nodes(iNode).left, ...
+                                       nodeErr);
+        nodeErr = obj.nodeErrRecursive(X(~idx, :), y(~idx, :), ...
+                                       obj.tree_nodes(iNode).right, ...
+                                       nodeErr);
+      end
+      
     end
     
     function [yPred, sd2] = modelPredictFuzzyRecursive(obj, X, iNode)
@@ -342,13 +371,16 @@ classdef TreeModel < WeakModel
     % get cost-complexity numbers and and appropriate order of the tree 
     % nodes
     
+      % calculate error-complexity measure for all nodes
+      R = Inf*ones(1, obj.tree_nNodes);
+      R = obj.nodeErrRecursive(X, y, 1, R);
+    
       % predefine specific function handles
       lt = @(t) obj.tree_nodes(t).left;
       rt = @(t) obj.tree_nodes(t).right;
-      R  = @(t) obj.tree_lossFunc(y, obj.tree_nodes(t).predictor.modelPredict(X));
       
       % init
-      alpha_0 = -realmax;
+      alpha_0 = 0; % -realmax;
       for t = obj.tree_nNodes:-1:1
         if obj.tree_nodes(t).leaf
           N(t) = 1;
@@ -427,11 +459,13 @@ classdef TreeModel < WeakModel
       alpha = (R - R(end))./(N - 1);
     end
     
-    function pruneLevel = getPruneLevel(obj, X, y)
+    function prunedNodes = getPruneLevel(obj, X, y)
     % get cross-validated pruning level
-      % TODO: make the following two lines functional (inspire by cvloss)
-      % [T, alpha] = obj.getCostComplexity(X, y);
-      % avgalpha = [sqrt(alpha(1:end-1) .* alpha(2:end)); Inf];
+      
+      % calculate original tree cost-complexities (alpha)
+      [prunedNodes, alpha] = obj.getCostComplexity(X, y);
+      avgalpha = [sqrt(alpha(1:end-1) .* alpha(2:end))'; Inf];
+      nAlpha = numel(avgalpha);
     
       nData = size(X, 1);
       foldId = crossvalind('kfold', nData, obj.tree_kfoldPrune);
@@ -439,9 +473,11 @@ classdef TreeModel < WeakModel
       foldTreeOptions = obj.tree_inputOptions;
       foldTreeOptions.tree_growFull = false;
       foldTreeOptions.tree_minGain = -inf;
-      % prepare alpha and R tables
-      alpha = -Inf*ones(length(obj.tree_nodes), obj.tree_kfoldPrune);
-      R = Inf*ones(length(obj.tree_nodes), obj.tree_kfoldPrune);
+      
+      % prepare objective table
+      Y_cv = NaN(nData, nAlpha);
+      adjfactor = 1 + 100*eps;
+      % cv
       for f = 1:obj.tree_kfoldPrune
         trainId = foldId ~= f;
         testId = ~trainId;
@@ -453,17 +489,27 @@ classdef TreeModel < WeakModel
         T = TreeModel(foldTreeOptions);
         T.trainModel(X_train, y_train);
         % gain cost-complexities
-        [alpha_fold, R_fold] = T.getLevelCostComplexity(X_test, y_test);
-        alpha(1:numel(alpha_fold), f) = alpha_fold;
-        R(1:numel(R_fold), f) = R_fold;
+        [T_f, alpha_f] = T.getCostComplexity(X_test, y_test);
+        % gain pruning levels
+        prunelev = zeros(size(avgalpha));
+        for j = 1 : nAlpha
+          prunelev(j) = sum(alpha_f <= avgalpha(j)*adjfactor);
+        end
+        % predict values for chosen pruning levels
+        for j = 1 : nAlpha
+          Y_cv(testId, j) = T.modelPredictRecursive(X_test, 1, T_f{prunelev(j)});
+        end
       end
-      % calculate original tree cost-complexities
-      % [treeAlpha, treeR] = obj.getLevelCostComplexity(X, y);
       
-      % cv_alpha = mean(alpha, 2);
-      cv_R = mean(R, 2);
-      [~, pruneLevel] = min(cv_R);
-      pruneLevel = pruneLevel - 1;
+      % calculate cross-validation errors
+      err_cv = NaN(nAlpha, 1);
+      for j = 1 : nAlpha
+        err_cv(j) = obj.tree_lossFunc(y, Y_cv(:, j));
+      end
+      minerr = min(err_cv);
+      % return list of nodes after pruning
+      prunedNodes = prunedNodes{find(err_cv <= adjfactor*minerr, 1, 'last')};
+   
     end
     
     function res = nSubtreeLeaves(obj, t)
