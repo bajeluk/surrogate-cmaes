@@ -41,26 +41,14 @@ function ft = feature_cm_gradhomo(X, y, settings)
   ub = defopts(settings, 'ub', max(X));
   blocks = defopts(settings, 'blocks', 2);
   metric = defopts(settings, 'distance', 'euclidean');
-  % default dist_param value
-  switch metric
-    case 'mahalanobis'
-      def_param = nancov(X);
-    case 'minkowski'
-      def_param = 2;
-    case 'seuclidean'
-      def_param = nanstd(X);
-    otherwise
-      def_param = [];
-  end
-  dist_param = defopts(settings, 'dist_param', def_param);
+  dist_param = defopts(settings, 'dist_param', defMetricParam(metric, X));
   
   % create grid of cells
-  cmCells = createCMGrid(X, y, lb, ub, blocks);
-  nCells = numel(cmCells);
+  cmg = CMGrid(X, y, lb, ub, blocks);
+  nCells = cmg.nCells;
   
   % calculate gradient homogeneity in all cells
-  gradHomo = cell2mat(arrayfun(@(i) cmCells(i).getGradHomogeneity(metric, dist_param), ...
-                               1:nCells, 'UniformOutput', false));
+  gradHomo = cmg.getGradHomogeneity(metric, dist_param);
                              
   % checkout number of filled cells
   if nCells > numel(gradHomo)

@@ -3,27 +3,44 @@ function tests = cellMappingTest
   tests = functiontests(localfunctions);
 end
 
-% function testCMGrid(testCase)
-%   % testing cell mapping grid object
-%   
-%   % empty input
-%   cmg = CMGrid();
-%   verifyInstanceOf(testCase, cmg, 'CMGrid')
-%   fnGrid = fieldnames(cmg);
-%   for f = 1:numel(fnGrid)
-%     verifyEmpty(testCase, cmg.(fnGrid{f}))
-%   end
-%   
-%   % random input
-%   dim = 20;
-%   nData = 50*dim;
-%   X = rand(nData, dim);
-%   y = randn(nData, 1);
-%   lb = zeros(1, dim);
-%   ub = ones(1, dim);
-%   blocks = [4, 4, 3*ones(1, dim-2)];
-%   cmg = CMGrid(X, y, lb, ub, blocks);
-% end
+function testCMGrid(testCase)
+  % testing cell mapping grid object
+  
+  % empty input
+  cmg = CMGrid();
+  verifyInstanceOf(testCase, cmg, 'CMGrid')
+  fnGrid = fieldnames(cmg);
+  for f = 1:numel(fnGrid)
+    verifyEmpty(testCase, cmg.(fnGrid{f}))
+  end
+  
+  % random input
+  dim = 3;
+  nData = 50*dim;
+  X = rand(nData, dim);
+  y = randn(nData, 1);
+  lb = zeros(1, dim);
+  ub = ones(1, dim);
+  blocks = [4, 4, 3*ones(1, dim-2)];
+  cmg = CMGrid(X, y, lb, ub, blocks);
+  nCells = cmg.nCells;
+  % function verification
+  verifyNotEmpty(testCase, cmg.getMin)
+  verifyNotEmpty(testCase, cmg.getMax)
+  verifyNotEmpty(testCase, cmg.getMean)
+  verifySize(testCase, cmg.getCellMin, [nCells, dim])
+  verifySize(testCase, cmg.getCellMax, [nCells, dim])
+  verifySize(testCase, cmg.getCellMean, [nCells, 1])
+  verifySize(testCase, cmg.getDistCtr2Min, [nCells, 1])
+  verifySize(testCase, cmg.getDistCtr2Max, [nCells, 1])
+  verifySize(testCase, cmg.getMaxMinAngle, [nCells, 1])
+  verifySize(testCase, cmg.getMaxMinDiff, [nCells, 1])
+  verifySize(testCase, cmg.getNearCtrPoint, [nCells, dim])
+  % in sparse data the gradient homogeneity can be even empty (3 points per
+  % cell needed)
+  cmg.getGradHomogeneity();
+  verifySize(testCase, cmg.isCellEmpty(ones(1, dim)), [1, 1])
+end
 
 function testCMCell(testCase)
 % testing cell mapping objects

@@ -48,18 +48,7 @@ function ft = feature_cm_convexity(X, y, settings)
   ub = defopts(settings, 'ub', max(X));
   blocks = defopts(settings, 'blocks', 3);
   metric = defopts(settings, 'distance', 'euclidean');
-  % default dist_param value
-  switch metric
-    case 'mahalanobis'
-      def_param = nancov(X);
-    case 'minkowski'
-      def_param = 2;
-    case 'seuclidean'
-      def_param = nanstd(X);
-    otherwise
-      def_param = [];
-  end
-  dist_param = defopts(settings, 'dist_param', def_param);
+  dist_param = defopts(settings, 'dist_param', defMetricParam(metric, X));
   
   % checkout number of cells per dimension
   if any(blocks < 3)
@@ -68,25 +57,20 @@ function ft = feature_cm_convexity(X, y, settings)
   end
   
   % create grid of cells
-  [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks);
-  nCells = numel(cmCells);
-  dim = cmCells(1).dim;
+%   [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks);
+  cmg = CMGrid(X, y, lb, ub, blocks);
+  nCells = cmg.nCells;
+  sumCells = prod(blocks);
+  dim = cmg.dim;
   
-  % calculate points nearest to cell center in all cells
-  y = NaN(nCells, 1);
-  for i = 1:nCells
-    [~, y_act] = cmCells(i).getNearCtrPoint(metric, dist_param);
-    if isempty(y_act)
-      y(i) = NaN;
-    else
-      y(i) = y_act;
-    end
-  end
+  % calculate objective values of points nearest to cell center in all 
+  % cells
+  [~, yc] = cmg.getNearCtrPoint(metric, dist_param);
   
   % warn in case of empty cells
-  if any(isnan(y))
+  if nCells < sumCells
     warning('%d out of %d cells (%0.2f%%) is empty. This may affect the results.', ...
-            sum(isnan(y)), nCells, sum(isnan(y))/nCells * 100)
+            sumCells - nCells, sumCells, (sumCells - nCells)/sumCells * 100)
   end
   
   % calculate convexity and concavity per dimension
@@ -96,20 +80,42 @@ function ft = feature_cm_convexity(X, y, settings)
   conv_hard = 0;
   nComparisons = 0;
   for d = 1 : dim
-    for b = 2 : blocks(d) - 1
-      % identify neighbor values
-      left_y   = y(cmId(d, :) == b - 1);
-      center_y = y(cmId(d, :) == b);
-      right_y  = y(cmId(d, :) == b + 1);
-      % compare for soft/hard convexity/concavity
-      % ids are periodical => not necessary to checkout other positions
-      conc_soft = conc_soft + sum(center_y > (left_y + right_y)/2);
-      conv_soft = conv_soft + sum(center_y < (left_y + right_y)/2);
-      conc_hard = conc_hard + sum(center_y > max(left_y, right_y));
-      conv_hard = conv_hard + sum(center_y < min(left_y, right_y));
-      % increase number of comparisons
-      nComparisons = nComparisons + numel(center_y);
+    % find if any non-empty cells are neighbours in this dimension
+    dimCellId = cmg.cellId;
+    dimCellId(:, d) = [];
+    [~, ~, ud] = unique(dimCellId, 'rows');
+    
+    % potential neighbours
+    for n = 1:max(ud)
+      % ids of cells potential neighbors
+      oneDimCellId = find(n == ud);
+      % at least three cells in one dimension having all other dimensions
+      % the same
+      if numel(oneDimCellId) > 2
+        % coordinates in recent dimension
+        oneDimCoor = cmg.cellId(oneDimCellId, d);
+        % search center cells one by one
+        for centerCellId = 2 : numel(oneDimCellId) - 1
+          % three neighboring cells
+          if oneDimCoor(centerCellId) - 1 == oneDimCoor(centerCellId - 1) && ...
+             oneDimCoor(centerCellId) + 1 == oneDimCoor(centerCellId + 1)
+            left_y   = yc(oneDimCellId(centerCellId - 1));
+            center_y = yc(oneDimCellId(centerCellId));
+            right_y  = yc(oneDimCellId(centerCellId + 1));
+            % compare for soft/hard convexity/concavity
+            % ids are periodical => not necessary to checkout other positions
+            conc_soft = conc_soft + sum(center_y > (left_y + right_y)/2);
+            conv_soft = conv_soft + sum(center_y < (left_y + right_y)/2);
+            conc_hard = conc_hard + sum(center_y > max(left_y, right_y));
+            conv_hard = conv_hard + sum(center_y < min(left_y, right_y));
+          end
+        end
+      end
     end
+
+    % increase the number of comparisons including comparisons not
+    % performed due to the lack of non-empty cells
+    nComparisons = nComparisons + (blocks(d) - 2) * prod(blocks((1:dim) ~= d));
   end
   
   % calculate features

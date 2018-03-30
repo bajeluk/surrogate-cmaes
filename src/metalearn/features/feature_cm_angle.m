@@ -56,21 +56,17 @@ function ft = feature_cm_angle(X, y, settings)
   end
   
   % create grid of cells
-  cmCells = createCMGrid(X, y, lb, ub, blocks);
-  nCells = numel(cmCells);
+  cmg = CMGrid(X, y, lb, ub, blocks);
   
   % distances max - center in all cells
-  distCentMax = cell2mat(arrayfun(@(i) cmCells(i).getDistCtr2Max, 1:nCells, ...
-                                 'UniformOutput', false));
+  distCentMax = cmg.getDistCtr2Max();
   % distances min - center in all cells
-  distCentMin = cell2mat(arrayfun(@(i) cmCells(i).getDistCtr2Min, 1:nCells, ...
-                                 'UniformOutput', false));
+  distCentMin = cmg.getDistCtr2Min();
   % angle between min - center - max in all cells
-  maxMinAngle = cell2mat(arrayfun(@(i) cmCells(i).getMaxMinAngle, 1:nCells, ...
-                                 'UniformOutput', false)); 
+  maxMinAngle = cmg.getMaxMinAngle;
   % difference y_max - y_min in all cells
-  maxMinDiff = cell2mat(arrayfun(@(i) cmCells(i).getMaxMinDiff, 1:nCells, ...
-                                 'UniformOutput', false));
+  maxMinDiff = cmg.getMaxMinDiff;
+  
   y_mnmx = minmax(y');
   
   % calculate features
