@@ -36,6 +36,7 @@ function testCMGrid(testCase)
   verifySize(testCase, cmg.getMaxMinAngle, [nCells, 1])
   verifySize(testCase, cmg.getMaxMinDiff, [nCells, 1])
   verifySize(testCase, cmg.getNearCtrPoint, [nCells, dim])
+  verifySize(testCase, cmg.getNearCtrGridPointY, blocks)
   % in sparse data the gradient homogeneity can be even empty (3 points per
   % cell needed)
   cmg.getGradHomogeneity();

@@ -213,6 +213,53 @@ classdef CMGrid
       end
     end
     
+    function y = getNearCtrGridPointY(obj, cl_distance, dist_param)
+    % get point nearest to the cell center from the whole grid
+    % Be careful, this method has great memory requirements.
+      if nargin < 3
+        if nargin < 2
+          cl_distance = 'euclidean';
+        end
+        dist_param = defMetricParam(cl_distance, obj.X);
+      end
+      
+      % calculate cell boulds
+      maxBlocks = max(obj.blocks);
+      blockLB = NaN(maxBlocks, obj.dim);
+      blockUB = NaN(maxBlocks, obj.dim);
+      blockSize = (obj.ub-obj.lb) ./ obj.blocks;
+      for d = 1 : obj.dim
+        % lower bounds
+        blockLB(1:obj.blocks(d), d) = obj.lb(d) + (0:(obj.blocks(d)-1)) * blockSize(d);
+        % upper bounds
+        blockUB(:, d) = blockLB(:, d) + blockSize(d);
+      end
+      
+      sumCells = prod(obj.blocks);
+      y = NaN(obj.blocks);
+      % create char for capturing cell coordinates
+      coordChar = [];
+      for d = 1:obj.dim - 1
+        coordChar = [coordChar, 'cellCoordinates(', num2str(d), '), '];
+      end
+      coordChar = [coordChar, 'cellCoordinates(', num2str(obj.dim), ')'];
+      % run loop accross all cells (even empty ones)
+      for i = 1 : sumCells
+        eval(['[', coordChar, '] = ind2sub(obj.blocks, i);'])
+        % get cell center
+        cellCenter = (blockLB(cellCoordinates) + blockUB(cellCoordinates)) / 2;
+        % minkowski and mahalanobis settings
+        if any(strcmp(cl_distance, {'minkowski', 'mahalanobis'})) && nargin == 3
+          [~, id] = pdist2(obj.X, cellCenter, cl_distance, dist_param, 'Smallest', 1);
+        % other distances
+        else
+          [~, id] = pdist2(obj.X, cellCenter, cl_distance, 'Smallest', 1);
+        end
+        y(i) = obj.y(id);
+      end
+      
+    end
+    
     function res = isCellEmpty(obj, testedId)
     % return if cell with given coordinates is empty
       res = any(all(repmat(testedId, obj.nCells, 1) == obj.cellId, 2));
