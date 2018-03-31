@@ -26,7 +26,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
     'N%d_', ...
     'design-%s.mat'}, '' ...
   ));
-  opts.res_path = defopts(opts, 'results');
+  opts.res_path = defopts(opts, 'res_path', 'results');
   opts.res_fname_template = defopts(opts, 'res_fname_template', strjoin({'res_', ...
     '%dD_', ...
     'f%d_', ...
@@ -122,7 +122,11 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
                   for param_cell = fields(paramDef)'
                     param = param_cell{:};
                     vals = paramDef.(param);
-                    modelOpt.(param) = vals(fullFact(k, j));
+                    if iscell(vals)
+                      modelOpt.(param) = vals{fullFact(k, j)};
+                    else
+                      modelOpt.(param) = vals(fullFact(k, j));
+                    end
                     j = j + 1;
                   end
 
@@ -173,7 +177,7 @@ function results = testOneModel(data, dim, func, inst, N, ...
   fprintf('================================\n');
 
   % the result structure, one row per each CV fold
-  c = numel(cvind);
+  c = numel(cv_ind);
   res = struct('model', cell(c, 1), 'Y', cell(c, 1), 'Ypred', cell(c, 1));
 
   % parallel loop over specified CV folds
