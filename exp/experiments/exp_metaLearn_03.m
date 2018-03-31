@@ -148,7 +148,7 @@ opts.modelTypes = { 'forest', 'xgb', 'gp' };
 
 % CV settings
 opts.cv_type = 'KFold';
-opts.cv_param = 10;
+opts.cv_param = 5;
 opts.cv_ind = 1:opts.cv_param;
 
 % the CV can be run in a parallel worker pool
