@@ -237,15 +237,9 @@ classdef CMGrid
       
       sumCells = prod(obj.blocks);
       y = NaN(obj.blocks);
-      % create char for capturing cell coordinates
-      coordChar = [];
-      for d = 1:obj.dim - 1
-        coordChar = [coordChar, 'cellCoordinates(', num2str(d), '), '];
-      end
-      coordChar = [coordChar, 'cellCoordinates(', num2str(obj.dim), ')'];
       % run loop accross all cells (even empty ones)
       for i = 1 : sumCells
-        eval(['[', coordChar, '] = ind2sub(obj.blocks, i);'])
+        cellCoordinates = ind2coor(i, obj.blocks);
         % get cell center
         cellCenter = (blockLB(cellCoordinates) + blockUB(cellCoordinates)) / 2;
         % minkowski and mahalanobis settings

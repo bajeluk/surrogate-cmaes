@@ -3,12 +3,39 @@ function tests = metafeatureTest
   tests = functiontests(localfunctions);
 end
 
+function testGCM(testCase)
+  % empty input should not generate error
+  verifyEmpty(testCase, fieldnames(feature_gcm()));
+  % test data
+  dim = 5;
+  nData = 50*dim;
+  X = rand(nData, dim);
+  y = randn(nData, 1);
+  settings.lb = zeros(1, dim);
+  settings.ub = ones(1, dim);
+  % settings.blocks = [2*ones(1, dim)];
+  settings.blocks = [4, 4, 3*ones(1, dim-2)];
+  % output fields without settings
+  ft = feature_gcm(X, y, settings);
+  returnedFields = fieldnames(ft);
+  nRetFields = numel(returnedFields);
+  % number of returned fields can be divided by 23 and be at least 23
+  verifyTrue(testCase, mod(nRetFields, 23) == 0 && nRetFields >= 23)
+  % output range
+  for m = 1:nRetFields
+    % verifyGreaterThanOrEqual(testCase, ft.(returnedFields{m}), 0)
+    % if ~strfind(ft.(returnedFields{m}), 'attractor')
+    %   verifyLessThanOrEqual(testCase, ft.(returnedFields{m}), 1)
+    % end
+  end
+end
+
 function testCMConvexity(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_cm_convexity()));
   % test data
-  dim = 10;
-  nData = 200;
+  dim = 20;
+  nData = 50*dim;
   X = rand(nData, dim);
   y = randn(nData, 1);
   settings.lb = zeros(1, dim);
