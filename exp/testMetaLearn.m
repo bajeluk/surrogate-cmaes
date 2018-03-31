@@ -172,7 +172,8 @@ function results = testOneModel(data, dim, func, inst, N, ...
   fprintf('================================\n');
 
   % the result structure, one row per each CV fold
-  results = struct('model', [], 'Y', [], 'Ypred', []);
+  c = numel(cvind);
+  res = struct('model', cell(c, 1), 'Y', cell(c, 1), 'Ypred', cell(c, 1));
 
   % parallel loop over specified CV folds
   parfor i = cv_ind
@@ -188,9 +189,9 @@ function results = testOneModel(data, dim, func, inst, N, ...
       mdl = ModelFactory.createModel(modelType, modelOptions, xmean, generation);
       mdl = mdl.trainModel(Xtr', Ytr', xmean, generation);
 
-      results(i).model = mdl;
-      results(i).Y = Yte';
-      results(i).Ypred = mdl.modelPredict(Xte');
+      res(i).model = mdl;
+      res(i).Y = Yte';
+      res(i).Ypred = mdl.modelPredict(Xte');
     catch err
       report = getReport(err);
       warning(['Training of model ''%s'' on %dD, func %d, inst %d, N %d' ...
@@ -198,6 +199,8 @@ function results = testOneModel(data, dim, func, inst, N, ...
         modelType, dim, func, inst, N, report);
     end
   end % CV loop
+
+  results = res;
 
 end % function
 
