@@ -160,5 +160,52 @@ classdef CMCell
       end
     end
     
+    function lm = fitPolyModel(obj, modelspec)
+      % fit polynomial model on cell points
+      if nargin < 2
+        modelspec = 'linear';
+      end
+      if numel(obj.y) >= getMinFitlmPoints(modelspec, obj.dim)
+        lm = fitlm(obj.X, obj.y, modelspec);
+      else
+        % empty linear model
+        lm = LinearModel();
+      end
+    end
+    
+  end
+end
+
+function N = getMinFitlmPoints(modelspec, dim)
+% returns minimal number of points necessary to train the model through
+% fitlm function
+  switch modelspec
+    case 'constant'
+      % could be only one, but fitlm fails having only one point
+      N = 2;
+    case 'linear'
+      N = 1 + dim;
+    case 'interactions'
+      N = 1 + dim + dim.*(dim-1)/2;
+    case 'purequadratic'
+      N = 1 + 2*dim;
+    case 'quadratic'
+      N = 1 + 2*dim + dim.*(dim-1)/2;
+    otherwise
+      % poly type
+      if strcmp(modelspec(1:4), 'poly')
+        % gain degrees
+        deg = cell(numel(modelspec) - 4, 1);
+        for i = 1 : numel(modelspec) - 4
+          deg{i} = 0 : str2double(modelspec(i - 4));
+        end
+        % find all combinations
+        combinations = combvec(deg{:});
+        % count only combinations with degree lower than given maximal 
+        % degree
+        N = sum(sum(combinations) <= max(max(combinations)));
+      else
+        error('Cannot interpret ''%s'' as model formula.', modelspec)
+      end
   end
 end

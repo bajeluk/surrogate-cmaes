@@ -4,21 +4,78 @@ function ft = feature_gcm(X, y, settings)
 %
 % The generalized cell mapping features discretizes the continuous input 
 % space utilizing a pre-defined number of blocks (cells) per dimension. 
+% Each cell is represented by exactly one of its observations (best, 
+% average value, or the one located closest to the cell center) and each of
+% the cells is then considered to be an absorbing Markov chain. That is, 
+% for each cell the transition probability for moving from one cell to one 
+% of its neighboring cells is computed. Based on the resulting transition
+% probabilities, the cells are categorized into attractor, transient, 
+% periodic and uncertain cells.
 % (Kerschke et al., 2014)
 %
 % settings:
+%   approach   - type of representative observation | {'min', 'mean',
+%                'near'}
 %   blocks     - number of cell blocks per dimension
 %   distance   - distance metric (similar to pdist function) | default:
 %                'euclidean'
 %   dist_param - additional parameter to distance (similar to pdist 
 %                function)
 %   lb         - lower bounds of the input space
+%   minimize   - binary flag stating whether the objective function should 
 %   ub         - upper bounds of the input space
 %
 % Features:
-%   grad_mean - mean of homogeneity gradients accross all cells
-%   grad_std  - standard deviation of homogeneity gradients accross all 
-%               cells
+%   [approach]_attractors             - total number of attractor cells 
+%   [approach]_pcells                 - ratio of periodic cells
+%   [approach]_tcells                 - ratio of transient cells
+%   [approach]_uncertain              - ratio of uncertain cells
+%   [approach]_basin_prob_min         - minimum of the probabilities for
+%                                       reaching the different basins
+%   [approach]_basin_prob_mean        - mean of the probabilities for
+%                                       reaching the different basins
+%   [approach]_basin_prob_median      - median of the probabilities for
+%                                       reaching the different basins
+%   [approach]_basin_prob_max         - maximum of the probabilities for
+%                                       reaching the different basins
+%   [approach]_basin_prob_std         - standard deviation of the 
+%                                     - probabilities for reaching the 
+%                                       different basins
+%   [approach]_basin_certain_min      - minimum of the basin sizes, basins
+%                                       formed by the "certain" cells
+%   [approach]_basin_certain_mean     - mean of the basin sizes, basins
+%                                       formed by the "certain" cells
+%   [approach]_basin_certain_median   - median of the basin sizes, basins
+%                                       formed by the "certain" cells
+%   [approach]_basin_certain_max      - maximum of the basin sizes, basins
+%                                       formed by the "certain" cells
+%   [approach]_basin_certain_std      - standard deviation of the basin 
+%                                       sizes, basins formed by the 
+%                                       "certain" cells
+%   [approach]_basin_certain_sum      - sum of the basin sizes, basins
+%                                       formed by the "certain" cells
+%   [approach]_basin_uncertain_min    - minimum of the basin sizes, basins
+%                                       formed by the "certain" and 
+%                                       "uncertain" cells
+%   [approach]_basin_uncertain_mean   - minimum of the basin sizes, basins
+%                                       formed by the "certain" and 
+%                                       "uncertain" cells
+%   [approach]_basin_uncertain_median - median of the basin sizes, basins
+%                                       formed by the "certain" and 
+%                                       "uncertain" cells
+%   [approach]_basin_uncertain_max    - maximum of the basin sizes, basins
+%                                       formed by the "certain" and 
+%                                       "uncertain" cells
+%   [approach]_basin_uncertain_std    - standard deviation of the basin 
+%                                       sizes, basins formed by the 
+%                                       "certain" and "uncertain" cells
+%   [approach]_basin_uncertain_sum    - sum of the basin sizes, basins
+%                                       formed by the "certain" and 
+%                                       "uncertain" cells
+%   [approach]_best_attr_prob         - probability of finding attractor 
+%                                       cell with the best objective value
+%   [approach]_best_attr_no           - number of attractor cells with the 
+%                                       best objective value
 
   if nargin < 3
     if nargin < 2
@@ -38,8 +95,13 @@ function ft = feature_gcm(X, y, settings)
   metric = defopts(settings, 'distance', 'euclidean');
   dist_param = defopts(settings, 'dist_param', defMetricParam(metric, X));
   approach = defopts(settings, 'approach', {'min', 'mean', 'near'});
+  min_fun = defopts(settings, 'minimize', true);
   
   nApproaches = numel(approach);
+  % minimization
+  if ~min_fun
+    y = -y;
+  end
   
   % create grid of cells
   cmg = CMGrid(X, y, lb, ub, blocks);

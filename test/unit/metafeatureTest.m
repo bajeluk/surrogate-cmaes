@@ -3,6 +3,30 @@ function tests = metafeatureTest
   tests = functiontests(localfunctions);
 end
 
+function testLinearModel(testCase)
+  % empty input should not generate error
+  verifyEmpty(testCase, fieldnames(feature_linear_model()));
+  % test data
+  dim = 2;
+  nData = 50*dim;
+  X = rand(nData, dim);
+  y = randn(nData, 1);
+  settings.lb = zeros(1, dim);
+  settings.ub = ones(1, dim);
+  settings.blocks = [4, 4, 3*ones(1, dim-2)];
+  % output fields with settings
+  featFields = {'lm_avg_length_reg', 'lm_avg_length_norm', 'lm_length_mean', ...
+                'lm_length_std', 'lm_corr_reg', 'lm_corr_norm', 'lm_ratio_mean', ...
+                'lm_ratio_std', 'lm_std_radio_reg', 'lm_std_radio_norm', ...
+                'lm_std_mean_reg', 'lm_std_mean_norm'};
+  ft = feature_linear_model(X, y, settings);
+  returnedFields = fieldnames(ft);
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+  for f = 1 : numel(returnedFields)
+    verifySize(testCase, ft.(returnedFields{f}), [1 1])
+  end
+end
+
 function testGCM(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_gcm()));
@@ -41,7 +65,7 @@ function testCMConvexity(testCase)
   settings.lb = zeros(1, dim);
   settings.ub = ones(1, dim);
   settings.blocks = [4, 4, 3*ones(1, dim-2)];
-  % output fields without settings
+  % output fields with settings
   featFields = {'concave_soft', 'concave_hard', 'convex_soft', 'convex_hard'};
   ft = feature_cm_convexity(X, y, settings);
   returnedFields = fieldnames(ft);
@@ -59,7 +83,7 @@ function testCMGradHomo(testCase)
   settings.lb = zeros(1, dim);
   settings.ub = ones(1, dim);
   settings.blocks = 2*ones(1, dim);
-  % output fields without settings
+  % output fields with settings
   featFields = {'grad_mean', 'grad_std'};
   ft = feature_cm_gradhomo(X, y, settings);
   returnedFields = fieldnames(ft);
@@ -70,12 +94,14 @@ function testCMAngle(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_cm_angle()));
   % test data
-  X = rand(30, 10);
-  y = randn(30, 1);
-  settings.lb = zeros(1, 10);
-  settings.ub = ones(1, 10);
-  settings.blocks = randi(3, 1, 10);
-  % output fields without settings
+  dim = 20;
+  nPoints = 50*dim;
+  X = rand(nPoints, dim);
+  y = randn(nPoints, 1);
+  settings.lb = zeros(1, dim);
+  settings.ub = ones(1, dim);
+  settings.blocks = randi(3, 1, dim);
+  % output fields with settings
   featFields = {'dist_ctr2best_mean', 'dist_ctr2best_std', ...
                 'dist_ctr2worst_mean', 'dist_ctr2worst_std', ...
                 'angle_mean', 'angle_std', ...

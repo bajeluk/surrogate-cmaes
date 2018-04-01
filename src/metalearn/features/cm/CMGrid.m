@@ -259,6 +259,16 @@ classdef CMGrid
       res = any(all(repmat(testedId, obj.nCells, 1) == obj.cellId, 2));
     end
     
+    function lm = fitPolyModel(obj, modelspec)
+    % fit polynomial model in each cell
+      if nargin < 2
+        modelspec = 'linear';
+      end
+      for c = 1:obj.nCells
+        lm{c} = obj.cmCells(c).fitPolyModel(modelspec);
+      end
+    end
+    
   end
   
 end

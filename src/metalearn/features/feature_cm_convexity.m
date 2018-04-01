@@ -57,7 +57,6 @@ function ft = feature_cm_convexity(X, y, settings)
   end
   
   % create grid of cells
-%   [cmCells, cmId] = createCMGrid(X, y, lb, ub, blocks);
   cmg = CMGrid(X, y, lb, ub, blocks);
   nCells = cmg.nCells;
   sumCells = prod(blocks);

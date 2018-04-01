@@ -41,6 +41,10 @@ function testCMGrid(testCase)
   % cell needed)
   cmg.getGradHomogeneity();
   verifySize(testCase, cmg.isCellEmpty(ones(1, dim)), [1, 1])
+  % fit linear model
+  lm = cmg.fitLinearModel();
+  verifySize(testCase, lm, [nCells, 1])
+  verifyInstanceOf(testCase, lm, 'LinearModel')
 end
 
 function testCMCell(testCase)
@@ -57,6 +61,7 @@ function testCMCell(testCase)
   verifyEmpty(testCase, cm.getMaxMinDiff)
   verifyEmpty(testCase, cm.getNearCtrPoint)
   verifyEmpty(testCase, cm.getGradHomogeneity)
+  verifyEmpty(testCase, cm.fitPolyModel)
   
   % random input without settings
   dim = 3;
@@ -84,30 +89,5 @@ function testCMCell(testCase)
   verifyNotEmpty(testCase, cm.getMaxMinDiff)
   verifyNotEmpty(testCase, cm.getNearCtrPoint)
   verifyNotEmpty(testCase, cm.getGradHomogeneity)
-end
-
-function testCreateCMGrid(testCase)
-% testing creating cell mapping grid
-
-  % empty input should not generate error
-  verifyNotEmpty(testCase, createCMGrid());
-  
-  % random input without settings
-  dim = 50;
-  nData = 50*dim;
-  X = rand(nData, dim);
-  y = rand(nData, 1);
-%   [cmg, cmId, cmEmpty] = createCMGrid(X, y);
-%   verifyEqual(testCase, size(cmg), [1, 1])
-%   verifyEqual(testCase, cmId, ones(dim, 1))
-%   verifyEqual(testCase, cmEmpty, false)
-  
-  % random input with settings
-  lb = zeros(1, dim);
-  ub = ones(1, dim);
-  blocks =  3*ones(1, dim);
-  [cmg, cmId, cmEmpty] = createCMGrid(X, y, lb, ub, blocks);
-%   verifyEqual(testCase, size(cmg), [1, prod(blocks)])
-%   verifyEqual(testCase, size(cmId), [dim, prod(blocks)])
-%   verifyEqual(testCase, size(cmEmpty), [1, prod(blocks)])
+  verifyNotEmpty(testCase, cm.fitPolyModel)
 end
