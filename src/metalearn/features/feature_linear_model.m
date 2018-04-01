@@ -68,6 +68,20 @@ function ft = feature_linear_model(X, y, settings)
   lm_coeff(all(isnan(lm_coeff), 2), :) = [];
   nCoeff = size(lm_coeff, 1);
   
+  sumCells = prod(cmg.blocks);
+  % warn in case of empty cells
+  if nCoeff < sumCells
+    warning(['%d out of %d cells (%0.2f%%) contains too few points to construct a linear model.', ...
+             'This may make linear model features useless.'], ...
+            sumCells - nCoeff, sumCells, (sumCells - nCoeff)/sumCells * 100)
+  end
+  
+  % in case of too few points in all cells return NaN
+  if nCoeff == 0
+    lm_coeff = NaN(1, cmg.dim);
+    nCoeff = 1;
+  end
+  
   % ratio of biggest to smallest absolute coefficient (per cell)
   lm_coeff_ratio = max(abs(lm_coeff), [], 2) ./ min(abs(lm_coeff), [], 2);
   % normalized vectors of coefficients

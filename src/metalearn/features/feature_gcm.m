@@ -107,7 +107,7 @@ function ft = feature_gcm(X, y, settings)
   cmg = CMGrid(X, y, lb, ub, blocks);
   nCells = cmg.nCells;
   
-  sumCells = prod(blocks);
+  sumCells = prod(cmg.blocks);
   % warn in case of empty cells
   if nCells < sumCells
     warning(['%d out of %d cells (%0.2f%%) is empty.', ...
@@ -122,13 +122,13 @@ function ft = feature_gcm(X, y, settings)
       case 'min'
         % get cell minimums
         [~, y_min] = cmg.getCellMin();
-        y = NaN(blocks);
-        y(coor2ind(cmg.cellId, blocks)) = y_min;
+        y = NaN(cmg.blocks);
+        y(coor2ind(cmg.cellId, cmg.blocks)) = y_min;
       case 'mean'
         % get cell means
         y_mean = cmg.getCellMean();
-        y = NaN(blocks);
-        y(coor2ind(cmg.cellId, blocks)) = y_mean;
+        y = NaN(cmg.blocks);
+        y(coor2ind(cmg.cellId, cmg.blocks)) = y_mean;
       case 'near'
         % get points nearest to cell centers
         y = cmg.getNearCtrGridPointY(metric, dist_param);

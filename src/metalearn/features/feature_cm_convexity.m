@@ -59,7 +59,7 @@ function ft = feature_cm_convexity(X, y, settings)
   % create grid of cells
   cmg = CMGrid(X, y, lb, ub, blocks);
   nCells = cmg.nCells;
-  sumCells = prod(blocks);
+  sumCells = prod(cmg.blocks);
   dim = cmg.dim;
   
   % calculate objective values of points nearest to cell center in all 
@@ -114,7 +114,7 @@ function ft = feature_cm_convexity(X, y, settings)
 
     % increase the number of comparisons including comparisons not
     % performed due to the lack of non-empty cells
-    nComparisons = nComparisons + (blocks(d) - 2) * prod(blocks((1:dim) ~= d));
+    nComparisons = nComparisons + (cmg.blocks(d) - 2) * prod(cmg.blocks((1:dim) ~= d));
   end
   
   % calculate features

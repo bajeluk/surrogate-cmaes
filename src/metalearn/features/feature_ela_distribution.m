@@ -1,6 +1,10 @@
-function ft = feature_ela_distribution(~, y)
+function ft = feature_ela_distribution(~, y, settings)
 % ft = FEATURE_ELA_DISTRIBUTION(X, y, settings) returns ELA y-distribution 
 % features for dataset [X, y].
+%
+% The y-distribution features compute the kurtosis, skewness and number of 
+% peaks of the kernel-based estimation of the density of the initial 
+% design’s objective values. (Mersmann et al., 2011)
 %
 % settings:
 %   modemass_treshold - treshold for the mass represented by a potential 

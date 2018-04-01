@@ -7,7 +7,7 @@ function testLinearModel(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_linear_model()));
   % test data
-  dim = 2;
+  dim = 20;
   nData = 50*dim;
   X = rand(nData, dim);
   y = randn(nData, 1);
@@ -229,9 +229,7 @@ function testELAMetamodel(testCase)
   y = randn(30, 1);
   % output fields
   featFields = {'lin_simple', 'lin_w_interact', 'quad_simple', 'quad_w_interact'};
-  returnedFields = fieldnames(feature_ela_metamodel(X, y));
-  printStructure(feature_ela_metamodel(X, y))
- 
+  returnedFields = fieldnames(feature_ela_metamodel(X, y)); 
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
 end
 
@@ -247,4 +245,36 @@ function testBasic(testCase)
                 'blocks_max', 'cells_total', 'cells_filled', 'minimize_fun'};
   returnedFields = fieldnames(feature_basic(X, y));
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+end
+
+function testGetMetaFeatures(testCase)
+  % empty input should not generate error
+  verifyEmpty(testCase, fieldnames(getMetaFeatures()));
+  % test data
+  dim = 10;
+  nData = 50*dim;
+
+  X = rand(nData, dim);
+  y = randn(nData, 1);
+  settings.lb = zeros(1, dim);
+  settings.ub = ones(1, dim);
+  settings.blocks = 2*ones(1, dim);
+  % feature groups
+  featGroups =   {'basic', ...
+                  'cm_angle', ...
+                  'cm_convexity', ...
+                  'cm_gradhomo', ...
+                  'dispersion', ...
+                  'ela_distribution', ...
+                  'ela_levelset', ...
+                  'ela_metamodel', ...
+                  'gcm', ...
+                  'infocontent', ...
+                  'linear_model', ...
+                  'nearest_better', ...
+                  'pca' ...
+                 };
+  mf = getMetaFeatures(X, y);
+  returnedFields = fieldnames(mf);
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featGroups)))
 end

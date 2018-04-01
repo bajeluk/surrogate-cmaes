@@ -1,0 +1,131 @@
+function ft = getMetaFeatures(X, y, settings)
+% ft = getMetaFeatures(X, y, settings) calculates all implemented
+% metafeature groups.
+%
+% Metafeature groups:
+%   basic            - features of the initial design
+%   cm_angle         - information based on the location of the best and 
+%                      worst point of the cell (cell mapping features)
+%   cm_convexity     - convexity based on representative observations of 
+%                      successive cells (cell mapping features)
+%   cm_gradhomo      - cell-wise information on the gradients between each 
+%                      point of a cell and its corresponding nearest 
+%                      neighbor (cell mapping features)
+%   dispersion       - dispersion among observations within the initial 
+%                      design and among a subset of these points
+%   ela_distribution - estimation of the density of the initial design’s 
+%                      objective values
+%   ela_levelset     - discriminant analysis is used to predict groups of
+%                      y-values splitted previously by certain treshold
+%   ela_metamodel    - regression models are fitted to the initial dataset
+%   gcm              - generalized cell mapping: transition probability for
+%                      moving from one cell to one of its neighboring cells
+%   infocontent      - information content of a continuous landscape
+%   linear_model     - statistics of linear model coefficients within each 
+%                      cell
+%   nearest_better   - comparison of the sets of distances from all 
+%                      observations towards their nearest neighbors
+%   pca              - principal component analysis on the initial design
+%
+% Input:
+%   X        - values in input space
+%   y        - objective values
+%   settings - structure containing list of feature groups and its 
+%              individual settings
+%     overall:
+%       features - list of feature groups to calculate | cell-array or 
+%                  'all' | {'basic', 'cm_angle', 'cm_convexity', 
+%                  'cm_gradhomo', 'dispersion', 'ela_distribution', 
+%                  'ela_levelset', 'ela_metamodel', 'gcm', 'infocontent', 
+%                  'linear_model', 'nearest_better', 'pca'}
+%       lb       - lower bounds of the input space
+%       ub       - upper bounds of the input space
+%       [other]  - fields different from the listed above will be
+%                  considered as the settings for all features (local
+%                  settings is more important than global)
+%     
+% Output:
+%   ft - structure of metafeatures (first level - groups, second level -
+%        metafeatures
+%
+% See Also:
+%   feature_basic
+%   feature_cm_angle
+%   feature_cm_convexity
+%   feature_cm_gradhomo
+%   feature_dispersion
+%   feature_ela_distribution
+%   feature_ela_levelset
+%   feature_ela_metamodel
+%   feature_gcm
+%   feature_infocontent
+%   feature_linear_model
+%   feature_nearest_better
+%   feature_pca
+  
+  if nargin < 3
+    if nargin < 2
+      help getMetaFeatures
+      if nargout > 0
+        ft = struct();
+      end
+      return
+    end
+    settings = struct();
+  end
+
+  % parse settings
+  lb = defopts(settings, 'lb', min(X) - eps);
+  ub = defopts(settings, 'ub', max(X) + eps);
+  features = defopts(settings, 'features', 'all');
+  listFeatures = {'basic', ...
+                  'cm_angle', ...
+                  'cm_convexity', ...
+                  'cm_gradhomo', ...
+                  'dispersion', ...
+                  'ela_distribution', ...
+                  'ela_levelset', ...
+                  'ela_metamodel', ...
+                  'gcm', ...
+                  'infocontent', ...
+                  'linear_model', ...
+                  'nearest_better', ...
+                  'pca' ...
+                 };
+  if strcmp(features, 'all')
+    features = listFeatures;
+  else
+    assert(all(cellfun(@(x) any(strcmp(x, features)), listFeatures)), ...
+      'Feature names are not correct.')
+    assert(numel(features) > 1, 'No features were selected')
+  end
+  nFeat = numel(features);
+  
+  % create base structure for individual group settings
+  feat_settings_base.lb = lb;
+  feat_settings_base.ub = ub;
+  % add additional overall settings
+  commonSettingsList = [{'features', 'lb', 'ub'}, listFeatures];
+  set_fields = fieldnames(settings);
+  for sf = 1:numel(set_fields)
+    if ~any(strcmp(set_fields{sf}, commonSettingsList))
+      feat_settings_base.(set_fields{sf}) = settings.(set_fields{sf});
+    end
+  end
+  
+  % features loop
+  for f = 1:nFeat
+    % get overall settings
+    feat_settings = feat_settings_base;
+    % add feature group specific settings
+    group_settings = defopts(settings, features{f}, struct());
+    group_fields = fieldnames(group_settings);
+    for gf = 1 : numel(group_fields)
+      feat_settings.(group_fields{gf}) = group_settings.(group_fields{gf});
+    end
+    
+    % run feature group calculation
+    ft.(features{f}) = eval(['feature_', features{f}, '(X, y, feat_settings)']);
+  end
+  
+end

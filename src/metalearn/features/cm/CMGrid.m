@@ -35,9 +35,9 @@ classdef CMGrid
               end
               return
             end
-            lb = min(X);
+            lb = min(X) - eps;
           end
-          ub = max(X);
+          ub = max(X) + eps;
         end
         blocks = 1;
       end
@@ -56,7 +56,7 @@ classdef CMGrid
       assert(all(obj.blocks > 0 & mod(blocks, 1) == 0), 'Block numbers has to be natural.')
 
       % init
-      maxBlocks = max(blocks);
+      maxBlocks = max(obj.blocks);
       blockLB = NaN(dataDim, maxBlocks);
       blockUB = NaN(dataDim, maxBlocks);
       pointCellId = zeros(nData, dataDim);
@@ -65,12 +65,21 @@ classdef CMGrid
       blockSize = (obj.ub-obj.lb) ./ obj.blocks;
       for d = 1 : dataDim
         % lower bounds
-        blockLB(d, 1:blocks(d)) = lb(d) + (0:(blocks(d)-1)) * blockSize(d);
+        blockLB(d, 1:obj.blocks(d)) = lb(d) + (0:(obj.blocks(d)-1)) * blockSize(d);
         % upper bounds
         blockUB(d, :) = blockLB(d, :) + blockSize(d);
         % for each point find containing cells 
         for i = 1:nData
-          pointCellId(i, d) = find(X(i, d) <= blockUB(d, 1:blocks(d)), 1, 'first');
+          try
+          pointCellId(i, d) = find(X(i, d) <= blockUB(d, 1:obj.blocks(d)), 1, 'first');
+          catch
+            
+          blockUB
+          obj.blocks
+          d
+          i
+          X(i, d)
+          end
         end
       end
       
