@@ -1,6 +1,11 @@
-function ft = getMetaFeatures(X, y, settings)
+function [ft, values] = getMetaFeatures(X, y, settings)
 % ft = getMetaFeatures(X, y, settings) calculates all implemented
-% metafeature groups.
+% metafeature groups on dataset [X, y], where X is NxM double matrix of 
+% datapoints in the input space and y is Nx1 double vector of objective
+% values.
+%
+% [ft, values] = getMetaFeatures(...) returns also Kx1 vector of
+% metafeature values, where K is overall number of metafeatures
 %
 % Metafeature groups:
 %   basic            - features of the initial design
@@ -28,25 +33,51 @@ function ft = getMetaFeatures(X, y, settings)
 %   pca              - principal component analysis on the initial design
 %
 % Input:
-%   X        - values in input space
-%   y        - objective values
+%   X        - values in input space | NxM double matrix
+%   y        - objective values | Nx1 double vector
 %   settings - structure containing list of feature groups and its 
 %              individual settings
 %     overall:
-%       features - list of feature groups to calculate | cell-array or 
-%                  'all' | {'basic', 'cm_angle', 'cm_convexity', 
-%                  'cm_gradhomo', 'dispersion', 'ela_distribution', 
-%                  'ela_levelset', 'ela_metamodel', 'gcm', 'infocontent', 
-%                  'linear_model', 'nearest_better', 'pca'}
-%       lb       - lower bounds of the input space
-%       ub       - upper bounds of the input space
-%       [other]  - fields different from the listed above will be
-%                  considered as the settings for all features (local
-%                  settings is more important than global)
+%       features  - list of feature groups to calculate | cell-array or 
+%                   'all' | {'basic', 'cm_angle', 'cm_convexity', 
+%                   'cm_gradhomo', 'dispersion', 'ela_distribution', 
+%                   'ela_levelset', 'ela_metamodel', 'gcm', 'infocontent', 
+%                   'linear_model', 'nearest_better', 'pca'}
+%       lb        - lower bounds of the input space | 1xM double
+%       ub        - upper bounds of the input space | 1xM double
+%       [feature] - local setting for individual feature group | struct
+%       [other]   - fields different from the listed above will be
+%                   considered as the settings for all features (local
+%                   settings is more important than global)
 %     
 % Output:
 %   ft - structure of metafeatures (first level - groups, second level -
 %        metafeatures
+%
+% Example:
+%   X = rand(100, 2);
+%   y = rand(100, 1);
+%   settings.lb = [0, 0];
+%   settings.ub = [1, 1];
+%   settings.features = {'cm_convexity', 'cm_gradhomo'};
+%   settings.blocks = [5 4];              % settings for all feature groups
+%   settings.cm_gradhomo.blocks = [3 4];  % blocks for cm_gradhomo will be
+%                                         % different from global setting
+%   ft = getMetaFeatures(X, y, settings)
+%
+%   ft = 
+% 
+%       cm_convexity: [1x1 struct]
+%        cm_gradhomo: [1x1 struct]
+%
+%   printStructure(ft)
+%
+%   ft.cm_convexity.concave_soft = 0.636364;
+%   ft.cm_convexity.concave_hard = 0.409091;
+%   ft.cm_convexity.convex_soft = 0.363636;
+%   ft.cm_convexity.convex_hard = 0.318182;
+%   ft.cm_gradhomo.grad_mean = 0.326304;
+%   ft.cm_gradhomo.grad_std = 0.261862;
 %
 % See Also:
 %   feature_basic
@@ -63,6 +94,7 @@ function ft = getMetaFeatures(X, y, settings)
 %   feature_nearest_better
 %   feature_pca
   
+  values = [];
   if nargin < 3
     if nargin < 2
       help getMetaFeatures
@@ -95,7 +127,7 @@ function ft = getMetaFeatures(X, y, settings)
   if strcmp(features, 'all')
     features = listFeatures;
   else
-    assert(all(cellfun(@(x) any(strcmp(x, features)), listFeatures)), ...
+    assert(all(cellfun(@(x) any(strcmp(x, listFeatures)), features)), ...
       'Feature names are not correct.')
     assert(numel(features) > 1, 'No features were selected')
   end
@@ -126,6 +158,7 @@ function ft = getMetaFeatures(X, y, settings)
     
     % run feature group calculation
     ft.(features{f}) = eval(['feature_', features{f}, '(X, y, feat_settings)']);
+    values = [values; struct2array(ft.(features{f}))'];
   end
   
 end

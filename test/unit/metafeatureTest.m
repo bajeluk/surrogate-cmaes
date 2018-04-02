@@ -228,7 +228,10 @@ function testELAMetamodel(testCase)
   X = rand(30, 3);
   y = randn(30, 1);
   % output fields
-  featFields = {'lin_simple', 'lin_w_interact', 'quad_simple', 'quad_w_interact'};
+  featFields = {'lin_simple_adj_r2', 'lin_simple_intercept', 'lin_simple_coef_min', ...
+                'lin_simple_coef_max', 'lin_simple_coef_max_by_min', ...
+                'lin_w_interact_adj_r2', 'quad_simple_adj_r2', ...
+                'quad_simple_cond', 'quad_w_interact_adj_r2'};
   returnedFields = fieldnames(feature_ela_metamodel(X, y)); 
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
 end
@@ -253,12 +256,10 @@ function testGetMetaFeatures(testCase)
   % test data
   dim = 10;
   nData = 50*dim;
-
   X = rand(nData, dim);
   y = randn(nData, 1);
   settings.lb = zeros(1, dim);
   settings.ub = ones(1, dim);
-  settings.blocks = 2*ones(1, dim);
   % feature groups
   featGroups =   {'basic', ...
                   'cm_angle', ...
@@ -274,7 +275,17 @@ function testGetMetaFeatures(testCase)
                   'nearest_better', ...
                   'pca' ...
                  };
+  % test no settings
   mf = getMetaFeatures(X, y);
   returnedFields = fieldnames(mf);
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featGroups)))
+  % test with settings
+  settings.features = {'cm_convexity', 'cm_gradhomo'};
+  settings.blocks = 2*ones(1, dim);
+  settings.cm_gradhomo.blocks = 3*ones(1, dim);
+  [mf, values] = getMetaFeatures(X, y, settings);
+  % two feature groups
+  verifyEqual(testCase, numel(struct2cell(mf)), 2)
+  % six features
+  verifyEqual(testCase, numel(values), 6)
 end
