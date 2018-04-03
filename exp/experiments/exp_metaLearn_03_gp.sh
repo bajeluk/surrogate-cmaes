@@ -62,16 +62,14 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 DATASET_PATH=$CWD/data_metalearn
 
-ID="6000"
-DIMS="5" #2 5 10"
-FUNCS="5" #`seq 1 24`
-INSTS="[1:5]" #,2,3,4,5,41,42,43,44,45,46,47,48,49,50]"
-#INSTS="[1:5|41:50]"
+ID="201"
+DIMS="2 5 10"
+FUNCS=`seq 1 24`
+INSTS="[1:5|41:50]"
 DESIGNS="lhs"
 DATASIZES="50*dim"
-#OPTS=( 13 )
 
-QUEUE="01:00:00"
+QUEUE="48:00:00"
 submit_model "GP" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES"
 
 exit 0
