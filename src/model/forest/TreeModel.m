@@ -385,6 +385,7 @@ classdef TreeModel < WeakModel
         if obj.tree_nodes(t).leaf
           N(t) = 1;
           S(t) = R(t);
+          g(t) = inf;
           G(t) = inf;
         else
           N(t) = N(lt(t)) + N(rt(t));
@@ -431,6 +432,7 @@ classdef TreeModel < WeakModel
         % 4. Make current node t terminal by setting 
         N(t) = 1;
         S(t) = R(t);
+        g(t) = inf;
         G(t) = inf;
         % 5. Update ancestor’s information of current node t
         while t > 1

@@ -86,7 +86,7 @@ classdef PairObliqueSplit < Split
         pair = nchoosek(1:nData, 2);
         numAllPairs = nData*(nData-1)/2;
         pairIds = randperm(numAllPairs, nPairs);
-        pair = pair(pairIds);
+        pair = pair(pairIds, :);
       else
         % sequentially generate pairs at random
         pairsDone = 0;
