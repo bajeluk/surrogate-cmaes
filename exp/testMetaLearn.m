@@ -135,9 +135,17 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
                   end
                 end
 
-                results = testOneModel(data, dim, func, inst, N, ...
-                                       modelType, modelOpt, ...
-                                       cv, opts.cv_ind);
+                try
+                  results = testOneModel(data, dim, func, inst, N, ...
+                    modelType, modelOpt, ...
+                    cv, opts.cv_ind);
+                catch err
+                  if ~strcmp(exc.identifier, 'testOneModel:tr_failed')
+                    rethrow(err);
+                  else
+                    continue;
+                  end
+                end
 
                 if ~isempty(results) && (opts.rewrite_results || ~exist(res_fname, 'file'))
                   save(res_fname, 'dim', 'func', 'inst', 'N_cell', 'N', 'designType', ...
@@ -202,6 +210,8 @@ function results = testOneModel(data, dim, func, inst, N, ...
       warning(['Training of model ''%s'' on %dD, func %d, inst %d, N %d' ...
                ' failed with error:\n%s'], ...
         modelType, dim, func, inst, N, report);
+      err = MException('testOneModel:tr_failed', ['Training of ' num2str(i) 'th fold failed']);
+      throw(err);
     end
   end % CV loop
 
