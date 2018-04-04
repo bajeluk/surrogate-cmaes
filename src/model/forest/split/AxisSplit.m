@@ -50,6 +50,8 @@ classdef AxisSplit < Split
       [n, dim] = size(obj.split_X);
       % get prescribed number of tresholds
       nTresh = obj.getNQuant(dim);
+      % number of tresholds should not be greater than number of points - 1
+      nTresh = min(nTresh, n - 1);
       % calculate hyperplane budget
       maxHyp = obj.getMaxHyp(n, dim);
       % too many hyperplanes requires adjustment of treshold numbers

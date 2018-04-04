@@ -45,12 +45,15 @@ classdef HillClimbingObliqueSplit < RandomSplit
       for iRepeats = 1:obj.split_nRepeats
         if iRepeats == 1
           [candidate, obj] = obj.getAxisHyperplane(splitGain);
-        else
+        elseif obj.split_remainHyp > 0
           [candidate, obj] = obj.getRandomHyperplane(splitGain);
         end
         [candidate, obj] = obj.hillClimb(splitGain, candidate);
         if candidate.gain > best.gain
           best = candidate;
+        end
+        if obj.split_remainHyp < 1
+          break
         end
       end
     end
@@ -61,9 +64,10 @@ classdef HillClimbingObliqueSplit < RandomSplit
     % get axis paralel hyperplane
       best = obj.splitCandidate;
       trans = obj.split_transformation;
-      [~, d] = size(obj.split_X);
+      [nPoints, d] = size(obj.split_X);
       % get number of hyperplanes for axis paralel phase
-      nAxisHyp = min(obj.getAxisPhaseHyp(), obj.split_remainHyp);
+      nAxisHyp = min([obj.getAxisPhaseHyp(), obj.split_remainHyp, ...
+                      (nPoints-1)*d]);
       % get number of thresholds per dimension
       nTreshPerDim = obj.getNTresh(nAxisHyp);
       % dimension loop
@@ -217,8 +221,6 @@ classdef HillClimbingObliqueSplit < RandomSplit
       [~, dim] = size(obj.split_X);
       % get prescribed number of tresholds
       nTresh = obj.getNQuant(dim);
-      % calculate hyperplane budget
-%       maxHyp = obj.getMaxHyp(n, dim);
       % too many hyperplanes requires adjustment of treshold numbers
       if dim*nTresh > maxHyp
         nTreshPerDim = floor(maxHyp/dim)*ones(1, dim);
