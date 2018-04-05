@@ -16,7 +16,7 @@ classdef GradientSplitGain < SplitGain
   methods (Access = protected)
     function value = getValue(obj, data)
     % evaluates data using custom metric
-      GH = sum(data.y);
+      GH = sum(data.y(:, 2:3));
       % first derivatives
       G = GH(1);
       % second derivatives

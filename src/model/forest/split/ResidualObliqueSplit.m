@@ -20,8 +20,8 @@ classdef ResidualObliqueSplit < Split
       end
       % polynomial regression
       model = PolynomialModel(struct('weak_modelSpec', obj.split_degree));
-      model = model.trainModel(obj.split_X, obj.split_y);
-      c = model.modelPredict(obj.split_X) < obj.split_y;
+      model = model.trainModel(obj.split_X, obj.split_y(:, 1));
+      c = model.modelPredict(obj.split_X) < obj.split_y(:, 1);
       
       % discriminant analysis
       switch obj.split_degree

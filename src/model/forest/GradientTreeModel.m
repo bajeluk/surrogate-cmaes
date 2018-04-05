@@ -24,8 +24,8 @@ classdef GradientTreeModel < TreeModel
   
   methods (Access = protected)
     function predictor = trainPredictor(obj, X, y, modelID)
-      G = sum(y(:, 1));
-      H = sum(y(:, 2));
+      G = sum(y(:, 2));
+      H = sum(y(:, 3));
       w = repmat(-G/(H + obj.tree_regularization), size(y, 1), 1);
       predictor = obj.tree_predictorFunc(obj.tree_predictorOpts);
       if isprop(predictor, 'weak_models')
@@ -52,8 +52,8 @@ classdef GradientTreeModel < TreeModel
           [yPred(right.idx)] = obj.modelPredictRecursive(X(right.idx, :), right.iNode);
         end
         
-        G = sum(y(:, 1));
-        H = sum(y(:, 2));
+        G = sum(y(:, 2));
+        H = sum(y(:, 3));
         w = repmat(-G/(H + obj.tree_regularization), size(X, 1), 1);
         objective = obj.objectiveFunc(w, yPred);
         

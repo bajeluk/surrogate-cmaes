@@ -465,7 +465,7 @@ classdef TreeModel < WeakModel
     % get cross-validated pruning level
       
       % calculate original tree cost-complexities (alpha)
-      [prunedNodes, alpha] = obj.getCostComplexity(X, y);
+      [prunedNodes, alpha] = obj.getCostComplexity(X, y(:, 1));
       avgalpha = [sqrt(alpha(1:end-1) .* alpha(2:end))'; Inf];
       nAlpha = numel(avgalpha);
     
@@ -506,7 +506,7 @@ classdef TreeModel < WeakModel
       % calculate cross-validation errors
       err_cv = NaN(nAlpha, 1);
       for j = 1 : nAlpha
-        err_cv(j) = obj.tree_lossFunc(y, Y_cv(:, j));
+        err_cv(j) = obj.tree_lossFunc(y(:, 1), Y_cv(:, j));
       end
       minerr = min(err_cv);
       % return list of nodes after pruning

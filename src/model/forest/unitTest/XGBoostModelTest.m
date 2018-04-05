@@ -26,7 +26,7 @@ classdef XGBoostModelTest < ModelTest
     minLeafSize = {10};
     minParentSize = {20};
     maxDepth = {inf};
-    growFull = {true};
+    growFull = {false}; % XGBoost is not implemented for pruning
     lossFunc  = {'mse'};
     fuzziness = {0.1};
     

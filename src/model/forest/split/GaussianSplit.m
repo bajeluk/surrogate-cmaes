@@ -41,7 +41,7 @@ classdef GaussianSplit < RandomSplit
       
       % clusters are fit in scaled input-output space
       ZX = zscore(obj.split_X);
-      Zy = zscore(obj.split_y);
+      Zy = zscore(obj.split_y(:, 1));
       % repeat loop
       for iRepeats = 1:nRepeats
         % fit 2 clusters in input-output space

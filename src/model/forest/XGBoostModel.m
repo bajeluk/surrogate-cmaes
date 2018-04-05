@@ -43,13 +43,12 @@ classdef XGBoostModel < RandomForestModel
         g = obj.rf_objectiveGrad1Func(sample.y, sample.yPred);
         h = obj.rf_objectiveGrad2Func(sample.y, sample.yPred);
         obj.rf_trees(iTree).model = obj.rf_trees(iTree).model.trainModel(...
-            sample.X, [g h]);
+            sample.X, [y g h]);
         yPredNew = obj.rf_trees(iTree).model.modelPredict(X(:, sample.features));
         % scale newly added weights by rf_shringkage after each step of 
         % tree boosting
         obj.rf_trees(iTree).weight = obj.rf_shrinkage;
         yPred = yPred + obj.rf_trees(iTree).weight * yPredNew;
-        fprintf('Forest MSE: %d\n', mseLossFunc(y, yPred)) 
       end
     end
   end
