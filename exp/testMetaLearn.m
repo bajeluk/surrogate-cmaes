@@ -39,10 +39,10 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
   opts.rewrite_results = defopts(opts, 'rewrite_results', false);
 
   % parpool init
-  if opts.use_parpool
-    w = MetaParPool('open');
-    fprintf('Started metacentrum pool with %d workers.\n', w);
-  end
+%  if opts.use_parpool
+%    w = MetaParPool('open');
+%    fprintf('Started metacentrum pool with %d workers.\n', w);
+%  end
 
   % dimension loop
   for dim = dims
@@ -162,9 +162,9 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
   end % dimension loop
 
   % clean up parpool
-  if opts.use_parpool
-    MetaParPool('close');
-  end
+%  if opts.use_parpool
+%    MetaParPool('close');
+%  end
 
 end % function
 
@@ -189,7 +189,7 @@ function results = testOneModel(data, dim, func, inst, N, ...
   res = struct('model', cell(c, 1), 'mse', cell(c, 1), 'mae', cell(c, 1), 'r2', cell(c, 1), 'n', cell(c, 1));
 
   % parallel loop over specified CV folds
-  parfor i = cv_ind
+  for i = cv_ind
     xmean = zeros(1, dim);
     generation = 0;
 
