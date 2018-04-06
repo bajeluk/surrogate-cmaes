@@ -50,9 +50,19 @@ classdef Split
       best = candidate;
     end
     
-    function best = getDiscrAnal(obj, splitGain, c, best, discrimTypes)
-    % returns split using discriminant analysis
+    function [best, spentHyp] = getDiscrAnal(obj, splitGain, c, best, discrimTypes)
+    % returns split using discriminant analysis and number of spent
+    % hyperplanes
+    
+      spentHyp = 0;
+      % classification of one group does not make sense
+      cl = unique(c);
+      if numel(cl) < 2
+        return
+      end
+      % loop accross types of disrimination analysis
       for i = 1:numel(discrimTypes)
+        spentHyp = spentHyp + 1;
         discrimType = discrimTypes{i};
         try
           model = fitcdiscr(obj.split_X, c, 'DiscrimType', discrimType);
@@ -61,7 +71,6 @@ classdef Split
           modelTrained = false;
         end
         
-        cl = unique(c);
         % singular covariance matrix
         if ~modelTrained && ...
             sum(cl(1) == c) > 1 && sum(cl(2) == c) > 1 && ...
@@ -78,6 +87,8 @@ classdef Split
         % model trained => create candidate
         if modelTrained
           candidate.splitter = obj.createModelSplitter(model);
+          % maybe the spentHyp increasing should be here
+          % spentHyp = spentHyp + 1;
           [candidate.gain, candidate.leftID, candidate.rightID] = splitGain.get(candidate.splitter);
           if candidate.gain > best.gain
             best = candidate;

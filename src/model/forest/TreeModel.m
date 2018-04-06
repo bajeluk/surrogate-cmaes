@@ -96,7 +96,12 @@ classdef TreeModel < WeakModel
     function obj = cvPrune(obj, X, y)
     % cross-validated pruning 
     
-      prunedTreeNodes = obj.getPruneLevel(X, y);
+      try
+        prunedTreeNodes = obj.getPruneLevel(X, y);
+      catch err
+        warning('TreeModel: Pruning failed with the following error:\n%s', getReport(err))
+        prunedTreeNodes = 1 : obj.tree_nNodes;
+      end
       % if the tree should be pruned
       if numel(prunedTreeNodes) < obj.tree_nNodes
         inTree = ismember(1:numel(obj.tree_nodes), prunedTreeNodes);
@@ -246,7 +251,7 @@ classdef TreeModel < WeakModel
       [yPred, ~] = obj.tree_nodes(iNode).predictor.modelPredict(X);
       nodeErr(iNode) = obj.tree_lossFunc(y, yPred);
       
-      % childern prediction
+      % children prediction
       if ~obj.tree_nodes(iNode).leaf
         idx = obj.tree_nodes(iNode).splitter(X) <= 0.5;
         nodeErr = obj.nodeErrRecursive(X(idx, :), y(idx, :), ...
@@ -470,7 +475,7 @@ classdef TreeModel < WeakModel
       nAlpha = numel(avgalpha);
     
       nData = size(X, 1);
-      foldId = crossvalind('kfold', nData, obj.tree_kfoldPrune);
+      foldId = cvInd(nData, obj.tree_kfoldPrune);
       % change settings not to perform pruning inside cross-validation
       foldTreeOptions = obj.tree_inputOptions;
       foldTreeOptions.tree_growFull = false;
