@@ -140,7 +140,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
                     modelType, modelOpt, ...
                     cv, opts.cv_ind);
                 catch err
-                  if ~strcmp(exc.identifier, 'testOneModel:tr_failed')
+                  if ~strcmp(err.identifier, 'testOneModel:tr_failed')
                     rethrow(err);
                   else
                     continue;
@@ -186,7 +186,7 @@ function results = testOneModel(data, dim, func, inst, N, ...
 
   % the result structure, one row per each CV fold
   c = numel(cv_ind);
-  res = struct('model', cell(c, 1), 'Y', cell(c, 1), 'Ypred', cell(c, 1));
+  res = struct('model', cell(c, 1), 'mse', cell(c, 1), 'mae', cell(c, 1), 'r2', cell(c, 1), 'n', cell(c, 1));
 
   % parallel loop over specified CV folds
   parfor i = cv_ind
@@ -203,8 +203,17 @@ function results = testOneModel(data, dim, func, inst, N, ...
       mdl = mdl.trainModel(Xtr', Ytr', xmean, generation);
 
       res(i).model = mdl;
-      res(i).Y = Yte';
-      res(i).Ypred = mdl.modelPredict(Xte');
+
+      Ypred = mdl.modelPredict(Xte');
+      n = numel(Ypred);
+
+      se = norm(Yte - Ypred, 2).^2
+      mse = se / n;
+      mae = norm(Yte - Ypred, 1) / n;
+      res(i).mse = mse;
+      res(i).mae = mae;
+      res(i).r2 = 1 - se / var(Yte);
+      res(i).n = n;
     catch err
       report = getReport(err);
       warning(['Training of model ''%s'' on %dD, func %d, inst %d, N %d' ...
