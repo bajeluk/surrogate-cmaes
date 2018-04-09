@@ -7,9 +7,10 @@ classdef TreeModel < WeakModel
         'right', 0, ...
         'depth', 0, ...
         'splitter', [], ...
-        'predictor', [], ...
-        'X', [], ...
-        'y', []);
+        'predictor', [] ...
+        );
+        %'X', [], ...
+        %'y', []);
   end
   
   properties %(Access = protected)
@@ -25,6 +26,7 @@ classdef TreeModel < WeakModel
     tree_splitGain     % evaluator for split functions
     tree_predictorFunc % function which creates a model in leaf
     tree_predictorOpts % options of weak model in leaf
+    tree_delPred       % delete predictors in intermediate leaves
     tree_growFull      % grows a full tree then prunes, otherwise prunes during splitting
     tree_lossFunc      % loss function used for pruning
     tree_kfoldPrune    % number of folds used for cross-validated pruning
@@ -42,6 +44,7 @@ classdef TreeModel < WeakModel
       obj.tree_maxDepth = defopts(modelOptions, 'tree_maxDepth', inf);
       obj.tree_growFull = defopts(modelOptions, 'tree_growFull', false);
       obj.tree_lossFunc = defopts(modelOptions, 'tree_lossFunc', @mseLossFunc);
+      obj.tree_delPred = defopts(modelOptions, 'tree_delPred', true);
       obj.tree_predictorFunc = defopts(modelOptions, 'tree_predictorFunc', ...
         @ConstantModel);
       % predictor is a weak model of WeakModel class the ancestor of handle
@@ -72,6 +75,13 @@ classdef TreeModel < WeakModel
       % prune fully grown tree
       if obj.tree_growFull
         obj.cvPrune(X, y)
+      end
+      % delete predictors in internal nodes
+      if obj.tree_delPred
+        interNodeId = find(~[obj.tree_nodes(:).leaf]);
+        for n = interNodeId
+          obj.tree_nodes(n).predictor = [];
+        end
       end
     end
 
@@ -479,7 +489,10 @@ classdef TreeModel < WeakModel
       % change settings not to perform pruning inside cross-validation
       foldTreeOptions = obj.tree_inputOptions;
       foldTreeOptions.tree_growFull = false;
+      foldTreeOptions.tree_delPred = false;
       foldTreeOptions.tree_minGain = -inf;
+      % create fold tree
+      T = TreeModel(foldTreeOptions); 
       
       % prepare objective table
       Y_cv = NaN(nData, nAlpha);
@@ -492,8 +505,7 @@ classdef TreeModel < WeakModel
         y_train = y(trainId, :);
         X_test = X(testId, :);
         y_test = y(testId, :);
-        % create and train fold tree
-        T = TreeModel(foldTreeOptions);
+        % train fold tree
         T.trainModel(X_train, y_train);
         % gain cost-complexities
         [T_f, alpha_f] = T.getCostComplexity(X_test, y_test);

@@ -74,9 +74,17 @@ end
 function numOfPeaks = numberOfPeaks(x, modemass_treshold)
 % Estimate the number of peaks in x distribution
 
-  % estimate density
-  % TODO: proper settings of ksdensity function
-  [y_dens, xi_dens] = ksdensity(x);
+  % estimate density, where the number of points is set to 512 according to 
+  % the default value of density function in R and the method for bandwith
+  % selection is probably different because there is "SJ" method used in
+  % flacco (methods of Sheather & Jones (1991) to select the bandwidth 
+  % using pilot estimation of derivatives)
+  nPoints = 512;
+  if verLessThan('matlab', 'R2017b')
+    [y_dens, xi_dens] = ksdensity(x, 'npoints', nPoints);
+  else
+    [y_dens, xi_dens] = ksdensity(x, 'NumPoints', nPoints);
+  end
   n = length(y_dens);
   id = 2 : (n - 1);
   % find the position of valleys within the estimated y-distribution

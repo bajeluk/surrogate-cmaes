@@ -15,7 +15,7 @@ classdef DEMSDSplitGain < SplitGain
       [n, ~] = size(data.y);
       value = log(exp(1)*pi) ...
         + log(sum(data.sd2) + realmin) ...
-        - digamma((n - 1) / 2);
+        - digamma(n / 2);
       value = 0.5 * value;
     end
   end
