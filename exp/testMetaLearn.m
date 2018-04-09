@@ -14,6 +14,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
   opts.cv_type = defopts(opts, 'cv_type', 'KFold');
   opts.cv_param = defopts(opts, 'cv_param', 10);
   opts.cv_ind = defopts(opts, 'cv_ind', 1:opts.cv_param);
+  opts.inst_subsamp = defopts(opts, 'inst_subsamp', false);
   opts.use_rng_seed = defopts(opts, 'use_rng_seed', true);
   opts.rng_seed = defopts(opts, 'rng_seed', 42);
   opts.use_parpool = defopts(opts, 'use_parpool', true);
@@ -37,6 +38,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
     'opts%d.mat'}, '' ...
   ));
   opts.rewrite_results = defopts(opts, 'rewrite_results', false);
+  opts.save_retries = defopts(opts, 'save_retries', 10);
 
   % parpool init
 %  if opts.use_parpool
@@ -48,8 +50,16 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
   for dim = dims
     % function loop
     for func = funcs
+
+      if opts.inst_subsamp
+        % 0 in result name marks that instances are sampled in each CV fold
+        insts_all = [0];
+      else
+        insts_all = insts;
+      end
+
       % instance loop
-      for inst = insts
+      for inst = insts_all
 
         % dataset sizes loop
         for N_cell = Ns
@@ -63,16 +73,28 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
             designType = design_cell{:};
 
             % load the dataset
-            fname = sprintf(opts.fname_template, dim, func, inst, N, designType);
-            fname = fullfile(opts.dataset_path, sprintf('%dD', dim), fname);
-            data = load(fname);
+            if opts.inst_subsamp
+              % instance subsampling
+              inst_samp = randsample(insts, cv.NumTestSets, true); % with replacement
+            else
+              inst_samp = [inst];
+            end
+            fprintf('Inst sample: %s\n', num2str(inst_samp));
 
-            % data sanity checks
-            assert(dim == size(data.X, 1), 'Unexpected dimensionality.');
-            assert(N == size(data.X, 2), 'Unexpected data size.');
-            assert(N == size(data.Y, 2), 'Unexpected output size.');
-            assert(data.funId == func, 'Unexpected function id.');
-            assert(data.instId == inst, 'Unexpected instance id.');
+            data = cell(1, max(insts));
+            for instance = inst_samp
+              fname = sprintf(opts.fname_template, dim, func, instance, N, designType);
+              fname = fullfile(opts.dataset_path, sprintf('%dD', dim), fname);
+              d = load(fname);
+
+              % data sanity checks
+              assert(dim == size(d.X, 1), 'Unexpected dimensionality.');
+              assert(N == size(d.X, 2), 'Unexpected data size.');
+              assert(N == size(d.Y, 2), 'Unexpected output size.');
+              assert(d.funId == func, 'Unexpected function id.');
+              assert(inst == 0 || d.instId == inst, 'Unexpected instance id.');
+              data{instance} = d;
+            end
 
             % model types loop
             for modelType_cell = opts.modelTypes
@@ -136,7 +158,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
                 end
 
                 try
-                  results = testOneModel(data, dim, func, inst, N, ...
+                  results = testOneModel(data, dim, func, inst_samp, N, ...
                     modelType, modelOpt, ...
                     cv, opts.cv_ind);
                 catch err
@@ -148,8 +170,24 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
                 end
 
                 if ~isempty(results) && (opts.rewrite_results || ~exist(res_fname, 'file'))
-                  save(res_fname, 'dim', 'func', 'inst', 'N_cell', 'N', 'designType', ...
-                    'cv', 'results', 'modelType', 'modelOptInd', 'modelOpt');
+                  sleep_time = 1;
+                  for t = 1:opts.save_retries
+                    pause(sleep_time);
+                    iserr = 0;
+                    try
+                      save(res_fname, 'dim', 'func', 'inst', 'inst_samp', 'N_cell', 'N', 'designType', ...
+                        'cv', 'results', 'modelType', 'modelOptInd', 'modelOpt');
+                    catch err
+                      iserr = 1;
+                      report = getReport(err);
+                      warning('save failed with error:\n%s', report);
+                    end
+
+                    if ~iserr, break; end
+                    sleep_time = 1.5 * sleep_time;
+                  end % save retries
+
+                  if iserr, error('Could not save file within %d retries.', opts.save_retries); end
                 end
               end % options loop
 
@@ -169,7 +207,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
 end % function
 
 
-function results = testOneModel(data, dim, func, inst, N, ...
+function results = testOneModel(data, dim, func, inst_samp, N, ...
   modelType, modelOptions, ...
   cv, cv_ind)
 
@@ -177,7 +215,7 @@ function results = testOneModel(data, dim, func, inst, N, ...
   fprintf('      # of folds:  %d\n', length(cv_ind));
   fprintf('      function:    %d\n', func);
   fprintf('      dimension:   %d\n', dim);
-  fprintf('      instance:    %d\n', inst);
+  fprintf('      instances:   %s\n', num2str(inst_samp));
   fprintf('      data size:   %d\n', N);
   fprintf('      model type:  %s\n', modelType);
   fprintf('      model opts:\n');
@@ -190,19 +228,30 @@ function results = testOneModel(data, dim, func, inst, N, ...
 
   % parallel loop over specified CV folds
   for i = cv_ind
+    if numel(inst_samp) == 1
+      d = data{inst_samp(1)};
+    else
+      assert(i <= numel(inst_samp));
+      d = data{inst_samp(i)};
+    end
+
+    assert(~isempty(d));
+    assert(isstruct(d) && isfield(d, 'X') && isfield(d, 'Y'));
+
     xmean = zeros(1, dim);
     generation = 0;
 
-    Xtr = data.X(:, cv.training(i));
-    Ytr = data.Y(:, cv.training(i));
-    Xte = data.X(:, cv.test(i));
-    Yte = data.Y(:, cv.test(i));
+    Xtr = d.X(:, cv.training(i));
+    Ytr = d.Y(:, cv.training(i));
+    Xte = d.X(:, cv.test(i));
+    Yte = d.Y(:, cv.test(i));
 
     try
       mdl = ModelFactory.createModel(modelType, modelOptions, xmean, generation);
       mdl = mdl.trainModel(Xtr', Ytr', xmean, generation);
 
-      res(i).model = mdl;
+      % the following might cause result files to be large
+      % res(i).model = mdl;
 
       Ypred = mdl.modelPredict(Xte');
       n = numel(Ypred);
@@ -214,11 +263,13 @@ function results = testOneModel(data, dim, func, inst, N, ...
       res(i).mae = mae;
       res(i).r2 = 1 - se / var(Yte);
       res(i).n = n;
+      res(i).inst = inst_samp(i);
+      res(i).Ypred = Ypred;
     catch err
       report = getReport(err);
-      warning(['Training of model ''%s'' on %dD, func %d, inst %d, N %d' ...
+      warning(['Training of model ''%s'' on %dD, func %d, inst %s, N %d' ...
                ' failed with error:\n%s'], ...
-        modelType, dim, func, inst, N, report);
+        modelType, dim, func, num2str(inst_samp), N, report);
       err = MException('testOneModel:tr_failed', ['Training of ' num2str(i) 'th fold failed']);
       throw(err);
     end
