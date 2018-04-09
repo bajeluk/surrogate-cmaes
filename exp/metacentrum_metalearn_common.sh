@@ -121,7 +121,7 @@ function submit_sequence()
 }
 
 function submit_model() {
-  # submit_model MODEL DIMS FUNCS INSTS DESIGNS DATASIZES
+  # submit_model1 MODEL DIMS FUNCS INSTS DESIGNS DATASIZES
   #
   # read option ids for given model type
   #
@@ -157,6 +157,69 @@ function submit_model() {
     N_OPTS=${#OPT_IND[@]}
   else
     OPT_IND=( ${OPTSIND[@]} )
+    N_OPTS=${#OPT_IND[@]}
+  fi
+  echo "N_OPTS=$N_OPTS"
+
+  for DIM in $DIMS; do
+    for FUNC in $FUNCS; do
+      for INST in $INSTS; do
+        for DES in $DESIGNS; do
+          for DS in $DATASIZES; do
+            DESIGN="{%$DES%}"
+            DATASIZE="{%$DS%}"
+
+            for i in `seq 0 $(( $N_OPTS - 1 ))`; do
+              submit_sequence ${OPT_IND[$i]} 1 ${OPT_IND[$i]}
+            done
+
+            ID=$((ID + 1))
+          done # data sizes
+        done # designs
+      done # instances
+    done # functions
+  done # dims
+}
+
+function submit_model1() {
+  # submit_model1 MODEL DIMS FUNCS INSTS DESIGNS DATASIZES
+  #
+  # read option ids for given model type
+  #
+  # submits all model options for each data set configuration
+  #
+  # data set configurations are given by cartesian product
+  # of following sequences:
+  #   * DIMS      -- dimensionalities
+  #   * FUNCS     -- BBOB functions
+  #   * INSTS     -- BBOB instances
+  #   * DESIGNS   -- sampling designs
+  #   * DATASIZES -- sample sizes
+  #   * STEP      -- send options in batches
+  #   * OPTSIND   -- option indices (will be read from a file if empty)
+  MODEL=`echo $1 | tr '[:upper:]' '[:lower:]'`
+  DIMS=$2
+  FUNCS=$3
+  INSTS=$4
+  DESIGNS=$5
+  DATASIZES=$6
+  STEP=$7
+  shift 7
+  OPTSIND=( $@ )
+
+  FNAME=$( echo $EXPPATH_SHORT/$EXPID/${MODEL}_ids.txt )
+
+  if [ ! -f $FNAME ]; then
+    echo "Error: model option indices file $FNAME not found."
+    exit 1
+  fi
+
+  if [ ! ${#OPTSIND[@]} -gt 0 ]; then
+    read OPT_IND < $FNAME
+    OPT_IND=( $OPT_IND ) # bash array
+    N_OPTS=${#OPT_IND[@]}
+  else
+    OPT_IND=( ${OPTSIND[@]} )
   fi
 
   for DIM in $DIMS; do
@@ -169,7 +232,7 @@ function submit_model() {
 
             LO=${OPT_IND[0]}
             HI=${OPT_IND[(($N_OPTS - 1))]}
-            submit_sequence $LO 1 $HI
+            submit_sequence $LO $STEP $HI
 
             ID=$((ID + 1))
           done # data sizes
@@ -178,3 +241,6 @@ function submit_model() {
     done # functions
   done # dims
 }
+
+
+
