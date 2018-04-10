@@ -20,6 +20,10 @@
 #   EXPPATH_SHORT  -- usually $APPROOT/exp/experiments
 
 
+# cleaning of SCRATCH when error or job termination occur
+trap 'clean_scratch' TERM EXIT
+
+
 function eval_matlab_array() {
   local S=$1
   local LO=""
