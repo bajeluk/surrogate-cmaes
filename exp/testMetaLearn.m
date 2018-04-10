@@ -155,6 +155,8 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
                   if opts.use_rng_seed
                     rng(opts.rng_seed);
                   end
+                else
+                  k = NaN;
                 end
 
                 try
@@ -176,7 +178,7 @@ function testMetaLearn(modelOptions, modelOptionsInd, opts, funcs, dims, ...
                     iserr = 0;
                     try
                       save(res_fname, 'dim', 'func', 'inst', 'inst_samp', 'N_cell', 'N', 'designType', ...
-                        'cv', 'results', 'modelType', 'modelOptInd', 'modelOpt');
+                        'cv', 'results', 'modelType', 'modelOptInd', 'modelOpt', 'k');
                     catch err
                       iserr = 1;
                       report = getReport(err);
