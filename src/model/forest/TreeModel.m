@@ -74,7 +74,7 @@ classdef TreeModel < WeakModel
       obj.trainModelRecursive(X, y, iNodeRoot, 0);
       % prune fully grown tree
       if obj.tree_growFull
-        obj.cvPrune(X, y)
+        obj.cvPrune(X, y);
       end
       % delete predictors in internal nodes
       if obj.tree_delPred
@@ -226,7 +226,7 @@ classdef TreeModel < WeakModel
     function [yPred, sd2] = modelPredictRecursive(obj, X, iNode, pruned)
     % predict objective values recursively
       if nargin < 4
-        pruned = 1:obj.tree_nNodes;
+        pruned = [1, find([obj.tree_nodes(:).parent])];
       end
       % return values for leaves or nodes which became leaves through
       % pruning
