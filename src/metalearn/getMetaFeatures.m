@@ -158,7 +158,12 @@ function [ft, values] = getMetaFeatures(X, y, settings)
     
     % run feature group calculation
     ft.(features{f}) = eval(['feature_', features{f}, '(X, y, feat_settings)']);
-    values = [values; struct2array(ft.(features{f}))'];
+
+    % struct2array unavailable since 2017a
+    % see: https://www.mathworks.com/matlabcentral/answers/357399-conversion-of-structure-to-double-in-r2017a
+    ft1 = ft.(features{f});
+    c = struct2cell(ft1);
+    values = [values; [c{:}]'];
   end
-  
+
 end
