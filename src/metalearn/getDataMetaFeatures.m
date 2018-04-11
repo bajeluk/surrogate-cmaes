@@ -1,8 +1,8 @@
-funIds = 1:2;
-dims = [5];
-instIds = [1:2];
+funIds = 1:24;
+dims = [2, 5, 10];
+instIds = [1:5 41:50];
 Ns = {'50 * dim'};
-design = {'lhs', 'lhsnorm'};
+design = {'lhs'};
 
 exppath = fullfile('exp', 'experiments');
 input_path = fullfile(exppath, 'data_metalearn');
