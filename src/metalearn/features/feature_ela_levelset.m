@@ -10,8 +10,7 @@ function ft = feature_ela_levelset(X, y, settings)
 % errors of each classifier.
 %
 % settings:
-%   methods   - discriminant analysis methods | default: {'lda', 'qda'} 
-%               (future work: mda)
+%   methods   - discriminant analysis methods | default: {'lda', 'qda', 'mda'} 
 %   nfolds    - number of folds in cross-validation | default: 10
 %   quantiles - quantiles to calculate tresholds | default: [0.1, 0.25,
 %               0.5]
@@ -37,7 +36,7 @@ function ft = feature_ela_levelset(X, y, settings)
   
   % initialize
   qnt = defopts(settings, 'quantiles', [0.1, 0.25, 0.5]);
-  classMethods = defopts(settings, 'methods', {'lda', 'qda'});
+  classMethods = defopts(settings, 'methods', {'lda', 'qda', 'mda'});
   nFolds = defopts(settings, 'nfolds', 10);
   
   nData = numel(y);
@@ -60,10 +59,11 @@ function ft = feature_ela_levelset(X, y, settings)
     for cm = 1:nClassMet
       switch classMethods{cm}
         case 'lda'
-          classFcn = @(xTrain, yTrain, xTest) oneFold(xTrain, yTrain, xTest, 'linear');
+          classFcn = @(xTrain, yTrain, xTest) oneFold(xTrain, yTrain, xTest, 'linear', 'fitcdiscr');
         case 'qda'
-          classFcn = @(xTrain, yTrain, xTest) oneFold(xTrain, yTrain, xTest, 'quadratic');
-        % TODO: mda
+          classFcn = @(xTrain, yTrain, xTest) oneFold(xTrain, yTrain, xTest, 'quadratic', 'fitcdiscr');
+        case 'mda'
+          classFcn = @(xTrain, yTrain, xTest) oneFold(xTrain, yTrain, xTest, '', 'mda');
         otherwise
           error('No such classification method as %s available for ELA levelset features implemented', ...
                 classMethods{cm})
@@ -87,12 +87,35 @@ function ft = feature_ela_levelset(X, y, settings)
   
 end
 
-function yTest = oneFold(xTrain, yTrain, xTest, type)
+function yTest = oneFold(xTrain, yTrain, xTest, type, discr_anal_fcn)
 % one fold function
   try
-    mdl = fitcdiscr(xTrain, yTrain, 'DiscrimType', type);
-    yTest = mdl.predict(xTest);
-  catch
+    if strcmp(discr_anal_fcn, 'fitcdiscr')
+      mdl = fitcdiscr(xTrain, yTrain, 'DiscrimType', type);
+      yTest = mdl.predict(xTest);
+    elseif strcmp(discr_anal_fcn, 'mda')
+      J = numel(unique(yTrain));
+
+      % FIXME: yTrain might not be consecutive integers
+      yTrain = int8(yTrain);
+
+      assert(all(sort(unique(yTrain))' == 1:max(unique(yTrain))));
+
+      c = arrayfun(@(j) sum(yTrain == j), 1:J);
+      % number of clusters per each group
+      % must be less than the size of the smallest group - 1
+      R = min(min(c) - 1, 3) * ones(J, 1);
+      nIter = 5; % no. of iterations
+      jProb = ones(1, J) / J; % uniform prior
+      mdl = MDAModel(size(xTest, 2), J, R, nIter, jProb);
+      mdl.fit(xTrain, yTrain);
+      yTest = mdl.predict(xTest, 'map');
+      yTest = nominal(yTest == 2);
+    end
+  catch err
+    rep = getReport(err);
+    fprintf('Failed with error: %s\n', rep);
     yTest = NaN(size(xTest, 1), 1);
   end
 end
+
