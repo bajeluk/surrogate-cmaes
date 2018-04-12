@@ -306,8 +306,6 @@ classdef GpModel < Model
             fprintf('Optimization trial failed.\n');
           end
 
-          i = i + 1;
-
         end % multistart loop
 
         % DEBUG OUTPUT:
@@ -389,6 +387,7 @@ classdef GpModel < Model
       global modelTrainNErrors;
       trainErr = false;
       opt = [];
+      fval = [];
 
       [fminconOpts, nonlnc] = obj.defaultFminconOpts(lb, ub);
       try
