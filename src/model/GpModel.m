@@ -151,7 +151,7 @@ classdef GpModel < Model
         ];
       end
 
-      obj.likBounds = defopts(obj.options, 'likBounds', log([1e-6, 10]));
+      obj.likBounds = defopts(obj.options, 'likBounds', log([1e-3, 10]));
       obj.cmaesCheckBounds = defopts(obj.options, 'cmaesCheckBounds', true);
 
       % general model prediction options
@@ -271,7 +271,7 @@ classdef GpModel < Model
           multi_start_points = bsxfun(@plus, multi_start_points, exp(lb));
           linear_hyp = [linear_hyp; log(multi_start_points)];
         end
-        fprintf('Linear hyp: ');
+        fprintf('Linear hyp: \n');
         disp(linear_hyp);
 
         trainErrs = false(obj.nRestarts);
@@ -314,6 +314,7 @@ classdef GpModel < Model
 
         if (all(trainErrs))
           % DEBUG OUTPUT:
+          obj.trainGeneration = -1;
           fprintf(2, '.. model is not successfully trained, likelihood = %f\n', obj.trainLikelihood);
         end
       else
@@ -404,7 +405,7 @@ classdef GpModel < Model
         fprintf('Model training (fmincon), init fval = %.2f\n', initial);
         try
           modelTrainNErrors = 0;
-          [opt, fval] = fmincon(f, linear_hyp', [], [], [], [], lb, ub, nonlnc, fminconOpts);
+          [opt, fval] = fmincon(f, linear_hyp', [], [], [], [], lb, ub, [], fminconOpts);
           obj.nErrors = modelTrainNErrors;
           if (isnan(fval)  ||  initial - fval < 0.1)
             % final likelihood is not a valid value or
@@ -447,7 +448,6 @@ classdef GpModel < Model
           fprintf(2, 'GpModel.train() ERROR: CMA-ES ended with an exception: %s\n', err.message);
           trainErr = true;
           obj.nErrors = modelTrainNErrors;
-          obj.trainGeneration = -1;
           return;
         end
         cov_median = median(opt(1:obj.dim));
@@ -467,7 +467,6 @@ classdef GpModel < Model
         fprintf(2, 'GpModel.train() ERROR: CMA-ES ended with an exception: %s\n', err.message);
         trainErr = true;
         obj.nErrors = modelTrainNErrors;
-        obj.trainGeneration = -1;
         return;
       end
       if (isnan(fval))
