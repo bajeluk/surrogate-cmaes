@@ -5,6 +5,8 @@ classdef HillClimbingObliqueSplit < RandomSplit
 % no improvement is possible, performs a number of random jumps as an
 % attempt to escape local maxima. If some random jump succeeds,
 % deterministic perturbation is performed again.
+%
+% 
   
   properties
     split_X1 % X with intercept

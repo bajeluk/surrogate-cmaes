@@ -81,7 +81,7 @@ classdef MDAModel < handle
             assert(all(size(D) == [n, obj.R(j)]));
             
             A = bsxfun(@times, obj.rProb(j, 1:obj.R(j)), exp(-D/2));
-            A = A ./ sum(A, 2);
+            A = A ./ repmat(sum(A, 2), 1, obj.R(j));
             assert(all(size(A) == [n, obj.R(j)]));
 
             pc(:, 1:obj.R(j), j) = A;
@@ -104,7 +104,7 @@ classdef MDAModel < handle
 
           Xj = X(gj, :);
           for r = 1:obj.R(j)
-            mu1(j, r, :) = sum((Xj .* pcj(:, r)), 1) / b(r);
+            mu1(j, r, :) = sum((Xj .* repmat(pcj(:, r), 1, obj.d)), 1) / b(r);
           end
         end
         
@@ -136,7 +136,7 @@ classdef MDAModel < handle
 
         % log lik
         A = obj.pxj(X);
-        A = A ./ sum(A, 2);
+        A = A ./ repmat(sum(A, 2), 1, obj.J);
         ll = zeros(n, 1);
         for k = 1:n
           ll(k) = log(A(k, g(k)));
@@ -221,7 +221,7 @@ classdef MDAModel < handle
       assert(all(size(P) == [n, obj.J]));
 
       % normalize
-      P = P ./ sum(P, 2);
+      P = P ./ repmat(sum(P, 2), 1, obj.J);
 
       if nargin < 3 || strcmp(how, 'map')
         % maximum a posteriori
