@@ -1,6 +1,10 @@
 classdef DENNSplitGain < SplitGain
 % NNSplitGain evaluates split functions used in decision trees using
-% 1 nearest neighbor
+% k-th nearest neighbor (in 1D).
+%
+% Kozachenko (1987): Sample estimate of the entropy of a random vector.
+% (english description - Beirlant (2001): Nonparametric entropy estimation:
+% An overview)
 
   properties
     splitGain_k % k-th neighbor
