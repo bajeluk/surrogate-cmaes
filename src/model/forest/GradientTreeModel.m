@@ -29,6 +29,14 @@ classdef GradientTreeModel < TreeModel
       w = repmat(-G/(H + obj.tree_regularization), size(y, 1), 1);
       predictor = obj.tree_predictorFunc(obj.tree_predictorOpts);
       if isprop(predictor, 'weak_models')
+        if modelID == 0
+          % choose model with minimal loss
+          predictor = predictor.trainModel(X, y);
+          y_pred = predictor.modelPredict(X);
+          modelID = min(obj.tree_lossFunc(y, y_pred));
+          predictor = predictor.setUseModel(modelID);
+          return
+        end
         predictor = predictor.setUseModel(modelID);
       end
       predictor = predictor.trainModel(X, w);

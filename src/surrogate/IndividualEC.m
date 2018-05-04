@@ -48,7 +48,7 @@ classdef IndividualEC < EvolutionControl & Observable
       nPresampledPoints = size(arxvalid, 2);
 
       if (~ok)
-        [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
+        [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, 'Archive', archive, varargin{:});
         archive = archive.save(arxvalid', fitness_raw', countiter);
         return;
       end
@@ -97,7 +97,7 @@ classdef IndividualEC < EvolutionControl & Observable
       
       % original-evaluate the chosen points
       [yNew, xNew, xNewValid, zNew, counteval] = ...
-          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, nLambdaRest, counteval, cmaesState, sampleOpts, varargin{:});
+          sampleCmaesOnlyFitness(xToReeval, xToReevalValid, zToReeval, sigma, nLambdaRest, counteval, cmaesState, sampleOpts, 'Archive', archive, varargin{:});
       surrogateOpts.sampleOpts.counteval = counteval;
       fprintf('counteval: %d\n', counteval)
       % update the Archive

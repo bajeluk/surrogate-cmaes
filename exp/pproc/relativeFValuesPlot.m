@@ -394,7 +394,7 @@ function handle = relativePlot(data_stats, settings)
         % display legend indicator 
         actualDisp = dispLegend(handleId, settings.legendOption);
         if (~isempty(settings.plotGrid) && length(settings.plotGrid) == 2)
-          omitXLabel = (floor((handleId-1) / settings.plotGrid(2)) ~= (settings.plotGrid(1)-1));
+          omitXLabel = (mod(floor((handleId-1) / settings.plotGrid(2))+1, settings.plotGrid(1)) ~= 0);
           omitYLabel = (mod(handleId, settings.plotGrid(2)) ~= 1);
         else
           omitXLabel = false;
