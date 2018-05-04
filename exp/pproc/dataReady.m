@@ -1,4 +1,4 @@
-function [data, settings] = dataReady(datapath, funcSet)
+function [data, settings, exp_results] = dataReady(datapath, funcSet)
 % Prepares data for further processing.
 % [data, settings] = dataReady(datapath, funcSet) returns cell array 'data'
 % of size functions x dimensions x settings and appropriate 'settings'.
@@ -47,6 +47,8 @@ function [data, settings] = dataReady(datapath, funcSet)
 
   settings = {};
   data = cell(nFunc, nDim);
+  exp_results = cell(nFunc, nDim);
+  exp_results(:, :) = {{}};
   if isempty(datalist)
     data = bbobDataReady(datapath, funcSet);
     return
@@ -55,7 +57,7 @@ function [data, settings] = dataReady(datapath, funcSet)
   % load data
   for i = 1:length(datalist)
     warning('off', 'MATLAB:load:variableNotFound')
-    S = load(datalist{i}, '-mat', 'y_evals', 'surrogateParams', 'cmaesParams');
+    S = load(datalist{i}, '-mat', 'y_evals', 'surrogateParams', 'cmaesParams', 'exp_results');
     warning('on', 'MATLAB:load:variableNotFound')
     if all(isfield(S, {'y_evals', 'surrogateParams', 'cmaesParams'}))
       % unify parameters to one settings structure
@@ -90,10 +92,18 @@ function [data, settings] = dataReady(datapath, funcSet)
           data{BBfuncInv(func), dimsInv(dim), settingsId} = ...
             [data{BBfuncInv(func), dimsInv(dim), settingsId}; S.y_evals];
         end
+        
+        if size(exp_results, 3) < settingsId || ...
+           isempty(exp_results{BBfuncInv(func), dimsInv(dim), settingsId})
+          exp_results{BBfuncInv(func), dimsInv(dim), settingsId} = {S.exp_results};
+        else
+          exp_results{BBfuncInv(func), dimsInv(dim), settingsId} = ...
+          {exp_results{BBfuncInv(func), dimsInv(dim), settingsId}{:} S.exp_results};
+        end
       end
     % necessary variables are missing
     else
-      fprintf('Variable ''y_evals'', ''surrogateParams'', or ''cmaesParams'' not found in %s.\n', datalist{i})
+      fprintf('Variable ''y_evals'', ''surrogateParams'', ''cmaesParams'' or ''exp_results'' not found in %s.\n', datalist{i})
     end
   end
   

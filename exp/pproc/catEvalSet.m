@@ -1,4 +1,4 @@
-function [evals, settings] = catEvalSet(folders, funcSet)
+function [evals, settings, results] = catEvalSet(folders, funcSet)
 % Finds unique settings and prepares its data for further processing.
 % [evals, settings] = catEvalSet(folders, funcSet) returns cell array 
 % 'data' of size functions x dimensions x unique settings and appropriate 
@@ -32,10 +32,11 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   nFolders = length(folders);
   exp_evals = cell(1, nFolders);
   settings = cell(1, nFolders);
+  exp_results1 = cell(1, nFolders);
 
   % load data from all folders
   for s = 1:length(folders)
-    [exp_evals{s}, settings{s}] = dataReady(folders{s}, funcSet);
+    [exp_evals{s}, settings{s}, exp_results1{s}] = dataReady(folders{s}, funcSet);
   end
   
   % not empty settings
@@ -74,12 +75,15 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   % concatenate evaluations from different experiments and with the same
   % settings
   exp_evals = cat(3, exp_evals{:});
+  exp_results = cat(3, exp_results1{:});
   nSettings = length(allSettings);
   evals = cell(length(funcSet.BBfunc), length(funcSet.dims), nSettings);
+  results = cell(length(funcSet.BBfunc), length(funcSet.dims), nSettings);
   for s = 1 : nSettings
     for f = 1 : length(funcSet.BBfunc)
       for d = 1 : length(funcSet.dims)
           evals{f, d, s} = [exp_evals{f, d, settingsID == s}];
+          results{f, d, s} = [exp_results{f, d, settingsID == s}];
       end
     end
   end
@@ -88,5 +92,6 @@ function [evals, settings] = catEvalSet(folders, funcSet)
   outputSettingsId = arrayfun(@(x) find(settingsID == x, 1, 'first'), unique(settingsID));
   settings = allSettings(outputSettingsId);
   evals = evals(:, :, unique(settingsID));
+  results = results(:, :, unique(settingsID));
 
 end

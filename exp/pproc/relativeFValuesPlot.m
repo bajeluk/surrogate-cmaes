@@ -47,6 +47,12 @@ function handle = relativeFValuesPlot(data, varargin)
 %                       (e.g. [3, 6, 10, 17])
 %     'Statistic'     - statistic of data | string or handle (@mean, 
 %                       @median)
+%     'PlotGrid'      - the number of plots in the final plot grid in order
+%                       to omit the y-label or x-label in internal plots
+%                       2-element vector of number of plots in y and x axis,
+%                       or [] for plotting x/y-labels everywhere
+%     'ScaleY08'      - whether to always scale the y-axis to [-8, 0]
+%                       true by default
 %
 % Output:
 %   handle - handles of resulting figures | cell-array
@@ -111,9 +117,12 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.legendOption = lower(defopts(settings, 'LegendOption', 'show'));
   plotSet.omitEmptyPlots = defopts(settings, 'OmitEmpty', false);
   plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
+  plotSet.plotGrid = defopts(settings, 'PlotGrid', []);
+  plotSet.scaleY08 = defopts(settings, 'ScaleY08', true);
   % plot-line settings
   defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
   plotSet.lineSpec = defopts(settings, 'LineSpec', defaultLine);
+  plotSet.drawQuantiles = defopts(settings, 'Quantiles', false(1, numOfData));
   if length(plotSet.lineSpec) ~= numOfData && any(emptyData)
     plotSet.lineSpec = plotSet.lineSpec(~emptyData);
   end
@@ -122,15 +131,29 @@ function handle = relativeFValuesPlot(data, varargin)
     plotSet.lineSpec = defaultLine;
   end
   plotSet.lineWidth = defopts(settings, 'LineWidth', 1);
+  plotSet.markers   = defopts(settings, 'Markers', {''});
   % statistic settings
   statistic = defopts(settings, 'Statistic', @mean);
-  plotSet.drawQuantiles = false;
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
-      statistic = @(x, dim) quantile(x, [0.25, 0.5, 0.75], dim);
+      statistic = @(x, dim) quantile(x, [0.5, 0.25, 0.75], dim);
       plotSet.lineWidth = defopts(settings, 'LineWidth', 2);
-      plotSet.drawQuantiles = true;
+      if (size(plotSet.drawQuantiles, 2) ~= numOfData)
+        warning('Quantiles can be either scalar boolean, or vector of bools with the same length as the number of data. Using the first value.');
+        plotSet.drawQuantiles = plotSet.drawQuantiles(1);
+      end
+      if (length(plotSet.drawQuantiles) == 1)
+        plotSetQuantiles = repmat(plotSet.drawQuantiles, 1, numOfData);
+      end
+      if (~any(plotSet.drawQuantiles))
+        plotSet.drawQuantiles = true(1, numOfData);
+      end
     else
+      % other than quantile statistics
+      if (any(plotSet.drawQuantiles))
+        warning('Quantiles can be plotted only if Statistic == ''quantile''.');
+        plotSet.drawQuantiles = false(1, numOfData);
+      end
       statistic = str2func(statistic);
     end
   end
@@ -185,45 +208,89 @@ function handle = relativePlot(data_stats, settings)
   end
   settings.legendLocation = 'NorthEast';
 
+  if (any(settings.drawQuantiles))
+    % copy the settings in order to have settings for quartiles, too
+    if (size(settings.lineWidth, 2) == numOfData)
+      settings.lineWidth = repmat(settings.lineWidth, 1, 3);
+    else
+      settings.lineWidth = repmat(settings.lineWidth, 1, 3*numOfData);
+    end
+    if (size(settings.lineSpec, 2) == numOfData)
+      settings.lineSpec = repmat(settings.lineSpec, 1, 3);
+    else
+      settings.lineSpec = repmat(settings.lineSpec, 1, 3*numOfData);
+    end
+    settings.lineSpec((numOfData+1):end) = repmat({':'}, 1, 2*numOfData);
+    if (size(settings.datanames,2) == numOfData)
+      settings.datanames = repmat(settings.datanames, 1, 3);
+    else
+      error('The number of datanames is not consistent.');
+    end
+    % set up markers only for median lines, not for quantiles:
+    if (length(settings.markers) ~= numOfData)
+      settings.markers = repmat(settings.markers(1), 1, numOfData);
+    end
+    settings.markers((numOfData+1):(3*numOfData)) = repmat({''}, 1, 2*numOfData);
+    
+    if (size(settings.colors, 1) == numOfData)
+      settings.colors = repmat(settings.colors, 3, 1);
+    else
+      settings.colors = repmat(settings.colors, 3*numOfData, 1);
+    end
+  end
+  
   relativeData = cell(1, numOfData);
   % function loop
   for f = 1:numOfFuncIds
     % find useful data and plot 
     for d = 1:length(settings.dims)
       % find available data
-      notEmptyData = ~arrayfun(@(dat) isempty(data_stats{dat}{f,d}), 1:numOfData);
-      if ~all(notEmptyData) && any(notEmptyData)
+      isNotEmptyData = ~arrayfun(@(dat) isempty(data_stats{dat}{f,d}), 1:numOfData);
+      if ~all(isNotEmptyData) && any(isNotEmptyData)
         warning('%s are missing in function %d dimension %d.', ...
-          strjoin(settings.datanames(~notEmptyData), ', '), settings.BBfunc(f), settings.dims(d))
+          strjoin(settings.datanames(~isNotEmptyData), ', '), settings.BBfunc(f), settings.dims(d))
       end
       % assign empty set to empty data
       for dat = 1:numOfData
-        if ~notEmptyData(dat)
+        if ~isNotEmptyData(dat)
           relativeData{dat}{f, d} = [];
+          % this data would definietly wouldn't have quatiles plots
+          settings.drawQuantiles(dat) = false;
         end
       end
-      if any(notEmptyData)
-        nEmptyId = inverseIndex(notEmptyData);
-        nUsefulData = sum(notEmptyData);
+      if any(isNotEmptyData)
+        if (any(settings.drawQuantiles) && length(settings.drawQuantiles) ~= length(isNotEmptyData))
+          warning('''Quantiles'' parameter has to be of the same length as the number of data.');
+          settings.drawQuantiles = false(1, numOfData);
+        end
+        nonEmptyId = find(isNotEmptyData);
+        nUsefulData = length(nonEmptyId);
+
         % count f-values ratio
-        actualData = cell2mat(arrayfun(@(D) data_stats{nEmptyId(D)}{f,d}, 1:nUsefulData, 'UniformOutput', false));
+        actualData = cell2mat(arrayfun(@(D) data_stats{nonEmptyId(D)}{f,d}, 1:nUsefulData, 'UniformOutput', false));
         nData = min(settings.maxEval, size(actualData, 1));
         actualData = log10( actualData(1:nData, :) );
         actualMin = min(min(actualData));
         actualMax = max(max(actualData));
 
-        if settings.drawQuantiles
-          dataToProcess = 1:(3*nUsefulData);
-          nEmptyId = sort([(nEmptyId-1)*3+1, (nEmptyId-1)*3+2, (nEmptyId-1)*3+3]);
-        else
-          dataToProcess = 1:nUsefulData;
+        if (any(settings.drawQuantiles))
+          nonEmptyId = [nonEmptyId, numOfData+nonEmptyId, 2*numOfData+nonEmptyId];
+          actualData = actualData(:,[1:3:end, 2:3:end, 3:3:end]);
+          nMedians = size(actualData,2)/3;
+          actualMin = min(min(actualData(:, [true(1,nMedians), repmat(settings.drawQuantiles, 1, 2)])));
+          actualMax = max(max(actualData(:, [true(1,nMedians), repmat(settings.drawQuantiles, 1, 2)])));
         end
-        for D = dataToProcess
+
+        for D = 1:size(actualData, 2)
           % % this is old version for scaling BEFORE logarithm
           % minGraph = 1e-8; maxGraph = 1;
           % relativeData{nEmptyId(D)}{f, d} = log10(thisData);
-          thisData = ((actualData(:, D) - actualMin) * (maxGraph - minGraph)/(actualMax - actualMin))' + minGraph;
-          relativeData{nEmptyId(D)}{f, d} = thisData;
+          if (settings.scaleY08 || (settings.aggDims || settings.aggFuns))
+            thisData = ((actualData(:, D) - actualMin) * (maxGraph - minGraph)/(actualMax - actualMin))' + minGraph;
+          else
+            thisData = actualData(:, D);
+          end
+          relativeData{nonEmptyId(D)}{f, d} = thisData;
         end
       end
     end
@@ -326,17 +393,24 @@ function handle = relativePlot(data_stats, settings)
           figure('Units', 'centimeters', 'Position', [1, 1, 12.5, 6]);
         % display legend indicator 
         actualDisp = dispLegend(handleId, settings.legendOption);
+        if (~isempty(settings.plotGrid) && length(settings.plotGrid) == 2)
+          omitXLabel = (mod(floor((handleId-1) / settings.plotGrid(2))+1, settings.plotGrid(1)) ~= 0);
+          omitYLabel = (mod(handleId, settings.plotGrid(2)) ~= 1);
+        else
+          omitXLabel = false;
+          omitYLabel = false;
+        end
         % plot results
-        notEmptyData = onePlot(relativeData, f, d, settings, ...
-                               actualDisp, handleId*splitLegend, false);
+        isNotEmptyData = onePlot(relativeData, f, d, settings, ...
+                               actualDisp, handleId*splitLegend, omitYLabel, omitXLabel);
         % check if any and which data were plotted in at least one function
         % and dimension
-        plottedInAny = plottedInAny | notEmptyData;
+        plottedInAny = plottedInAny | isNotEmptyData;
         % increase handleId if empty plots are omitted
-        if settings.omitEmptyPlots && any(notEmptyData)
+        if settings.omitEmptyPlots && any(isNotEmptyData)
           handleId = handleId + 1;
         % otherwise delete existing figure
-        elseif settings.omitEmptyPlots && ~any(notEmptyData)
+        elseif settings.omitEmptyPlots && ~any(isNotEmptyData)
           close(handle{handleId})
         end
       end
@@ -368,13 +442,16 @@ function handle = relativePlot(data_stats, settings)
 end
 
 function notEmptyData = onePlot(relativeData, fId, dId, ...
-                 settings, dispLegend, splitLegendStatus, omitYLabel)
+                 settings, dispLegend, splitLegendStatus, omitYLabel, omitXLabel)
 % Plots one scaled graph 
 %
 % Note: Omitting y-label is currently enabled. To change this status
 % uncomment rows at the end of onePlot function.
 
   nRelativeData = length(relativeData);
+  if (~exist('omitXLabel', 'var') || isempty(omitXLabel))
+    omitXLabel = false
+  end
 
   % parsing settings
   maxEval = settings.maxEval;
@@ -390,21 +467,26 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   if length(medianLineWidth) < nRelativeData
     medianLineWidth = medianLineWidth(1)*ones(1, nRelativeData);
   end
-  if settings.drawQuantiles
+  if (any(settings.drawQuantiles))
     % we should draw 1st and 3rd quantiles, too, with the same
     % colors and thinner lines
-    relativeData = relativeData([2:3:end, 1:3:end, 3:3:end]);
-    colors = repmat(colors, 3, 1);
-    medianLineWidth((end/3+1):end) = ceil(0.5*medianLineWidth((end/3+1):end));
-    lineSpec = repmat(lineSpec, 1, 3);
+    medianLineWidth(((end/3)+1):end) = ceil(0.5*medianLineWidth(((end/3)+1):end));
+    % % This has been already solved:
+    % colors = repmat(colors, 3, 1);
+    % lineSpec = repmat(lineSpec, 1, 3);
   end
   fullLegend = any(strcmp(settings.legendOption, {'first', 'split'}));
 
   notEmptyData = false(1, nRelativeData);
   % find not empty data
   for dat = 1:nRelativeData
-    notEmptyData(dat) = ~isempty(relativeData{dat}) && ~isempty(relativeData{dat}{fId, dId});
+    notEmptyData(dat) = ~isempty(relativeData{dat}) && size(relativeData{dat}, 1) >= fId ...
+        && size(relativeData{dat}, 2) >= dId && ~isempty(relativeData{dat}{fId, dId});
   end
+  % if (any(settings.drawQuantiles))
+  %   nDataOriginal = length(settings.drawQuantiles);
+  %   notEmptyData = notEmptyData & [true(1, nDataOriginal), settings.drawQuantiles, settings.drawQuantiles];
+  % end
   
   if any(notEmptyData)
     nEmptyId = inverseIndex(notEmptyData);
@@ -412,31 +494,42 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     % find minimal number of function evaluations to plot
     evaldim = 1:min([arrayfun(@(x) length(relativeData{nEmptyId(x)}{fId, dId}), 1:nUsefulData), maxEval]);
     h = zeros(1, nRelativeData);
-    % plot first line 
-    if notEmptyData(1)
-      h(1) = plot(evaldim, relativeData{1}{fId, dId}(evaldim), ...
-        lineSpec{1}, 'LineWidth', medianLineWidth(1), 'Color', colors(1, :));
-    else
-      h(1) = plot(0, 0, ...
-        lineSpec{1}, 'LineWidth', medianLineWidth(1), 'Color', colors(1, :), ...
-        'Visible', 'off');
-    end
-    hold on
-    grid on
-    % plot rest of lines
-    for dat = 2:nRelativeData
-      if notEmptyData(dat)
+    N_MARKERS = 3;
+    % plot the lines
+    thisYMin = Inf;
+    thisYMax = -Inf;
+    for dat = nRelativeData:-1:1
+      if (notEmptyData(dat) && (~any(settings.drawQuantiles) ...
+          || (dat <= (nRelativeData/3)) || settings.drawQuantiles(mod(dat-1,nRelativeData/3)+1)))
         h(dat) = plot(evaldim, relativeData{dat}{fId, dId}(evaldim), ...
           lineSpec{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :));
+        thisY = relativeData{dat}{fId, dId}(evaldim(:));
+        thisY = thisY(:);
+        thisYMin = min([thisYMin; thisY]);
+        thisYMax = max([thisYMax; thisY]);
       else
         h(dat) = plot(0, 0, ...
           lineSpec{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :), ...
           'Visible', 'off');
       end
-    end
-    if settings.drawQuantiles
-      nRelativeData = nRelativeData / 3;
-      notEmptyData((end/3+1):end) = [];
+      if (dat == nRelativeData)
+        hold on;
+        grid on;
+      end
+      if (~isempty(settings.markers) && (length(settings.markers) >= dat) ...
+          && (ischar(settings.markers{dat}) && ~strcmpi(settings.markers{dat}, '')))
+        randomStartMarker = 1+floor(rand()*(evaldim(end) / (N_MARKERS+1)));
+        randomStepMarker  = floor((0.7 + rand()*0.6) * (evaldim(end) / (N_MARKERS+1)));
+        randomXMarkers    = randomStartMarker:randomStepMarker:evaldim(end);
+        if notEmptyData(dat)
+          h(dat) = plot(randomXMarkers, relativeData{dat}{fId, dId}(randomXMarkers), ...
+            settings.markers{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :));
+        else
+          h(dat) = plot(0, 0, ...
+            settings.markers{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :), ...
+            'Visible', 'off');
+        end
+      end
     end
     % if the legend should be plotted with all labels given, add artificial
     % not visible data
@@ -445,10 +538,14 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     else
       legendData = notEmptyData;
     end
+    if (any(settings.drawQuantiles))
+      % nRelativeData = nRelativeData / 3;
+      legendData(((end/3)+1):end) = false;
+    end
     nLegendData = sum(legendData);
     % legend settings
     if dispLegend
-      legIds = false(1, nLegendData);
+      legIds = false(size(legendData));
       switch splitLegendStatus
         % full legend
         case 0
@@ -464,6 +561,12 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
         legend(h(legIds), datanames(legIds), 'Location', settings.legendLocation)
       end
     end
+    ax = gca();
+    if (settings.scaleY08)
+      ax.YLim = [-8, 0];
+    else
+      ax.YLim = [thisYMin, thisYMax];
+    end
   else
     warning('Function %d dimension %d has no data available.', BBfunc(fId), dims(dId))
   end
@@ -477,16 +580,21 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     end
   end
   if ~aggDims
-    titleString = [titleString, ' ', num2str(dims(dId)),'D'];
+    titleString = [titleString, ' ', num2str(dims(dId)),'-D'];
   end
   title(titleString)
-  xlabel('Number of evaluations / D')
-  if ~omitYLabel
-    ylabel('\Delta_f^{log}')
+  if (~omitXLabel)
+    xlabel('Number of evaluations / D');
+  end
+  if (~omitYLabel)
+    ylabel('\Delta_f^{log}');
   end
   
   hold off
-
+  
+  if (any(settings.drawQuantiles))
+    notEmptyData = notEmptyData(1:(end/3));
+  end
 end
 
 function h = soloLegend(colors, names, lineWidth)
