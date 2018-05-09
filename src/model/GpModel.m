@@ -23,11 +23,15 @@ classdef GpModel < Model
     meanFcn
     covFcn
     likFcn
+    covPrior
+    likPrior
     infFcn
     nErrors
     trainLikelihood
     cmaesCheckBounds
     nRestarts
+    mcmcResults
+    mcmcOpts
 
     % Dimensionality-reduction specific fields
     dimReduction          % Reduce dimensionality for model by eigenvectors
@@ -60,7 +64,8 @@ classdef GpModel < Model
       obj.trainLikelihood = Inf;
       obj.useShift  = defopts(obj.options, 'useShift', false);
 
-      % Optimization Toolbox check
+      % Training options
+      %   Optimization Toolbox check
       obj.options.trainAlgorithm = defopts(obj.options, 'trainAlgorithm', 'fmincon');
 
       if (strcmpi(obj.options.trainAlgorithm, 'fmincon') ...
@@ -70,6 +75,16 @@ classdef GpModel < Model
       end
 
       obj.nRestarts = defopts(obj.options, 'nRestarts', 1);
+
+      if strcmpi(obj.options.trainAlgorithm, 'mcmc')
+          defaultMcmcOpts = struct( ...
+            'nsimu',         1000, ...
+            'burnintime',    500, ...
+            'verbosity',     1, ...
+            'waitbar',       false ...
+          );
+        obj.mcmcOpts = defopts(obj.options, 'mcmcOpts', defaultMcmcOpts);
+      end
 
       % GP hyper-parameter settings
       if (isfield(obj.options, 'hypOptions'))
@@ -84,6 +99,14 @@ classdef GpModel < Model
 
         if (isfield(obj.options.hypOptions, 'covFcn'))
           obj.options.covFcn = obj.options.hypOptions.covFcn;
+        end
+
+        if (isfield(obj.options.hypOptions, 'likPrior'))
+          obj.options.covPrior = obj.options.hypOptions.likPrior;
+        end
+
+        if (isfield(obj.options.hypOptions, 'covPrior'))
+          obj.options.covPrior = obj.options.hypOptions.covPrior;
         end
       end
 
@@ -105,6 +128,8 @@ classdef GpModel < Model
       else
         covfcn = obj.covFcn;
       end
+
+%      likPrior = defopts(obj.options, 'likPrior', 
 
       % expand covariance lengthscale hyperparameter according to
       % the dimension if ARD covariance specified and lengthscale is scalar
@@ -305,7 +330,6 @@ classdef GpModel < Model
             % DEBUG OUTPUT:
             fprintf('Optimization trial failed.\n');
           end
-
         end % multistart loop
 
         % DEBUG OUTPUT:
@@ -317,6 +341,19 @@ classdef GpModel < Model
           obj.trainGeneration = -1;
           fprintf(2, '.. model is not successfully trained, likelihood = %f\n', obj.trainLikelihood);
         end
+      elseif strcmpi(alg, 'mcmc')
+        [results, chain, s2chain, hyp_est] = obj.trainMcmc(obj.getDataset_X(), yTrain, 'median');
+        
+        obj.mcmcResults = struct( ...
+          'info', results, ...
+          'chain', chain, ...
+          's2chain', s2chain, ...
+          'est', hyp_est ...
+        );
+
+        % a point estimate
+        obj.hyp = hyp_est.val;
+        obj.trainLikelihood = hyp_est.lik;
       else
         error('GpModel.train(): train algorithm "%s" is not known.\n', alg);
       end
@@ -478,6 +515,61 @@ classdef GpModel < Model
     end
 
 
+    function [results, chain, s2chain, hyp_est] = trainMcmc(obj, X, y, varargin)
+      linear_hyp_start = unwrap(obj.hyp)';
+      const_hyp_idx = false(1, length(linear_hyp_start));
+
+      data.x = X;
+      data.y = y;
+
+      % double negative marginal log likelihood
+      silent = true; % suppress numerical errors in likelihood
+      likfun = @(par, data) 2 * linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, ...
+        data.x, data.y, linear_hyp_start, const_hyp_idx, silent);
+
+      % joint hyperprior
+      priorfun = @(par, ~, ~) -2 * obj.logHyperPrior(par, obj.hyp);
+
+      model = struct( ...
+        'ssfun', likfun, ...
+        'priorfun', priorfun ...
+      );
+
+      % parameter structure
+      nHyp = length(linear_hyp_start);
+      params = cell(1, nHyp);
+      names_tmpl = ['lik' repmat({'cov%d'}, 1, nHyp - 1)];
+      for i = 1:nHyp
+        params{i} = {sprintf(names_tmpl{i}, i), linear_hyp_start(i)};
+      end
+
+      global modelTrainNErrors;
+      modelTrainNErrors = 0;
+
+      [results, chain, s2chain, ~] = mcmcrun(model, data, params, obj.mcmcOpts);
+      obj.nErrors = modelTrainNErrors;
+
+      if nargout > 3
+        % compute a Bayes estimate of hyperparameters from the chain
+        % using an estimator function
+
+        if nargin > 3
+          estfun = varargin{4};
+        else
+          estfun = @median;
+          % estfun = @mean;
+        end
+
+        est = estfun(chain);
+        hyp_est = struct( ...
+          'val', feval(estfun, chain), ...
+          'lik', 0.5 * likfun(est), ...
+          'prior', -0.5 * priorfun(est) ...
+        );
+      end
+    end
+
+
     function [opts, nonlnc] = defaultFminconOpts(obj, lb, ub)
       % return the optimization parameters for fmincon()
       %
@@ -534,6 +626,26 @@ classdef GpModel < Model
       end
     end
   end
+
+  methods (Static)
+    function prob = logHyperPrior(linear_hyp, hyp)
+      % A log product of hyperparameter priors.
+      % All hyp.likPrior and hyp.covPrior{:} functions are assumed to be
+      % densities.
+      hyp_s = rewrap(hyp, exp(linear_hyp'));
+      logp = zeros(1, 1 + numel(hyp.cov));
+
+      assert(numel(hyp.lik) == 1);
+
+      for i = 1:numel(hyp.covPrior)
+        priorFcn = hyp.covPrior{i};
+        logp(i) = log(priorFcn(hyp_s.cov(i)));
+      end
+      logp(end) = hyp.likPrior(hyp_s.lik);
+
+      prob = sum(logp);
+    end
+  end
 end
 
 function [post, nlZ, dnlZ] = infExactCountErrors(hyp, mean, cov, lik, x, y)
@@ -549,16 +661,44 @@ function [post, nlZ, dnlZ] = infExactCountErrors(hyp, mean, cov, lik, x, y)
   end
 end
 
-function [nlZ, dnlZ] = linear_gp(linear_hyp, s_hyp, inf, mean, cov, lik, x, y, linear_hyp_start, const_hyp_idx)
-  % extend the vector of parameters by constant (i.e. not optimized) elements
-  % taken from the vector of initial values
+function [nlZ, dnlZ] = linear_gp(linear_hyp, s_hyp, inf, mean, cov, lik, x, y, linear_hyp_start, const_hyp_idx, varargin)
+  % extend the vector of parameters by constant elements
+  % identified in the vector linear_hyp_start by indices const_hyp_idx
   linear_hyp_start(~const_hyp_idx) = linear_hyp;
   linear_hyp = linear_hyp_start;
 
   hyp = rewrap(s_hyp, linear_hyp');
-  [nlZ, s_dnlZ] = gp(hyp, inf, mean, cov, lik, x, y);
-  dnlZ = unwrap(s_dnlZ)';
-  dnlZ = dnlZ(~const_hyp_idx);
+
+  try
+    if nargout <= 1
+      % compute negative marginal log likelihood
+      nlZ = gp(hyp, inf, mean, cov, lik, x, y);
+    else
+      % compute also negative marginal log likelihood derivatives
+      [nlZ, s_dnlZ] = gp(hyp, inf, mean, cov, lik, x, y);
+      dnlZ = unwrap(s_dnlZ)';
+      dnlZ = dnlZ(~const_hyp_idx);
+    end
+  catch err
+    if nargin > 10
+      % fail silently (return inf)
+      silentflag = varargin{1};
+    else
+      silentflag = false;
+    end
+
+    if silentflag
+      if nargout <= 1
+        nlZ = inf;
+      else
+        nlZ = inf;
+        dnlZ = zeros(length(linear_hyp), 1);
+        dnlZ = dnlZ(~const_hyp_idx);
+      end
+    else
+      throw(err);
+    end
+  end
 end
 
 function [c, ceq] = nonlincons(x)
