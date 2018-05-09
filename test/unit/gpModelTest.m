@@ -66,25 +66,39 @@ function testMcmcm(testCase)
   % Rassmusen, p20
   n = 20;
 
-  X = rand(1, 20) * 10 - 5;
-  K = covSEiso(log([1, 1]), X') + 1e-2 * eye(n);
-  y = mvnrnd(zeros(1, n), K);
+  X = rand(20, 1) * 10 - 5;
+  K = covSEiso(log([1, 1]), X) + 1e-2 * eye(n);
+  y = mvnrnd(zeros(1, n), K)';
 
   hyp = struct( ...
     'lik', log(0.1), ...
-    'cov', log([1, 1]) ...
+    'cov', log([1, 1]), ...
+    'mean', 0 ...
   );
 
   mcmcOpts = struct( ...
-    'nsimu',       1000, ...
-    'burnintime',  500, ...
+    'nsimu',       4000, ...
+    'burnintime',  2000, ...
     'verbosity',   1, ...
     'waitbar',     true ...
   );
 
+  % x ~ LogGamma & x > 0 iff log x ~ Gamma
+  priLogGam = @(a, b) {@priorTransform,@exp,@exp,@log,{@priorGamma, a, b}};
+
+  prior = struct( ...
+    'lik',  {{ priLogGam(1, 0.1) }}, ...
+    'cov',  {{ priLogGam(10, 0.1), priLogGam(2, 0.1) }}, ...
+    'mean', { {{@priorGauss, 0, 0.1}} } ...
+  );
+
   modelOpts = struct( ...
     'covFcn', '@covSEiso', ...
+    'infFcn', 'infExactCountErrors', ...
+    'meanFcn', 'meanConst', ...
+    'likFcn', 'likGauss', ...
     'hyp', hyp, ...
+    'prior', prior, ...
     'trainAlgorithm', 'mcmc', ...
     'mcmcOpts', mcmcOpts ...
   );
@@ -96,18 +110,30 @@ function testMcmcm(testCase)
   warning('on');
 
   % Test on the test data:
-  Xtest = 3*rand(100,5) - 1;
-  ytest = sin(sqrt(sum(Xtest.^2,2)));
+
+  Xtest = linspace(-6, 6, 1000)';
   [yPred, dev] = m.modelPredict(Xtest);
   
-  mse = mean((ytest - yPred).^2);
-  verifyLessThan(testCase, mse, 0.3);
-  disp(['Gaussian process MSE = ' num2str(mse)]);
-  mae = mean(abs(ytest - yPred));
-  verifyLessThan(testCase, mae, 0.35);
-  disp(['Gaussian process MAE = ' num2str(mae)]);
-  verifyLessThan(testCase, dev, 0.5);
-  disp(['Gaussian process mean std = ' num2str(mean(dev))]);
+  % visual check
+  figure();
+  mcmcplot(log10(exp(m.mcmcResults.chain)), [2, 3], m.mcmcResults.info, 'pairs');
+  xlim([-1, 1]);
+  ylim([-1.5, 0.5]);
+
+  figure();
+  plot(Xtest', yPred', 'b-');
+  hold on;
+  plot(Xtest', [yPred-dev yPred+dev]', 'k:');
+  scatter(X, y);
+
+%   mse = mean((ytest - yPred).^2);
+%   verifyLessThan(testCase, mse, 0.3);
+%   disp(['Gaussian process MSE = ' num2str(mse)]);
+%   mae = mean(abs(ytest - yPred));
+%   verifyLessThan(testCase, mae, 0.35);
+%   disp(['Gaussian process MAE = ' num2str(mae)]);
+%   verifyLessThan(testCase, dev, 0.5);
+%   disp(['Gaussian process mean std = ' num2str(mean(dev))]);
 end
 
 % function test1DLinearShift(testCase)

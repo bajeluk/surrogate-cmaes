@@ -23,9 +23,8 @@ classdef GpModel < Model
     meanFcn
     covFcn
     likFcn
-    covPrior
-    likPrior
     infFcn
+    prior
     nErrors
     trainLikelihood
     cmaesCheckBounds
@@ -129,7 +128,7 @@ classdef GpModel < Model
         covfcn = obj.covFcn;
       end
 
-%      likPrior = defopts(obj.options, 'likPrior', 
+      obj.prior = defopts(obj.options, 'prior', []); % no prior by default
 
       % expand covariance lengthscale hyperparameter according to
       % the dimension if ARD covariance specified and lengthscale is scalar
@@ -352,8 +351,14 @@ classdef GpModel < Model
         );
 
         % a point estimate
-        obj.hyp = hyp_est.val;
+        obj.hyp = rewrap(obj.hyp, hyp_est.val);
         obj.trainLikelihood = hyp_est.lik;
+
+        if ~isinf(hyp_est.val)
+          obj.trainGeneration = generation;
+        else
+          obj.trainGeneration = -1;
+        end
       else
         error('GpModel.train(): train algorithm "%s" is not known.\n', alg);
       end
@@ -516,7 +521,7 @@ classdef GpModel < Model
 
 
     function [results, chain, s2chain, hyp_est] = trainMcmc(obj, X, y, varargin)
-      linear_hyp_start = unwrap(obj.hyp)';
+      linear_hyp_start = unwrap(obj.hyp);
       const_hyp_idx = false(1, length(linear_hyp_start));
 
       data.x = X;
@@ -524,11 +529,11 @@ classdef GpModel < Model
 
       % double negative marginal log likelihood
       silent = true; % suppress numerical errors in likelihood
-      likfun = @(par, data) 2 * linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, ...
+      likfun = @(par, data) 2 * linear_gp(par', obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, ...
         data.x, data.y, linear_hyp_start, const_hyp_idx, silent);
 
       % joint hyperprior
-      priorfun = @(par, ~, ~) -2 * obj.logHyperPrior(par, obj.hyp);
+      priorfun = @(par, ~, ~) 2 * obj.hyperPrior(par, obj.hyp, obj.prior);
 
       model = struct( ...
         'ssfun', likfun, ...
@@ -538,9 +543,18 @@ classdef GpModel < Model
       % parameter structure
       nHyp = length(linear_hyp_start);
       params = cell(1, nHyp);
-      names_tmpl = ['lik' repmat({'cov%d'}, 1, nHyp - 1)];
+      names = cell(1, nHyp);
+
+      j = 1;
+      for name_cell = fieldnames(orderfields(obj.hyp))'
+        name = name_cell{:};
+        k = numel(obj.hyp.(name));
+        names(j:j+k-1) = arrayfun(@(d) sprintf([name '%d'], d), 1:k, 'UniformOutput', false)
+        j = j + k;
+      end
+
       for i = 1:nHyp
-        params{i} = {sprintf(names_tmpl{i}, i), linear_hyp_start(i)};
+        params{i} = {names{i}, linear_hyp_start(i)};
       end
 
       global modelTrainNErrors;
@@ -554,17 +568,17 @@ classdef GpModel < Model
         % using an estimator function
 
         if nargin > 3
-          estfun = varargin{4};
+          estfun = varargin{1};
         else
           estfun = @median;
           % estfun = @mean;
         end
 
-        est = estfun(chain);
+        est = feval(estfun, chain);
         hyp_est = struct( ...
-          'val', feval(estfun, chain), ...
-          'lik', 0.5 * likfun(est), ...
-          'prior', -0.5 * priorfun(est) ...
+          'val', est, ...
+          'lik', 0.5 * likfun(est, data), ...
+          'prior', 0.5 * priorfun(est) ...
         );
       end
     end
@@ -645,7 +659,25 @@ classdef GpModel < Model
 
       prob = sum(logp);
     end
+
+    function nlp = hyperPrior(linear_hyp, hyp, prior)
+      inf = @infZeros;
+      hyp_s = vec2any(hyp, linear_hyp');
+
+      % infPrior computes nlZ and distracts log prior value
+      % using infZeros efficiently computes log prior, since supplied nlZ is zero
+      % this hack preserves flexibility of gpml prior specifications,
+      % but also evaluates prior derivatives, whis is not needed here
+      % FIXME: write a proper evalPrior function working with gpml-style prior specs
+      nlp = infPriorOnly(inf, prior, hyp_s);
+    end
+
   end
+
+end
+
+function [post, nlZ, dnlZ] = infZeros(~, ~, ~, ~, ~, ~)
+  post = []; nlZ = 0; dnlZ = 0;
 end
 
 function [post, nlZ, dnlZ] = infExactCountErrors(hyp, mean, cov, lik, x, y)
