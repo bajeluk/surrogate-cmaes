@@ -288,8 +288,8 @@ function handle = relativePlot(data_stats, settings)
           nonEmptyId = [nonEmptyId, numOfData+nonEmptyId, 2*numOfData+nonEmptyId];
           actualData = actualData(:,[1:3:end, 2:3:end, 3:3:end]);
           nMedians = size(actualData,2)/3;
-          actualMin = min(min(actualData(:, [true(1,nMedians), repmat(settings.drawQuantiles, 1, 2)])));
-          actualMax = max(max(actualData(:, [true(1,nMedians), repmat(settings.drawQuantiles, 1, 2)])));
+          actualMin = min(min(actualData(:, [true(1,nMedians), repmat(settings.drawQuantiles(nonEmptyId(1:nMedians)), 1, 2)])));
+          actualMax = max(max(actualData(:, [true(1,nMedians), repmat(settings.drawQuantiles(nonEmptyId(1:nMedians)), 1, 2)])));
         end
 
         for D = 1:size(actualData, 2)

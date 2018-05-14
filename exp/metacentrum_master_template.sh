@@ -6,7 +6,7 @@
 #
 # where
 #   EXPID       -- string with experiment's unique ID
-#   META_QUEUE  -- string with walltime for Metacentrum (2h/4h/1d/2d/1w)
+#   META_QUEUE  -- string with walltime for Metacentrum (2h/4h/1d/2d/1w/hh:mm:ss)
 #   ID1,ID2,... -- integers defining numeric IDs of concrete experiments to run
 #               all IDs are taken from file 'allids.txt' if no IDs supplied on
 #               command-line (allids.txt is expected in experiment's directory
@@ -19,7 +19,26 @@
 EXPID=$1
 
 # QUEUE = Metacentrum walltime (2h/4h/1d/2d/1w) -- queue will be decided accordingly
-QUEUE=$2
+case $2 in
+  2h)
+    QUEUE=2:00:00
+  ;;
+  4h)
+    QUEUE=4:00:00
+  ;;
+  1d)
+    QUEUE=24:00:00
+  ;;
+  2d)
+    QUEUE=48:00:00
+  ;;
+  1w)
+    QUEUE=168:00:00
+  ;;
+  *)
+    QUEUE=$2
+  ;;
+esac
 
 # CWD = Directory of this particular file
 CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
