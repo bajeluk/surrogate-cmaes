@@ -254,7 +254,7 @@ function handle = relativePlot(data_stats, settings)
       for dat = 1:numOfData
         if ~isNotEmptyData(dat)
           relativeData{dat}{f, d} = [];
-          % this data would definietly wouldn't have quatiles plots
+          % this data definitely wouldn't have quantile plots
           settings.drawQuantiles(dat) = false;
         end
       end
@@ -277,8 +277,8 @@ function handle = relativePlot(data_stats, settings)
           nonEmptyId = [nonEmptyId, numOfData+nonEmptyId, 2*numOfData+nonEmptyId];
           actualData = actualData(:,[1:3:end, 2:3:end, 3:3:end]);
           nMedians = size(actualData,2)/3;
-          actualMin = min(min(actualData(:, [true(1,nMedians), repmat(settings.drawQuantiles, 1, 2)])));
-          actualMax = max(max(actualData(:, [true(1,nMedians), repmat(settings.drawQuantiles, 1, 2)])));
+          actualMin = min(min(actualData(:, [true(1,nMedians), repmat(settings.drawQuantiles(nonEmptyId(1:nMedians)), 1, 2)])));
+          actualMax = max(max(actualData(:, [true(1,nMedians), repmat(settings.drawQuantiles(nonEmptyId(1:nMedians)), 1, 2)])));
         end
 
         for D = 1:size(actualData, 2)
@@ -450,7 +450,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
 
   nRelativeData = length(relativeData);
   if (~exist('omitXLabel', 'var') || isempty(omitXLabel))
-    omitXLabel = false
+    omitXLabel = false;
   end
 
   % parsing settings
