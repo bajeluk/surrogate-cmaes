@@ -71,7 +71,7 @@ classdef BayesianICModelSelector < ICModelSelector
     function obj = BayesianICModelSelector(modelOptions, xMean, options)
       obj = obj@ICModelSelector(modelOptions, xMean);
 
-      obj.ic = defopts(options, 'ic', 'wbic');
+      obj.ic = defopts(options, 'ic', 'waic2');
       obj.nSimuPost = defopts(options, 'nSimuPost', 100);
       obj.modelsIC.dic1 = zeros(1, obj.nModels);
       obj.modelsIC.dic2 = zeros(1, obj.nModels);
