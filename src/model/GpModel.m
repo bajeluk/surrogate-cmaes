@@ -1,4 +1,4 @@
-classdef GpModel < Model
+classdef GpModel < Model & BayesianICModel
   properties    % derived from abstract class "Model"
     dim                   % dimension of the input space X (determined from x_mean)
     trainGeneration = -1; % # of the generation when the model was built
@@ -31,6 +31,7 @@ classdef GpModel < Model
     nRestarts
     mcmcResults
     mcmcOpts
+    nSimuPost
 
     % Dimensionality-reduction specific fields
     dimReduction          % Reduce dimensionality for model by eigenvectors
@@ -83,6 +84,7 @@ classdef GpModel < Model
             'waitbar',       false ...
           );
         obj.mcmcOpts = defopts(obj.options, 'mcmcOpts', defaultMcmcOpts);
+        obj.nSimuPost = defopts(obj.options, 'nSimuPost', 20);
       end
 
       % GP hyper-parameter settings
@@ -193,6 +195,87 @@ classdef GpModel < Model
           obj.(ff) = obj2.(ff);
         end
       end
+    end
+
+    function k = getNParams(obj)
+      k = numel(unwrap(obj.hyp));
+    end
+
+    function n = getNData(obj)
+      % returns the real number of data used for training
+      if ~isfield(obj.dataset, 'X') || isempty(obj.dataset.X)
+        n = 0;
+      else
+        n = size(obj.dataset.X, 1);
+      end
+    end
+
+    function lik = getNegLogML(obj, varargin)
+      lik = obj.trainLikelihood;
+    end
+
+    function lik = getNegLogEst(obj, varargin)
+      lik = obj.trainLikelihood;
+    end
+
+    function [lppd, ppd] = getLogPredDens(obj, varargin)
+      % Computes a vector of log pointwise predictive densities averaged over
+      % posterior hyperparams and a matrix of log pointwise predictive
+      % densities:
+      %   lppd  = log [(1/S) * \sum_s p(y_i | \theta_s)] -- N x 1 vector
+      %   ppd   = log p(y_i | \theta_s)                  -- N x S matrix
+
+      if ~(isequal(obj.likFcn, @likGauss) || isequal(obj.likFcn, 'likGauss'))
+        error('Pointwise predictive density not implemented for non-Gaussian likelihoods.');
+      end
+
+      if nargin > 1
+        % the number of posterior simulations
+        nSimu = varargin{1};
+      else
+        nSimu = obj.nSimuPost;
+      end
+
+      assert(isfield(obj.mcmcResults, 'chain') && ~isempty(obj.mcmcResults.chain));
+      chain = obj.mcmcResults.chain;
+
+      idx = randsample(1:length(chain), min(length(chain), nSimu));
+
+      X = obj.dataset.X;
+      y = obj.dataset.y;
+      N = size(X, 1);
+      assert(all(size(y) == [N, 1]));
+
+      % multiplicative factor in Gaussian density
+      ppd_mult = zeros(N, nSimu);
+      % the exponential term in Gaussian density
+      ppd_exp = zeros(N, nSimu);
+      % log predictive densities
+      ppd = zeros(N, nSimu);
+
+      assert(all(size(y) == [N, 1]));
+
+      for i = 1:nSimu
+        hyp_s = rewrap(obj.hyp, chain(idx(i)));
+        [~, ~, fmu, fs2] = gp(hyp_s, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, ...
+          X, y, X);
+        assert(all(size(fmu) == [N, 1]));
+
+        % the predictive density is a Gaussian with mean fmu and variance
+        % (fs2 + sn2)^2
+        sn2 = exp(hyp_s.lik);
+        s = fs2 + sn2;
+        ppd_mult(:, i) = 1 / (nSimu * sqrt(2*pi) * s);
+        z = -0.5 * ((y - fmu)^2 ./ s^2);
+        ppd_exp(:, i) = z;
+        ppd(:, i) = -0.5 * log(2*pi) - 2 * log(s) + z;
+      end
+
+      lppd = logsumexp(ppd_exp, ppd_mult, 2);
+    end
+
+    function sample = getNegLogLPost(obj)
+      sample = obj.mcmcResults.s2chain;
     end
 
     function nData = getNTrainData(obj)
@@ -594,7 +677,7 @@ classdef GpModel < Model
         'TolX', 1e-7, ...
         'MaxIter', 1000, ...
         'MaxFunEvals', 3000, ...
-        'Display', 'on' ...
+        'Display', 'off' ...
         );
       covarianceDim = length(obj.hyp.cov) - 1;
       if (covarianceDim > 1)
@@ -693,21 +776,21 @@ function [post, nlZ, dnlZ] = infExactCountErrors(hyp, mean, cov, lik, x, y)
   end
 end
 
-function [nlZ, dnlZ] = linear_gp(linear_hyp, s_hyp, inf, mean, cov, lik, x, y, linear_hyp_start, const_hyp_idx, varargin)
+function [nlZ, dnlZ] = linear_gp(linear_hyp, s_hyp, infFcn, mean, cov, lik, x, y, linear_hyp_start, const_hyp_idx, varargin)
   % extend the vector of parameters by constant elements
   % identified in the vector linear_hyp_start by indices const_hyp_idx
   linear_hyp_start(~const_hyp_idx) = linear_hyp;
   linear_hyp = linear_hyp_start;
 
   hyp = rewrap(s_hyp, linear_hyp');
-
+ 
   try
     if nargout <= 1
       % compute negative marginal log likelihood
-      nlZ = gp(hyp, inf, mean, cov, lik, x, y);
+      nlZ = gp(hyp, infFcn, mean, cov, lik, x, y);
     else
       % compute also negative marginal log likelihood derivatives
-      [nlZ, s_dnlZ] = gp(hyp, inf, mean, cov, lik, x, y);
+      [nlZ, s_dnlZ] = gp(hyp, infFcn, mean, cov, lik, x, y);
       dnlZ = unwrap(s_dnlZ)';
       dnlZ = dnlZ(~const_hyp_idx);
     end

@@ -1,4 +1,8 @@
 classdef ModelSelector < Model
+  %MODELSELECTOR An abstract composite class aggregating a finite set of models.
+  %   Each time training is called, all models are evaluated.
+  %   The prediction is performed with the best model in the set.
+
   properties    % derived from abstract class "Model"
     dim                   % dimension of the input space X (determined from x_mean)
     trainGeneration = -1; % # of the generation when the model was built
@@ -17,6 +21,7 @@ classdef ModelSelector < Model
     % model selector-specific properties
     xMean
     models
+    modelNames
     nModels
     bestIdx
   end
@@ -34,8 +39,9 @@ classdef ModelSelector < Model
       if (~isstruct(obj.sharedModelOpts))
         error('ModelSelector: Option ''sharedModelOpts'' must be a struct');
       end
-      
+
       obj.models = cell(1, obj.nModels);
+      obj.modelNames = cell(1, obj.nModels);
 
       % merge shared options into specialized options
       % assumes disjunct sets of fields
@@ -50,7 +56,7 @@ classdef ModelSelector < Model
         end
 
         try
-          obj.models{i} = obj.createModel(i);
+          obj.createModel(i);
         catch err
           error('ModelSelector: Could not create model %d, %s', ...
             i, obj.modelOptions(i).name);
@@ -62,8 +68,8 @@ classdef ModelSelector < Model
   end
 
   methods (Abstract)
-    mdl = createModel(obj, mdlIdx)
-    mdlIdx = modelSelect(obj)
+    createModel(obj, mdlIdx)
+    [mdlIdx, val] = modelSelect(obj, generation)
   end
 
   methods (Access = public)
@@ -72,11 +78,23 @@ classdef ModelSelector < Model
         obj.models{i}.trainModel(X, y, xMean, generation);
       end
 
-      obj.bestIdx = obj.modelSelect();
+      [mdlIdx, val] = obj.modelSelect(generation);
+
+      if isinf(val) || isnan(val)
+        error('ModelSelector: Invalid criterion value for the selected model.');
+      end
+
+      obj.bestIdx = mdlIdx;
+      obj.trainGeneration = obj.models{mdlIdx}.trainGeneration;
     end
 
     function [y, sd2] = modelPredict(obj, X)
+      if obj.bestIdx == 0
+        error('ModelSelector: Best model has not been determined. Was trainModel called?');
+      end
+      [y, sd2] = obj.models{obj.bestIdx}.modelPredict(X);
     end
+
   end
 
 end
