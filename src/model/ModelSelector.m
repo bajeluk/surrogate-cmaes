@@ -22,8 +22,11 @@ classdef ModelSelector < Model
     xMean
     models
     modelNames
+    modelTypes
+    isTrained
     nModels
     bestIdx
+    trainTrial
   end
 
   methods (Access = protected)
@@ -32,7 +35,7 @@ classdef ModelSelector < Model
       obj.selectorOptions = options;
       obj.modelOptions = defopts(options, 'modelOptions', []);
       if ~isempty(obj.models) || ~isstruct(obj.models)
-        error('ModelSelector: Option models must be a struct array with fields ''name'' and ''params''');
+        error('ModelSelector: Option models must be a struct array with fields ''name'', ''type'' and ''params''');
       end
       obj.nModels = length(obj.modelOptions);
       obj.sharedModelOpts = defopts(options, 'sharedModelOptions', struct());
@@ -40,8 +43,22 @@ classdef ModelSelector < Model
         error('ModelSelector: Option ''sharedModelOpts'' must be a struct');
       end
 
+      if ~isfield(options, 'factory') || isempty(options.factory)
+        error('ModelSelector: Model factory must be supplied to create models on demand.');
+      else
+        factory = options.factory
+        if isa(factory, 'function_handle') || ischar(factory)
+          obj.factory = feval(factory);
+        else
+          obj.factory = factory;
+        end
+      end
+
       obj.models = cell(1, obj.nModels);
       obj.modelNames = cell(1, obj.nModels);
+      obj.modelTypes = cell(1, obj.nModels);
+      obj.isTrained = false(1, obj.nModels);
+      obj.trainTrail = 1;
 
       % merge shared options into specialized options
       % assumes disjunct sets of fields
@@ -65,27 +82,49 @@ classdef ModelSelector < Model
 
       obj.bestIdx = 0;
     end
+
+    function createModel(obj, mdlIdx)
+      params = obj.modelOptions(mdlIdx).params;
+      name = obj.modelOptions(mdlIdx).name;
+      mdlType = obj.modelOptions(mdlIdx).type;
+
+      mdl = obj.factory.createModel(mdlType, params, obj.xMean);
+      obj.models{mdlIdx} = mdl;
+      obj.modelNames{mdlIdx} = name;
+      obj.modelTypes{mdlIdx} = mdlType;
+    end
   end
 
   methods (Abstract)
-    createModel(obj, mdlIdx)
     [mdlIdx, val] = modelSelect(obj, generation)
   end
 
   methods (Access = public)
     function obj = trainModel(obj, X, y, xMean, generation)
       for i = 1:obj.nModels
-        obj.models{i}.trainModel(X, y, xMean, generation);
+        try
+          obj.models{i} = obj.models{i}.trainModel(X, y, xMean, generation);
+          obj.isTrained(obj.trainTrial, i) = obj.models{i}.isTrained();
+        catch err
+          obj.isTrained(obj.trainTrial, i) = false;
+        end
       end
 
-      [mdlIdx, val] = obj.modelSelect(generation);
+      [mdlIdx, val] = obj.modelSelect(obj.trainTrial);
 
-      if isinf(val) || isnan(val)
-        error('ModelSelector: Invalid criterion value for the selected model.');
+      if any(obj.isTrained(obj.trainTrial, :))
+        if isinf(val) || isnan(val)
+          warning('ModelSelector: Invalid IC value for the selected model.');
+          obj.trainGeneration = -1;
+        else
+          obj.bestIdx = mdlIdx;
+          obj.trainGeneration = obj.models{mdlIdx}.trainGeneration;
+        end
+      else
+        obj.trainGeneration = -1;
       end
 
-      obj.bestIdx = mdlIdx;
-      obj.trainGeneration = obj.models{mdlIdx}.trainGeneration;
+      obj.trainTrial = obj.trainTrial + 1;
     end
 
     function [y, sd2] = modelPredict(obj, X)

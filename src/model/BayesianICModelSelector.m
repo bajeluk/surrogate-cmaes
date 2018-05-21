@@ -32,10 +32,19 @@ classdef BayesianICModelSelector < ICModelSelector
   end
 
   methods (Access = protected)
-    function calcICs(obj)
+    function calcICs(obj, generation)
       calcICs@ICModelSelector.calcICs(obj);
 
+      obj.modelsIC.dic1(generation, :) = inf;
+      obj.modelsIC.dic2(generation, :) = inf;
+      obj.modelsIC.waic1(generation, :) = inf;
+      obj.modelsIC.waic2(generation, :) = inf;
+
       for mdlIdx = 1:obj.nModels
+        if ~obj.isTrained(generation, mdlIdx)
+          continue;
+        end
+
         mdl = obj.models{mdlIdx};
 
         likEst = -mdl.getNegLogEst();
@@ -68,11 +77,11 @@ classdef BayesianICModelSelector < ICModelSelector
   end
   
   methods (Access = public)
-    function obj = BayesianICModelSelector(modelOptions, xMean, options)
+    function obj = BayesianICModelSelector(modelOptions, xMean)
       obj = obj@ICModelSelector(modelOptions, xMean);
 
-      obj.ic = defopts(options, 'ic', 'waic2');
-      obj.nSimuPost = defopts(options, 'nSimuPost', 100);
+      obj.ic = defopts(modelOptions, 'ic', 'waic2');
+      obj.nSimuPost = defopts(modelOptions, 'nSimuPost', 100);
       obj.modelsIC.dic1 = zeros(1, obj.nModels);
       obj.modelsIC.dic2 = zeros(1, obj.nModels);
       obj.modelsIC.waic1 = zeros(1, obj.nModels);

@@ -28,8 +28,15 @@ classdef ICModelSelector < ModelSelector
   end
   
   methods (Access = protected)
-    function calcICs(obj)
+    function calcICs(obj, generation)
+      obj.modelsIC.aic(generation, :) = inf;
+      obj.modelsIC.bic(generation, :) = inf;
+
       for mdlIdx = 1:obj.nModels
+        if ~obj.isTrained(generation, mdlIdx)
+          continue;
+        end
+
         mdl = obj.models{mdlIdx};
 
         lik = -mdl.getNegLogML();
@@ -48,10 +55,10 @@ classdef ICModelSelector < ModelSelector
   end
 
   methods
-    function obj = ICModelSelector(modelOptions, xMean, options)
+    function obj = ICModelSelector(modelOptions, xMean)
       obj = obj@ModelSelector(modelOptions, xMean);
 
-      obj.ic = defopts(options, 'ic', 'bic');
+      obj.ic = defopts(modelOptions, 'ic', 'bic');
 
       if ~ismember(obj.ic, {'aic', 'bic'})
         error('Unknown information criterion: ''%s''', obj.ic);
@@ -64,7 +71,7 @@ classdef ICModelSelector < ModelSelector
     end
 
     function [mdlIdx, ic] = modelSelect(obj, generation)
-      obj.calcICs();
+      obj.calcICs(generation);
       ics = obj.modelsIC.(obj.ic);
       [ic, mdlIdx] = min(ics(generation, :));
     end
