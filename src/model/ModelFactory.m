@@ -52,6 +52,10 @@ classdef ModelFactory
             end
             obj = ModelPool(modelOptions, xMean);
           end
+        case 'modelsel'
+          obj = ICModelSelector(modelOptions, xMean);
+        case 'bayesmodelsel'
+          obj = BayesianICModelSelector(modelOptions, xMean);
         otherwise
           warning(['ModelFactory.createModel: ' str ' -- no such model available']);
           obj = [];
