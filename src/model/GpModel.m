@@ -16,6 +16,7 @@ classdef GpModel < Model & BayesianICModel
 
     % GpModel specific fields
     stdY                  % standard deviation of Y in training set, for normalizing output
+    shiftX
     options
     hyp
     covBounds
@@ -84,8 +85,9 @@ classdef GpModel < Model & BayesianICModel
             'waitbar',       false ...
           );
         obj.mcmcOpts = defopts(obj.options, 'mcmcOpts', defaultMcmcOpts);
-        obj.nSimuPost = defopts(obj.options, 'nSimuPost', 20);
       end
+
+      obj.nSimuPost = defopts(obj.options, 'nSimuPost', 20);
 
       % GP hyper-parameter settings
       if (isfield(obj.options, 'hypOptions'))
@@ -145,6 +147,7 @@ classdef GpModel < Model & BayesianICModel
       obj.likFcn  = str2func(defopts(obj.options, 'likFcn',  'likGauss'));
       obj.infFcn  = str2func(defopts(obj.options, 'infFcn',  'infExactCountErrors'));
       obj.options.normalizeY = defopts(obj.options, 'normalizeY', true);
+      obj.options.centerX = defopts(obj.options, 'centerX', false);
 
       % GP hyperparameter bounds
       obj.covBounds = defopts(obj.options, 'covBounds', ...
@@ -316,6 +319,12 @@ classdef GpModel < Model & BayesianICModel
         yTrain = obj.dataset.y;
       end
 
+      if (obj.options.centerX)
+        obj.shiftX = mean(obj.dataset.X, 1);
+      else
+        obj.shiftX = zeros(1, obj.dim);
+      end
+
       % set the mean hyperparameter if is needed
       if (isequal(obj.meanFcn, @meanConst))
         obj.hyp.mean = median(yTrain);
@@ -452,6 +461,7 @@ classdef GpModel < Model & BayesianICModel
       if (obj.isTrained())
         % apply the shift if the model is already shifted
         XWithShift = X - repmat(obj.shiftMean, size(X,1), 1);
+        XWithShift = XWithShift - obj.shiftX; % centering Xs
         % prepare the training set (if was normalized for training)
         yTrain = (obj.getDataset_y() - obj.shiftY) / obj.stdY;
         % calculate GP models' prediction in X
@@ -477,6 +487,10 @@ classdef GpModel < Model & BayesianICModel
         y = []; sd2 = [];
         fprintf(2, 'GpModel.predict(): the model is not yet trained!\n');
       end
+    end
+
+    function X = getDataset_X(obj)
+      X = obj.dataset.X - obj.shiftX;
     end
 
   end
