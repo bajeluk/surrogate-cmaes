@@ -108,6 +108,7 @@ function handle = relativeFValuesPlot(data, varargin)
   if size(colors, 1) ~= numOfData && any(emptyData)
     colors = colors(~emptyData, :);
   end
+  assert(size(colors, 1) == numOfData, 'Number of colors is different from the number of data')
   plotSet.colors = colors;
   % plot settings
   plotSet.funcNames = defopts(settings, 'FunctionNames', false);
@@ -132,8 +133,10 @@ function handle = relativeFValuesPlot(data, varargin)
   end
   plotSet.lineWidth = defopts(settings, 'LineWidth', 1);
   plotSet.markers   = defopts(settings, 'Markers', {''});
+  assert(numel(plotSet.markers) == numOfData || isempty(plotSet.markers{1}), 'Number of markers is different from the number of data')
   % statistic settings
   statistic = defopts(settings, 'Statistic', @mean);
+  useMaxInstances = defopts(settings, 'MaxInstances', 15);
   if ischar(statistic)
     if strcmp(statistic, 'quantile')
       statistic = @(x, dim) quantile(x, [0.5, 0.25, 0.75], dim);
@@ -156,6 +159,9 @@ function handle = relativeFValuesPlot(data, varargin)
       end
       statistic = str2func(statistic);
     end
+  % non-char statistic
+  elseif (any(plotSet.drawQuantiles))
+    warning('Quantiles can be plotted only if Statistic == ''quantile'' or handled function returns 3 values.');
   end
 
   % get function and dimension IDs
@@ -172,7 +178,6 @@ function handle = relativeFValuesPlot(data, varargin)
   end
 
   % count means
-  useMaxInstances = 15;
   data_stats = cellfun(@(D) gainStatistic(D, dimIds, funcIds, ...
                             'MaxInstances', useMaxInstances, ...
                             'AverageDims', false, ...
@@ -313,7 +318,7 @@ function handle = relativePlot(data_stats, settings)
   % aggregate accross functions
   if settings.aggFuns
     nFunsToPlot = 1;
-    for D = 1:numOfData
+    for D = 1:numel(relativeData)
       for d = 1:length(settings.dims)
         nFuns = size(relativeData{D}, 1);
         relativeData{D}{1, d} = mean(cell2mat(arrayfun(@(x) relativeData{D}{x,d}, 1:nFuns, 'UniformOutput', false)'), 1);
@@ -580,7 +585,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     end
   end
   if ~aggDims
-    titleString = [titleString, ' ', num2str(dims(dId)),'-D'];
+    titleString = [titleString, ' ', num2str(dims(dId)),'D'];
   end
   title(titleString)
   if (~omitXLabel)
