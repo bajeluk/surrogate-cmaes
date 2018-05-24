@@ -19,6 +19,7 @@ classdef GpModel < Model & BayesianICModel
     shiftX
     options
     hyp
+    nHyp
     covBounds
     likBounds
     meanFcn
@@ -30,10 +31,14 @@ classdef GpModel < Model & BayesianICModel
     trainLikelihood
     cmaesCheckBounds
     nRestarts
+
+    % mcmc-related options
     mcmcResults
-    mcmcOpts
+    mcmcNSimu
+    mcmcBurnin
     mcmcNChains
     nSimuPost
+    predictFullPost
 
     % Dimensionality-reduction specific fields
     dimReduction          % Reduce dimensionality for model by eigenvectors
@@ -78,19 +83,6 @@ classdef GpModel < Model & BayesianICModel
 
       obj.nRestarts = defopts(obj.options, 'nRestarts', 1);
 
-      if strcmpi(obj.options.trainAlgorithm, 'mcmc')
-          defaultMcmcOpts = struct( ...
-            'nsimu',         500, ...
-            'burnintime',    500, ...
-            'verbosity',     1, ...
-            'waitbar',       false ...
-          );
-        obj.mcmcNChains = defopts(obj.options, mcmcNChains, 2);
-        obj.mcmcOpts = defopts(obj.options, 'mcmcOpts', defaultMcmcOpts);
-      end
-
-      obj.nSimuPost = defopts(obj.options, 'nSimuPost', 20);
-
       % GP hyper-parameter settings
       if (isfield(obj.options, 'hypOptions'))
         % if covariance function, starting points and bounds are all defined in a single struct, expand it
@@ -134,7 +126,19 @@ classdef GpModel < Model & BayesianICModel
         covfcn = obj.covFcn;
       end
 
-      obj.prior = defopts(obj.options, 'prior', []); % no prior by default
+      prior = defopts(obj.options, 'prior', struct());
+      fns = fieldnames(prior);
+      for fi = 1:numel(fns)
+        fn = fns{fi};
+        if ischar(prior.(fn)) && exist(prior.(fn), 'var')
+          prior.(fn) = str2func(prior.(fn));
+        elseif iscell(prior.(fn))
+          prior.(fn) = cellfun(@(x) myeval(x), prior.(fn), 'UniformOutput', false);
+        else
+          prior.(fn) = myeval(prior.(fn));
+        end
+      end
+      obj.prior = prior;
 
       % expand covariance lengthscale hyperparameter according to
       % the dimension if ARD covariance specified and lengthscale is scalar
@@ -162,28 +166,37 @@ classdef GpModel < Model & BayesianICModel
         obj.covBounds = [repmat(obj.covBounds(1,:), obj.dim, 1); obj.covBounds(2:end,:)];
       end
 
-      if (isequal(covfcn, @covADD))
-        dgs = obj.covFcn{2}{1};
-        dgs = dgs(dgs <= obj.dim);
-        obj.covFcn{2}{1} = dgs;
-        r = length(dgs);
-
-        s = zeros(1, r);
-        for i = 1:r
-          % (d over dgs(i))
-          s(i) = prod(arrayfun(@(j) obj.dim - j, 0:(dgs(i) - 1))) / factorial(dgs(i));
-        end
-
-        obj.hyp.cov = [repmat(obj.hyp.cov(1), obj.dim, 1); ...
-          log(obj.hyp.cov{2} ./ s')];
-        obj.covBounds = [repmat(obj.covBounds(1, :), obj.dim, 1); ...
-                         [log(obj.covBounds(2, 1) * ones(r, 1)) ...
-                          log(obj.covBounds(2, 2) ./ s')] ...
-        ];
-      end
+%       if (isequal(covfcn, @covADD))
+%         dgs = obj.covFcn{2}{1};
+%         dgs = dgs(dgs <= obj.dim);
+%         obj.covFcn{2}{1} = dgs;
+%         r = length(dgs);
+% 
+%         s = zeros(1, r);
+%         for i = 1:r
+%           % (d over dgs(i))
+%           s(i) = prod(arrayfun(@(j) obj.dim - j, 0:(dgs(i) - 1))) / factorial(dgs(i));
+%         end
+% 
+%         obj.hyp.cov = [repmat(obj.hyp.cov(1), obj.dim, 1); ...
+%           log(obj.hyp.cov{2} ./ s')];
+%         obj.covBounds = [repmat(obj.covBounds(1, :), obj.dim, 1); ...
+%                          [log(obj.covBounds(2, 1) * ones(r, 1)) ...
+%                           log(obj.covBounds(2, 2) ./ s')] ...
+%         ];
+%       end
 
       obj.likBounds = defopts(obj.options, 'likBounds', log([1e-3, 10]));
       obj.cmaesCheckBounds = defopts(obj.options, 'cmaesCheckBounds', true);
+      obj.nHyp = numel(unwrap(obj.hyp));
+
+      % MCMC-related settings
+      obj.mcmcNChains = myeval(defopts(obj.options, 'mcmcNChains', 2));
+      obj.mcmcNSimu = myeval(defopts(obj.options, 'mcmcNSimu', 500));
+      obj.mcmcBurnin = myeval(defopts(obj.options, 'mcmcBurnin', 500));
+      obj.nSimuPost = myeval(defopts(obj.options, 'nSimuPost', 20));
+      obj.mcmcResults = struct('results', {{}}, 'chain', [], 's2chain', [], 'sschain', []);
+      obj.predictFullPost = defopts(obj.options, 'predictFullPost', false);
 
       % general model prediction options
       obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
@@ -242,12 +255,11 @@ classdef GpModel < Model & BayesianICModel
       end
 
       assert(isfield(obj.mcmcResults, 'chain') && ~isempty(obj.mcmcResults.chain));
-      chain = reshape(obj.mcmcResults.chain, numel(obj.mcmcResults.chain), 1);
+      chain = obj.mcmcResults.chain;
+      idx = randsample(1:size(chain, 1), min(size(chain, 1), nSimu));
 
-      idx = randsample(1:length(chain), min(length(chain), nSimu));
-
-      X = obj.dataset.X;
-      y = obj.dataset.y;
+      X = obj.getDataset_X();
+      y = (obj.getDataset_y() - obj.shiftY) / obj.stdY;
       N = size(X, 1);
       assert(all(size(y) == [N, 1]));
 
@@ -258,10 +270,8 @@ classdef GpModel < Model & BayesianICModel
       % log predictive densities
       ppd = zeros(N, nSimu);
 
-      assert(all(size(y) == [N, 1]));
-
       for i = 1:nSimu
-        hyp_s = rewrap(obj.hyp, chain(idx(i)));
+        hyp_s = rewrap(obj.hyp, chain(idx(i), :));
         [~, ~, fmu, fs2] = gp(hyp_s, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, ...
           X, y, X);
         assert(all(size(fmu) == [N, 1]));
@@ -270,8 +280,8 @@ classdef GpModel < Model & BayesianICModel
         % (fs2 + sn2)^2
         sn2 = exp(hyp_s.lik);
         s = fs2 + sn2;
-        ppd_mult(:, i) = 1 / (nSimu * sqrt(2*pi) * s);
-        z = -0.5 * ((y - fmu)^2 ./ s^2);
+        ppd_mult(:, i) = 1 ./ (nSimu * sqrt(2*pi) * s);
+        z = -0.5 * ((y - fmu).^2 ./ s.^2);
         ppd_exp(:, i) = z;
         ppd(:, i) = -0.5 * log(2*pi) - 2 * log(s) + z;
       end
@@ -284,7 +294,7 @@ classdef GpModel < Model & BayesianICModel
     end
 
     function sample = getNegLogLPost(obj)
-      sample = reshape(obj.mcmcResults.s2chain, numel(obj.mcmcResults.s2chain), 1);
+      sample = reshape(obj.mcmcResults.sschain, numel(obj.mcmcResults.sschain), 1);
     end
 
     function nData = getNTrainData(obj)
@@ -453,10 +463,11 @@ classdef GpModel < Model & BayesianICModel
         modelTrainNErrors = 0;
 
         for i = 1:obj.mcmcNChains
-          [results, chain, s2chain] = obj.trainMcmc(linear_hyp_start, obj.getDataset_X(), yTrain, likfun, priorfun);
+          [results, chain, s2chain, sschain] = obj.trainMcmc(linear_hyp_start, obj.getDataset_X(), yTrain, likfun, priorfun);
           obj.mcmcResults.results = [obj.mcmcResults.results results];
-          obj.mcmcResults.chain = [obj.mcmcResults.chain chain];
-          obj.mcmcResults.s2chain = [obj.mcmcResults.chain s2chain];
+          obj.mcmcResults.chain = [obj.mcmcResults.chain; chain];
+          obj.mcmcResults.s2chain = [obj.mcmcResults.s2chain; s2chain];
+          obj.mcmcResults.sschain = [obj.mcmcResults.sschain; sschain];
         end
 
         obj.nErrors = modelTrainNErrors;
@@ -464,10 +475,10 @@ classdef GpModel < Model & BayesianICModel
         % compute a Bayes estimate of hyperparameters from the chain
         % using an estimator function
         estfun = @median;
-        est = feval(estfun, reshape(chain, numel(chain, 1)));
+        est = feval(estfun, chain);
         hyp_est = struct( ...
           'val', est, ...
-          'lik', 0.5 * likfun(est, data), ...
+          'lik', 0.5 * likfun(est, struct('x', obj.getDataset_X(), 'y', yTrain)), ...
           'prior', 0.5 * priorfun(est) ...
         );
 
@@ -493,11 +504,40 @@ classdef GpModel < Model & BayesianICModel
         XWithShift = XWithShift - obj.shiftX; % centering Xs
         % prepare the training set (if was normalized for training)
         yTrain = (obj.getDataset_y() - obj.shiftY) / obj.stdY;
-        % calculate GP models' prediction in X
-        [y, gp_sd2] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, XWithShift);
-        % un-normalize in the f-space (if there is any)
-        y = y * obj.stdY + obj.shiftY;
-        sd2 = gp_sd2 * (obj.stdY)^2;
+
+        if obj.predictFullPost
+          C = size(obj.mcmcResults.chain, 1);
+          idx = randsample(1:C, obj.nSimuPost);
+          hypSimu = obj.mcmcResults.chain(idx, :);
+          N = size(X, 1);
+          mu = zeros(N, obj.nSimuPost);
+          s2 = zeros(N, obj.nSimuPost);
+          gpfail = true(1, obj.nSimuPost);
+          for s = 1:obj.nSimuPost
+            try
+              h = rewrap(obj.hyp, hypSimu(s, :));
+              [~, ~, fmu, fs2] = gp(h, obj.infFcn, obj.meanFcn, ...
+                obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, XWithShift);
+
+              % un-normalize in the f-space (if there is any)
+              mu(:, s) = fmu .* obj.stdY + obj.shiftY;
+              s2(:, s) = fs2 .* (obj.stdY)^2;
+              gpfail(s) = false;
+            catch
+              gpfail(s) = true;
+            end
+          end
+
+          % average the predictive mvns over the hyperposterior sample
+          y = mean(mu(:, ~gpfail), 2);
+          sd2 = mean(s2(:, ~gpfail), 2) / obj.nSimuPost;
+        else
+          % calculate GP models' prediction in X
+          [y, gp_sd2] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, XWithShift);
+          % un-normalize in the f-space (if there is any)
+          y = y * obj.stdY + obj.shiftY;
+          sd2 = gp_sd2 * (obj.stdY)^2;
+        end
 
         % % Calculate POI if it should be used
         % if (obj.options.usePOI)
@@ -512,6 +552,43 @@ classdef GpModel < Model & BayesianICModel
         %   y = getEI(X, y, dev, min(obj.getDataset_y()));
         %   dev = zeros(size(dev));
         % end
+      else
+        y = []; sd2 = [];
+        fprintf(2, 'GpModel.predict(): the model is not yet trained!\n');
+      end
+    end
+
+    function [y, sd2] = modelPredictFullPost(obj, X)
+      % predicts the function values in new points X averaging over full posterior
+      % p(f, \theta)
+      if (obj.isTrained())
+        % apply the shift if the model is already shifted
+        XWithShift = X - repmat(obj.shiftMean, size(X,1), 1);
+        XWithShift = XWithShift - obj.shiftX; % centering Xs
+        % prepare the training set (if was normalized for training)
+        yTrain = (obj.getDataset_y() - obj.shiftY) / obj.stdY;
+
+        C = size(obj.mcmcResults.chain, 1);
+        idx = randsample(1:C, obj.nSimuPost);
+        hypSimu = obj.mcmcResults.chain(idx, :);
+        hypBak = obj.hyp;
+
+        N = size(X, 1);
+        mu = zeros(obj.nSimuPost, N);
+        s2 = zeros(obj.nSimuPost, obj.nSimuPost, N);
+        for s = 1:obj.nSimuPost
+          obj.hyp = rewrap(obj.hyp, hypSimu(s, :));
+          [~, ~, fmu, fs2] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, XWithShift);
+
+          % un-normalize in the f-space (if there is any)
+          mu(s, :) = fmu * obj.stdY + obj.shiftY;
+          s2(s, :) = fs2 * (obj.stdY)^2;
+        end
+
+        y = mean(mu, 2);
+        sd2 = sum(mu, 2) / (obj.nSimuPost^2);
+
+        obj.hyp = hypBak;
       else
         y = []; sd2 = [];
         fprintf(2, 'GpModel.predict(): the model is not yet trained!\n');
@@ -646,7 +723,7 @@ classdef GpModel < Model & BayesianICModel
     end
 
 
-    function [results, chain, s2chain] = trainMcmc(obj, linear_hyp_start, X, y, likfun, priorfun)
+    function [results, chain, s2chain, sschain] = trainMcmc(obj, linear_hyp_start, X, y, likfun, priorfun)
       data.x = X;
       data.y = y;
 
@@ -656,9 +733,9 @@ classdef GpModel < Model & BayesianICModel
       );
 
       % parameter structure
-      nHyp = length(linear_hyp_start);
-      params = cell(1, nHyp);
-      names = cell(1, nHyp);
+      h = length(linear_hyp_start);
+      params = cell(1, h);
+      names = cell(1, h);
 
       j = 1;
       for name_cell = fieldnames(orderfields(obj.hyp))'
@@ -668,11 +745,17 @@ classdef GpModel < Model & BayesianICModel
         j = j + k;
       end
 
-      for i = 1:nHyp
+      for i = 1:h
         params{i} = {names{i}, linear_hyp_start(i)};
       end
 
-      [results, chain, s2chain, ~] = mcmcrun(model, data, params, obj.mcmcOpts);
+      mcmcOpts = struct( ...
+        'nsimu',         obj.mcmcNSimu, ...
+        'burnintime',    obj.mcmcBurnin, ...
+        'verbosity',     0, ...
+        'waitbar',       false ...
+      );
+      [results, chain, s2chain, sschain] = mcmcrun(model, data, params, mcmcOpts);
     end
 
 
@@ -759,7 +842,7 @@ classdef GpModel < Model & BayesianICModel
       % infPrior computes nlZ and distracts log prior value
       % using infZeros efficiently computes log prior, since supplied nlZ is zero
       % this hack preserves flexibility of gpml prior specifications,
-      % but also evaluates prior derivatives, whis is not needed here
+      % but still evaluates prior derivatives, whis is not needed here
       % FIXME: write a proper evalPrior function working with gpml-style prior specs
       nlp = infPriorOnly(inf, prior, hyp_s);
     end

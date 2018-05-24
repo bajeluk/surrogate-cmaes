@@ -1,39 +1,18 @@
 classdef ICModelSelector < ModelSelector
   %
-  properties    % derived from abstract class "Model"
-    dim                   % dimension of the input space X (determined from x_mean)
-    trainGeneration = -1; % # of the generation when the model was built
-    trainMean             % mean of the generation when the model was trained
-    trainSigma            % sigma of the generation when the model was trained
-    trainBD               % BD of the generation when the model was trained
-    dataset               % .X and .y
-    useShift = false;
-    shiftMean             % vector of the shift in the X-space
-    shiftY = 0;           % shift in the f-space
-    predictionType        % type of prediction (f-values, PoI, EI)
-    transformCoordinates  % transform X-space
-    stateVariables        % variables needed for sampling new points as CMA-ES do
-    sampleOpts            % options and settings for the CMA-ES sampling
-
-    % model selector-specific properties
-    xMean
-    models
-    modelNames
-    nModels
-    bestIdx
-
+  properties
     % ICModelSelector properties
     ic % information criterion to use
     modelsIC
   end
   
   methods (Access = protected)
-    function calcICs(obj, generation)
-      obj.modelsIC.aic(generation, :) = inf;
-      obj.modelsIC.bic(generation, :) = inf;
+    function ics = calcICs(obj, generation)
+      obj.modelsIC.aic(generation, :) = inf(1, obj.nModels);
+      obj.modelsIC.bic(generation, :) = inf(1, obj.nModels);
 
       for mdlIdx = 1:obj.nModels
-        if ~obj.isTrained(generation, mdlIdx)
+        if ~obj.modelIsTrained(generation, mdlIdx)
           continue;
         end
 
@@ -51,6 +30,7 @@ classdef ICModelSelector < ModelSelector
         obj.modelsIC.aic(generation, mdlIdx) = aic;
         obj.modelsIC.bic(generation, mdlIdx) = bic;
       end
+      ics = obj.modelsIC;
     end
   end
 
@@ -71,8 +51,9 @@ classdef ICModelSelector < ModelSelector
     end
 
     function [mdlIdx, ic] = modelSelect(obj, generation)
-      obj.calcICs(generation);
+      obj.modelsIC = obj.calcICs(generation);
       ics = obj.modelsIC.(obj.ic);
+
       [ic, mdlIdx] = min(ics(generation, :));
     end
   end

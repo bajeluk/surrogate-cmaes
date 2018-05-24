@@ -19,11 +19,16 @@ classdef ModelSelector < Model
     sampleOpts            % options and settings for the CMA-ES sampling
 
     % model selector-specific properties
+    options
+    modelOptions
+    sharedModelOptions
+    factory
     xMean
     models
     modelNames
     modelTypes
-    isTrained
+    modelIsTrained
+    nTrainErrors
     nModels
     bestIdx
     trainTrial
@@ -32,67 +37,60 @@ classdef ModelSelector < Model
   methods (Access = protected)
     function obj = ModelSelector(options, xMean)
       obj.xMean = xMean;
-      obj.selectorOptions = options;
+      obj.options = options;
+      obj.transformCoordinates = defopts(options, 'transformCoordinates', true);
+      obj.dim = size(xMean, 2);
+      obj.predictionType = defopts(options, 'predictionType', 'fvalues');
+
       obj.modelOptions = defopts(options, 'modelOptions', []);
-      if ~isempty(obj.models) || ~isstruct(obj.models)
-        error('ModelSelector: Option models must be a struct array with fields ''name'', ''type'' and ''params''');
+      if isempty(obj.modelOptions) || ~isstruct(obj.modelOptions)
+        error('ModelSelector: Option ''modelOptions'' must be a struct array with fields ''name'', ''type'' and ''params''');
       end
       obj.nModels = length(obj.modelOptions);
-      obj.sharedModelOpts = defopts(options, 'sharedModelOptions', struct());
-      if (~isstruct(obj.sharedModelOpts))
-        error('ModelSelector: Option ''sharedModelOpts'' must be a struct');
+      obj.sharedModelOptions = defopts(options, 'sharedModelOptions', struct());
+      if (~isstruct(obj.sharedModelOptions))
+        error('ModelSelector: Option ''sharedModelOptions'' must be a struct');
       end
 
-      if ~isfield(options, 'factory') || isempty(options.factory)
-        error('ModelSelector: Model factory must be supplied to create models on demand.');
+      factory = defopts(options, 'factory', 'ModelFactory');
+      if isa(factory, 'function_handle') || ischar(factory)
+        obj.factory = feval(factory);
       else
-        factory = options.factory
-        if isa(factory, 'function_handle') || ischar(factory)
-          obj.factory = feval(factory);
-        else
-          obj.factory = factory;
-        end
+        obj.factory = factory;
       end
 
       obj.models = cell(1, obj.nModels);
       obj.modelNames = cell(1, obj.nModels);
       obj.modelTypes = cell(1, obj.nModels);
-      obj.isTrained = false(1, obj.nModels);
-      obj.trainTrail = 1;
+      obj.modelIsTrained = false(1, obj.nModels);
+      obj.nTrainErrors = inf(1, obj.nModels);
+      obj.trainTrial = 1;
 
       % merge shared options into specialized options
       % assumes disjunct sets of fields
       for i = 1:obj.nModels
         modelOpts = obj.modelOptions(i).params;
-        S = [fieldnames(modelOpts)' fieldnames(obj.sharedModelOpts)'; ...
-             struct2cell(modelOpts)' struct2cell(obj.sharedModelOpts)'];
+        S = [fieldnames(modelOpts)' fieldnames(obj.sharedModelOptions)'; ...
+             struct2cell(modelOpts)' struct2cell(obj.sharedModelOptions)'];
         try
           obj.modelOptions(i).params = struct(S{:});
         catch err
           error('ModelSelector: Could not merge shared options with model-specific options');
         end
 
-        try
-          obj.createModel(i);
-        catch err
-          error('ModelSelector: Could not create model %d, %s', ...
-            i, obj.modelOptions(i).name);
-        end
+        params = obj.modelOptions(i).params;
+        name = obj.modelOptions(i).name;
+        mdlType = obj.modelOptions(i).type;
+
+        mdl = obj.factory.createModel(mdlType, params, obj.xMean);
+        obj.models{i} = mdl;
+        obj.modelNames{i} = name;
+        obj.modelTypes{i} = mdlType;
       end
 
       obj.bestIdx = 0;
     end
 
-    function createModel(obj, mdlIdx)
-      params = obj.modelOptions(mdlIdx).params;
-      name = obj.modelOptions(mdlIdx).name;
-      mdlType = obj.modelOptions(mdlIdx).type;
-
-      mdl = obj.factory.createModel(mdlType, params, obj.xMean);
-      obj.models{mdlIdx} = mdl;
-      obj.modelNames{mdlIdx} = name;
-      obj.modelTypes{mdlIdx} = mdlType;
-    end
   end
 
   methods (Abstract)
@@ -101,24 +99,33 @@ classdef ModelSelector < Model
 
   methods (Access = public)
     function obj = trainModel(obj, X, y, xMean, generation)
+      if (~isempty(X) && ~isempty(y))
+        obj.dataset.X = X;
+        obj.dataset.y = y;
+      end
+
       for i = 1:obj.nModels
         try
-          obj.models{i} = obj.models{i}.trainModel(X, y, xMean, generation);
-          obj.isTrained(obj.trainTrial, i) = obj.models{i}.isTrained();
+          mdl = obj.models{i}.trainModel(X, y, xMean, generation);
+          obj.models{i} = mdl;
+          obj.modelIsTrained(obj.trainTrial, i) = obj.models{i}.isTrained();
+          obj.nTrainErrors(obj.trainTrial, i) = obj.models{i}.nErrors;
         catch err
-          obj.isTrained(obj.trainTrial, i) = false;
+          warning('Could not train model %d with error:\n%s\n', i, getReport(err));
+          obj.modelIsTrained(obj.trainTrial, i) = false;
         end
       end
 
       [mdlIdx, val] = obj.modelSelect(obj.trainTrial);
 
-      if any(obj.isTrained(obj.trainTrial, :))
+      if any(obj.modelIsTrained(obj.trainTrial, :))
         if isinf(val) || isnan(val)
           warning('ModelSelector: Invalid IC value for the selected model.');
           obj.trainGeneration = -1;
         else
           obj.bestIdx = mdlIdx;
           obj.trainGeneration = obj.models{mdlIdx}.trainGeneration;
+          obj.trainLikelihood = obj.models{mdlIdx}.trainLikelihood;
         end
       else
         obj.trainGeneration = -1;
@@ -132,6 +139,10 @@ classdef ModelSelector < Model
         error('ModelSelector: Best model has not been determined. Was trainModel called?');
       end
       [y, sd2] = obj.models{obj.bestIdx}.modelPredict(X);
+    end
+
+    function nData = getNTrainData(obj)
+      nData = 3 * obj.dim;
     end
 
   end

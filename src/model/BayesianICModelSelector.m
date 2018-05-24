@@ -3,46 +3,24 @@ classdef BayesianICModelSelector < ICModelSelector
   %  Bayesian models.
   %
   %  Gelman et al., 2014, Bayesian Data Analysis, 3rd edition
-    
-  properties    % derived from abstract class "Model"
-    dim                   % dimension of the input space X (determined from x_mean)
-    trainGeneration = -1; % # of the generation when the model was built
-    trainMean             % mean of the generation when the model was trained
-    trainSigma            % sigma of the generation when the model was trained
-    trainBD               % BD of the generation when the model was trained
-    dataset               % .X and .y
-    useShift = false;
-    shiftMean             % vector of the shift in the X-space
-    shiftY = 0;           % shift in the f-space
-    predictionType        % type of prediction (f-values, PoI, EI)
-    transformCoordinates  % transform X-space
-    stateVariables        % variables needed for sampling new points as CMA-ES do
-    sampleOpts            % options and settings for the CMA-ES sampling
-
-    % model selector-specific properties
-    xMean
-    models
-    modelNames
-    nModels
-    bestIdx
-
-    % ICModelSelector properties
-    ic % information criterion to use
-    modelsIC
+  
+  properties
+    nSimuPost
   end
 
   methods (Access = protected)
-    function calcICs(obj, generation)
-      calcICs@ICModelSelector.calcICs(obj);
+    function ics = calcICs(obj, generation)
+      ics = calcICs@ICModelSelector(obj, generation);
+      obj.modelsIC = ics;
 
-      obj.modelsIC.dic1(generation, :) = inf;
-      obj.modelsIC.dic2(generation, :) = inf;
-      obj.modelsIC.waic1(generation, :) = inf;
-      obj.modelsIC.waic2(generation, :) = inf;
-      obj.modelsIC.rhat(generation, :) = nan;
+      obj.modelsIC.dic1(generation, :) = inf(1, obj.nModels);
+      obj.modelsIC.dic2(generation, :) = inf(1, obj.nModels);
+      obj.modelsIC.waic1(generation, :) = inf(1, obj.nModels);
+      obj.modelsIC.waic2(generation, :) = inf(1, obj.nModels);
+      obj.modelsIC.rhat(generation, :) = cell(1, obj.nModels);
 
       for mdlIdx = 1:obj.nModels
-        if ~obj.isTrained(generation, mdlIdx)
+        if ~obj.modelIsTrained(generation, mdlIdx)
           continue;
         end
 
@@ -62,7 +40,11 @@ classdef BayesianICModelSelector < ICModelSelector
         obj.modelsIC.dic2(generation, mdlIdx) = dic2;
 
         % ---- WAIC ----
-        [lppd, ppd] = mdl.getLogPredDens(obj.nSimuPost);
+        if ~isempty(obj.nSimuPost)
+          [lppd, ppd] = mdl.getLogPredDens(obj.nSimuPost);
+        else
+          [lppd, ppd] = mdl.getLogPredDens();
+        end
 
         % summations are over training cases, sample means and variances
         % are over posterior simulations
@@ -79,15 +61,36 @@ classdef BayesianICModelSelector < ICModelSelector
 
         % ---- Gelman-Rubin convergence statistic ----
         chains = mdl.getChains();
-        [n, m] = size(chains);
-        if n > 0 && m > 1
-          B = n * var(mean(chains, 1));
-          W = mean(var(chains, 1));
-          V = (n-1) * W / n + B / n;
+        [ntot, d] = size(chains);
+        M = mdl.mcmcNChains;
+        assert(~rem(ntot, M));
+        N = fix(ntot / M);
 
-          obj.modelsIC.rhat(generation, mdlIdx) = sqrt(V / W);
+        if N > 0 && M > 1
+          rhat = zeros(1, d);
+          for j = 1:d
+            % loop over estimands
+
+            ch = zeros(N, M);
+            for k = 1:M
+              ch(:, k) = chains((k-1)*N+1:k*N, j);
+            end
+
+            % half each chain, throwing away remainders
+            n = fix(N / 2);
+            r = rem(N, 2);
+            ch = [ch(1:n, :) ch(n+1:(N-r), :)];
+
+            B = n * var(mean(ch, 1));
+            W = mean(var(ch, 1));
+            V = (n-1) * W / n + B / n;
+            rhat(j) = sqrt(V / W);
+          end
+
+          obj.modelsIC.rhat{generation, mdlIdx} = rhat;
         end
       end
+      ics = obj.modelsIC;
     end
   end
   
@@ -96,13 +99,13 @@ classdef BayesianICModelSelector < ICModelSelector
       obj = obj@ICModelSelector(modelOptions, xMean);
 
       obj.ic = defopts(modelOptions, 'ic', 'waic2');
-      obj.nSimuPost = defopts(modelOptions, 'nSimuPost', 100);
+      obj.nSimuPost = defopts(modelOptions, 'nSimuPost', []);
       obj.modelsIC.dic1 = zeros(1, obj.nModels);
       obj.modelsIC.dic2 = zeros(1, obj.nModels);
       obj.modelsIC.waic1 = zeros(1, obj.nModels);
       obj.modelsIC.waic2 = zeros(1, obj.nModels);
       obj.modelsIC.wbic = zeros(1, obj.nModels);
-      obj.modelsIC.rhat = zeros(1, obj.nModels);
+      obj.modelsIC.rhat = cell(1, obj.nModels);
     end
   end
   
