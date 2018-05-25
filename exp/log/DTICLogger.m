@@ -9,7 +9,7 @@ classdef DTICLogger < Observer
     file
     printICs
   end
-  
+
   methods
     function obj = DTICLogger(params)
       obj@Observer()
@@ -76,8 +76,13 @@ classdef DTICLogger < Observer
 
       for f_cell = fieldnames(mdl.modelsIC)'
         fn = f_cell{:};
-        iclog.(fn) = [iclog.(fn); ...
-          [idx mdl.modelsIC.(fn)]];
+        if ~iscell(mdl.modelsIC.(fn))
+          iclog.(fn) = [iclog.(fn); ...
+            [idx mdl.modelsIC.(fn)]];
+        else
+          iclog.(fn) = [iclog.(fn); ...
+            [num2cell(idx) mdl.modelsIC.(fn)]];
+        end
       end
 
       save(obj.file, '-struct', 'iclog');
