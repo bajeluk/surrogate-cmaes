@@ -37,6 +37,7 @@ classdef GpModel < Model & BayesianICModel
     mcmcNSimu
     mcmcBurnin
     mcmcNChains
+    bayesEstFcn
     nSimuPost
     predictFullPost
 
@@ -197,6 +198,7 @@ classdef GpModel < Model & BayesianICModel
       obj.nSimuPost = myeval(defopts(obj.options, 'nSimuPost', 20));
       obj.mcmcResults = struct('results', {{}}, 'chain', [], 's2chain', [], 'sschain', []);
       obj.predictFullPost = defopts(obj.options, 'predictFullPost', false);
+      obj.bayesEstFcn = defopts(obj.options, 'bayesEstFcn', 'median');
 
       % general model prediction options
       obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
@@ -480,10 +482,12 @@ classdef GpModel < Model & BayesianICModel
 
         % compute a Bayes estimate of hyperparameters from the chain
         % using an estimator function
-        estfun = @median;
-        expchain = exp(chain);
-        expchain = expchain(~any(isinf(expchain), 2), :);
-        est = log(feval(estfun, expchain));
+        if isequal(obj.bayesEstFcn, @mean) || strcmp(obj.bayesEstFcn, 'mean')
+          w = repmat(1/size(chain, 1), size(chain));
+          est = logsumexp(chain, w, 1);
+        else
+          est = feval(obj.bayesEstFcn, chain);
+        end
 
         hyp_est = struct( ...
           'val', est, ...

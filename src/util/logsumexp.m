@@ -2,8 +2,8 @@ function s = logsumexp(x, varargin)
 %LOGSUMEXP Computes log(sum(w .* exp(x), dim)). Useful for computing sum of
 %densities.
 %   x   -- an array or a matrix
-%   dim -- dimension to operate on
 %   w   -- vector of weights
+%   dim -- dimension to operate on
 
   if nargin > 2
     dim = varargin{2};
