@@ -20,6 +20,9 @@ classdef ObserverFactory
           params = observerParams{i};
         end
 
+        params.isAdaptive = isfield(surrogateOpts, 'updaterType') ...
+            && ~strcmpi(surrogateOpts.updaterType, 'none');
+
         switch observerName
           case 'dtscreenstatistics'
             observers{i} = DTScreenStatistics(params);

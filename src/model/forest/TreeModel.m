@@ -209,7 +209,7 @@ classdef TreeModel < WeakModel
       end
       if iNode == 1 % && obj.tree_nodes(iNode).leaf
         % predictor in root
-        obj.tree_nodes(iNode).predictor = obj.trainPredictor(X, y, splitGain.splitGain_bestmodelID);
+        obj.tree_nodes(iNode).predictor = obj.trainPredictor(X, y, 0);
         %obj.tree_nodes(iNode).X = X;
         %obj.tree_nodes(iNode).y = y;
       end
@@ -217,7 +217,15 @@ classdef TreeModel < WeakModel
     
     function predictor = trainPredictor(obj, X, y, modelID)
       predictor = obj.tree_predictorFunc(obj.tree_predictorOpts);
-      if isprop(predictor, 'weak_models') % && (numel(predictor.weak_models) > 1)
+      if isprop(predictor, 'weak_models')
+        if modelID == 0
+          % choose model with minimal loss
+          predictor = predictor.trainModel(X, y);
+          y_pred = predictor.modelPredict(X);
+          modelID = min(obj.tree_lossFunc(y, y_pred));
+          predictor = predictor.setUseModel(modelID);
+          return
+        end
         predictor = predictor.setUseModel(modelID);
       end
       predictor = predictor.trainModel(X, y);

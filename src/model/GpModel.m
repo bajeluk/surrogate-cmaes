@@ -77,7 +77,7 @@ classdef GpModel < Model & BayesianICModel
 
       if (strcmpi(obj.options.trainAlgorithm, 'fmincon') ...
           && ~license('checkout', 'optimization_toolbox'))
-        warning('GpModel: Optimization Toolbox license not available. Switching to minimize().');
+        fprintf('GpModel: Optimization Toolbox license not available. Switching to minimize().\n');
         obj.options.trainAlgorithm = 'minimize';
       end
 

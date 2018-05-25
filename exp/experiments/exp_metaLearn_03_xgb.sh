@@ -59,17 +59,33 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 # critical characters has to be replaced in $OPTS:
 # '|' with ',' and "%" with "'" and '@' with ';'
-OPTIDS=( 3 )
 
 DATASET_PATH=$CWD/data_metalearn
 
-ID="2000"
-DIMS="5" #"2 5 10"
-FUNCS="5" #`seq 1 24`
+# for checking results before scheduling
+export RESDIR="../exp_metaLearn_03/"
+
+#ID="106"
+#DIMS="2"
+#FUNCS=`seq 6 24`
 INSTS="[1:5|41:50]"
 DESIGNS="lhs"
 DATASIZES="50*dim"
-QUEUE="00:08:00"
-submit_model "XGB" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES" "${OPTIDS[@]}"
+QUEUE="48:00:00"
+
+#OPTINDS=( 2 4 5 )
+#submit_model "XGB" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES" "${OPTINDS[@]}"
+
+ID="144"
+OPTINDS=( 1 2 3 4 5 )
+DIMS="5"
+FUNCS=`seq 20 24`
+submit_model "XGB" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES" "${OPTINDS[@]}"
+
+ID="149"
+OPTINDS=( 1 2 3 4 5 )
+DIMS="10"
+FUNCS=`seq 1 24`
+submit_model "XGB" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES" "${OPTINDS[@]}"
 
 exit 0

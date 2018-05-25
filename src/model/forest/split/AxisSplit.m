@@ -1,5 +1,7 @@
 classdef AxisSplit < Split
-% AxisSplit finds the best axis parallel split
+% AxisSplit finds the best axis parallel split.
+%
+% Breiman L. (1984): Classification and Regression Trees (CART)
   
   properties %(Access = protected)
     split_nQuantize % quantization of tresholds 

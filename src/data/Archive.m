@@ -4,12 +4,19 @@ classdef Archive < handle
     X    = [];          % archive - input-space data
     y    = [];          % archive - dependent-space data
     gens = [];          % archive - generations of the data where they come from
+    tolX;               % minimal tolerance in X-space to consider points equal
+                        % in maximal metric
   end
 
   methods
-    function obj = Archive(dimension)
+    function obj = Archive(dimension, varargin)
       % constructor
       obj.dim = dimension;
+      if (nargin >= 2 && isnumeric(varargin{1}))
+        obj.tolX = varargin{1};
+      else
+       obj.tolX = eps;
+      end
     end
 
     function obj = save(obj, X, y, generation)
@@ -17,12 +24,7 @@ classdef Archive < handle
       assert(size(X,1) == size(y,1), 'Archive.save: dimensions X and y mismatch.');
       assert(size(y,2) == 1, 'Archive.save: y is not a column vector.');
       assert(size(X,2) == obj.dim, 'Archive.save: dimension of X''s and Archive.dim mismatch.');
-      if (~isempty(obj.X))
-        isNotYetSaved = ~(ismember(X, obj.X, 'rows'));
-        % TODO: put here some TolX criterion, not this silly 'ismember()'
-      else
-        isNotYetSaved = true(size(X,1),1);
-      end
+      isNotYetSaved = ~obj.isInArchive(X);
       obj.X = [obj.X; X(isNotYetSaved,:)];
       obj.y = [obj.y; y(isNotYetSaved,:)];
       if (length(generation) == 1)
@@ -30,6 +32,27 @@ classdef Archive < handle
       else
         generation = generation(:);     % ensure column vector
         obj.gens = [obj.gens; generation(isNotYetSaved)];
+      end
+    end
+
+    function obj = delete(obj, indices)
+      % remove data at given indices
+      obj.X(indices,:) = [];
+      obj.y(indices)   = [];
+      obj.gens(indices) = [];
+    end
+
+    function [inArx, indices] = isInArchive(obj, X)
+      inArx = false(size(X,1), 1);
+      indices = zeros(size(X,1), 1);
+      if (~isempty(obj.X))
+        for i = 1:size(X, 1)
+          [minDist, idx] = min(max(abs(repmat(X(i,:),size(obj.X,1),1) - obj.X), [], 2));
+          inArx(i) = minDist <= obj.tolX;
+          if (inArx(i))
+            indices(i) = idx;
+          end
+        end
       end
     end
 

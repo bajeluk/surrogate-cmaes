@@ -55,7 +55,7 @@ end
 
 function testMemory(testCase)
 % testing amount of memory
-  dim = 2;
+  dim = 10;
   nData = 50*dim;
   X = rand(nData, dim);
   y = randn(nData, 1);

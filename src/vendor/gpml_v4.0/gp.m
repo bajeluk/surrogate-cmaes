@@ -119,7 +119,7 @@ try                                                  % call the inference method
 catch err
   msgstr = lasterr;
   if nargin > 7
-    warning('Inference method failed [%s] .. attempting to continue', msgstr)
+    % warning('Inference method failed [%s] .. attempting to continue', msgstr)
     varargout = {NaN, vec2any(hyp,zeros(numel(any2vec(hyp)),1))}; return % go on
   else 
     % warning('GP:InferenceFailed','Inference method failed [%s] .. attempting to continue',msgstr)
@@ -128,7 +128,7 @@ catch err
       % Too many errors, give it up
       throw(err);
     end
-    fprintf(2, '  gp(): Inference method failed (%d) .. attempting to continue.\n', modelTrainNErrors);
+    % fprintf(2, '  gp(): Inference method failed (%d) .. attempting to continue.\n', modelTrainNErrors);
     dnlZ = struct('cov',0*hyp.cov, 'mean',0*hyp.mean, 'lik',0*hyp.lik);
     varargout = {NaN, dnlZ}; return                    % continue with a warning
   end
