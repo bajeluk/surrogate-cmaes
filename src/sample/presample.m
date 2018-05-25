@@ -10,6 +10,8 @@ function [ok, fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrai
   % The number of points to be 'pre-sampled'
   assert(surrogateOpts.evoControlPreSampleSize >= 0 && surrogateOpts.evoControlPreSampleSize <= 1, 'preSampleSize out of bounds [0,1]');
   maxPresampleSize = ceil(surrogateOpts.evoControlPreSampleSize * lambda);
+  maxevals = defopts(cmaesState, 'thisGenerationMaxevals', maxPresampleSize);
+  maxPresampleSize = min(maxPresampleSize, maxevals);
   missingTrainSize = max(minTrainSize - size(xTrain, 1), 0);
   
   fitness_raw = []; arx = []; arxvalid = []; arz = [];
@@ -32,7 +34,7 @@ function [ok, fitness_raw, arx, arxvalid, arz, archive, counteval, xTrain, yTrai
     [xPreSample, zPreSample] = SurrogateSelector.chooseDistantPoints(missingTrainSize, arxvalid', arz', xTrain, xmean, expandedSigma, BD);
     % evaluate the 'preSample' with the original fitness
     [fitness_raw, arx, arxvalid, arz, counteval] = ...
-        sampleCmaesOnlyFitness(xPreSample, xPreSample, zPreSample, expandedSigma, missingTrainSize, counteval, cmaesState, sampleOpts, varargin{:});
+        sampleCmaesOnlyFitness(xPreSample, xPreSample, zPreSample, expandedSigma, missingTrainSize, counteval, cmaesState, sampleOpts, 'Archive', archive, varargin{:});
     archive = archive.save(arxvalid', fitness_raw', countiter);
     xTrain = [xTrain; arxvalid'];
     yTrain = [yTrain; fitness_raw'];

@@ -56,7 +56,7 @@ classdef GenerationEC < EvolutionControl & Observable
         %
         % original-evaluated generation
         %
-        [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
+        [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, 'Archive', archive, varargin{:});
         origEvaled(1:end) = true;
 
         archive = archive.save(arxvalid', fitness_raw', countiter);
@@ -85,7 +85,7 @@ classdef GenerationEC < EvolutionControl & Observable
 
         if (isempty(obj.lastModel))
           warning('surrogateManager(): we are asked to use an EMPTY MODEL! Using CMA-ES.');
-          [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, varargin{:});
+          [fitness_raw, arx, arxvalid, arz, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda, counteval, 'Archive', archive, varargin{:});
           archive = archive.save(arxvalid', fitness_raw', countiter);
           origEvaled(1:end) = true;
           return;
@@ -149,7 +149,7 @@ classdef GenerationEC < EvolutionControl & Observable
         else
           % we don't have a good model, so original fitness will be used
           [fitness_raw_, arx_, arxvalid_, arz_, counteval] = ...
-              sampleCmaesOnlyFitness(arx(:,remainingIdx), arxvalid(:,remainingIdx), arz(:,remainingIdx), sigma, length(remainingIdx), counteval, cmaesState, sampleOpts, varargin{:});
+              sampleCmaesOnlyFitness(arx(:,remainingIdx), arxvalid(:,remainingIdx), arz(:,remainingIdx), sigma, length(remainingIdx), counteval, cmaesState, sampleOpts, 'Archive', archive, varargin{:});
           arx(:,remainingIdx) = arx_;
           arxvalid(:,remainingIdx) = arxvalid_;
           arz(:,remainingIdx) = arz_;

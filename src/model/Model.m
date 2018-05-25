@@ -31,11 +31,13 @@ classdef (Abstract) Model
   end
 
   methods
-    function obj2 = clone(obj, obj2)
+    function obj = clone(obj, obj2)
     % Take all fields except function handles from obj2
-      for ff = fieldnames(obj)
-        if (strfind(ff{1}, 'Fcn') == 0)
-          obj2.(ff{1}) = obj.(ff{1});
+      fnames = fieldnames(obj2);
+      for i = 1:length(fnames)
+        ff = fnames{i};
+        if (isempty(strfind(ff, 'Fcn')))
+          obj.(ff) = obj2.(ff);
         end
       end
     end

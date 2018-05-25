@@ -196,8 +196,9 @@ function testELALevelset(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_ela_levelset()));
   % test data
-  X = rand(30, 3);
-  y = randn(30, 1);
+  nData = 100;
+  X = rand(nData, 3);
+  y = randn(nData, 1);
   qnt = [10, 25, 50];
   % output fields
   featFields = {'mmce_lda_10', 'mmce_lda_25', 'mmce_lda_50', ...
@@ -286,7 +287,9 @@ function testGetMetaFeatures(testCase)
   settings.features = {'cm_convexity', 'cm_gradhomo'};
   settings.blocks = 2*ones(1, dim);
   settings.cm_gradhomo.blocks = 3*ones(1, dim);
+  tic
   [mf, values] = getMetaFeatures(X, y, settings);
+  toc
   % two feature groups
   verifyEqual(testCase, numel(struct2cell(mf)), 2)
   % six features

@@ -92,6 +92,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     stopFlagHistory = false(1, stopFlagHistoryLength);
   end
   
+  % save the initial point to the archive if it was evaluated
+  if (countiter == 1 && ~isempty(cmaesState.fxstart))
+    archive = archive.save(xmean', cmaesState.fxstart, countiter);
+  end
+  
   % run one generation according to evolution control
   [ec, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = ...
     ec.runGeneration(cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin{:});
@@ -118,7 +123,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
     disp('EvolutionControl came back without full population of lambda points!');
     disp('It shouldn''t happen. Rest of points will be orig-evaluated.');
     disp('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-    [yNew, xNew, xNewValid, zNew, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda - size(fitness_raw, 2), counteval, varargin{:});
+    [yNew, xNew, xNewValid, zNew, counteval] = sampleCmaes(cmaesState, sampleOpts, lambda - size(fitness_raw, 2), counteval, 'Archive', archive, varargin{:});
     archive = archive.save(xNewValid', yNew', countiter);
 
     % save the resulting re-evaluated population as the returning parameters

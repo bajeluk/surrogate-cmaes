@@ -1,6 +1,6 @@
 classdef VarSplitGain < SplitGain
-% VarSplitGain evaluates split functions used in decision trees using sum
-% of variances
+% VarSplitGain evaluates split functions used in decision trees using 
+% variance of predicted values
 
   methods
     function obj = VarSplitGain(options)
@@ -12,8 +12,7 @@ classdef VarSplitGain < SplitGain
   methods (Access = protected)
     function value = getValue(obj, data)
     % evaluates data using custom metric
-      [n, ~] = size(data.y);
-      value = sum(data.sd2) / (n^2);
+      value = var(data.y);
     end
   end
 end

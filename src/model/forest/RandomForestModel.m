@@ -113,8 +113,9 @@ classdef RandomForestModel < WeakModel
     function N = getMinTrainPoints(obj, dim)
     % returns minimal number of points necessary to train the model
       sampleTree = obj.rf_treeFunc(obj.rf_treeOptions);
-      if obj.rf_nFeaturesToSample > 0
-        nFeatures = min(obj.rf_nFeaturesToSample, dim);
+      nFtToSample = obj.getNFeaturesToSample(dim);
+      if nFtToSample > 0
+        nFeatures = min(nFtToSample, dim);
       else
         nFeatures = dim;
       end
@@ -131,19 +132,7 @@ classdef RandomForestModel < WeakModel
     
       [N, dim] = size(X);
       % check number of features
-      if ischar(obj.rf_nFeaturesToSample)
-        try
-          % the following expression can contain dim and N value e.g.
-          % 'ceil(dim/log(N))'
-          nDim = eval(obj.rf_nFeaturesToSample);
-          assert(isnumeric(nDim), 'Result of eval function is not numerical.')
-        catch err
-          warning('rf_nFeaturesToSample could not be evaluated due to the following error: %s', err.message)
-          nDim = dim;
-        end
-      else
-        nDim = obj.rf_nFeaturesToSample;
-      end
+      nDim = obj.getNFeaturesToSample(dim);
       if ~ismember(nDim, 1:dim)
         nDim = dim;
       end
@@ -161,6 +150,23 @@ classdef RandomForestModel < WeakModel
       sample.idx = datasample((1:size(X, 1))', nRows, 1, 'Replace', obj.rf_sampleWithReplacement);
       sample.X = X(sample.idx, sample.features);
       sample.y = y(sample.idx, :);
+    end
+    
+    function nFeatures = getNFeaturesToSample(obj, dim)
+    % get n features to sample
+      if ischar(obj.rf_nFeaturesToSample)
+        try
+          % the following expression can contain dim value e.g.
+          % 'ceil(dim/3)'
+          nFeatures = eval(obj.rf_nFeaturesToSample);
+          assert(isnumeric(nFeatures), 'Result of eval function is not numerical.')
+        catch err
+          warning('rf_nFeaturesToSample could not be evaluated due to the following error: %s', err.message)
+          nFeatures = dim;
+        end
+      else
+        nFeatures = obj.rf_nFeaturesToSample;
+      end
     end
     
   end
