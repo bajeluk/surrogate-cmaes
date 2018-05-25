@@ -455,7 +455,7 @@ classdef GpModel < Model & BayesianICModel
         % double negative marginal log likelihood
         silent = true; % suppress numerical errors in likelihood
         likfun = @(par, data) 2 * linear_gp(par', obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, ...
-          data.x, data.y, linear_hyp_start, const_hyp_idx, silent);
+          data.xdata, data.ydata, linear_hyp_start, const_hyp_idx, silent);
         
         % joint hyperprior
         priorfun = @(par, ~, ~) 2 * obj.hyperPrior(par, obj.hyp, obj.prior);
@@ -463,7 +463,13 @@ classdef GpModel < Model & BayesianICModel
         modelTrainNErrors = 0;
 
         for i = 1:obj.mcmcNChains
-          [results, chain, s2chain, sschain] = obj.trainMcmc(linear_hyp_start, obj.getDataset_X(), yTrain, likfun, priorfun);
+          if i > 1
+            % add Gaussian perturbation
+            linear_hyp_start1 = mvnrnd(linear_hyp_start, 0.5 * eye(obj.nHyp))';
+          else
+            linear_hyp_start1 = linear_hyp_start;
+          end
+          [results, chain, s2chain, sschain] = obj.trainMcmc(linear_hyp_start1, obj.getDataset_X(), yTrain, likfun, priorfun);
           obj.mcmcResults.results = [obj.mcmcResults.results results];
           obj.mcmcResults.chain = [obj.mcmcResults.chain; chain];
           obj.mcmcResults.s2chain = [obj.mcmcResults.s2chain; s2chain];
@@ -475,10 +481,13 @@ classdef GpModel < Model & BayesianICModel
         % compute a Bayes estimate of hyperparameters from the chain
         % using an estimator function
         estfun = @median;
-        est = feval(estfun, chain);
+        expchain = exp(chain);
+        expchain = expchain(~any(isinf(expchain), 2), :);
+        est = log(feval(estfun, expchain));
+
         hyp_est = struct( ...
           'val', est, ...
-          'lik', 0.5 * likfun(est, struct('x', obj.getDataset_X(), 'y', yTrain)), ...
+          'lik', 0.5 * likfun(est, struct('xdata', obj.getDataset_X(), 'ydata', yTrain)), ...
           'prior', 0.5 * priorfun(est) ...
         );
 
@@ -724,8 +733,8 @@ classdef GpModel < Model & BayesianICModel
 
 
     function [results, chain, s2chain, sschain] = trainMcmc(obj, linear_hyp_start, X, y, likfun, priorfun)
-      data.x = X;
-      data.y = y;
+      data.xdata = X;
+      data.ydata = y;
 
       model = struct( ...
         'ssfun', likfun, ...
@@ -753,6 +762,7 @@ classdef GpModel < Model & BayesianICModel
         'nsimu',         obj.mcmcNSimu, ...
         'burnintime',    obj.mcmcBurnin, ...
         'verbosity',     0, ...
+        'updatesigma',   true, ...
         'waitbar',       false ...
       );
       [results, chain, s2chain, sschain] = mcmcrun(model, data, params, mcmcOpts);

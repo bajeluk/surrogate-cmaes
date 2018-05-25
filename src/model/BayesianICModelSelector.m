@@ -9,9 +9,8 @@ classdef BayesianICModelSelector < ICModelSelector
   end
 
   methods (Access = protected)
-    function ics = calcICs(obj, generation)
-      ics = calcICs@ICModelSelector(obj, generation);
-      obj.modelsIC = ics;
+    function obj = calcICs(obj, generation)
+      obj = calcICs@ICModelSelector(obj, generation);
 
       obj.modelsIC.dic1(generation, :) = inf(1, obj.nModels);
       obj.modelsIC.dic2(generation, :) = inf(1, obj.nModels);
@@ -90,7 +89,6 @@ classdef BayesianICModelSelector < ICModelSelector
           obj.modelsIC.rhat{generation, mdlIdx} = rhat;
         end
       end
-      ics = obj.modelsIC;
     end
   end
   
@@ -108,6 +106,6 @@ classdef BayesianICModelSelector < ICModelSelector
       obj.modelsIC.rhat = cell(1, obj.nModels);
     end
   end
-  
+
 end
 

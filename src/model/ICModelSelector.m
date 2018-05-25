@@ -7,7 +7,7 @@ classdef ICModelSelector < ModelSelector
   end
   
   methods (Access = protected)
-    function ics = calcICs(obj, generation)
+    function obj = calcICs(obj, generation)
       obj.modelsIC.aic(generation, :) = inf(1, obj.nModels);
       obj.modelsIC.bic(generation, :) = inf(1, obj.nModels);
 
@@ -30,7 +30,6 @@ classdef ICModelSelector < ModelSelector
         obj.modelsIC.aic(generation, mdlIdx) = aic;
         obj.modelsIC.bic(generation, mdlIdx) = bic;
       end
-      ics = obj.modelsIC;
     end
   end
 
@@ -40,18 +39,14 @@ classdef ICModelSelector < ModelSelector
 
       obj.ic = defopts(modelOptions, 'ic', 'bic');
 
-      if ~ismember(obj.ic, {'aic', 'bic'})
-        error('Unknown information criterion: ''%s''', obj.ic);
-      end
-
       obj.modelsIC = struct( ...
         'aic', inf(1, obj.nModels), ...
         'bic', inf(1, obj.nModels) ...
       );
     end
 
-    function [mdlIdx, ic] = modelSelect(obj, generation)
-      obj.modelsIC = obj.calcICs(generation);
+    function [obj, mdlIdx, ic] = modelSelect(obj, generation)
+      obj = obj.calcICs(generation);
       ics = obj.modelsIC.(obj.ic);
 
       [ic, mdlIdx] = min(ics(generation, :));

@@ -32,10 +32,12 @@ classdef ModelSelector < Model
     nModels
     bestIdx
     trainTrial
+    trainLikelihood
   end
 
   methods (Access = protected)
     function obj = ModelSelector(options, xMean)
+      % comply with Model interface
       obj.xMean = xMean;
       obj.options = options;
       obj.transformCoordinates = defopts(options, 'transformCoordinates', true);
@@ -88,13 +90,13 @@ classdef ModelSelector < Model
         obj.modelTypes{i} = mdlType;
       end
 
-      obj.bestIdx = 0;
+      obj.bestIdx = [];
     end
 
   end
 
   methods (Abstract)
-    [mdlIdx, val] = modelSelect(obj, generation)
+    [obj, mdlIdx, val] = modelSelect(obj, generation)
   end
 
   methods (Access = public)
@@ -116,14 +118,14 @@ classdef ModelSelector < Model
         end
       end
 
-      [mdlIdx, val] = obj.modelSelect(obj.trainTrial);
+      [obj, mdlIdx, val] = obj.modelSelect(obj.trainTrial);
 
       if any(obj.modelIsTrained(obj.trainTrial, :))
         if isinf(val) || isnan(val)
           warning('ModelSelector: Invalid IC value for the selected model.');
           obj.trainGeneration = -1;
         else
-          obj.bestIdx = mdlIdx;
+          obj.bestIdx(end+1) = mdlIdx;
           obj.trainGeneration = obj.models{mdlIdx}.trainGeneration;
           obj.trainLikelihood = obj.models{mdlIdx}.trainLikelihood;
         end
@@ -135,10 +137,10 @@ classdef ModelSelector < Model
     end
 
     function [y, sd2] = modelPredict(obj, X)
-      if obj.bestIdx == 0
+      if isempty(obj.bestIdx) || obj.bestIdx(end) == 0
         error('ModelSelector: Best model has not been determined. Was trainModel called?');
       end
-      [y, sd2] = obj.models{obj.bestIdx}.modelPredict(X);
+      [y, sd2] = obj.models{obj.bestIdx(end)}.modelPredict(X);
     end
 
     function nData = getNTrainData(obj)
