@@ -7,6 +7,7 @@ classdef DTICLogger < Observer
     instance
     expFileID
     file
+    printICs
   end
   
   methods
@@ -17,6 +18,7 @@ classdef DTICLogger < Observer
       obj.instance  = defopts(params, 'instance', NaN);
       obj.expFileID = defopts(params, 'expFileID', '');
       obj.file  = [obj.datapath filesep obj.exp_id '_iclog_' obj.expFileID '.mat'];
+      obj.printICs = defopts(params, 'printICs', false);
     end
 
     function notify(obj, ec, varargin)
@@ -40,8 +42,11 @@ classdef DTICLogger < Observer
       else
         iclog = struct();
         iclog.isTrained = [];
+        iclog.nTrainErrors = [];
+        iclog.bestIdx = [];
+        iclog.mcmcConv = [];
 
-        for f_cell = fieldnames(mdl.modelsIC)
+        for f_cell = fieldnames(mdl.modelsIC)'
           fn = f_cell{:};
           iclog.(fn) = [];
         end
@@ -49,16 +54,49 @@ classdef DTICLogger < Observer
         iclog.header = {'countiter', 'trainTrial', mdl.modelNames};
       end
 
-      iclog.isTrained = [iclog.isTrained; ...
-        [countiter obj.trainTrial mdl.isTrained]];
+      if size(mdl.modelIsTrained,  1) == 1
+        idx = [countiter mdl.trainTrial];
+      else
+        assert(mdl.trainTrial-1 == size(mdl.modelIsTrained, 1));
+        idx = [repmat(countiter, mdl.trainTrial-1, 1) (1:(mdl.trainTrial-1))'];
+      end
 
-      for f_cell = fieldnames(mdl.modelsIC)
+      iclog.isTrained = [iclog.isTrained; ...
+        [idx mdl.modelIsTrained]];
+      iclog.nTrainErrors = [iclog.nTrainErrors; ...
+        [idx mdl.nTrainErrors]];
+      iclog.bestIdx = [iclog.bestIdx; ...
+        [idx mdl.bestIdx']];
+      if isfield(mdl.modelsIC, 'rhat')
+        converged = cellfun(@(r) all(r < 1.1), mdl.modelsIC.rhat, ...
+            'UniformOutput', true);
+        iclog.mcmcConv = [iclog.mcmcConv; ...
+          [idx converged]];
+      end
+
+      for f_cell = fieldnames(mdl.modelsIC)'
         fn = f_cell{:};
         iclog.(fn) = [iclog.(fn); ...
-          [countiter obj.trainTrial mdl.modelsIC.(fn)]];
+          [idx mdl.modelsIC.(fn)]];
       end
 
       save(obj.file, '-struct', 'iclog');
+
+      if obj.printICs
+        [~, ranks] = sort(mdl.modelsIC.(mdl.ic), 2);
+        for k = 1:size(ranks, 1)
+          fprintf('[%5s] %s\n', mdl.ic, num2str(ranks(k, :)));
+        end
+
+        if isfield(mdl.modelsIC, 'rhat')
+          rhatmax = cellfun(@(r) max(r), mdl.modelsIC.rhat, ...
+            'UniformOutput', true);
+          for k = 1:size(converged, 1)
+            fprintf('[max(r)] %s\n', num2str(rhatmax(k, :)));
+          end
+        end
+      end
+
+    end
   end
 end
-

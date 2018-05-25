@@ -43,6 +43,7 @@ classdef ObserverFactory
             params.exp_id    = surrogateOpts.exp_id;
             params.expFileID = surrogateOpts.expFileID;
             params.instance  = surrogateOpts.instance;
+            params.printICs = defopts(surrogateOpts, 'printICs', false);
             observers{i} = DTICLogger(params);
             ec = observers{i}.registerObservable(ec);
 
