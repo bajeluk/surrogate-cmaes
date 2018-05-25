@@ -1,5 +1,5 @@
 function tests = gpModelTest
-  tests = functiontests(localfunctions);
+  tests = functiontests({@testMcmc}); %functiontests(localfunctions);
 end
 
 function setupOnce(testCase)
@@ -61,14 +61,23 @@ function testGetNTrainData(testCase)
   verifyEqual(testCase, m.getNTrainData, 15);
 end
 
-function testMcmcm(testCase)
+function testMcmc(testCase)
   % generate data from a GP with sqexp(l=1, sigma_f=1, sigma_n=0.1)
   % Rassmusen, p20
-  n = 20;
+  rng(42);
+  n = 40;
+  nTest = 20;
 
-  X = rand(20, 1) * 10 - 5;
+  X = rand(n, 1) * 10 - 5;
   K = covSEiso(log([1, 1]), X) + 1e-2 * eye(n);
   y = mvnrnd(zeros(1, n), K)';
+  
+  testIdx = false(1, n);
+  testIdx(randsample(1:n, nTest)) = true;
+  Xtrain = X(~testIdx, :);
+  Xtest = X(testIdx, :);
+  ytrain = y(~testIdx);
+  ytest = y(testIdx);
 
   hyp = struct( ...
     'lik', log(0.1), ...
@@ -77,8 +86,8 @@ function testMcmcm(testCase)
   );
 
   mcmcOpts = struct( ...
-    'nsimu',       4000, ...
-    'burnintime',  2000, ...
+    'nsimu',       2000, ...
+    'burnintime',  500, ...
     'verbosity',   1, ...
     'waitbar',     true ...
   );
@@ -106,34 +115,41 @@ function testMcmcm(testCase)
   % Train on the train data
   m = GpModel(modelOpts, 0);
   warning('off');
-  m = m.trainModel(X, y, 1, 1);
+  m = m.trainModel(Xtrain, ytrain, 1, 1);
   warning('on');
-
-  % Test on the test data:
-
-  Xtest = linspace(-6, 6, 1000)';
-  [yPred, dev] = m.modelPredict(Xtest);
   
   % visual check
   figure();
-  mcmcplot(log10(exp(m.mcmcResults.chain)), [2, 3], m.mcmcResults.info, 'pairs');
+  chain = m.mcmcResults.chain;
+  info = m.mcmcResults.info;
+  chain(:, 1:3) = chain(:, 1:3)/log(10);
+  mcmcplot(chain, [2, 3], info, 'pairs');
   xlim([-1, 1]);
   ylim([-1.5, 0.5]);
+  
+  figure();
+  mcmcplot(chain, [], m.mcmcResults.info, 'pairs');
+
+  Xplt = linspace(-6, 6, 1000)';
+  [yPred, dev] = m.modelPredict(Xplt);
 
   figure();
-  plot(Xtest', yPred', 'b-');
+  plot(Xplt', yPred', 'b-');
   hold on;
-  plot(Xtest', [yPred-dev yPred+dev]', 'k:');
+  plot(Xplt', [yPred-dev yPred+dev]', 'k:');
   scatter(X, y);
+  
+  % Test prediction
+  [yPred, dev] = m.modelPredict(Xtest);
 
-%   mse = mean((ytest - yPred).^2);
-%   verifyLessThan(testCase, mse, 0.3);
-%   disp(['Gaussian process MSE = ' num2str(mse)]);
-%   mae = mean(abs(ytest - yPred));
-%   verifyLessThan(testCase, mae, 0.35);
-%   disp(['Gaussian process MAE = ' num2str(mae)]);
-%   verifyLessThan(testCase, dev, 0.5);
-%   disp(['Gaussian process mean std = ' num2str(mean(dev))]);
+  mse = mean((ytest - yPred).^2);
+  verifyLessThan(testCase, mse, 0.3);
+  disp(['Gaussian process MSE = ' num2str(mse)]);
+  mae = mean(abs(ytest - yPred));
+  verifyLessThan(testCase, mae, 0.35);
+  disp(['Gaussian process MAE = ' num2str(mae)]);
+  verifyLessThan(testCase, dev, 0.5);
+  disp(['Gaussian process mean std = ' num2str(mean(dev))]);
 end
 
 % function test1DLinearShift(testCase)
