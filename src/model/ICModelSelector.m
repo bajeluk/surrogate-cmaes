@@ -27,6 +27,7 @@ classdef ICModelSelector < ModelSelector
         aic = -2 * lik + 2 * k;
         bic = -2 * lik + log(n) * k;
 
+        obj.modelsIC.lik(generation, mdlIdx) = lik;
         obj.modelsIC.aic(generation, mdlIdx) = aic;
         obj.modelsIC.bic(generation, mdlIdx) = bic;
       end
@@ -40,6 +41,7 @@ classdef ICModelSelector < ModelSelector
       obj.ic = defopts(modelOptions, 'ic', 'bic');
 
       obj.modelsIC = struct( ...
+        'lik', inf(1, obj.nModels), ...
         'aic', inf(1, obj.nModels), ...
         'bic', inf(1, obj.nModels) ...
       );

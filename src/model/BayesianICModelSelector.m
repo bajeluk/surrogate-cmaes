@@ -56,7 +56,7 @@ classdef BayesianICModelSelector < ICModelSelector
         obj.modelsIC.waic1(generation, mdlIdx) = waic1;
         obj.modelsIC.waic2(generation, mdlIdx) = waic2;
         % TODO: Watanabe's Bayesian Information criterion
-        % obj.modelsIC.wbic(generation, mdlIdx) = wbic;
+        obj.modelsIC.wbic(generation, mdlIdx) = 0;
 
         % ---- Gelman-Rubin convergence statistic ----
         chains = mdl.getChains();
@@ -81,7 +81,7 @@ classdef BayesianICModelSelector < ICModelSelector
             ch = [ch(1:n, :) ch(n+1:(N-r), :)];
 
             B = n * var(mean(ch, 1));
-            W = mean(var(ch, 1));
+            W = mean(var(ch, 0, 1));
             V = (n-1) * W / n + B / n;
             rhat(j) = sqrt(V / W);
           end
