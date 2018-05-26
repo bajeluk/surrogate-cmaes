@@ -861,27 +861,6 @@ classdef GpModel < Model & BayesianICModel
   end
 
   methods (Static)
-<<<<<<< HEAD
-    function prob = logHyperPrior(linear_hyp, hyp)
-      % A log product of hyperparameter priors.
-      % All hyp.likPrior and hyp.covPrior{:} functions are assumed to be
-      % densities.
-      hyp_s = vec2any(hyp, exp(linear_hyp'));
-      logp = zeros(1, 1 + numel(hyp.cov));
-
-      assert(numel(hyp.lik) == 1);
-
-      for i = 1:numel(hyp.covPrior)
-        priorFcn = hyp.covPrior{i};
-        logp(i) = log(priorFcn(hyp_s.cov(i)));
-      end
-      logp(end) = hyp.likPrior(hyp_s.lik);
-
-      prob = sum(logp);
-    end
-
-=======
->>>>>>> Compute LOO and do some error checking.
     function nlp = hyperPrior(linear_hyp, hyp, prior)
       inf = @infZeros;
       hyp_s = vec2any(hyp, linear_hyp');
