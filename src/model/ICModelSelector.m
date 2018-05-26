@@ -5,7 +5,7 @@ classdef ICModelSelector < ModelSelector
     ic % information criterion to use
     modelsIC
   end
-  
+
   methods (Access = protected)
     function obj = calcICs(obj, generation)
       obj.modelsIC.aic(generation, :) = inf(1, obj.nModels);
@@ -27,9 +27,12 @@ classdef ICModelSelector < ModelSelector
         aic = -2 * lik + 2 * k;
         bic = -2 * lik + log(n) * k;
 
+        nloo = mdl.getNegLooPredDens();
+
         obj.modelsIC.lik(generation, mdlIdx) = lik;
         obj.modelsIC.aic(generation, mdlIdx) = aic;
         obj.modelsIC.bic(generation, mdlIdx) = bic;
+        obj.modelsIC.loo(generation, mdlIdx) = nloo;
       end
     end
   end
@@ -43,6 +46,7 @@ classdef ICModelSelector < ModelSelector
       obj.modelsIC = struct( ...
         'lik', inf(1, obj.nModels), ...
         'aic', inf(1, obj.nModels), ...
+        'loo', inf(1, obj.nModels), ...
         'bic', inf(1, obj.nModels) ...
       );
     end

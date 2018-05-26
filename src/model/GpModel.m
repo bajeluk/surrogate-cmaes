@@ -238,6 +238,17 @@ classdef GpModel < Model & BayesianICModel
       lik = obj.trainLikelihood;
     end
 
+    function nloo = getNegLooPredDens(obj, varargin)
+      X = obj.getDataset_X();
+      y = (obj.getDataset_y() - obj.shiftY) / obj.stdY;
+
+      try
+        [~, nloo] = infLOO(obj.hyp, obj.meanFcn, obj.covFcn, obj.likFcn, X, y);
+      catch
+        nloo = NaN;
+      end
+    end
+
     function [lppd, ppd] = getLogPredDens(obj, varargin)
       % Computes a vector of log pointwise predictive densities averaged over
       % posterior hyperparams and a matrix of log pointwise predictive
@@ -271,11 +282,20 @@ classdef GpModel < Model & BayesianICModel
       ppd_exp = zeros(N, nSimu);
       % log predictive densities
       ppd = zeros(N, nSimu);
+      inferr = false(1, nSimu);
 
       for i = 1:nSimu
         hyp_s = vec2any(obj.hyp, chain(idx(i), :));
-        [~, ~, fmu, fs2] = gp(hyp_s, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, ...
-          X, y, X);
+        try
+          [y, ~, fmu, fs2] = gp(hyp_s, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, X, y, X);
+        catch
+          inferr(i) = true;
+        end
+        inferr(i) = inferr(i) | any(isnan(y));
+        if inferr(i)
+          continue;
+        end
+
         assert(all(size(fmu) == [N, 1]));
 
         % the predictive density is a Gaussian with mean fmu and variance
@@ -287,6 +307,16 @@ classdef GpModel < Model & BayesianICModel
         ppd_exp(:, i) = z;
         ppd(:, i) = -0.5 * log(2*pi*s2) + z;
       end
+
+      if sum(inferr) > floor(nSimu / 2)
+        lppd = NaN(N, 1);
+        ppd = NaN(N, nSimu);
+        return;
+      end
+
+      ppd = ppd(:, ~inferr);
+      ppd_mult = ppd_mult(:, ~inferr);
+      ppd_exp = ppd_exp(:, ~inferr);
 
       lppd = logsumexp(ppd_exp, ppd_mult, 2);
     end
@@ -831,6 +861,7 @@ classdef GpModel < Model & BayesianICModel
   end
 
   methods (Static)
+<<<<<<< HEAD
     function prob = logHyperPrior(linear_hyp, hyp)
       % A log product of hyperparameter priors.
       % All hyp.likPrior and hyp.covPrior{:} functions are assumed to be
@@ -849,6 +880,8 @@ classdef GpModel < Model & BayesianICModel
       prob = sum(logp);
     end
 
+=======
+>>>>>>> Compute LOO and do some error checking.
     function nlp = hyperPrior(linear_hyp, hyp, prior)
       inf = @infZeros;
       hyp_s = vec2any(hyp, linear_hyp');
