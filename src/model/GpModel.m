@@ -279,13 +279,13 @@ classdef GpModel < Model & BayesianICModel
         assert(all(size(fmu) == [N, 1]));
 
         % the predictive density is a Gaussian with mean fmu and variance
-        % (fs2 + sn2)^2
+        % (fs2 + sn2)
         sn2 = exp(hyp_s.lik);
-        s = fs2 + sn2;
-        ppd_mult(:, i) = 1 ./ (nSimu * sqrt(2*pi) * s);
-        z = -0.5 * ((y - fmu).^2 ./ s.^2);
+        s2 = fs2 + sn2;
+        ppd_mult(:, i) = 1 ./ (nSimu * sqrt(2*pi*s2));
+        z = -0.5 * ((y - fmu).^2 ./ s2);
         ppd_exp(:, i) = z;
-        ppd(:, i) = -0.5 * log(2*pi) - 2 * log(s) + z;
+        ppd(:, i) = -0.5 * log(2*pi*s2) + z;
       end
 
       lppd = logsumexp(ppd_exp, ppd_mult, 2);
@@ -860,7 +860,6 @@ classdef GpModel < Model & BayesianICModel
       % FIXME: write a proper evalPrior function working with gpml-style prior specs
       nlp = infPriorOnly(inf, prior, hyp_s);
     end
-
   end
 
 end
