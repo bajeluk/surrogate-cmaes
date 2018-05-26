@@ -172,13 +172,13 @@ classdef GpModel < Model & BayesianICModel
 %         dgs = dgs(dgs <= obj.dim);
 %         obj.covFcn{2}{1} = dgs;
 %         r = length(dgs);
-% 
+%
 %         s = zeros(1, r);
 %         for i = 1:r
 %           % (d over dgs(i))
 %           s(i) = prod(arrayfun(@(j) obj.dim - j, 0:(dgs(i) - 1))) / factorial(dgs(i));
 %         end
-% 
+%
 %         obj.hyp.cov = [repmat(obj.hyp.cov(1), obj.dim, 1); ...
 %           log(obj.hyp.cov{2} ./ s')];
 %         obj.covBounds = [repmat(obj.covBounds(1, :), obj.dim, 1); ...
@@ -189,7 +189,7 @@ classdef GpModel < Model & BayesianICModel
 
       obj.likBounds = defopts(obj.options, 'likBounds', log([1e-3, 10]));
       obj.cmaesCheckBounds = defopts(obj.options, 'cmaesCheckBounds', true);
-      obj.nHyp = numel(unwrap(obj.hyp));
+      obj.nHyp = numel(any2vec(obj.hyp));
 
       % MCMC-related settings
       obj.mcmcNChains = myeval(defopts(obj.options, 'mcmcNChains', 2));
@@ -218,7 +218,7 @@ classdef GpModel < Model & BayesianICModel
     end
 
     function k = getNParams(obj)
-      k = numel(unwrap(obj.hyp));
+      k = numel(any2vec(obj.hyp));
     end
 
     function n = getNData(obj)
@@ -273,7 +273,7 @@ classdef GpModel < Model & BayesianICModel
       ppd = zeros(N, nSimu);
 
       for i = 1:nSimu
-        hyp_s = rewrap(obj.hyp, chain(idx(i), :));
+        hyp_s = vec2any(obj.hyp, chain(idx(i), :));
         [~, ~, fmu, fs2] = gp(hyp_s, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, ...
           X, y, X);
         assert(all(size(fmu) == [N, 1]));
@@ -349,7 +349,7 @@ classdef GpModel < Model & BayesianICModel
       elseif (isequal(obj.meanFcn, @meanLinear))
         obj.hyp.mean = median(yTrain) / obj.dim * ones(obj.dim,1);
       end
-      
+
       % eval hyperparameters
       if ischar(obj.hyp.lik)
         obj.hyp.lik = myeval(obj.hyp.lik);
@@ -385,11 +385,11 @@ classdef GpModel < Model & BayesianICModel
               || strcmp(alg, 'cmaes'))
         % lower and upper bounds
         [lb_hyp, ub_hyp] = obj.getLUBounds(yTrain, obj.hyp);
-        lb = unwrap(lb_hyp)';
-        ub = unwrap(ub_hyp)';
+        lb = any2vec(lb_hyp)';
+        ub = any2vec(ub_hyp)';
         opt = [];
 
-        linear_hyp = unwrap(obj.hyp)';
+        linear_hyp = any2vec(obj.hyp)';
         l_cov = length(obj.hyp.cov);
 
         % if some parameters are held constant
@@ -433,7 +433,7 @@ classdef GpModel < Model & BayesianICModel
             linear_hyp_start(~const_hyp_idx) = opt;
             opt = linear_hyp_start;
             obj.trainGeneration = generation;
-            obj.hyp = rewrap(obj.hyp, opt);
+            obj.hyp = vec2any(obj.hyp, opt);
             obj.trainLikelihood = lik;
           elseif (trainErr)
             % DEBUG OUTPUT:
@@ -451,14 +451,14 @@ classdef GpModel < Model & BayesianICModel
           fprintf(2, '.. model is not successfully trained, likelihood = %f\n', obj.trainLikelihood);
         end
       elseif strcmpi(alg, 'mcmc')
-        linear_hyp_start = unwrap(obj.hyp);
+        linear_hyp_start = any2vec(obj.hyp);
         const_hyp_idx = false(1, length(linear_hyp_start));
 
         % double negative marginal log likelihood
         silent = true; % suppress numerical errors in likelihood
         likfun = @(par, data) 2 * linear_gp(par', obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, ...
           data.xdata, data.ydata, linear_hyp_start, const_hyp_idx, silent);
-        
+
         % joint hyperprior
         priorfun = @(par, ~, ~) 2 * obj.hyperPrior(par, obj.hyp, obj.prior);
 
@@ -496,7 +496,7 @@ classdef GpModel < Model & BayesianICModel
         );
 
         % a point estimate
-        obj.hyp = rewrap(obj.hyp, hyp_est.val);
+        obj.hyp = vec2any(obj.hyp, hyp_est.val);
         obj.trainLikelihood = hyp_est.lik;
 
         if ~isinf(hyp_est.val)
@@ -528,7 +528,7 @@ classdef GpModel < Model & BayesianICModel
           gpfail = true(1, obj.nSimuPost);
           for s = 1:obj.nSimuPost
             try
-              h = rewrap(obj.hyp, hypSimu(s, :));
+              h = vec2any(obj.hyp, hypSimu(s, :));
               [~, ~, fmu, fs2] = gp(h, obj.infFcn, obj.meanFcn, ...
                 obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, XWithShift);
 
@@ -590,7 +590,7 @@ classdef GpModel < Model & BayesianICModel
         mu = zeros(obj.nSimuPost, N);
         s2 = zeros(obj.nSimuPost, obj.nSimuPost, N);
         for s = 1:obj.nSimuPost
-          obj.hyp = rewrap(obj.hyp, hypSimu(s, :));
+          obj.hyp = vec2any(obj.hyp, hypSimu(s, :));
           [~, ~, fmu, fs2] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, XWithShift);
 
           % un-normalize in the f-space (if there is any)
@@ -835,7 +835,7 @@ classdef GpModel < Model & BayesianICModel
       % A log product of hyperparameter priors.
       % All hyp.likPrior and hyp.covPrior{:} functions are assumed to be
       % densities.
-      hyp_s = rewrap(hyp, exp(linear_hyp'));
+      hyp_s = vec2any(hyp, exp(linear_hyp'));
       logp = zeros(1, 1 + numel(hyp.cov));
 
       assert(numel(hyp.lik) == 1);
@@ -888,8 +888,8 @@ function [nlZ, dnlZ] = linear_gp(linear_hyp, s_hyp, infFcn, mean, cov, lik, x, y
   linear_hyp_start(~const_hyp_idx) = linear_hyp;
   linear_hyp = linear_hyp_start;
 
-  hyp = rewrap(s_hyp, linear_hyp');
- 
+  hyp = vec2any(s_hyp, linear_hyp');
+
   try
     if nargout <= 1
       % compute negative marginal log likelihood
@@ -897,7 +897,7 @@ function [nlZ, dnlZ] = linear_gp(linear_hyp, s_hyp, infFcn, mean, cov, lik, x, y
     else
       % compute also negative marginal log likelihood derivatives
       [nlZ, s_dnlZ] = gp(hyp, infFcn, mean, cov, lik, x, y);
-      dnlZ = unwrap(s_dnlZ)';
+      dnlZ = any2vec(s_dnlZ)';
       dnlZ = dnlZ(~const_hyp_idx);
     end
   catch err
