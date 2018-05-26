@@ -90,7 +90,8 @@ classdef DTICLogger < Observer
       if obj.printICs
         [~, ranks] = sort(mdl.modelsIC.(mdl.ic), 2);
         for k = 1:size(ranks, 1)
-          fprintf('[%5s] %s\n', mdl.ic, num2str(ranks(k, :)));
+          bestName = mdl.modelNames{find(ranks(k, :) == 1, 1)};
+          fprintf('[%6s] [%6s] %s\n', mdl.ic, bestName, num2str(ranks(k, :)));
         end
 
         if isfield(mdl.modelsIC, 'rhat')
