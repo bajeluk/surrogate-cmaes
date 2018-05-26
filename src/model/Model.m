@@ -215,6 +215,13 @@ classdef (Abstract) Model
     % known fvalue range.
 
       [y, sd2] = obj.predict(X);
+
+      if isempty(y) || isempty(sd2)
+        output = [];
+        y = [];
+        return;
+      end
+
       fmin = min(obj.getDataset_y());
       fmax = max(obj.getDataset_y());
 
@@ -321,7 +328,10 @@ classdef (Abstract) Model
         % Test that we don't have a constant model
         [~, xTestValid] = sampleCmaesNoFitness(sigma, lambda, stateVariables, sampleOpts);
         yPredict = obj.predict(xTestValid');
-        if (max(yPredict) - min(yPredict) < MIN_RESPONSE_DIFFERENCE)
+        if isempty(yPredict)
+          fprintf('Model.train(): prediction failed on validation set!\n');
+          obj.trainGeneration = -1;
+        elseif (max(yPredict) - min(yPredict) < MIN_RESPONSE_DIFFERENCE)
           fprintf('Model.train(): model output is constant (diff=%e), considering the model as un-trained.\n', max(yPredict) - min(yPredict));
           obj.trainGeneration = -1;
         end

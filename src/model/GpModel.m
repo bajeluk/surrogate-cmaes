@@ -577,9 +577,14 @@ classdef GpModel < Model & BayesianICModel
         else
           % calculate GP models' prediction in X
           [y, gp_sd2] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, XWithShift);
-          % un-normalize in the f-space (if there is any)
-          y = y * obj.stdY + obj.shiftY;
-          sd2 = gp_sd2 * (obj.stdY)^2;
+          if any(isnan(y)) || isstruct(gp_sd2)
+            y = []; sd2 = [];
+            fprintf(2, 'GpModel.predict(): inference failed!\n');
+          else
+            % un-normalize in the f-space (if there is any)
+            y = y * obj.stdY + obj.shiftY;
+            sd2 = gp_sd2 * (obj.stdY)^2;
+          end
         end
 
         % % Calculate POI if it should be used

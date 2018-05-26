@@ -57,6 +57,11 @@ classdef ICModelSelector < ModelSelector
 
       [ic, mdlIdx] = min(ics(generation, :));
     end
+
+    function mdlIdx = modelSort(obj)
+      ics = obj.modelsIC.(obj.ic);
+      [~, mdlIdx] = sort(ics(end, :));
+    end
   end
 
 end

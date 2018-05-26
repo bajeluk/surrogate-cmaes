@@ -119,7 +119,7 @@ try                                                  % call the inference method
 catch err
   msgstr = lasterr;
   if nargin > 7
-    % warning('Inference method failed [%s] .. attempting to continue', msgstr)
+    warning('Inference method failed [%s] .. attempting to continue', msgstr)
     varargout = {NaN, vec2any(hyp,zeros(numel(any2vec(hyp)),1))}; return % go on
   else 
     % warning('GP:InferenceFailed','Inference method failed [%s] .. attempting to continue',msgstr)

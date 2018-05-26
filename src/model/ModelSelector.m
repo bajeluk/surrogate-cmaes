@@ -97,6 +97,7 @@ classdef ModelSelector < Model
 
   methods (Abstract)
     [obj, mdlIdx, val] = modelSelect(obj, generation)
+    [obj, mdlIdx] = modelSort(obj)
   end
 
   methods (Access = public)
@@ -140,7 +141,21 @@ classdef ModelSelector < Model
       if isempty(obj.bestIdx) || obj.bestIdx(end) == 0
         error('ModelSelector: Best model has not been determined. Was trainModel called?');
       end
+
       [y, sd2] = obj.models{obj.bestIdx(end)}.modelPredict(X);
+
+      % if the best model fails, try the rest in order of their fitness
+      if isempty(y) || isempty(sd2)
+        idx = obj.modelSort();
+        for i = idx(2:end)
+          [y, sd2] = obj.models{i}.modelPredict(X);
+          if ~isempty(y) && ~isempty(sd2)
+            fprintf('ModelSelector: Prediction with model (%d / %s)', ...
+              i, obj.modelNames{i});
+            break;
+          end
+        end
+      end
     end
 
     function nData = getNTrainData(obj)
