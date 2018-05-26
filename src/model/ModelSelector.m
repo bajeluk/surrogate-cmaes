@@ -122,13 +122,13 @@ classdef ModelSelector < Model
 
       if any(obj.modelIsTrained(obj.trainTrial, :))
         if isinf(val) || isnan(val)
-          warning('ModelSelector: Invalid IC value for the selected model.');
-          obj.trainGeneration = -1;
-        else
-          obj.bestIdx(end+1) = mdlIdx;
-          obj.trainGeneration = obj.models{mdlIdx}.trainGeneration;
-          obj.trainLikelihood = obj.models{mdlIdx}.trainLikelihood;
+          mdlIdx = find(obj.modelIsTrained(obj.trainTrial, :));
+          warning(['ModelSelector: Invalid IC value for the selected model.\n' ...
+            'Falling back to the first model having been trained (%d / %s)'], mdlIdx, obj.modelNames{mdlIdx});
         end
+        obj.bestIdx(end+1) = mdlIdx;
+        obj.trainGeneration = obj.models{mdlIdx}.trainGeneration;
+        obj.trainLikelihood = obj.models{mdlIdx}.trainLikelihood;
       else
         obj.trainGeneration = -1;
       end
