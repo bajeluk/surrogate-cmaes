@@ -139,7 +139,7 @@ classdef ModelSelector < Model
 
     function [y, sd2] = modelPredict(obj, X)
       if isempty(obj.bestIdx) || obj.bestIdx(end) == 0
-        error('ModelSelector: Best model has not been determined. Was trainModel called?');
+        error('ModelSelector: Best model has not been determined. Was trainModel called?\n');
       end
 
       [y, sd2] = obj.models{obj.bestIdx(end)}.modelPredict(X);
@@ -150,7 +150,7 @@ classdef ModelSelector < Model
         for i = idx(2:end)
           [y, sd2] = obj.models{i}.modelPredict(X);
           if ~isempty(y) && ~isempty(sd2)
-            fprintf('ModelSelector: Prediction with model (%d / %s)', ...
+            fprintf('ModelSelector: Prediction with model (%d / %s)\n', ...
               i, obj.modelNames{i});
             break;
           end

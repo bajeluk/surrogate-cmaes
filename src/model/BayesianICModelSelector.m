@@ -53,6 +53,7 @@ classdef BayesianICModelSelector < ICModelSelector
         waic1 = -lppd + pwaic1;
         waic2 = -lppd + pwaic2;
 
+        obj.modelsIC.lppd(generation, mdlIdx) = -lppd;
         obj.modelsIC.waic1(generation, mdlIdx) = waic1;
         obj.modelsIC.waic2(generation, mdlIdx) = waic2;
         % TODO: Watanabe's Bayesian Information criterion
@@ -103,6 +104,7 @@ classdef BayesianICModelSelector < ICModelSelector
       obj.modelsIC.waic1 = zeros(1, obj.nModels);
       obj.modelsIC.waic2 = zeros(1, obj.nModels);
       obj.modelsIC.wbic = zeros(1, obj.nModels);
+      obj.modelsIC.lppd = zeros(1, obj.nModels);
       obj.modelsIC.rhat = cell(1, obj.nModels);
     end
   end
