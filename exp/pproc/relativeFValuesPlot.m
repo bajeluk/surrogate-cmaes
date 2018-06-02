@@ -10,6 +10,9 @@ function handle = relativeFValuesPlot(data, varargin)
 %
 %     'AggregateDims' - aggregate dimensions in plots | boolean
 %     'AggregateFuns' - aggregate functions in plots | boolean
+%     'RankAggregation' -- whether to aggregate only ranking of the
+%                       algorithms, not the true distances to optima
+%                       (default false) | boolean
 %     'Colors'        - vector Nx3 of (RGB) colors of individual 
 %                       algorithms, N is the number of algorithms | double 
 %                       array
@@ -100,6 +103,7 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.BBfunc  = defopts(settings, 'PlotFuns', funcSet.BBfunc);
   plotSet.aggDims = defopts(settings, 'AggregateDims', false);
   plotSet.aggFuns = defopts(settings, 'AggregateFuns', false);
+  plotSet.rankAggregation = defopts(settings, 'RankAggregation', false);
   % color settings
   colors  = defopts(settings, 'Colors', rand(numOfData, 3));
   if max(colors) > 1
@@ -119,6 +123,9 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
   plotSet.plotGrid = defopts(settings, 'PlotGrid', []);
   plotSet.scaleY08 = defopts(settings, 'ScaleY08', true);
+  if (plotSet.scaleY08 && plotSet.rankAggregation)
+    error('RankAggregation and ScaleY08 does not make sense together.');
+  end
   plotSet.logY = defopts(settings, 'LogY', true);
   % plot-line settings
   defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
@@ -290,12 +297,39 @@ function handle = relativePlot(data_stats, settings)
           % % this is old version for scaling BEFORE logarithm
           % minGraph = 1e-8; maxGraph = 1;
           % relativeData{nEmptyId(D)}{f, d} = log10(thisData);
-          if (settings.scaleY08 || (settings.aggDims || settings.aggFuns))
-            thisData = ((actualData(:, D) - actualMin) * (maxGraph - minGraph)/(actualMax - actualMin))' + minGraph;
+          if (settings.scaleY08) %  || (settings.aggDims || settings.aggFuns))
+            thisData = ((actualData(:, D) - actualMin) * (maxGraph - minGraph)/(actualMax - actualMin)) + minGraph;
           else
             thisData = actualData(:, D);
           end
           relativeData{nonEmptyId(D)}{f, d} = thisData;
+        end
+      end
+    end
+  end
+
+  % aggregate accross functions using ranks
+  if (settings.aggFuns && settings.rankAggregation)
+    rankData = {};
+    nFuns = size(relativeData{1}, 1);
+    nDims = size(relativeData{1}, 2);
+    rankData = cell(nFuns, nDims);
+
+    for d = 1:length(settings.dims)
+      for f = 1:nFuns
+        this_fun_dim_data = cell2mat(arrayfun(@(x) relativeData{x}{f,d}', 1:numOfData, 'UniformOutput', false)')';
+
+        for ev = 1:size(this_fun_dim_data, 1)
+          this_fun_dim_data(ev, :) = preciseRank(this_fun_dim_data(ev, :));
+        end
+        rankData{f,d} = this_fun_dim_data;
+      end
+    end
+
+    for D = 1:numOfData
+      for d = 1:length(settings.dims)
+        for f = 1:nFuns
+          relativeData{D}{f,d} = rankData{f,d}(:,D);
         end
       end
     end
@@ -321,7 +355,8 @@ function handle = relativePlot(data_stats, settings)
     for D = 1:numOfData
       for d = 1:length(settings.dims)
         nFuns = size(relativeData{D}, 1);
-        relativeData{D}{1, d} = mean(cell2mat(arrayfun(@(x) relativeData{D}{x,d}, 1:nFuns, 'UniformOutput', false)'), 1);
+        this_data = cell2mat(arrayfun(@(x) relativeData{D}{x,d}', 1:nFuns, 'UniformOutput', false)')';
+        relativeData{D}{1, d} = mean(this_data, 2);
       end
       relativeData{D} = relativeData{D}(1, :);
     end
