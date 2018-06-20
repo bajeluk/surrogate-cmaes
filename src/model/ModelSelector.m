@@ -109,6 +109,7 @@ classdef ModelSelector < Model
 
       for i = 1:obj.nModels
         try
+          fprintf('Training model %s\n', obj.modelNames{i});
           mdl = obj.models{i}.trainModel(X, y, xMean, generation);
           obj.models{i} = mdl;
           obj.modelIsTrained(obj.trainTrial, i) = obj.models{i}.isTrained();
