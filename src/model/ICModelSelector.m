@@ -50,6 +50,7 @@ classdef ICModelSelector < ModelSelector
     function [obj, mdlIdx, ic] = modelSelect(obj, generation)
       obj = obj.calcICs(generation);
       ics = obj.modelsIC.(obj.ic);
+      ics(~obj.modelIsTrained(generation, :)) = Inf;
 
       [ic, mdlIdx] = min(ics(generation, :));
     end
