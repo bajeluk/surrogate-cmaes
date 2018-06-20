@@ -158,7 +158,7 @@ classdef GpModel < Model & BayesianICModel
 
       % GP hyperparameter bounds
       obj.covBounds = defopts(obj.options, 'covBounds', ...
-          [-2*ones(size(obj.hyp.cov)), 25*ones(size(obj.hyp.cov))]);
+          [-25*ones(size(obj.hyp.cov)), 25*ones(size(obj.hyp.cov))]);
       % expand also covariance Bounds if they do not respect ARD covariance
       if ((size(obj.covBounds,1) >= 2) && (isequal(covfcn, @covSEard) ...
           || isequal(covfcn, @covMaternard) || isequal(covfcn, @covRQard) ...
@@ -435,12 +435,10 @@ classdef GpModel < Model & BayesianICModel
           multi_start_points = bsxfun(@plus, multi_start_points, exp(lb));
           linear_hyp = [linear_hyp; log(multi_start_points)];
         end
-        fprintf('Linear hyp: \n');
-        disp(linear_hyp);
 
         trainErrs = false(obj.nRestarts);
         for i = 1:obj.nRestarts
-          fprintf('%d / %d optimization trial\n', i, obj.nRestarts);
+          %fprintf('%d / %d optimization trial\n', i, obj.nRestarts);
 
           % gp() with linearized version of the hyper-parameters
           f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, linear_hyp_start, const_hyp_idx);
@@ -704,6 +702,7 @@ classdef GpModel < Model & BayesianICModel
             % final likelihood is not a valid value or
             % the shift in likelihood is almost none, the model is probably
             % not trained, do not use it
+            fprintf('  GpModel.train(): fmincon -- small improvement in likelihood.\n');
             trainErr = true;
           end
         catch err
