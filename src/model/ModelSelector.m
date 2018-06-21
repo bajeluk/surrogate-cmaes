@@ -124,7 +124,7 @@ classdef ModelSelector < Model
 
       if any(obj.modelIsTrained(obj.trainTrial, :))
         if isinf(val) || isnan(val)
-          mdlIdx = find(obj.modelIsTrained(obj.trainTrial, :));
+          mdlIdx = find(obj.modelIsTrained(obj.trainTrial, :), 1);
           warning(['ModelSelector: Invalid IC value for the selected model.\n' ...
             'Falling back to the first model having been trained (%d / %s)'], mdlIdx, obj.modelNames{mdlIdx});
         end
