@@ -222,7 +222,10 @@ classdef TreeModel < WeakModel
           % choose model with minimal loss
           predictor = predictor.trainModel(X, y);
           y_pred = predictor.modelPredict(X);
-          modelID = min(obj.tree_lossFunc(y, y_pred));
+          for i = 1:numel(y_pred)
+            y_mse(i) = obj.tree_lossFunc(y, y_pred{i});
+          end
+          [~, modelID] = min(y_mse);
           predictor = predictor.setUseModel(modelID);
           return
         end
