@@ -430,10 +430,8 @@ classdef GpModel < Model & BayesianICModel
         ub = ub(~const_hyp_idx);
 
         if (obj.nRestarts > 1)
-          multi_start_points = lhsdesign(obj.nRestarts - 1, length(linear_hyp), 'smooth', 'on');
-          multi_start_points = bsxfun(@times, multi_start_points, exp(ub)-exp(lb));
-          multi_start_points = bsxfun(@plus, multi_start_points, exp(lb));
-          linear_hyp = [linear_hyp; log(multi_start_points)];
+          multi_start_points = mvnrnd(linear_hyp, 2 * eye(length(linear_hyp)), obj.nRestarts - 1);
+          linear_hyp = [linear_hyp; multi_start_points];
         end
 
         trainErrs = false(obj.nRestarts);
@@ -448,11 +446,13 @@ classdef GpModel < Model & BayesianICModel
 
             if (trainErr)
               fprintf('Trying CMA-ES...\n');
+              alg_old = alg;
               alg = 'cmaes';
             end
           end
           if (strcmpi(alg, 'cmaes'))
             [obj, opt, lik, trainErr] = obj.trainCmaes(linear_hyp(i, :), obj.getDataset_X(), yTrain, lb, ub, f);
+            alg = alg_old;
           end
           trainErrs(i) = trainErr;
 
@@ -465,7 +465,7 @@ classdef GpModel < Model & BayesianICModel
             obj.trainLikelihood = lik;
           elseif (trainErr)
             % DEBUG OUTPUT:
-            fprintf('Optimization trial failed.\n');
+            fprintf('Optimization trial %d failed.\n', i);
           end
         end % multistart loop
 
@@ -698,13 +698,13 @@ classdef GpModel < Model & BayesianICModel
           modelTrainNErrors = 0;
           [opt, fval] = fmincon(f, linear_hyp', [], [], [], [], lb, ub, [], fminconOpts);
           obj.nErrors = modelTrainNErrors;
-          if (isnan(fval)  ||  initial - fval < 0.1)
-            % final likelihood is not a valid value or
-            % the shift in likelihood is almost none, the model is probably
-            % not trained, do not use it
-            fprintf('  GpModel.train(): fmincon -- small improvement in likelihood.\n');
-            trainErr = true;
-          end
+%           if (isnan(fval)  ||  initial - fval < 0.1)
+%             % final likelihood is not a valid value or
+%             % the shift in likelihood is almost none, the model is probably
+%             % not trained, do not use it
+%             fprintf('  GpModel.train(): fmincon -- small improvement in likelihood.\n');
+%             trainErr = true;
+%           end
         catch err
           obj.nErrors = modelTrainNErrors;
           fprintf(2, '  GpModel.train() ERROR: fmincon() ended with an exception: %s\n', err.message);
