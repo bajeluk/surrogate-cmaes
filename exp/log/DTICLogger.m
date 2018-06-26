@@ -88,10 +88,18 @@ classdef DTICLogger < Observer
       save(obj.file, '-struct', 'iclog');
 
       if obj.printICs
-        [~, ranks] = sort(mdl.modelsIC.(mdl.ic), 2);
+        ics = mdl.modelsIC.(mdl.ic);
+        [~, idx] = sort(ics, 2, 'ascend');
+        % calculate ranks
+        ranks = zeros(size(ics));
+        for i = 1:size(ics, 1)
+          for j = 1:size(ics, 2)
+            ranks(i, idx(i, j)) = j;
+          end
+        end
+
         for k = 1:size(ranks, 1)
-          bestName = mdl.modelNames{find(ranks(k, :) == 1, 1)};
-          fprintf('[%6s] [%6s] %s\n', mdl.ic, bestName, num2str(ranks(k, :)));
+          fprintf('[%6s] [%6s] %s\n', mdl.ic, mdl.modelNames{mdl.bestIdx(k)}, num2str(ranks(k, :)));
         end
 
         if isfield(mdl.modelsIC, 'rhat')
