@@ -104,11 +104,11 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   % STOPFLAGS -- update and check for new stopflag suggestions
   stopFlagHistory = circshift(stopFlagHistory, [0, 1]);
   % suggest restart if RMSE < 5e-10
-  if (isprop(ec, 'stats') && isfield(ec.stats, 'rmseReeval') ...
-      && ~isempty(ec.stats.rmseReeval) && ec.stats.rmseReeval < 5e-10)
-    fprintf(2, 'S-CMA-ES is suggesting CMA-ES to restart due to low RMSE on re-evaled point(s).\n');
-    stopFlagHistory(1) = true;
-  end
+%   if (isprop(ec, 'stats') && isfield(ec.stats, 'rmseReeval') ...
+%       && ~isempty(ec.stats.rmseReeval) && ec.stats.rmseReeval < 5e-10)
+%     fprintf(2, 'S-CMA-ES is suggesting CMA-ES to restart due to low RMSE on re-evaled point(s).\n');
+%     stopFlagHistory(1) = true;
+%   end
   % if the stopflag suggestion fired in 'stopFlagHistoryLength' consecutive generations,
   % tell CMA-ES to restart and reset the stopFlagHistory array
   if (all(stopFlagHistory))
