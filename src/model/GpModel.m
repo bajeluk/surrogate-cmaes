@@ -31,6 +31,8 @@ classdef GpModel < Model & BayesianICModel
     trainLikelihood
     cmaesCheckBounds
     nRestarts
+    sparseApx
+    nInducing
 
     % mcmc-related options
     mcmcResults
@@ -125,6 +127,16 @@ classdef GpModel < Model & BayesianICModel
         covfcn = obj.covFcn{1};
       else
         covfcn = obj.covFcn;
+      end
+
+      obj.sparseApx = defopts(obj.options, 'sparseApx', false);
+      if obj.sparseApx
+        covfcn = {@apxSparse, covfcn};
+        dim = obj.dim;
+        obj.nInducing = defopts(obj.options, 'nInducing', '5*dim');
+        if ischar(obj.nInducing)
+          obj.nInducing = eval(obj.nInducing);
+        end
       end
 
       prior = defopts(obj.options, 'prior', struct());
@@ -343,6 +355,13 @@ classdef GpModel < Model & BayesianICModel
       %       the test ordinal regression capabilities
       global modelTrainNErrors;
 
+      if obj.sparseApx
+        Xu_ind = randsample(1:size(X, 1), min(obj.nInducing, size(X, 1)));
+        Xu = X(Xu_ind, :);
+      else
+        Xu = [];
+      end
+
       assert(size(xMean,1) == 1, '  GpModel.train(): xMean is not a row-vector.');
       obj.trainMean = xMean;
       if (~isempty(X) && ~isempty(y))
@@ -439,7 +458,7 @@ classdef GpModel < Model & BayesianICModel
           %fprintf('%d / %d optimization trial\n', i, obj.nRestarts);
 
           % gp() with linearized version of the hyper-parameters
-          f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, linear_hyp_start, const_hyp_idx);
+          f = @(par) linear_gp(par, obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, linear_hyp_start, const_hyp_idx, false, Xu);
 
           if (strcmpi(alg, 'fmincon'))
             [obj, opt, lik, trainErr] = obj.trainFmincon(linear_hyp(i, :), obj.getDataset_X(), yTrain, lb, ub, f);
@@ -904,6 +923,10 @@ function [nlZ, dnlZ] = linear_gp(linear_hyp, s_hyp, infFcn, mean, cov, lik, x, y
   linear_hyp = linear_hyp_start;
 
   hyp = vec2any(s_hyp, linear_hyp');
+  
+  if nargin > 11
+    hyp.xu = varargin{2};
+  end
 
   try
     if nargout <= 1
