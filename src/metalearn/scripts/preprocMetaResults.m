@@ -79,7 +79,7 @@ for m = 1:nModelTypes
   results = modelResults.(modelType);
   cleanResults = modelResults.(modelType);
   for r=size(results, 1):-1:1
-    if any(isnan(results{r, 5}))
+    if all(isnan(results{r, 5}))
       cleanResults(r,:) = [];
     end
   end
