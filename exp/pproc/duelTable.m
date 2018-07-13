@@ -125,7 +125,10 @@ function dt = createDuelTable(ranks)
   dt = zeros(nData);
   for f = 1:nFun
     for dat = 1:nData
+      % rank is lower
       id = ranks(f, dat) < ranks(f, :);
+      % ranks are equal
+      id = id + 0.5*(ranks(f, dat) == ranks(f, :));
       dt(dat, :) = dt(dat, :) + id;
     end
   end
@@ -236,7 +239,13 @@ function printTableTex(FID, table, dims, evaluations, datanames, pVals, ...
             end
 
             fprintf(FID, ' & ');
-            fprintf(FID, ' %d', dt(i, j));
+            if mod(dt(i, j), 1) == 0
+              % whole number
+              fprintf(FID, ' %d', dt(i, j));
+            else
+              % rational number
+              fprintf(FID, ' %0.1f', dt(i, j));
+            end
 
             if sigdiff2
               fprintf(FID, '\\makebox[0pt][l]{$^{\\ast}$}');
