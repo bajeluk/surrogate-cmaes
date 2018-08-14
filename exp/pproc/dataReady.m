@@ -62,6 +62,11 @@ function [data, settings, exp_results] = dataReady(datapath, funcSet)
     if all(isfield(S, {'y_evals', 'surrogateParams', 'cmaesParams'}))
       % unify parameters to one settings structure
       actualSettings = S.surrogateParams;
+      % remove 'dataPath' property from settings (comment the following 
+      % condition if necessary)
+      if isfield(actualSettings, 'experimentPath')
+        actualSettings = rmfield(actualSettings, 'experimentPath');
+      end
       fCmaesParams = fields(S.cmaesParams);
       valCmaesParams = struct2cell(S.cmaesParams);
       for f = 1:length(fCmaesParams)
