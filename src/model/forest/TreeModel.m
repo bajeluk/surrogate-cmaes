@@ -387,8 +387,10 @@ classdef TreeModel < WeakModel
     
     function iNode = addNode(obj)
       obj.tree_nNodes = obj.tree_nNodes + 1;
+      % generate new nodes if there are no empty available
       if size(obj.tree_nodes, 1) < obj.tree_nNodes
-        obj.children(2 * obj.tree_nNodes, 1) = TreeModel.nodeTemplate;
+        obj.tree_nodes(obj.tree_nNodes : 2 * obj.tree_nNodes, 1) = ...
+          repmat(TreeModel.nodeTemplate, obj.tree_nNodes + 1, 1);
       end
       iNode = obj.tree_nNodes;
     end
