@@ -80,6 +80,7 @@ function [results, settings, res_params] = metaLearn_loadOneFolder(exp_folder, f
   
   settings = {};
   results = {};
+  instances = {};
   functions = [];
   dimensions = [];
   nFiles = numel(fileList);
@@ -92,7 +93,7 @@ function [results, settings, res_params] = metaLearn_loadOneFolder(exp_folder, f
     end
     S = load(fileList{f}, '-mat', 'dim', 'func', 'inst_samp', 'modelOpt', 'modelType', 'results');
     warning('on', 'MATLAB:load:variableNotFound')
-    if all(isfield(S, {'dim', 'func', 'modelOpt', 'modelType', 'results'}))
+    if all(isfield(S, {'dim', 'func', 'inst_samp', 'modelOpt', 'modelType', 'results'}))
       % unify parameters to one settings structure
       actualSettings = S.modelOpt;
       actualSettings.modelType = S.modelType;
@@ -112,6 +113,8 @@ function [results, settings, res_params] = metaLearn_loadOneFolder(exp_folder, f
       
       % save results to proper position
       results{funcId, dimId, settingsId} = S.results;
+      % save instances to proper position
+      instances{funcId, dimId, settingsId} = S.inst_samp;
 
     end
   end
@@ -120,11 +123,13 @@ function [results, settings, res_params] = metaLearn_loadOneFolder(exp_folder, f
   [functions, funSortId] = sort(functions);
   [dimensions, dimSortId] = sort(dimensions);
   results = results(funSortId, dimSortId, :);
+  instances = instances(funSortId, dimSortId, :);
   
   % return loaded functions, dimenstion and experiment settings
   res_params.functions = functions;
   res_params.dimensions = dimensions;
   res_params.metalearn_params = params;
+  res_params.instances = instances;
   
 end
 
