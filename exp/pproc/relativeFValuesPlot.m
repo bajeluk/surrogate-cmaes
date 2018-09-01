@@ -13,6 +13,9 @@ function handle = relativeFValuesPlot(data, varargin)
 %     'RankAggregation' -- whether to aggregate only ranking of the
 %                       algorithms, not the true distances to optima
 %                       (default false) | boolean
+%     'QuartilesFunAggregation' -- whether to draw quartiles when aggregating
+%                       thgrough functions
+%                       (default false) | boolean
 %     'Colors'        - vector Nx3 of (RGB) colors of individual 
 %                       algorithms, N is the number of algorithms | double 
 %                       array
@@ -104,6 +107,7 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.aggDims = defopts(settings, 'AggregateDims', false);
   plotSet.aggFuns = defopts(settings, 'AggregateFuns', false);
   plotSet.rankAggregation = defopts(settings, 'RankAggregation', false);
+  plotSet.quartilesFunAggregation = defopts(settings, 'QuartilesFunAggregation', false);
   % color settings
   colors  = defopts(settings, 'Colors', rand(numOfData, 3));
   if max(colors) > 1
@@ -216,13 +220,12 @@ function handle = relativePlot(data_stats, settings)
   end
   settings.legendLocation = 'NorthEast';
 
-  if (any(settings.drawQuantiles))
+  if (any(settings.drawQuantiles) || settings.quartilesFunAggregation)
     % copy the settings in order to have settings for quartiles, too
-    if (size(settings.lineWidth, 2) == numOfData)
-      settings.lineWidth = repmat(settings.lineWidth, 1, 3);
-    else
-      settings.lineWidth = repmat(settings.lineWidth, 1, 3*numOfData);
+    if (size(settings.lineWidth, 2) ~= numOfData)
+      settings.lineWidth = repmat(settings.lineWidth(1), 1, numOfData);
     end
+    settings.lineWidth((numOfData+1):(3*numOfData)) = 1;
     if (size(settings.lineSpec, 2) == numOfData)
       settings.lineSpec = repmat(settings.lineSpec, 1, 3);
     else
@@ -285,7 +288,7 @@ function handle = relativePlot(data_stats, settings)
         actualMin = min(min(actualData));
         actualMax = max(max(actualData));
 
-        if (any(settings.drawQuantiles))
+        if (~settings.aggFuns && any(settings.drawQuantiles))
           nonEmptyId = [nonEmptyId, numOfData+nonEmptyId, 2*numOfData+nonEmptyId];
           actualData = actualData(:,[1:3:end, 2:3:end, 3:3:end]);
           nMedians = size(actualData,2)/3;
@@ -357,8 +360,23 @@ function handle = relativePlot(data_stats, settings)
         nFuns = size(relativeData{D}, 1);
         this_data = cell2mat(arrayfun(@(x) relativeData{D}{x,d}', 1:nFuns, 'UniformOutput', false)')';
         relativeData{D}{1, d} = mean(this_data, 2);
+
+        if (settings.quartilesFunAggregation)
+          % relativeData{D}{1, d} = quantile(this_data, 0.5, 2);
+          relativeData{numOfData+D}{1, d} = quantile(this_data, 0.25, 2);
+          relativeData{2*numOfData+D}{1, d} = quantile(this_data, 0.75, 2);
+        end
+
       end
       relativeData{D} = relativeData{D}(1, :);
+
+      if (settings.quartilesFunAggregation)
+        relativeData{numOfData+D} = relativeData{numOfData+D}(1, :);
+        relativeData{2*numOfData+D} = relativeData{2*numOfData+D}(1, :);
+      end
+    end
+    if (settings.quartilesFunAggregation)
+      numOfData = numOfData * 3;
     end
   else
     nFunsToPlot = length(settings.BBfunc);
@@ -507,7 +525,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   if length(medianLineWidth) < nRelativeData
     medianLineWidth = medianLineWidth(1)*ones(1, nRelativeData);
   end
-  if (any(settings.drawQuantiles))
+  if (any(settings.drawQuantiles) || settings.quartilesFunAggregation)
     % we should draw 1st and 3rd quantiles, too, with the same
     % colors and thinner lines
     medianLineWidth(((end/3)+1):end) = ceil(0.5*medianLineWidth(((end/3)+1):end));
@@ -578,7 +596,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     else
       legendData = notEmptyData;
     end
-    if (any(settings.drawQuantiles))
+    if (any(settings.drawQuantiles) || settings.quartilesFunAggregation)
       % nRelativeData = nRelativeData / 3;
       legendData(((end/3)+1):end) = false;
     end
