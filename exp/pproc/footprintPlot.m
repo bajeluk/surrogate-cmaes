@@ -55,6 +55,11 @@ function h = footprintPlot(baseData, valueData, varargin)
   for i = 1:size(showData, 1)
     mergedValues(i) = stat(valueData(uniId == i));
   end
+  
+  % TODO: correct reduction according to percentile
+  percOutId = mergedValues == min(mergedValues);
+  mergedValues(percOutId) = [];
+  showData(percOutId, :) = [];
 
   % init graphic values
   baseCol = [220, 220, 220]/255; % grey
