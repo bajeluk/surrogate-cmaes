@@ -71,18 +71,28 @@ function ft = feature_pca(X, y, settings)
   % calculate explaining variances
   cov_x = explainVariance(X, @cov);
   corr_x = explainVariance(X, @corr);
-  cov_init = explainVariance(X_init, @cov);
-  corr_init = explainVariance(X_init, @corr);
   
   % calculate features
   ft.pca_cov_x = find(cov_x >= settings.cov_x, 1, 'first') / dim;
   ft.pca_corr_x = find(corr_x >= settings.corr_x, 1, 'first') / dim;
-  ft.pca_cov_init = find(cov_init >= settings.cov_init, 1, 'first') / (dim + 1);
-  ft.pca_corr_init = find(corr_init >= settings.corr_init, 1, 'first') / (dim + 1);
   ft.pca_pc1_cov_x = cov_x(1);
   ft.pca_pc1_corr_x = corr_x(1);
-  ft.pca_pc1_cov_init = cov_init(1);
-  ft.pca_pc1_corr_init = corr_init(1);
+  % calculate y-dependent features
+  if any(isnan(y))
+    ft.pca_cov_init = NaN;
+    ft.pca_corr_init = NaN;
+    ft.pca_pc1_cov_init = NaN;
+    ft.pca_pc1_corr_init = NaN;
+  else
+    % calculate explaining variances
+    cov_init = explainVariance(X_init, @cov);
+    corr_init = explainVariance(X_init, @corr);
+    % calculate features
+    ft.pca_cov_init = find(cov_init >= settings.cov_init, 1, 'first') / (dim + 1);
+    ft.pca_corr_init = find(corr_init >= settings.corr_init, 1, 'first') / (dim + 1);
+    ft.pca_pc1_cov_init = cov_init(1);
+    ft.pca_pc1_corr_init = corr_init(1);
+  end
     
 end
 

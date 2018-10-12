@@ -68,7 +68,11 @@ function ft = feature_ela_distribution(~, y, settings)
   end
 
   % number of peaks
-  ft.number_of_peaks = numberOfPeaks(y, modemass_treshold);
+  if all(isnan(y))
+    ft.number_of_peaks = NaN;
+  else
+    ft.number_of_peaks = numberOfPeaks(y, modemass_treshold);
+  end
 end
 
 function numOfPeaks = numberOfPeaks(x, modemass_treshold)

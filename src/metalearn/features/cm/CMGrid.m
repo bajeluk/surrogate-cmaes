@@ -57,29 +57,20 @@ classdef CMGrid
 
       % init
       maxBlocks = max(obj.blocks);
-      blockLB = NaN(dataDim, maxBlocks);
-      blockUB = NaN(dataDim, maxBlocks);
+      blockLB = [lb', NaN(dataDim, maxBlocks - 1)];
+      blockUB = [NaN(dataDim, maxBlocks - 1), ub'];
       pointCellId = zeros(nData, dataDim);
 
       % find cells for each point
       blockSize = (obj.ub-obj.lb) ./ obj.blocks;
       for d = 1 : dataDim
         % lower bounds
-        blockLB(d, 1:obj.blocks(d)) = lb(d) + (0:(obj.blocks(d)-1)) * blockSize(d);
+        blockLB(d, 2:obj.blocks(d)) = lb(d) + (1:(obj.blocks(d)-1)) * blockSize(d);
         % upper bounds
-        blockUB(d, :) = blockLB(d, :) + blockSize(d);
+        blockUB(d, 1:end-1) = blockLB(d, 1:end-1) + blockSize(d);
         % for each point find containing cells 
         for i = 1:nData
-          try
           pointCellId(i, d) = find(X(i, d) <= blockUB(d, 1:obj.blocks(d)), 1, 'first');
-          catch
-            
-          blockUB
-          obj.blocks
-          d
-          i
-          X(i, d)
-          end
         end
       end
       

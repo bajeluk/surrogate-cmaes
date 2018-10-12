@@ -25,6 +25,13 @@ function testLinearModel(testCase)
   for f = 1 : numel(returnedFields)
     verifySize(testCase, ft.(returnedFields{f}), [1 1])
   end
+  
+  % test all NaN values
+  y = NaN(nData, 1);
+  ft = feature_linear_model(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
 end
 
 function testGCM(testCase)
@@ -143,10 +150,32 @@ function testPCA(testCase)
   returnedFields = fieldnames(ft);
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
   % test percentage values
-  for m = 1:4
+  for m = 1:numel(featFields)
     verifyGreaterThanOrEqual(testCase, ft.(featFields{m}), 0)
     verifyLessThanOrEqual(testCase, ft.(featFields{m}), 1)
   end
+  
+  % test NaN values
+  y = [y(1:20, :); NaN(10, 1)];
+  ft = feature_pca(X, y);
+  for m = 1:numel(featFields)
+    if isempty(strfind(featFields{m}, 'init'))
+      verifyTrue(testCase, ~isnan(ft.(featFields{m})))
+    else
+      verifyTrue(testCase, isnan(ft.(featFields{m})))
+    end
+  end
+  % test all NaN values
+  y = NaN(30, 1);
+  ft = feature_pca(X, y);
+  for m = 1:numel(featFields)
+    if isempty(strfind(featFields{m}, 'init'))
+      verifyTrue(testCase, ~isnan(ft.(featFields{m})))
+    else
+      verifyTrue(testCase, isnan(ft.(featFields{m})))
+    end
+  end
+  
 end
 
 function testNearestBetterClustering(testCase)
@@ -183,6 +212,7 @@ end
 function testELADistribution(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_ela_distribution()));
+  
   % test data
   X = rand(10, 3);
   y = randn(10, 1);
@@ -190,6 +220,19 @@ function testELADistribution(testCase)
   featFields = {'skewness', 'kurtosis', 'number_of_peaks'};
   returnedFields = fieldnames(feature_ela_distribution(X, y));
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+  
+  % test NaN values
+  y = [y(1:5); NaN(5, 1)];
+  ft = feature_ela_distribution(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, ~isnan(ft.(featFields{m})))
+  end
+  % test full NaN input
+  y = NaN(10, 1);
+  ft = feature_ela_distribution(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
 end
 
 function testELALevelset(testCase)
@@ -228,6 +271,7 @@ end
 function testELAMetamodel(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_ela_metamodel()));
+  
   % test data
   X = rand(30, 3);
   y = randn(30, 1);
@@ -238,6 +282,13 @@ function testELAMetamodel(testCase)
                 'quad_simple_cond', 'quad_w_interact_adj_r2'};
   returnedFields = fieldnames(feature_ela_metamodel(X, y)); 
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+  
+  % test full NaN input
+  y = NaN(30, 1);
+  ft = feature_ela_metamodel(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
 end
 
 function testBasic(testCase)

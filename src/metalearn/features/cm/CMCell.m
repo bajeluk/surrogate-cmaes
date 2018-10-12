@@ -165,7 +165,8 @@ classdef CMCell
       if nargin < 2
         modelspec = 'linear';
       end
-      if numel(obj.y) >= getMinFitlmPoints(modelspec, obj.dim)
+      if numel(obj.y) >= getMinFitlmPoints(modelspec, obj.dim) && ...
+          ~all(isnan(obj.y))
         lm = fitlm(obj.X, obj.y, modelspec);
       else
         % empty linear model

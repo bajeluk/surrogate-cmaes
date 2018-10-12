@@ -38,6 +38,20 @@ function ft = feature_ela_metamodel(X, y, ~)
   
   dim = size(X, 2);
   
+  % y-values not available
+  if all(isnan(y))
+    ft.lin_simple_adj_r2 = NaN;
+    ft.lin_simple_intercept = NaN;
+    ft.lin_simple_coef_min = NaN;
+    ft.lin_simple_coef_max = NaN;
+    ft.lin_simple_coef_max_by_min = NaN;
+    ft.lin_w_interact_adj_r2 = NaN;
+    ft.quad_simple_adj_r2 = NaN;
+    ft.quad_simple_cond = NaN;
+    ft.quad_w_interact_adj_r2 = NaN;
+    return
+  end
+  
   % simple linear model
   lm = fitlm(X, y, 'linear');
   lm_coeff = lm.Coefficients.Estimate;
