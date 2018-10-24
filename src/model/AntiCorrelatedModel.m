@@ -1,4 +1,4 @@
-classdef PreciseModel < Model
+classdef AntiCorrelatedModel < Model
   properties    % derived from abstract class "Model"
     dim                   % dimension of the input space X (determined from x_mean)
     trainGeneration = -1; % # of the generation when the model was built
@@ -12,26 +12,25 @@ classdef PreciseModel < Model
     options
     predictionType = 'fValues';     % type of prediction (f-values, PoI, EI)
     transformCoordinates = false;   % whether use transformation in the X-space
-    stateVariables       % variables needed for sampling new points as CMA-ES do
-    sampleOpts           % options and settings for the CMA-ES sampling
-    dimReduction          % Reduce dimensionality for model by eigenvectors of covatiance matrix in percentage
+    stateVariables        % variables needed for sampling new points as CMA-ES do
+    sampleOpts            % options and settings for the CMA-ES sampling
+    dimReduction          % reduce dimensionality for model by eigenvectors of covariance matrix in percentage
     
     bbob_func
   end
 
   methods
-    function obj = PreciseModel(modelOptions, xMean)
+    function obj = AntiCorrelatedModel(modelOptions, xMean)
       % constructor
-      assert(size(xMean,1) == 1, 'PreciseModel (constructor): xMean is not a row-vector.');
+      assert(size(xMean,1) == 1, 'AntiCorrelatedModel (constructor): xMean is not a row-vector.');
       
       obj.options   = modelOptions;
       obj.useShift  = defopts(obj.options, 'useShift', false);
       obj.dim       = size(xMean, 2);
       obj.shiftMean = zeros(1, obj.dim);
-      % y-values can be shifted (e.g., due to low error stopping criteria)
-      obj.shiftY    = defopts(obj.options, 'shiftY', 0);
+      obj.shiftY    = 0;
       obj.trainBD   = eye(obj.dim);
-      obj.dimReduction = 1; %precise model do not use dim reduction
+      obj.dimReduction = 1; % anticorrelated model do not use dim reduction
 
       % BBOB function ID
       % this has to called in opt_s_cmaes due to the speed optimization
@@ -39,7 +38,7 @@ classdef PreciseModel < Model
       if (isfield(modelOptions, 'bbob_func'))
         obj.bbob_func = modelOptions.bbob_func;
       else
-        error('PreciseModel: no BBOB function handle specified!');
+        error('AntiCorrelatedModel: no BBOB function handle specified!');
       end
     end
 
@@ -51,9 +50,9 @@ classdef PreciseModel < Model
     end
 
     function obj = trainModel(obj, X, y, xMean, generation)
-      % train the precise model based on the data (X,y)
+      % train the anticorrelated model based on the data (X,y)
 
-      assert(size(xMean,1) == 1, 'PreciseModel.train(): xMean is not a row-vector.');
+      assert(size(xMean,1) == 1, 'AntiCorrelated.train(): xMean is not a row-vector.');
       obj.trainGeneration = generation;
       obj.trainMean = xMean;
       obj.dataset.X = X;
@@ -65,12 +64,13 @@ classdef PreciseModel < Model
       % y = (feval(obj.bbob_func, X'))';
       XWithShift = X - repmat(obj.shiftMean, size(X,1), 1);
       y = (feval(obj.bbob_func, XWithShift'))';
-      y = y + obj.shiftY;
+      % revert predicted values
+      y = -y + max(y) + min(y) + obj.shiftY;
       sd2 = zeros(size(X,1),1);
     end
 
     function trained = isTrained(obj)
-      % the precise model is always trained :)
+      % the anticorrelated model is always trained :)
       trained = true;
     end
   end

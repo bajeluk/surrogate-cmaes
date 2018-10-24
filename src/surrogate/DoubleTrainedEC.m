@@ -767,7 +767,11 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     function newPop = updateNotOrigValues(obj, model, pop, phase)
       % updates f-values in the 'pop' with the predictions of the 'model'
       notOrigEvaledX = pop.getNotOrigEvaledX();
-      yModel = model.predict(notOrigEvaledX');
+      if isempty(notOrigEvaledX)
+        yModel = [];
+      else
+        yModel = model.predict(notOrigEvaledX');
+      end
       newPop = pop.updateYValue(notOrigEvaledX, yModel', 0, phase, ~pop.origEvaled);
     end
   end

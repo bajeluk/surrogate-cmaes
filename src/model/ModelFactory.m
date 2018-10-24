@@ -32,8 +32,12 @@ classdef ModelFactory
           obj = ForestModel(modelOptions, xMean);
         case 'forest'
           obj = ForestModel(modelOptions, xMean);
-        case 'bbob'
+        case {'bbob', 'precise'}
           obj = PreciseModel(modelOptions, xMean);
+        case 'anticorr'
+          obj = AntiCorrelatedModel(modelOptions, xMean);
+        case 'random'
+          obj = RandomModel(modelOptions, xMean);
         case 'modelpool'
           % use the supplied 'oldModel' if exists
           if (nargin > 3 && ~isempty(oldModel) && isa(oldModel, 'ModelPool'))
