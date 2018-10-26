@@ -1,6 +1,7 @@
 function sc = combineFieldValues(s)
 % sc = combineFieldValues(s) creates cell-array of structures containing 
-% all combinations of the input structure with cell-arrays as fields.
+% all combinations of the input structure (or cell-array of structures) 
+% with cell-arrays as fields.
 %
 % Example:
 %   s = struct('a', {{1,2,3}}, 'b', {{'c','d'}})
@@ -19,23 +20,32 @@ function sc = combineFieldValues(s)
 % See Also:
 %   getParamIndexVector
   
-  sFields = fieldnames(s);
-  nFields = length(sFields);
-  
-  % check input has cell-array fields
-  isNotCellField = find(~cellfun(@(x) iscell(s.(x)), sFields));
-  % not cell-array fields are changed to cells
-  for f = 1:length(isNotCellField)
-    s.(sFields{isNotCellField(f)}) = {s.(sFields{isNotCellField(f)})};
+  if ~iscell(s)
+    s = {s};
   end
   
-  % number of settings in fields
-  nVals = cellfun(@(x) length(s.(x)), sFields);
-  sc = cell(prod(nVals), 1);
-  for i = 1:prod(nVals)
-    parId = getParamIndexVector(i, nVals);
-    for f = 1:nFields
-      sc{i}.(sFields{f}) = s.(sFields{f}){parId(f)};
+  sc = {};
+  nsc = 0;
+  for j = 1 : numel(s)
+    sFields = fieldnames(s{j});
+    nFields = length(sFields);
+
+    % check input has cell-array fields
+    isNotCellField = find(~cellfun(@(x) iscell(s{j}.(x)), sFields));
+    % not cell-array fields are changed to cells
+    for f = 1:length(isNotCellField)
+      s{j}.(sFields{isNotCellField(f)}) = {s{j}.(sFields{isNotCellField(f)})};
+    end
+
+    % number of settings in fields
+    nVals = cellfun(@(x) length(s{j}.(x)), sFields);
+    sc(end+1:end+prod(nVals)) = cell(prod(nVals), 1);
+    for i = 1:prod(nVals)
+      parId = getParamIndexVector(i, nVals);
+      nsc = nsc + 1;
+      for f = 1:nFields
+        sc{nsc}.(sFields{f}) = s{j}.(sFields{f}){parId(f)};
+      end
     end
   end
   
