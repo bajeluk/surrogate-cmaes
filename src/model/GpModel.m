@@ -92,6 +92,7 @@ classdef GpModel < Model
       end
       obj.hyp.lik = defopts(obj.options.hyp, 'lik', log(0.01));  % should be somewhere between log(0.01) and log(1)
       obj.hyp.cov = defopts(obj.options.hyp, 'cov', log([0.5; 2]));   % should be somewhere between log([0.1 2]) and log([2 1e6])
+
       covFcn = defopts(obj.options, 'covFcn',  '{@covMaterniso, 5}');
       if (exist(covFcn) == 2)
         % string with name of an m-file function
@@ -122,7 +123,7 @@ classdef GpModel < Model
 
       % GP hyperparameter bounds
       obj.covBounds = defopts(obj.options, 'covBounds', ...
-          [-2*ones(size(obj.hyp.cov)), 25*ones(size(obj.hyp.cov))]);
+          [-25*ones(size(obj.hyp.cov)), 25*ones(size(obj.hyp.cov))]);
       % expand also covariance Bounds if they do not respect ARD covariance
       if ((size(obj.covBounds,1) >= 2) && (isequal(covfcn, @covSEard) ...
           || isequal(covfcn, @covMaternard) || isequal(covfcn, @covRQard) ...
@@ -133,6 +134,11 @@ classdef GpModel < Model
 
       if (isequal(covfcn, @covADD))
         dgs = obj.covFcn{2}{1};
+
+        if (iscell(dgs))
+          dgs = cellfun(@(x) myeval(x), dgs);
+        end
+
         dgs = dgs(dgs <= obj.dim);
         obj.covFcn{2}{1} = dgs;
         r = length(dgs);
@@ -144,7 +150,7 @@ classdef GpModel < Model
         end
 
         obj.hyp.cov = [repmat(obj.hyp.cov(1), obj.dim, 1); ...
-          log(obj.hyp.cov{2} ./ s')];
+          log(obj.hyp.cov(2) ./ s')];
         obj.covBounds = [repmat(obj.covBounds(1, :), obj.dim, 1); ...
                          [log(obj.covBounds(2, 1) * ones(r, 1)) ...
                           log(obj.covBounds(2, 2) ./ s')] ...
@@ -215,7 +221,7 @@ classdef GpModel < Model
       elseif (isequal(obj.meanFcn, @meanLinear))
         obj.hyp.mean = median(yTrain) / obj.dim * ones(obj.dim,1);
       end
-      
+
       % eval hyperparameters
       if ischar(obj.hyp.lik)
         obj.hyp.lik = myeval(obj.hyp.lik);
@@ -251,11 +257,11 @@ classdef GpModel < Model
               || strcmp(alg, 'cmaes'))
         % lower and upper bounds
         [lb_hyp, ub_hyp] = obj.getLUBounds(yTrain, obj.hyp);
-        lb = unwrap(lb_hyp)';
-        ub = unwrap(ub_hyp)';
+        lb = any2vec(lb_hyp)';
+        ub = any2vec(ub_hyp)';
         opt = [];
 
-        linear_hyp = unwrap(obj.hyp)';
+        linear_hyp = any2vec(obj.hyp)';
         l_cov = length(obj.hyp.cov);
 
         % if some parameters are held constant
@@ -299,7 +305,7 @@ classdef GpModel < Model
             linear_hyp_start(~const_hyp_idx) = opt;
             opt = linear_hyp_start;
             obj.trainGeneration = generation;
-            obj.hyp = rewrap(obj.hyp, opt);
+            obj.hyp = vec2any(obj.hyp, opt);
             obj.trainLikelihood = lik;
           elseif (trainErr)
             % DEBUG OUTPUT:
@@ -488,7 +494,7 @@ classdef GpModel < Model
         'TolX', 1e-7, ...
         'MaxIter', 1000, ...
         'MaxFunEvals', 3000, ...
-        'Display', 'on' ...
+        'Display', 'off' ...
         );
       covarianceDim = length(obj.hyp.cov) - 1;
       if (covarianceDim > 1)
@@ -555,9 +561,9 @@ function [nlZ, dnlZ] = linear_gp(linear_hyp, s_hyp, inf, mean, cov, lik, x, y, l
   linear_hyp_start(~const_hyp_idx) = linear_hyp;
   linear_hyp = linear_hyp_start;
 
-  hyp = rewrap(s_hyp, linear_hyp');
+  hyp = vec2any(s_hyp, linear_hyp');
   [nlZ, s_dnlZ] = gp(hyp, inf, mean, cov, lik, x, y);
-  dnlZ = unwrap(s_dnlZ)';
+  dnlZ = any2vec(s_dnlZ)';
   dnlZ = dnlZ(~const_hyp_idx);
 end
 
