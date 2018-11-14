@@ -94,6 +94,8 @@ classdef GpModel < Model
       obj.hyp.cov = defopts(obj.options.hyp, 'cov', log([0.5; 2]));   % should be somewhere between log([0.1 2]) and log([2 1e6])
 
       covFcn = defopts(obj.options, 'covFcn',  '{@covMaterniso, 5}');
+      fprintf('Covariance function: %s\n', covFcn);
+
       if (exist(covFcn) == 2)
         % string with name of an m-file function
         obj.covFcn  = str2func(covFcn);

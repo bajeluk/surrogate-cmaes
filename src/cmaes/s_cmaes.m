@@ -390,6 +390,11 @@ out.countevals = [];
 out.surrogateStats = [];
 out.origEvaled = [];
 out.lambda_hist = [];
+out.diagCs = {}; % diagC vectors
+out.diagDs = {}; % diagD vectors
+out.pcs = {};    % pc evolution paths
+out.pss = {};    % ps evolution paths
+out.iruns = [];  % number of restarts
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
@@ -875,6 +880,11 @@ while isempty(stopflag)
   if (countiter == 0 || lambda ~= lambda_last)
     out.lambda_hist(:,end+1) = [iGeneration; lambda];
   end
+  out.diagDs{1,end+1} = diagD;
+  out.diagCs{1,end+1} = diagC;
+  out.pcs{1,end+1} = pc;
+  out.pss{1,end+1} = ps;
+  out.iruns(end+1) = irun;
   
   % Set internal parameters
   if countiter == 0 || lambda ~= lambda_last

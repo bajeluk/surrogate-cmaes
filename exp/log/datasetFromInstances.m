@@ -108,6 +108,11 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
       dataset{i_inst}.means    = cell(nSnapshots, nPreviousGenerations+1);
       dataset{i_inst}.sigmas   = cell(nSnapshots, nPreviousGenerations+1);
       dataset{i_inst}.BDs      = cell(nSnapshots, nPreviousGenerations+1);
+      dataset{i_inst}.diagDs   = cell(nSnapshots, nPreviousGenerations+1);
+      dataset{i_inst}.diagCs   = cell(nSnapshots, nPreviousGenerations+1);
+      dataset{i_inst}.pcs      = cell(nSnapshots, nPreviousGenerations+1);
+      dataset{i_inst}.pss      = cell(nSnapshots, nPreviousGenerations+1);
+      dataset{i_inst}.iruns    = zeros(nSnapshots, nPreviousGenerations+1);
       dataset{i_inst}.cmaesStates = cell(nSnapshots, nPreviousGenerations+1);
     else
       dataset{i_inst}.testSetX = cell(1, nSnapshots);
@@ -115,6 +120,11 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
       dataset{i_inst}.means    = cell(1, nSnapshots);
       dataset{i_inst}.sigmas   = cell(1, nSnapshots);
       dataset{i_inst}.BDs      = cell(1, nSnapshots);
+      dataset{i_inst}.diagDs   = cell(1, nSnapshots);
+      dataset{i_inst}.diagDs   = cell(1, nSnapshots);
+      dataset{i_inst}.pcs      = cell(1, nSnapshots);
+      dataset{i_inst}.pss      = cell(1, nSnapshots);
+      dataset{i_inst}.iruns    = zeros(1, nSnapshots);
       dataset{i_inst}.cmaesStates = cell(1, nSnapshots);
     end
 
@@ -133,16 +143,17 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
         xmean = cmo.means(:,g);
         sigma = cmo.sigmas(g);
         BD    = cmo.BDs{g};
+        diagD = cmo.diagDs{g};
+        diagC = cmo.diagCs{g};
+        pc    = cmo.pcs{g};
+        ps    = cmo.pss{g};
+        irun  = cmo.iruns(g);
         dim   = exp_settings.dim;
 
         cmaesState = struct( ...
           'xmean', xmean, ...
           'sigma', sigma, ...
           'lambda', lambda, ...
-          'BD', BD, ...
-          ... % 'diagD', diagD, ...
-          'diagD', [], ...
-          ... % 'diagC', diagC, ...
           'dim', dim, ...
           'mu', floor(lambda/2), ...
           'countiter', g);
@@ -175,6 +186,11 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
           dataset{i_inst}.BDs{sni, genShift+1}         = BD;
           dataset{i_inst}.cmaesStates{sni, genShift+1} = cmaesState;
           dataset{i_inst}.sampleOpts{sni, genShift+1}  = sampleOpts;
+          dataset{i_inst}.diagDs{sni, genShift+1}      = diagD;
+          dataset{i_inst}.diagCs{sni, genShift+1}      = diagC;
+          dataset{i_inst}.pcs{sni, genShift+1}         = pc;
+          dataset{i_inst}.pss{sni, genShift+1}         = ps;
+          dataset{i_inst}.iruns(sni, genShift+1)       = irun;
         else
           dataset{i_inst}.testSetX{sni}  = arxvalid';
           dataset{i_inst}.testSetY{sni}  = fgeneric(arxvalid)';
@@ -182,7 +198,12 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
           dataset{i_inst}.sigmas{sni}    = sigma;
           dataset{i_inst}.BDs{sni}       = BD;
           dataset{i_inst}.cmaesStates{sni} = cmaesState;
-          dataset{i_inst}.sampleOpts{sni} = sampleOpts;
+          dataset{i_inst}.sampleOpts{sni}  = sampleOpts;
+          dataset{i_inst}.diagDs{sni}      = diagD;
+          dataset{i_inst}.diagCs{sni}      = diagC;
+          dataset{i_inst}.pcs{sni}         = pc;
+          dataset{i_inst}.pss{sni}         = ps;
+          dataset{i_inst}.iruns(sni)       = irun;
         end
 
         % save models if required
