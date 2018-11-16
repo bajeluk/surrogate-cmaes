@@ -92,24 +92,42 @@ rId.dimension(nanInfId) = [];
 rId.setting(nanInfId) = [];
 rId.instance(nanInfId) = [];
 
-% remove constant columns
+% remove constant features (columns)
 constId = var(all_mfts) == 0;
 all_mfts(:, constId) = [];
 rem_mfts = mftsList(constId);
-fprintf('Removing constant metafeatures:\n')
+if any(constId)
+  fprintf('Removing constant metafeatures:\n')
+end
 for m = 1:numel(rem_mfts)
   fprintf('%s\n', rem_mfts{m})
 end
 mftsList(constId) = [];
-% remove linearly dependent columns
+% remove linearly dependent features (columns)
 [all_mfts, independentId] = licols(all_mfts, eps);
 dependentId = ~ismember(1:length(mftsList), independentId);
 rem_mfts = mftsList(dependentId);
-fprintf('Removing linearly dependent metafeatures:\n')
+if any(dependentId)
+  fprintf('Removing linearly dependent metafeatures:\n')
+end
 for m = 1:numel(rem_mfts)
   fprintf('%s\n', rem_mfts{m})
 end
 mftsList(dependentId) = [];
+% remove features dependent on y-values shift
+ yShiftFeat = {};
+% yShiftFeat = {'basic.objective_min', 'basic.objective_max', ...
+%               'ela_metamodel.lin_simple_intercept'};
+%               'ela_metamodel.lin_simple_coef_max', ...
+%               'ela_metamodel.lin_simple_coef_min', ...
+for m = 1:numel(yShiftFeat)
+  yShiftId = strcmp(mftsList, yShiftFeat{m});
+  all_mfts(:, yShiftId) = [];  
+  if any(yShiftId)
+    fprintf('Removing %s dependent on y-values shift\n', yShiftFeat{m})
+  end
+  mftsList(yShiftId) = [];
+end
 
 [nObs, nFeat] = size(all_mfts);
 
@@ -117,12 +135,54 @@ mftsList(dependentId) = [];
 % TODO: Can we do this?
 mean_mfts = mean(all_mfts);
 var_mfts = var(all_mfts);
-% norm_mfts = (all_mfts - repmat(mean_mfts, nObs, 1)) ./ repmat(var_mfts, nObs, 1);
-norm_mfts = all_mfts;
+norm_mfts = (all_mfts - repmat(mean_mfts, nObs, 1)) ./ repmat(var_mfts, nObs, 1);
+% norm_mfts = all_mfts;
+var_norm_mfts = var(norm_mfts);
+
+% calculate variance
+var_norm_mfts_norm = var_norm_mfts/sum(var_norm_mfts);
+[~, varId] = sort(var_norm_mfts_norm, 'descend');
+
+% find how many metafeatures explain defined level of variance
+var_level = 0.9;
+var_exp = find(cumsum(var_norm_mfts_norm(varId)) > var_level, 1, 'first');
 
 % PCA
-[~, pca_mfts, ~, ~, explained] = pca(norm_mfts);
-fprintf('%0.2f explained by first two components\n', explained(1) + explained(2))
+[pca_coeff, pca_mfts, ~, ~, explained] = pca(norm_mfts);
+fprintf('%0.2f%% explained by first two components\n', explained(1) + explained(2))
+% PCA - level based
+% norm_mfts = norm_mfts(:, varId(1:var_exp));
+% mftsList = mftsList(varId(1:var_exp));
+% nFeat = numel(mftsList);
+% [pca_coeff, pca_mfts, ~, ~, explained] = pca(norm_mfts);
+% fprintf('%0.2f%% explained by first two components\n', explained(1) + explained(2))
+
+% calculate decomposition of components
+pca_comp_norm_1 = abs(pca_coeff(:, 1))/sum(abs(pca_coeff(:, 1)));
+[~, pca_compId1] = sort(pca_comp_norm_1, 'descend');
+
+pca_comp_norm_2 = abs(pca_coeff(:, 2))/sum(abs(pca_coeff(:, 2)));
+[~, pca_compId2] = sort(pca_comp_norm_2, 'descend');
+
+isOverOnePerc = pca_comp_norm_1 > 0.01;
+fprintf('\n%40s: %30s (%0.2f%% explained): %30s (%0.2f%% explained): \n\n', ...
+        'Variance', ...
+        'First component', explained(1), ...
+        'Second component', explained(2))
+% list decomposition
+for m = 1:nFeat
+  fprintf('%40s  %6.2f  %40s  %6.2f  %40s  %6.2f\n', ...
+          mftsList{varId(m)}, 100*var_norm_mfts_norm(varId(m)), ...
+          mftsList{pca_compId1(m)}, 100*pca_comp_norm_1(pca_compId1(m)), ...
+          mftsList{pca_compId2(m)}, 100*pca_comp_norm_2(pca_compId2(m)))
+end
+% list decomposition - level based
+% for m = 1:nFeat
+%   fprintf('%40s  %6.2f  %40s  %6.2f  %40s  %6.2f\n', ...
+%           mftsList{m}, 100*var_norm_mfts_norm(m), ...
+%           mftsList{pca_compId1(m)}, 100*pca_comp_norm_1(pca_compId1(m)), ...
+%           mftsList{pca_compId2(m)}, 100*pca_comp_norm_2(pca_compId2(m)))
+% end
 
 %% visualisation
 

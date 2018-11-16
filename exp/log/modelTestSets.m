@@ -1,13 +1,27 @@
 function ds = modelTestSets(exp_id, fun, dim, inst, opts)
-% ds = modelTestSets(exp_id, fun, dim) creates/loads dataset from
-% experiment.
+% ds = modelTestSets(exp_id, fun, dim, inst, opts) creates/loads dataset 
+% from experiment 'exp_id'.
 %
 % Input:
 %   exp_id  - experiment id where the CMA-ES logs are saved
 %             (there has to be only one variant!)
 %   fun     - BBOB function numbers to load
 %   dim     - dimensions to load (2, 3, 5, 10, ...)
-%   maxEval - maximal number of evaluations times dimension to load
+%   inst    - instances to load (1:5, ...)
+%   opts    - struct with additional settings as fields:
+%     'datasetName'          - name of resulting dataset | 'DTS_005'
+%     'isForModelPool'       - dataset for ModelPool testing | false
+%     'loadModels'           - load saved models for ModelPool | false
+%     'maxEval'              - maximal number of evaluations times 
+%                              dimension to load | 250
+%     'nIDsPerFunction'      - number of IDs per function | 1
+%     'nInstancesPerID'      - number of instances per ID | 15
+%     'nPreviousGenerations' - number of previous generations to load for
+%                              ModelPool testing | 0
+%     'nSnapshotsPerRun'     - number of generated datasets per one CMA-ES 
+%                              run | 10
+%     'outputDirname'        - name of dataset output directory | 
+%                              'exp_modeltest_01'
 %
 % Output:
 %   ds - loaded data | #fun x #dim cell-array
@@ -26,7 +40,7 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
   if (~exist('inst', 'var'))
     inst = 1; end
 
-  opts.outputDirname = defopts(opts, 'outputDirname', 'exp_GPtest_01');
+  opts.outputDirname = defopts(opts, 'outputDirname', 'exp_modeltest_01');
   opts.datasetName   = defopts(opts, 'datasetName', 'DTS_005');
   opts.maxEval       = defopts(opts, 'maxEval', 250);
   % exp_id of the logging (DTS-)CMA-ES experiment
@@ -38,7 +52,7 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
   opts.nPreviousGenerations = defopts(opts, 'nPreviousGenerations', 0);
   opts.loadModels     = defopts(opts, 'loadModels', false);
   opts.nIDsPerFunction = defopts(opts, 'nIDsPerFunction', 1);
-  opts.nInstancesPerID = defopts(opts, 'nIDsPerFunction', 15);
+  opts.nInstancesPerID = defopts(opts, 'nInstancesPerID', 15);
 
   % set random seed due to reproducibility of default dataset
   rng(opts.maxEval)
@@ -109,7 +123,7 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
       instancesDone = false(1, length(inst));
       if (is_ds_loaded)
         for ii = 1:length(inst)
-          i_exp = find(inst(ii) == exp_inst, 1);
+          % i_exp = find(inst(ii) == exp_inst, 1);
           d_loaded = find(dim(di) == f_ds.dim, 1);
           f_loaded = find(fun(fi) == f_ds.fun, 1);
           i_loaded = find(inst(ii) == f_ds.inst, 1);

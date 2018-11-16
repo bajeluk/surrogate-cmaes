@@ -91,9 +91,9 @@ function [results, settings, res_params] = metaLearn_loadOneFolder(exp_folder, f
     else
       warning('off', 'MATLAB:load:variableNotFound')
     end
-    S = load(fileList{f}, '-mat', 'dim', 'func', 'inst_samp', 'modelOpt', 'modelType', 'results');
+    S = load(fileList{f}, '-mat', 'dim', 'func', 'inst_samp', 'modelOpt', 'modelType', 'results', 'cv');
     warning('on', 'MATLAB:load:variableNotFound')
-    if all(isfield(S, {'dim', 'func', 'inst_samp', 'modelOpt', 'modelType', 'results'}))
+    if all(isfield(S, {'dim', 'func', 'inst_samp', 'modelOpt', 'modelType', 'results', 'cv'}))
       % unify parameters to one settings structure
       actualSettings = S.modelOpt;
       actualSettings.modelType = S.modelType;
