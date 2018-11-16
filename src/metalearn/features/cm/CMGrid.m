@@ -120,7 +120,7 @@ classdef CMGrid
       for c = 1:obj.nCells
         inCell = c == obj.pointId;
         [y(c), id] = min(obj.y(inCell));
-        cellX = obj.X(inCell);
+        cellX = obj.X(inCell, :);
         X(c, :) = cellX(id, :);
       end
     end
