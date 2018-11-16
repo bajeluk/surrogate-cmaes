@@ -1,28 +1,32 @@
-function data = bbobDataReady(datapath, funcSet)
-% data = bbobDataReady(datapath, funcSet) prepares BBOB data for further 
-% processing. Returns cell array 'data' functions x dimensions.
+function data = bbobDataReady(datapath, funcSet, maxFE)
+% data = bbobDataReady(datapath, funcSet, maxFE) prepares BBOB data for 
+% further processing. Returns cell array 'data' functions x dimensions.
 %
 % Input:
 %   datapath - path to data | string
 %   funcSet  - structure with fields 'BBfunc' (numbers of BBOB functions) 
 %              and 'dims' (numbers of dimensions) | structure
+%   maxFE    - maximal number of function evaluations | integer
 %
 % Output:
 %   data     - aggregated data of size functions x dimensions | cell array
 %
 % See Also:
-%   dataReady
+%   dataReady, divSmooth
 
-  if nargin < 2
-    if nargin < 1
-      if nargout > 0
-        data = {};
+  if nargin < 3
+    if nargin < 2
+      if nargin < 1
+        if nargout > 0
+          data = {};
+        end
+        help bbobDataReady
+        return
       end
-      help bbobDataReady
-      return
+      funcSet.BBfunc = 1:24;
+      funcSet.dims = 2;
     end
-    funcSet.BBfunc = 1:24;
-    funcSet.dims = 2;
+    maxFE = 250;
   end
   
   if ~iscell(datapath)
@@ -98,6 +102,6 @@ function data = bbobDataReady(datapath, funcSet)
   end
     
   % smooth data
-  data = divSmooth(data, funcSet);
+  data = divSmooth(data, funcSet, maxFE);
   
 end

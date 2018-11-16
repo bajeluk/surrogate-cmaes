@@ -14,6 +14,7 @@ function [table, ranks] = efeTable(data, varargin)
 %     'Quantiles'   - quantiles of result EFE
 %     'TableDims'   - dimensions chosen to count
 %     'TableFuns'   - functions chosen to count
+%     'Target'      - EFE target
 %
 % Output:
 %   table - table of EFE rankings

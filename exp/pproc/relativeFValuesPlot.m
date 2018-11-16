@@ -254,7 +254,7 @@ function handle = relativePlot(data_stats, settings)
       for dat = 1:numOfData
         if ~isNotEmptyData(dat)
           relativeData{dat}{f, d} = [];
-          % this data would definietly wouldn't have quatiles plots
+          % this data definitely wouldn't have quantile plots
           settings.drawQuantiles(dat) = false;
         end
       end
@@ -264,11 +264,22 @@ function handle = relativePlot(data_stats, settings)
           settings.drawQuantiles = false(1, numOfData);
         end
         nonEmptyId = find(isNotEmptyData);
-        nUsefulData = length(nonEmptyId);
 
         % count f-values ratio
-        actualData = cell2mat(arrayfun(@(D) data_stats{nonEmptyId(D)}{f,d}, 1:nUsefulData, 'UniformOutput', false));
-        nData = min(settings.maxEval, size(actualData, 1));
+        nData = settings.maxEval;
+        actualData = NaN(nData, numel(nonEmptyId));
+        % gather actual (function, dimension) non-empty data and fill the
+        % missing values to maxEvals with the best achieved result
+        for dat = 1:numel(nonEmptyId)
+          neDat = nonEmptyId(dat);
+          ds_act = data_stats{neDat}{f, d};
+          if numel(ds_act) < nData
+            actualData(:, dat) = [ds_act; ds_act(end)*ones(nData - numel(ds_act), 1)];
+          else
+            actualData(:, dat) = ds_act(1:nData);
+          end
+        end
+        % logarithmic scaling
         actualData = log10( actualData(1:nData, :) );
         actualMin = min(min(actualData));
         actualMax = max(max(actualData));
@@ -450,7 +461,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
 
   nRelativeData = length(relativeData);
   if (~exist('omitXLabel', 'var') || isempty(omitXLabel))
-    omitXLabel = false
+    omitXLabel = false;
   end
 
   % parsing settings
