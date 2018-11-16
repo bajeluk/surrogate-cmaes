@@ -72,7 +72,11 @@ function [dhyp,dx] = dirder(Q,Kd,dKd,EE,R,sf2)
     if nargout > 1, [dhypj,dxj] = dKd{j}(Qj.*Q); dx(:,j) = dxj;
     else dhypj = dKd{j}(Qj.*Q); end, dhyp = [dhyp; dhypj];
   end
-  dhyp = [dhyp; 2*squeeze(sum(sum(bsxfun(@times,EE(:,:,R+1),Q),1),2)).*sf2];
+
+  % Jakub Repicky 11/16/2018: implicit expansion (introduced in R2016b)
+  % seems to have broken the right side of the statement, transposing sf2 below
+  % dhyp = [dhyp; 2*squeeze(sum(sum(bsxfun(@times,EE(:,:,R+1),Q),1),2)).*sf2];
+  dhyp = [dhyp; 2*squeeze(sum(sum(bsxfun(@times,EE(:,:,R+1),Q),1),2)).*sf2'];
 
 % evaluate dimensionwise covariances K
 function [K,dK] = Kdim(cov,nh,hyp,x,z)
