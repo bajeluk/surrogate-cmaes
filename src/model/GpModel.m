@@ -342,7 +342,7 @@ classdef GpModel < Model
 
           j = 1;
           c = 0;
-          for i = invalid_idx
+          for i = invalid_idx'
             while j <= nLarge
               p = multi_start_points2(j, :);
               if ~isnan(f(p'))
