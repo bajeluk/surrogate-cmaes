@@ -325,7 +325,11 @@ classdef GpModel < Model
         % find out invalid starting points
         fvals = nan(obj.nRestarts, 1);
         for i = 1:obj.nRestarts
-          fvals(i) = f(linear_hyp(i, :)');
+          try
+            fvals(i) = f(linear_hyp(i, :)');
+          catch err
+            fvals(i) = NaN;
+          end
         end
         invalid_idx = find(isnan(fvals));
 
@@ -345,7 +349,14 @@ classdef GpModel < Model
           for i = invalid_idx'
             while j <= nLarge
               p = multi_start_points2(j, :);
-              if ~isnan(f(p'))
+
+              try
+                fval = f(p');
+              catch err
+                fval = NaN;
+              end
+
+              if ~isnan(fval)
                 linear_hyp(i, :) = p;
                 c = c + 1;
                 j = j + 1;
