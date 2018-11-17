@@ -149,7 +149,12 @@ classdef GpModel < Model
 
       % GP hyperparameter bounds
       obj.covBounds = defopts(obj.options, 'covBounds', ...
-          [-5*ones(size(obj.hyp.cov)); 25*ones(size(obj.hyp.cov))]');
+          [-25*ones(size(obj.hyp.cov)); 25*ones(size(obj.hyp.cov))]');
+
+      if ischar(obj.covBounds)
+        obj.covBounds = myeval(obj.covBounds);
+      end
+
       % expand also covariance Bounds if they do not respect ARD covariance
       if ((size(obj.covBounds,1) >= 2) && (isequal(covfcn, @covSEard) ...
           || isequal(covfcn, @covMaternard) || isequal(covfcn, @covRQard) ...
