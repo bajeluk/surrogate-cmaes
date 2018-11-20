@@ -24,26 +24,23 @@ function ft = feature_cmaes(X, y, settings)
     settings = struct();
   end
   
+  [N, dim] = size(X);
+  
   % parse settings
-  ccov = defopts(settings, 'cma_cov', NaN);
-  evopath_c = defopts(settings, 'cma_evopath_c', NaN);
-  evopath_s = defopts(settings, 'cma_evopath_s', NaN);
+  ccov = defopts(settings, 'cma_cov', NaN(dim));
+  evopath_c = defopts(settings, 'cma_evopath_c', NaN(1, dim));
+  evopath_s = defopts(settings, 'cma_evopath_s', NaN(1, dim));
   generation = defopts(settings, 'cma_generation', NaN);
-  cmean = defopts(settings, 'cma_mean', NaN);
+  cmean = defopts(settings, 'cma_mean', NaN(1, dim));
   restart = defopts(settings, 'cma_restart', NaN);
   step_size = defopts(settings, 'cma_step_size', NaN);
   
-  dim = size(X, 2);
-  
-  % TODO: study CMA-ES properties and design useful features
-  
+  % calculate features
   ft.cma_generation = generation;
   ft.cma_step_size = step_size;
   ft.cma_restart = restart;
   % mahalanobis distance of the CMA mean to dataset
   ft.cma_mean_dist = mahal(cmean, X);
-  % determinant of covariance matrix
-  ft.cma_det_cov = det(ccov);
   % norm of evolution path (used to update covariance matrix)
   %   covariance matrix p_c*p_c’ has rank one, 
   %   i.e. only one eigenvalue ||p_c||^2
@@ -54,5 +51,8 @@ function ft = feature_cmaes(X, y, settings)
   %   E (|| N(0, I) ||) = \sqrt(2)*\gamma((D+1)/2) / \gamma(D/2)) 
   ft.cma_evopath_s_norm = norm(evopath_s) / ...
                       (sqrt(2) * gamma( (dim+1) / 2 ) / gamma( dim / 2 ));
-  
+  % log-likelihood of dataset being from CMA distribution
+  Xcmean = X - repmat(cmean, N, 1);
+  ft.cma_lik = -1/2 * (N * (log(det(ccov)) - dim * log (2*pi)) - ...
+               sum( diag(Xcmean*(ccov\Xcmean')) ));
 end
