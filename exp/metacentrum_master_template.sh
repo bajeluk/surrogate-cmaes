@@ -137,7 +137,7 @@ else
   if [ $COMPILED -eq 0 ]; then
     # We have to compile the packed sources into the binary
     echo "Preparing sources for compilation"
-    COMPILE_DIR=$RUNDIR/compile_$$
+    COMPILE_DIR=~/tmp/compile_$$
     mkdir -p $COMPILE_DIR
     echo "extracting $DEPLOY_DIR/$DEPLOY_ARCHIVE into $COMPILE_DIR ..."
     tar -xf "$DEPLOY_DIR/$DEPLOY_ARCHIVE" -C $COMPILE_DIR
