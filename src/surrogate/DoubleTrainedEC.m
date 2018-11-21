@@ -643,10 +643,12 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         nData = length(yOrig);
         if (nData > 0)
           yPredict = oldModel.predict(xOrig);
-          rmse = sqrt(sum((yPredict - yOrig).^2))/length(yPredict);
-          if (nData >= 2)
-            kCorr = corr(yPredict, yOrig, 'type', 'Kendall');
-            normKendall = (-kCorr + 1) / 2;
+          if yPredict
+            rmse = sqrt(sum((yPredict - yOrig).^2))/length(yPredict);
+            if (nData >= 2)
+              kCorr = corr(yPredict, yOrig, 'type', 'Kendall');
+              normKendall = (-kCorr + 1) / 2;
+            end
           end
         end
       end
@@ -698,18 +700,18 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       errRank = NaN(1, N_VALIDATION_CYCLES);
 
       for i = 1:N_VALIDATION_CYCLES
-
-      [~, xValidTest, ~] = ...
+        [~, xValidTest, ~] = ...
           sampleCmaesNoFitness(obj.cmaesState.sigma, obj.cmaesState.lambda, obj.cmaesState, sampleOpts);
-      preciseModel = ModelFactory.createModel('bbob', obj.surrogateOpts.modelOpts, obj.cmaesState.xmean');
-      yTest = preciseModel.predict(xValidTest');
-      yPredict = lastModel.predict(xValidTest');
+        preciseModel = ModelFactory.createModel('bbob', obj.surrogateOpts.modelOpts, obj.cmaesState.xmean');
+        yTest = preciseModel.predict(xValidTest');
+        yPredict = lastModel.predict(xValidTest');
 
-      kendall(i) = corr(yPredict, yTest, 'type', 'Kendall');
-      rmse(i) = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
+        if yPredict
+          kendall(i) = corr(yPredict, yTest, 'type', 'Kendall');
+          rmse(i) = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
 
-      errRank(i) = errRankMu(yTest, yPredict, obj.cmaesState.mu);
-
+          errRank(i) = errRankMu(yTest, yPredict, obj.cmaesState.mu);
+        end
       end
 
       kendall = nanmean(kendall);
