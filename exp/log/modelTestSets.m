@@ -4,7 +4,6 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
 %
 % Input:
 %   exp_id  - experiment id where the CMA-ES logs are saved
-%             (there has to be only one variant!)
 %   fun     - BBOB function numbers to load
 %   dim     - dimensions to load (2, 3, 5, 10, ...)
 %   inst    - instances to load (1:5, ...)
@@ -14,8 +13,6 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
 %     'loadModels'           - load saved models for ModelPool | false
 %     'maxEval'              - maximal number of evaluations times 
 %                              dimension to load | 250
-%     'nIDsPerFunction'      - number of IDs per function | 1
-%     'nInstancesPerID'      - number of instances per ID | 15
 %     'nPreviousGenerations' - number of previous generations to load for
 %                              ModelPool testing | 0
 %     'nSnapshotsPerRun'     - number of generated datasets per one CMA-ES 
@@ -51,8 +48,6 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
   opts.isForModelPool = defopts(opts, 'isForModelPool', false);
   opts.nPreviousGenerations = defopts(opts, 'nPreviousGenerations', 0);
   opts.loadModels     = defopts(opts, 'loadModels', false);
-  opts.nIDsPerFunction = defopts(opts, 'nIDsPerFunction', 1);
-  opts.nInstancesPerID = defopts(opts, 'nInstancesPerID', 15);
 
   % set random seed due to reproducibility of default dataset
   rng(opts.maxEval)
@@ -74,19 +69,24 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
     exp_fun = cell2mat(exp_par.bbParamDef(strcmp({exp_par.bbParamDef.name}, 'functions')).values);
     exp_inst_cell = exp_par.bbParamDef(strcmp({exp_par.bbParamDef.name}, 'instances')).values;
     exp_inst = cell2mat(exp_inst_cell);
+    exp_model_settings = 1:prod(arrayfun(@(s) length(s.values), exp_par.sgParamDef));
   else
     warning('No scmaes_params.mat found in %s directory. Using default fun and dim settings.', opts.exppath)
     exp_dim = 2;
     exp_fun = 1;
     exp_inst_cell = { 1 };
     exp_inst = 1;
+    exp_model_settings = 1;
   end
 
   % take only dimensions and function which exist in the logging experiment
   dim = restricToDataset(dim, exp_dim, 'Dimensions');
   fun = restricToDataset(fun, exp_fun, 'Functions');
   inst = restricToDataset(inst, exp_inst, 'Instances');
-  IDsPerFunction = max(opts.nIDsPerFunction, length(exp_inst_cell));
+  IDsPerInstance = ...
+    (prod(arrayfun(@(s) length(s.values), exp_par.bbParamDef)) / (length(exp_fun)*length(exp_dim))) * ...
+    prod(arrayfun(@(s) length(s.values), exp_par.cmParamDef)) * ...
+    prod(arrayfun(@(s) length(s.values), exp_par.sgParamDef));
 
   assert(~isempty(inst), 'There are no instances to process. Exitting.');
 
@@ -109,7 +109,7 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
   end
 
   % prepare output dataset
-  ds = cell(length(fun), length(dim), length(inst));
+  ds = cell(length(fun), length(dim), length(inst)*length(exp_model_settings));
 
   % dimension loop
   for di = 1:length(dim)
@@ -131,7 +131,10 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
               &&  ~isempty(f_ds.ds{f_loaded, d_loaded, i_loaded}) ...
               &&  isstruct(f_ds.ds{f_loaded, d_loaded, i_loaded}))
             instancesDone(ii) = true;
-            ds{fi, di, ii} = f_ds.ds{f_loaded, d_loaded, i_loaded};
+
+            for k = exp_model_settings
+              ds{fi, di, (k-1)*length(inst)+ii } = f_ds.ds{f_loaded, d_loaded, (k-1)*length(f_ds.inst)+i_loaded};
+            end
           end
         end
         if (all(instancesDone))
@@ -144,8 +147,11 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
       for ii_cell = 1:length(exp_inst_cell)
         instancesInThisID = exp_inst_cell{ii_cell};
 
-        id = (d_exp-1)*length(exp_fun)*IDsPerFunction + (f_exp-1)*IDsPerFunction + ii_cell;
-        fprintf('#### f%d in %dD (id=%d) ####\n', fun(fi), dim(di), id);
+        id = (d_exp-1)*length(exp_fun)*length(exp_inst_cell)*IDsPerInstance + ...
+          (f_exp-1)*length(exp_inst_cell)*IDsPerInstance + ...
+          (ii_cell-1)*length(exp_inst_cell) + ...
+          exp_model_settings;
+        fprintf('#### f%d in %dD (id=%s) ####\n', fun(fi), dim(di), num2str(id));
 
         % load dataset from saved modellog/cmaes_out of the corresponding instance
         [~, instanceIndicesToProcess] = ismember(instancesInThisID, inst);
@@ -154,9 +160,18 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
         [~, instanceIndicesToProcess] = ismember(instancesToProcess, inst);
         if (~isempty(instancesToProcess))
           ds_actual = datasetFromInstances(opts, opts.nSnapshotsPerRun, ...
-              fun(fi), dim(di), inst(instanceIndicesToProcess), id, ...
-              opts.isForModelPool, opts.nPreviousGenerations, opts.loadModels);
-          ds(fi, di, instanceIndicesToProcess) = ds_actual;
+            fun(fi), dim(di), inst(instanceIndicesToProcess), id, ...
+            opts.isForModelPool, opts.nPreviousGenerations, opts.loadModels);
+%           idx = arrayfun(@(i) (exp_model_settings - 1) * length(inst) + i, instanceIndicesToProcess, ...
+%             'UniformOutput', false);
+
+          idx = [];
+          for k = exp_model_settings
+            for l = instanceIndicesToProcess
+              idx(end+1) = (k-1) * length(inst) + l;
+            end
+          end
+          ds(fi, di, idx) = ds_actual;
         end
       end  % instances loop end
 
