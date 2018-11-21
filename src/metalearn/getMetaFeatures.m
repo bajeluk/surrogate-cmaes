@@ -16,6 +16,7 @@ function [ft, values] = getMetaFeatures(X, y, settings)
 %   cm_gradhomo      - cell-wise information on the gradients between each 
 %                      point of a cell and its corresponding nearest 
 %                      neighbor (cell mapping features)
+%   cmaes            - CMA-ES state variable features
 %   dispersion       - dispersion among observations within the initial 
 %                      design and among a subset of these points
 %   ela_distribution - estimation of the density of the initial design’s 
@@ -84,6 +85,7 @@ function [ft, values] = getMetaFeatures(X, y, settings)
 %   feature_cm_angle
 %   feature_cm_convexity
 %   feature_cm_gradhomo
+%   feature_cmaes
 %   feature_dispersion
 %   feature_ela_distribution
 %   feature_ela_levelset
@@ -114,6 +116,7 @@ function [ft, values] = getMetaFeatures(X, y, settings)
                   'cm_angle', ...
                   'cm_convexity', ...
                   'cm_gradhomo', ...
+                  'cmaes', ...
                   'dispersion', ...
                   'ela_distribution', ...
                   'ela_levelset', ...

@@ -1,4 +1,4 @@
-function ft = feature_cmaes(X, y, settings)
+function ft = feature_cmaes(X, ~, settings)
 % ft = FEATURE_CMAES(X, y, settings) returns features based on CMA-ES state
 % variables for dataset [X, y].
 %
@@ -12,6 +12,15 @@ function ft = feature_cmaes(X, y, settings)
 %   cma_step_size  - CMA-ES step-size value
 %
 % Features:
+%   cma_generation - generation number of CMA-ES algorithm
+%   cma_step_size  - CMA-ES step-size value
+%   cma_restart    - number of CMA-ES restarts
+%   cma_mean_dist  - mahalanobis distance of the CMA mean to dataset
+%   cma_evopath_c_norm - eigenvalue of rank-one update
+%   cma_evopath_s_norm - length of the evolution path p_\sigma compared to
+%                        the expected length of random steps
+%   cma_lik            - log-likelihood of dataset being from CMA
+%                        distribution
 
   if nargin < 3
     if nargin < 2
@@ -40,11 +49,11 @@ function ft = feature_cmaes(X, y, settings)
   ft.cma_step_size = step_size;
   ft.cma_restart = restart;
   % mahalanobis distance of the CMA mean to dataset
-  ft.cma_mean_dist = mahal(cmean, X);
+  ft.cma_mean_dist = sqrt(mahal(cmean, X));
   % norm of evolution path (used to update covariance matrix)
   %   covariance matrix p_c*p_c’ has rank one, 
   %   i.e. only one eigenvalue ||p_c||^2
-  ft.cma_evopath_c_norm = norm(evopath_c);
+  ft.cma_evopath_c_norm = norm(evopath_c)^2;
   % step-size evolution path
   %   length of the evolution path p_\sigma compared to the expected length
   %   of random steps: ||p_\sigma|| / E (|| N(0, I) ||)

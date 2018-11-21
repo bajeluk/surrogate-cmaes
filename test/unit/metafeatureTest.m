@@ -391,7 +391,7 @@ function testCMA(testCase)
     verifyTrue(testCase, isnan(ft.(featFields{m})))
   end
   % output with settings
-  ft = feature_cmaes(X, y, settings)
+  ft = feature_cmaes(X, y, settings);
   for m = 1:numel(featFields)
     verifyTrue(testCase, ~isnan(ft.(featFields{m})))
   end
