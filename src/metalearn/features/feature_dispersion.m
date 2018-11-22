@@ -81,4 +81,9 @@ function ft = feature_dispersion(X, y, settings)
     ft.(sprintf('diff_median_%02d',  100*qnt(q))) = quantDistMedian - allDistMedian;
   end
   
+  % ensure features to be non-empty in case of empty input
+  if isempty(X) || isempty(y)
+    ft = repStructVal(ft, @isempty, NaN, 'test');
+  end
+  
 end

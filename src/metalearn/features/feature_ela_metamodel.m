@@ -76,4 +76,9 @@ function ft = feature_ela_metamodel(X, y, ~)
   qim = fitlm(X2, y, 'interactions');
   ft.quad_w_interact_adj_r2 = qim.Rsquared.Adjusted;
 
+  % ensure features to be non-empty in case of empty input
+  if isempty(X) || isempty(y)
+    ft = repStructVal(ft, @isempty, NaN, 'test');
+  end
+  
 end

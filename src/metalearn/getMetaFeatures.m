@@ -137,8 +137,9 @@ function [ft, values] = getMetaFeatures(X, y, settings)
   nFeat = numel(features);
   
   % create base structure for individual group settings
-  feat_settings_base.lb = lb;
-  feat_settings_base.ub = ub;
+  dim = size(X, 2);
+  feat_settings_base.lb = myeval(lb);
+  feat_settings_base.ub = myeval(ub);
   % add additional overall settings
   commonSettingsList = [{'features', 'lb', 'ub'}, listFeatures];
   set_fields = fieldnames(settings);

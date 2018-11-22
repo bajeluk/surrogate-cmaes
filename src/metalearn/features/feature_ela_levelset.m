@@ -85,6 +85,11 @@ function ft = feature_ela_levelset(X, y, settings)
     end
   end
   
+  % ensure features to be non-empty in case of empty input
+  if isempty(X) || isempty(y)
+    ft = repStructVal(ft, @isempty, NaN, 'test');
+  end
+  
 end
 
 function yTest = oneFold(xTrain, yTrain, xTest, type, discr_anal_fcn)
@@ -118,4 +123,3 @@ function yTest = oneFold(xTrain, yTrain, xTest, type, discr_anal_fcn)
     yTest = NaN(size(xTest, 1), 1);
   end
 end
-

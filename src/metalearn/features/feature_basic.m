@@ -59,5 +59,10 @@ function ft = feature_basic(X, y, settings)
   ft.cells_total = prod(blocks);
   ft.cells_filled = sum(filled);
   ft.minimize_fun = min_fun;
+  
+  % ensure features to be non-empty in case of empty input
+  if isempty(X) || isempty(y)
+    ft = repStructVal(ft, @isempty, NaN, 'test');
+  end
 
 end

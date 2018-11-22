@@ -60,4 +60,10 @@ function ft = feature_cm_gradhomo(X, y, settings)
   % calculate features
   ft.grad_mean = mean(gradHomo);
   ft.grad_std  =  std(gradHomo);
+  
+  % ensure features to be non-empty in case of empty input
+  if isempty(X) || isempty(y)
+    ft = repStructVal(ft, @isempty, NaN, 'test');
+  end
+  
 end

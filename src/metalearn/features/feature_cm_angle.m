@@ -78,4 +78,10 @@ function ft = feature_cm_angle(X, y, settings)
   ft.angle_std  =  std(maxMinAngle);
   ft.y_best2worst_mean = mean(maxMinDiff/(y_mnmx(1)-y_mnmx(2)));
   ft.y_best2worst_std  =  std(maxMinDiff/(y_mnmx(1)-y_mnmx(2)));
+  
+  % ensure features to be non-empty in case of empty input
+  if isempty(X) || isempty(y)
+    ft = repStructVal(ft, @isempty, NaN, 'test');
+  end
+  
 end

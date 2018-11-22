@@ -86,6 +86,12 @@ function ft = feature_nearest_better(X, y, settings)
   ft.nb_cor = corr(dnn, dnb);
   ft.dist_ratio = std(qnn_nb) / mean(qnn_nb);
   ft.nb_fitness_cor = corr(y, nb_indegree);
+  
+  % ensure features to be non-empty in case of empty input
+  if isempty(X) || isempty(y)
+    ft = repStructVal(ft, @isempty, NaN, 'test');
+  end
+  
 end
 
 function [dnb, nb_indegree] = nearestBetterNeighbor(distMat, y, dnn)

@@ -113,4 +113,9 @@ function ft = feature_linear_model(X, y, settings)
   ft.lm_std_mean_reg  = mean(lm_coeff_std);
   ft.lm_std_mean_norm = mean(lm_coeff_norm_std);
   
+  % ensure features to be non-empty in case of empty input
+  if isempty(X) || isempty(y)
+    ft = repStructVal(ft, @isempty, NaN, 'test');
+  end
+  
 end

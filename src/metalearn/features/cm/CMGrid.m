@@ -16,23 +16,12 @@ classdef CMGrid
   methods
     function obj = CMGrid(X, y, lb, ub, blocks)
       % constructor
+      obj = obj.emptyCMGrid();
       if nargin < 5
         if nargin < 4
           if nargin < 3
             if nargin < 2
               help CMGrid
-              if nargout > 0
-                obj.X = [];
-                obj.y = [];
-                obj.dim = [];
-                obj.lb = [];
-                obj.ub = [];
-                obj.blocks = [];
-                obj.pointId = [];
-                obj.cellId = [];
-                obj.nCells = [];
-                obj.cmCells = [];
-              end
               return
             end
             lb = min(X) - eps;
@@ -41,7 +30,13 @@ classdef CMGrid
         end
         blocks = 1;
       end
-
+      
+      % in case of empty set return empty grid
+      if isempty(X)
+        return
+      end
+      
+      % basic values
       obj.X = X;
       obj.y = y;
       [nData, dataDim] = size(X);
@@ -267,6 +262,20 @@ classdef CMGrid
       for c = 1:obj.nCells
         lm{c} = obj.cmCells(c).fitPolyModel(modelspec);
       end
+    end
+    
+    function obj = emptyCMGrid(obj)
+    % return empty grid
+      obj.X = [];
+      obj.y = [];
+      obj.dim = [];
+      obj.lb = [];
+      obj.ub = [];
+      obj.blocks = [];
+      obj.pointId = [];
+      obj.cellId = [];
+      obj.nCells = [];
+      obj.cmCells = CMCell();     
     end
     
   end

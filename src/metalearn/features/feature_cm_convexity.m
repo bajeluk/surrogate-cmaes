@@ -122,4 +122,10 @@ function ft = feature_cm_convexity(X, y, settings)
   ft.concave_hard = conc_hard/nComparisons;
   ft.convex_soft  = conv_soft/nComparisons;
   ft.convex_hard  = conv_hard/nComparisons;
+  
+  % ensure features to be non-empty in case of empty input
+  if isempty(X) || isempty(y)
+    ft = repStructVal(ft, @isempty, NaN, 'test');
+  end
+  
 end

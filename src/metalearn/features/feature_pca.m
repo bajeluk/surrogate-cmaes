@@ -93,7 +93,12 @@ function ft = feature_pca(X, y, settings)
     ft.pca_pc1_cov_init = cov_init(1);
     ft.pca_pc1_corr_init = corr_init(1);
   end
-    
+  
+  % ensure features to be non-empty in case of empty input
+  if isempty(X) || isempty(y)
+    ft = repStructVal(ft, @isempty, NaN, 'test');
+  end
+  
 end
 
 function ev = explainVariance(X, fun)

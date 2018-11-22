@@ -212,6 +212,11 @@ function ft = feature_gcm(X, y, settings)
     ft.([approach{a}, '_best_attr_no']) = sum(y_attr == min(y_attr)) / sumCells;
   end
   
+  % ensure features to be non-empty in case of empty input
+  if isempty(X) || isempty(y)
+    ft = repStructVal(ft, @isempty, NaN, 'test');
+  end
+  
 end
 
 function [bc, pg] = getNeighbors(cellId, blocks, y)
