@@ -1,5 +1,5 @@
-exp_id = 'exp_doubleEC_28_log';
-exp_description = 'Adaptive DTS-CMA-ES based on exp_doubleEC_26_1model, albeit testing multiple GP kernels. Enable logging of populations.';
+exp_id = 'exp_doubleEC_28_log_nonadapt';
+exp_description = 'Fixed (non-adaptive) DTS-CMA-ES based on exp_doubleEC_26_1model, albeit testing multiple GP kernels. Enable logging of populations.';
 
 % BBOB/COCO framework settings
 
@@ -19,7 +19,7 @@ surrogateParams = { ...
   'evoControl',         { 'doubletrained' }, ...    % 'none', 'individual', 'generation', 'restricted'
   'observers',          { {'DTScreenStatistics', 'DTFileStatistics'} },... % logging observers
   'modelType',          { 'gp' }, ...               % 'gp', 'rf', 'bbob'
-  'updaterType',        { 'rankDiff' }, ...         % OrigRatioUpdater
+  'updaterType',        { 'constant' }, ...         % OrigRatioUpdater
   'evoControlMaxDoubleTrainIterations', { 1 }, ...
   'evoControlPreSampleSize',       { 0.75 }, ...       % {0.25, 0.5, 0.75}, will be multip. by lambda
   'evoControlOrigPointsRoundFcn',  { 'ceil' }, ...  % 'ceil', 'getProbNumber'
