@@ -4,10 +4,10 @@ EXPPATH=$1
 
 design=ilhs
 
-for modeltype in gp rf xgb; do
+for modeltype in gp forest xgb; do
   if [ $modeltype = gp ]; then
     optinds=`seq 1 14`
-  elif [ $modeltype = rf ]; then
+  elif [ $modeltype = forest ]; then
     optinds=`seq 1 15`
   elif [ $modeltype = xgb ]; then
     optinds=`seq 1 5`

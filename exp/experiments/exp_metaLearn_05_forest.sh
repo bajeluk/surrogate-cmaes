@@ -59,25 +59,25 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 # critical characters has to be replaced in $OPTS:
 # '|' with ',' and "%" with "'" and '@' with ';'
-OPTS=""
 
 DATASET_PATH=$CWD/data_metalearn
 
+ID="1"
+DIMS="2 5 10"
 FUNCS=`seq 1 24`
 INSTS="[1:5|41:50]"
 DESIGNS="ilhs"
 DATASIZES="50*dim"
 
-QUEUE="48:00:00"
+#QUEUE="48:00:00"
+#submit_model "FOREST" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES"
 
-DIMS="2"
-ID="1"
-OPTINDS=( 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 )
-submit_model "FOREST" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES" "${OPTINDS[@]}"
-
+ID="52"
 DIMS="10"
-ID="49"
-OPTINDS=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 )
+FUNCS="14"
+OPTINDS=( 2 )
+
+QUEUE="168:00:00"
 submit_model "FOREST" "$DIMS" "$FUNCS" "$INSTS" "$DESIGNS" "$DATASIZES" "${OPTINDS[@]}"
 
 exit 0
