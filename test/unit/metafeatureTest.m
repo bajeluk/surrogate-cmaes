@@ -474,7 +474,12 @@ function testGetDataMetaFeatures(testCase)
   settings.lb = '-5*ones(1, dim)';
   settings.ub = ' 5*ones(1, dim)';
   settings.features = {'basic', 'cm_convexity', 'cm_gradhomo'}; ... {'cmaes', 'cm_convexity', 'cm_gradhomo'};
-  settings.MetaInput = {'archive', 'test'};
+  settings.MetaInput = {'archive', 'train'};
+  settings.trainOpts.evoControlTrainNArchivePoints = '15*dim';
+  settings.trainOpts.evoControlTrainRainge = 10;
+  settings.trainOpts.trainRainge = 4;
+  settings.trainOpts.trainsetSizeMax = '20*dim';
+  settings.trainOpts.trainsetType = 'parameters';
   tic
   getDataMetaFeatures(testdata, settings);
   toc

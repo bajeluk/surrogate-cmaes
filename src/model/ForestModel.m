@@ -25,9 +25,14 @@ classdef ForestModel < Model
       % constructor
       assert(size(xMean,1) == 1, 'Forest:xnrw', ...
         'ForestModel (constructor): xMean is not a row-vector.');
-      obj.options = modelOptions;
+      % modelOpts structure
+      if (isempty(modelOptions))
+        obj.options = struct();
+      else
+        obj.options = modelOptions;
+      end
       
-      % computed valuesWeakMo
+      % computed settings
       obj.useShift  = defopts(obj.options, 'useShift', false);
       obj.dim       = size(xMean, 2);
       obj.shiftMean = zeros(1, obj.dim);
