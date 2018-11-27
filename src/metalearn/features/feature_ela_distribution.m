@@ -74,11 +74,6 @@ function ft = feature_ela_distribution(~, y, settings)
     ft.number_of_peaks = numberOfPeaks(y, modemass_treshold);
   end
   
-  % ensure features to be non-empty in case of empty input
-  if isempty(X) || isempty(y)
-    ft = repStructVal(ft, @isempty, NaN, 'test');
-  end
-  
 end
 
 function numOfPeaks = numberOfPeaks(x, modemass_treshold)

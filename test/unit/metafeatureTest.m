@@ -32,6 +32,14 @@ function testLinearModel(testCase)
   for m = 1:numel(featFields)
     verifyTrue(testCase, isnan(ft.(featFields{m})))
   end
+  
+  % test empty input
+  X = [];
+  y = [];
+  ft = feature_linear_model(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
 end
 
 function testGCM(testCase)
@@ -59,6 +67,16 @@ function testGCM(testCase)
     %   verifyLessThanOrEqual(testCase, ft.(returnedFields{m}), 1)
     % end
   end
+  
+  % test empty input
+  X = [];
+  y = [];
+  ft = feature_gcm(X, y);
+  % feature_gcm with empty input does not return NaN - is that correct?
+%   featFields = fieldnames(ft);
+%   for m = 1:numel(featFields)
+%     verifyTrue(testCase, isnan(ft.(featFields{m})))
+%   end
 end
 
 function testCMConvexity(testCase)
@@ -77,6 +95,14 @@ function testCMConvexity(testCase)
   ft = feature_cm_convexity(X, y, settings);
   returnedFields = fieldnames(ft);
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+  
+  % test empty input
+  X = [];
+  y = [];
+  ft = feature_cm_convexity(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
 end
 
 function testCMGradHomo(testCase)
@@ -95,6 +121,14 @@ function testCMGradHomo(testCase)
   ft = feature_cm_gradhomo(X, y, settings);
   returnedFields = fieldnames(ft);
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+  
+  % test empty input
+  X = [];
+  y = [];
+  ft = feature_cm_gradhomo(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
 end
 
 function testCMAngle(testCase)
@@ -116,6 +150,14 @@ function testCMAngle(testCase)
   ft = feature_cm_angle(X, y, settings);
   returnedFields = fieldnames(ft);
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+  
+  % test empty input
+  X = [];
+  y = [];
+  ft = feature_cm_angle(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
 end
 
 function testInfocontent(testCase)
@@ -134,6 +176,14 @@ function testInfocontent(testCase)
   ft = feature_infocontent(X, y, settings);
   returnedFields = fieldnames(ft);
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+  
+  % test empty input
+  X = [];
+  y = [];
+  ft = feature_infocontent(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
 end
 
 function testPCA(testCase)
@@ -176,6 +226,14 @@ function testPCA(testCase)
     end
   end
   
+  % test empty input
+  X = [];
+  y = [];
+  ft = feature_pca(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
+  
 end
 
 function testNearestBetterClustering(testCase)
@@ -191,6 +249,14 @@ function testNearestBetterClustering(testCase)
                 'nb_fitness_cor'};
   returnedFields = fieldnames(feature_nearest_better(X, y, settings));
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+  
+  % test empty input
+  X = [];
+  y = [];
+  ft = feature_nearest_better(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
 end
 
 function testDispersion(testCase)
@@ -207,6 +273,14 @@ function testDispersion(testCase)
                 'ratio_mean_25', 'ratio_median_25', 'diff_mean_25', 'diff_median_25'};
   returnedFields = fieldnames(feature_dispersion(X, y, settings));
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+  
+  % test empty input
+  X = [];
+  y = [];
+  ft = feature_dispersion(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
 end
 
 function testELADistribution(testCase)
@@ -227,8 +301,17 @@ function testELADistribution(testCase)
   for m = 1:numel(featFields)
     verifyTrue(testCase, ~isnan(ft.(featFields{m})))
   end
+  
   % test full NaN input
   y = NaN(10, 1);
+  ft = feature_ela_distribution(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
+  
+  % test empty input
+  X = [];
+  y = [];
   ft = feature_ela_distribution(X, y);
   for m = 1:numel(featFields)
     verifyTrue(testCase, isnan(ft.(featFields{m})))
@@ -266,6 +349,15 @@ function testELALevelset(testCase)
                 ft.(sprintf('lda_qda_%d', q)), ...
                 ft.(sprintf('mmce_lda_%d', q)) / ft.(sprintf('mmce_qda_%d', q)))
   end
+  
+  % test empty input
+  X = [];
+  y = [];
+  ft = feature_ela_levelset(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
+  
 end
 
 function testELAMetamodel(testCase)
@@ -289,20 +381,43 @@ function testELAMetamodel(testCase)
   for m = 1:numel(featFields)
     verifyTrue(testCase, isnan(ft.(featFields{m})))
   end
+  
+  % test empty input
+  X = [];
+  y = [];
+  ft = feature_ela_metamodel(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
 end
 
 function testBasic(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_basic()));
   % test data
-  X = rand(30, 3);
+  dim = 10;
+  X = rand(30, dim);
   y = randn(30, 1);
+  settings.lb = zeros(1, dim);
+  settings.ub = ones(1, dim);
+  settings.blocks = randi(3, 1, dim);
   % output fields without settings
   featFields = {'dim', 'observations', 'lower_min', 'lower_max', 'upper_min', ...
                 'upper_max', 'objective_min', 'objective_max', 'blocks_min', ...
                 'blocks_max', 'cells_total', 'cells_filled', 'minimize_fun'};
   returnedFields = fieldnames(feature_basic(X, y));
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
+  
+  % output with settings
+  ft = feature_basic(X, y, settings);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, ~isnan(ft.(featFields{m})))
+  end
+  
+  % test empty input
+  X = [];
+  y = [];
+  feature_basic(X, y);
 end
 
 function testCMA(testCase)
@@ -395,6 +510,11 @@ function testCMA(testCase)
   for m = 1:numel(featFields)
     verifyTrue(testCase, ~isnan(ft.(featFields{m})))
   end
+  
+  % test empty input
+  X = [];
+  y = [];
+  feature_cmaes(X, y, settings);
 end
 
 function testGetMetaFeatures(testCase)
@@ -445,6 +565,7 @@ function testGetDataMetaFeatures(testCase)
   verifyWarningFree(testCase, @getDataMetaFeatures);
   % test data
   testdata = 'exp/experiments/test/DTS_meta';
+  outputData = 'exp/experiments/test/DTS_meta_test_fts';
   if ~isdir(testdata)
     warning('Could not finish testGetDataMetaFeatures due to missing test files in %s', ...
             testdata)
@@ -473,13 +594,14 @@ function testGetDataMetaFeatures(testCase)
   % test with settings
   settings.lb = '-5*ones(1, dim)';
   settings.ub = ' 5*ones(1, dim)';
-  settings.features = {'basic', 'cm_convexity', 'cm_gradhomo'}; ... {'cmaes', 'cm_convexity', 'cm_gradhomo'};
-  settings.MetaInput = {'archive', 'train'};
+  settings.features = {'basic', 'ela_distribution'}; ... {'cmaes', 'cm_convexity', 'cm_gradhomo'};
+  settings.MetaInput = {'archive', 'traintest'};
   settings.trainOpts.evoControlTrainNArchivePoints = '15*dim';
-  settings.trainOpts.evoControlTrainRainge = 10;
-  settings.trainOpts.trainRainge = 4;
+  settings.trainOpts.evoControlTrainRange = 10;
+  settings.trainOpts.trainRange = 4;
   settings.trainOpts.trainsetSizeMax = '20*dim';
-  settings.trainOpts.trainsetType = 'parameters';
+  settings.trainOpts.trainsetType = 'nearest';
+  settings.output = outputData;
   tic
   getDataMetaFeatures(testdata, settings);
   toc

@@ -34,6 +34,14 @@ function ft = feature_ela_levelset(X, y, settings)
     settings = struct();
   end
   
+  emptyInput = false;
+  % empty set case due to cvpartition
+  if isempty(X) || isempty(y)
+    X = [NaN; NaN];
+    y = X;
+    emptyInput = true;
+  end
+  
   % initialize
   qnt = defopts(settings, 'quantiles', [0.1, 0.25, 0.5]);
   classMethods = defopts(settings, 'methods', {'lda', 'qda', 'mda'});
@@ -51,7 +59,7 @@ function ft = feature_ela_levelset(X, y, settings)
   cp = cvpartition(nData, 'KFold', nFolds);
   % quantile tresholds
   y_tresh = quantile(y, qnt);
-  mmce = zeros(nQuant, nClassMet);
+  mmce = NaN(nQuant, nClassMet);
   % quantile loop
   for q = 1:nQuant
     % class labels according to quantiles
@@ -72,7 +80,11 @@ function ft = feature_ela_levelset(X, y, settings)
       mmce(q, cm) = crossval('mcr', X, y_class, 'predfun', classFcn, 'partition', cp);
       % mean misclassification error  features
       mmceName = sprintf('mmce_%s_%d', classMethods{cm}, 100*qnt(q));
-      ft.(mmceName) = mmce(q, cm);
+      if emptyInput
+        ft.(mmceName) = NaN;
+      else
+        ft.(mmceName) = mmce(q, cm);
+      end
     end
     % mmce combination features
     combId = nchoosek(1:nClassMet, 2);
@@ -81,13 +93,12 @@ function ft = feature_ela_levelset(X, y, settings)
                           classMethods{combId(ci, 1)}, ...
                           classMethods{combId(ci, 2)}, ...
                           100*qnt(q));
-      ft.(combiName) = mmce(q, combId(ci, 1)) / mmce(q, combId(ci, 2));
+      if emptyInput
+        ft.(combiName) = NaN;
+      else
+        ft.(combiName) = mmce(q, combId(ci, 1)) / mmce(q, combId(ci, 2));
+      end
     end
-  end
-  
-  % ensure features to be non-empty in case of empty input
-  if isempty(X) || isempty(y)
-    ft = repStructVal(ft, @isempty, NaN, 'test');
   end
   
 end

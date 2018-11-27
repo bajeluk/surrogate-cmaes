@@ -106,6 +106,9 @@ function ft = feature_gcm(X, y, settings)
   % create grid of cells
   cmg = CMGrid(X, y, lb, ub, blocks);
   nCells = cmg.nCells;
+  if isempty(cmg)
+    cmg.blocks = 1;
+  end
   
   sumCells = prod(cmg.blocks);
   % warn in case of empty cells
@@ -210,11 +213,6 @@ function ft = feature_gcm(X, y, settings)
     y_attr = y(~periodicCells);
     ft.([approach{a}, '_best_attr_prob']) = sum(basin_prob(y_attr == min(y_attr)));
     ft.([approach{a}, '_best_attr_no']) = sum(y_attr == min(y_attr)) / sumCells;
-  end
-  
-  % ensure features to be non-empty in case of empty input
-  if isempty(X) || isempty(y)
-    ft = repStructVal(ft, @isempty, NaN, 'test');
   end
   
 end

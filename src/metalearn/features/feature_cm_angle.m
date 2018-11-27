@@ -67,7 +67,11 @@ function ft = feature_cm_angle(X, y, settings)
   % difference y_max - y_min in all cells
   maxMinDiff = cmg.getMaxMinDiff;
   
-  y_mnmx = [min(y', [], 2) max(y', [], 2)];
+  if isempty(y)
+    y_mnmx = [NaN, NaN];
+  else
+    y_mnmx = [min(y', [], 2), max(y', [], 2)];
+  end
   
   % calculate features
   ft.dist_ctr2best_mean = mean(distCentMax);

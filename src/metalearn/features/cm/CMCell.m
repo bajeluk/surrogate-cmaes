@@ -174,6 +174,11 @@ classdef CMCell
       end
     end
     
+    function state = isempty(obj)
+      % cell is empty when it does not contain any data
+      state = isempty(obj.X);
+    end
+    
   end
 end
 

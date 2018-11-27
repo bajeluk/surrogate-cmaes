@@ -69,8 +69,13 @@ function ft = feature_pca(X, y, settings)
   X_init = [X, y];
   
   % calculate explaining variances
-  cov_x = explainVariance(X, @cov);
-  corr_x = explainVariance(X, @corr);
+  if isempty(X)
+    cov_x = NaN;
+    corr_x = NaN;
+  else
+    cov_x = explainVariance(X, @cov);
+    corr_x = explainVariance(X, @corr);
+  end
   
   % calculate features
   ft.pca_cov_x = find(cov_x >= settings.cov_x, 1, 'first') / dim;
@@ -78,7 +83,7 @@ function ft = feature_pca(X, y, settings)
   ft.pca_pc1_cov_x = cov_x(1);
   ft.pca_pc1_corr_x = corr_x(1);
   % calculate y-dependent features
-  if any(isnan(y))
+  if isempty(y) || any(isnan(y))
     ft.pca_cov_init = NaN;
     ft.pca_corr_init = NaN;
     ft.pca_pc1_cov_init = NaN;

@@ -232,6 +232,10 @@ classdef CMGrid
       
       sumCells = prod(obj.blocks);
       y = NaN(obj.blocks);
+      % in case of empty grid return NaN
+      if isempty(obj)
+        return
+      end
       % run loop accross all cells (even empty ones)
       for i = 1 : sumCells
         cellCoordinates = ind2coor(i, obj.blocks);
@@ -256,6 +260,7 @@ classdef CMGrid
     
     function lm = fitPolyModel(obj, modelspec)
     % fit polynomial model in each cell
+      lm = {};
       if nargin < 2
         modelspec = 'linear';
       end
@@ -276,6 +281,11 @@ classdef CMGrid
       obj.cellId = [];
       obj.nCells = [];
       obj.cmCells = CMCell();     
+    end
+    
+    function state = isempty(obj)
+    % CMGrid is empty when it does not contain any data
+      state = isempty(obj.X);
     end
     
   end

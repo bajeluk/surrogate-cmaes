@@ -49,7 +49,12 @@ function ft = feature_cmaes(X, ~, settings)
   ft.cma_step_size = step_size;
   ft.cma_restart = restart;
   % mahalanobis distance of the CMA mean to dataset
-  ft.cma_mean_dist = sqrt(mahal(cmean, X));
+  if isempty(X)
+    ft.cma_mean_dist = NaN;
+  else
+    ft.cma_mean_dist = sqrt(mahal(cmean, X));
+  end
+    
   % norm of evolution path (used to update covariance matrix)
   %   covariance matrix p_c*p_c’ has rank one, 
   %   i.e. only one eigenvalue ||p_c||^2
@@ -61,7 +66,11 @@ function ft = feature_cmaes(X, ~, settings)
   ft.cma_evopath_s_norm = norm(evopath_s) / ...
                       (sqrt(2) * gamma( (dim+1) / 2 ) / gamma( dim / 2 ));
   % log-likelihood of dataset being from CMA distribution
-  Xcmean = X - repmat(cmean, N, 1);
-  ft.cma_lik = -1/2 * (N * (log(det(ccov)) - dim * log (2*pi)) - ...
-               sum( diag(Xcmean*(ccov\Xcmean')) ));
+  if isempty(X)
+    ft.cma_lik = NaN;
+  else
+    Xcmean = X - repmat(cmean, N, 1);
+    ft.cma_lik = -1/2 * (N * (log(det(ccov)) - dim * log (2*pi)) - ...
+                 sum( diag(Xcmean*(ccov\Xcmean')) ));
+  end
 end

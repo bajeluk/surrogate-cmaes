@@ -7,7 +7,6 @@ function ft = feature_basic(X, y, settings)
 %   lb       - lower bounds | default: min(X)
 %   ub       - upper bounds | default: max(X)
 %   blocks   - numbers of blocks per dimension | default: 1
-%   filled   - indicator of filled blocks | default: true
 %   minimize - binary flag stating whether the objective function should be
 %              minimized | default: true
 %
@@ -38,13 +37,16 @@ function ft = feature_basic(X, y, settings)
     settings = struct();
   end
   
-  % TODO: proper settings
   lb = defopts(settings, 'lb', min(X));
   ub = defopts(settings, 'ub', max(X));
-  blocks = defopts(settings, 'blocks', 1);
-  filled = defopts(settings, 'filled', ~isempty(X));
+  blocks = defopts(settings, 'blocks', ~isempty(X));
   min_fun = defopts(settings, 'minimize', true);
   
+  % create grid to get number of filled cells
+  cmg = CMGrid(X, y, lb, ub, blocks);
+  filled = cmg.nCells;
+  
+  % calculate features
   ft.dim = size(X, 2);
   ft.observations = numel(y);
   ft.lower_min = min(lb);
@@ -53,7 +55,6 @@ function ft = feature_basic(X, y, settings)
   ft.upper_max = max(ub);
   ft.objective_min = min(y);
   ft.objective_max = max(y);
-  % TODO: write following lines properly
   ft.blocks_min = min(blocks);
   ft.blocks_max = max(blocks);
   ft.cells_total = prod(blocks);

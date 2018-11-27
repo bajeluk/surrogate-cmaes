@@ -51,6 +51,16 @@ function ft = feature_nearest_better(X, y, settings)
     end
     settings = struct();
   end
+  
+  % empty set case
+  if isempty(X) || isempty(y)
+    ft.nb_std_ratio = NaN;
+    ft.nb_mean_ratio = NaN;
+    ft.nb_cor = NaN;
+    ft.dist_ratio = NaN;
+    ft.nb_fitness_cor = NaN;
+    return
+  end
 
   % parse settings
   min_fun = defopts(settings, 'minimize', true);
@@ -86,11 +96,6 @@ function ft = feature_nearest_better(X, y, settings)
   ft.nb_cor = corr(dnn, dnb);
   ft.dist_ratio = std(qnn_nb) / mean(qnn_nb);
   ft.nb_fitness_cor = corr(y, nb_indegree);
-  
-  % ensure features to be non-empty in case of empty input
-  if isempty(X) || isempty(y)
-    ft = repStructVal(ft, @isempty, NaN, 'test');
-  end
   
 end
 

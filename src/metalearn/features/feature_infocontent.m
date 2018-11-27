@@ -55,6 +55,16 @@ function ft = feature_infocontent(X, y, settings)
     end
     settings = struct();
   end
+  
+  % empty set case
+  if isempty(X) || isempty(y)
+    ft.h_max = NaN;
+    ft.eps_s = NaN;
+    ft.eps_max = NaN;
+    ft.m0 = NaN;
+    ft.eps_ratio = NaN;
+    return
+  end
 
   % parse settings
   distance = defopts(settings, 'distance', 'euclidean');
@@ -118,11 +128,6 @@ function ft = feature_infocontent(X, y, settings)
   ft.m0 = M(epsilon == 0);
   % ratio of partial information sensitivity
   ft.eps_ratio = log10(max(epsilon(M > eps_ratio_tresh * ft.m0)));
-  
-  % ensure features to be non-empty in case of empty input
-  if isempty(X) || isempty(y)
-    ft = repStructVal(ft, @isempty, NaN, 'test');
-  end
   
 end
 
