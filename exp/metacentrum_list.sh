@@ -88,7 +88,7 @@ fi
 if [ $RUNNING -eq 1 ]; then
   echo "Running:"
   for i in $IDS; do
-    if grep -q "calculating_${i}" $TMPFILE; then
+    if grep -q "calculating_${i}$" $TMPFILE; then
       echo -n "$i "
     fi
   done
@@ -99,7 +99,7 @@ fi
 if [ $QUEUED -eq 1 ]; then
   echo "Queued (removing queued files is not reliable):"
   for i in $IDS; do
-    if grep -q "queued_${i}" $TMPFILE; then
+    if grep -q "queued_${i}$" $TMPFILE; then
       echo -n "$i "
     fi
   done
@@ -111,13 +111,13 @@ if [ $NOSTATE -eq 1 ]; then
   echo "No status:"
   for i in $IDS; do
     RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
-    if ! grep -q "$RES_FILE"'$\|'"calculating_${i}"'$\|'"queued_${i}"'$' $TMPFILE; then
+    if ! grep -q "$RES_FILE"'$\|'"calculating_${i}$"'$\|'"queued_${i}$"'$' $TMPFILE; then
       echo -n "$i "
     fi
   done
   echo ""
 fi
 
-rm $TMPFILE
+#rm $TMPFILE
 
 exit 0
