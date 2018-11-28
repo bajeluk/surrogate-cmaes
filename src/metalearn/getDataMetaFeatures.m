@@ -14,6 +14,10 @@ function getDataMetaFeatures(folder, varargin)
 %     'TrainOpts' - training set options | structure with fields 
 %                   evoControlTrainNArchivePoints, evoControlTrainRange,
 %                   trainRange, trainsetSizeMax, and trainSetType
+%     'TransData' - transformation of data | {'none', 'cma'}
+%                     'none' - raw data X are used for calculation
+%                     'cma'  - X_t = ( (sigma * BD) \ X')';
+%                 - should have the same lenght as 'MetaInput'
 %
 % See Also:
 %   getMetaFeatures
@@ -67,6 +71,14 @@ function getRegularDataMetaFeatures(folder, settings)
   opts.features = defoptsi(settings, 'features', listFeatures);
   opts.metaInput = defoptsi(settings, 'MetaInput', {'archive'});
   opts.trainOpts = defoptsi(settings, 'TrainOpts', struct());
+  opts.transform = defoptsi(settings, 'TransData', {'none'});
+  if ~iscell(opts.transform)
+    opts.transform = {opts.transform};
+  end
+  % not enough transformation settings -> fill with no transformation
+  if numel(opts.metaInput) > numel(opts.transform)
+    opts.transform(end+1 : numel(opts.metaInput)) = {'none'};
+  end
 
   % gather all MAT-files
   datalist = {};
@@ -171,10 +183,14 @@ function res = getSingleDataMF(ds, opts)
           dsTrain = createTrainDS(ds, generations, g);
           [X, y] = getTrainData(dsTrain, g, opts.trainOpts);
           X = [X; ds.testSetX{g}];
-          y = [y; NaN(size(X, 1), 1)];
+          y = [y; NaN(size(ds.testSetX{g}, 1), 1)];
         otherwise
           error('%s is not correct input set name (see help getDataMetafeatures)', ...
                 opts.metaInput{iSet})
+      end
+      % transform data
+      if strcmp(opts.transform{iSet}, 'cma') && ~isempty(X)
+        X = ( (ds.sigmas{g} * ds.BDs{g}) \ X')';
       end
       % calculate metafeatures
       [res.ft(g).(opts.metaInput{iSet}), values{iSet}] = getMetaFeatures(X, y, opts);

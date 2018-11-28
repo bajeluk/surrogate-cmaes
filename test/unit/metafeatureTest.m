@@ -527,6 +527,7 @@ function testGetMetaFeatures(testCase)
   y = randn(nData, 1);
   settings.lb = zeros(1, dim);
   settings.ub = ones(1, dim);
+  settings.cm_opts.blockType = 'quantile';
   % feature groups
   featGroups =   {'basic', ...
                   'cm_angle', ...
@@ -548,8 +549,8 @@ function testGetMetaFeatures(testCase)
   returnedFields = fieldnames(mf);
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featGroups)))
   % test with settings
-  settings.features = {'cm_convexity', 'cm_gradhomo'};
-  settings.blocks = 2*ones(1, dim);
+  settings.features = {'cm_angle', 'cm_convexity', 'cm_gradhomo'};
+  settings.blocks = 3*ones(1, dim);
   settings.cm_gradhomo.blocks = 3*ones(1, dim);
   tic
   [mf, values] = getMetaFeatures(X, y, settings);
@@ -592,16 +593,17 @@ function testGetDataMetaFeatures(testCase)
 %   getGetMetaFeatures(testdata);
 %   verifyTrue(testCase, isdir(outputFolder))
   % test with settings
-  settings.lb = '-5*ones(1, dim)';
-  settings.ub = ' 5*ones(1, dim)';
+  settings.lb = 'min(X)'; %'-5*ones(1, dim)';
+  settings.ub = 'max(X)'; % 5*ones(1, dim)';
   settings.features = {'basic', 'ela_distribution'}; ... {'cmaes', 'cm_convexity', 'cm_gradhomo'};
-  settings.MetaInput = {'archive', 'traintest'};
+  settings.MetaInput = {'traintest'}; % {'archive', 'traintest'};
   settings.trainOpts.evoControlTrainNArchivePoints = '15*dim';
   settings.trainOpts.evoControlTrainRange = 10;
   settings.trainOpts.trainRange = 4;
   settings.trainOpts.trainsetSizeMax = '20*dim';
   settings.trainOpts.trainsetType = 'nearest';
   settings.output = outputData;
+  settings.transData = 'cma';
   tic
   getDataMetaFeatures(testdata, settings);
   toc

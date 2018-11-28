@@ -17,6 +17,7 @@ function ft = feature_gcm(X, y, settings)
 %   approach   - type of representative observation | {'min', 'mean',
 %                'near'}
 %   blocks     - number of cell blocks per dimension
+%   cm_opts    - additional cell mapping options
 %   distance   - distance metric (similar to pdist function) | default:
 %                'euclidean'
 %   dist_param - additional parameter to distance (similar to pdist 
@@ -96,6 +97,7 @@ function ft = feature_gcm(X, y, settings)
   dist_param = defopts(settings, 'dist_param', defMetricParam(metric, X));
   approach = defopts(settings, 'approach', {'min', 'mean', 'near'});
   min_fun = defopts(settings, 'minimize', true);
+  gridOpts = defopts(settings, 'cm_opts', struct());
   
   nApproaches = numel(approach);
   % minimization
@@ -104,7 +106,7 @@ function ft = feature_gcm(X, y, settings)
   end
   
   % create grid of cells
-  cmg = CMGrid(X, y, lb, ub, blocks);
+  cmg = CMGrid(X, y, lb, ub, blocks, gridOpts);
   nCells = cmg.nCells;
   if isempty(cmg)
     cmg.blocks = 1;

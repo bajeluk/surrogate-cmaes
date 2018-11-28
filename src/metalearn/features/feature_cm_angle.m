@@ -9,6 +9,7 @@ function ft = feature_cm_angle(X, y, settings)
 %
 % settings:
 %   blocks   - number of cell blocks per dimension
+%   cm_opts  - additional cell mapping options
 %   lb       - lower bounds of the input space
 %   minimize - binary flag stating whether the objective function should 
 %   ub       - upper bounds of the input space
@@ -50,13 +51,14 @@ function ft = feature_cm_angle(X, y, settings)
   lb = defopts(settings, 'lb', min(X));
   ub = defopts(settings, 'ub', max(X));
   blocks = defopts(settings, 'blocks', 2);
+  gridOpts = defopts(settings, 'cm_opts', struct());
   
   if ~min_fun
     y = -y;
   end
   
   % create grid of cells
-  cmg = CMGrid(X, y, lb, ub, blocks);
+  cmg = CMGrid(X, y, lb, ub, blocks, gridOpts);
   
   % distances max - center in all cells
   distCentMax = cmg.getDistCtr2Max();
@@ -80,8 +82,8 @@ function ft = feature_cm_angle(X, y, settings)
   ft.dist_ctr2worst_std  =  std(distCentMin);
   ft.angle_mean = mean(maxMinAngle);
   ft.angle_std  =  std(maxMinAngle);
-  ft.y_best2worst_mean = mean(maxMinDiff/(y_mnmx(1)-y_mnmx(2)));
-  ft.y_best2worst_std  =  std(maxMinDiff/(y_mnmx(1)-y_mnmx(2)));
+  ft.y_best2worst_mean = mean(maxMinDiff/(y_mnmx(2)-y_mnmx(1)));
+  ft.y_best2worst_std  =  std(maxMinDiff/(y_mnmx(2)-y_mnmx(1)));
   
   % ensure features to be non-empty in case of empty input
   if isempty(X) || isempty(y)

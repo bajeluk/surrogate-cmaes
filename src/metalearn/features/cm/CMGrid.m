@@ -11,25 +11,61 @@ classdef CMGrid
     cellId   % coordinates of cell in grid
     nCells   % number of non-empty cells
     cmCells = CMCell()  % individual CMCells
+    opts    = struct()  % grid options structure
   end
   
   methods
-    function obj = CMGrid(X, y, lb, ub, blocks)
-      % constructor
+    function obj = CMGrid(X, y, varargin)
+      % Cell-mapping grid constructor.
+      % obj = CMGrid(X, y, lb, ub, blocks, options)
+      % 
+      % Input:
+      %   X       - input data
+      %   y       - data values
+      %   lb      - lower bound
+      %   ub      - upper bound
+      %   blocks  - number of blocks per dimension
+      %   options - additional grid options | pairs of property (string) 
+      %             and value, or struct with properties as fields:
+      %     BlockType - type of block boundaries: 
+      %                   'uniform'  - boundaries are in uniform distance
+      %                   'quantile' - boundaries are calculated according
+      %                                to quantiles in each dimension
+      %                                separately
+      
       obj = obj.emptyCMGrid();
-      if nargin < 5
-        if nargin < 4
-          if nargin < 3
-            if nargin < 2
-              help CMGrid
-              return
-            end
-            lb = min(X) - eps;
-          end
-          ub = max(X) + eps;
-        end
-        blocks = 1;
+      if nargin < 2
+        help CMGrid
+        return
       end
+      
+      nArgs = numel(varargin);
+      % parse lower bounds
+      if nArgs < 1 || isempty(varargin{1})
+        lb = min(X) - eps;
+      else
+        lb = varargin{1};
+      end
+      % parse lower bounds
+      if nArgs < 2 || isempty(varargin{2})
+        ub = max(X) + eps;
+      else
+        ub = varargin{2};
+      end
+      % parse blocks
+      if nArgs < 3 || isempty(varargin{3})
+        blocks = 1;
+      else
+        blocks = varargin{3};
+      end
+      % parse grid options
+      if nArgs < 4 || isempty(varargin{4})
+        obj.opts = struct();
+      else
+        obj.opts = varargin{4};
+      end
+      obj.opts = settings2struct(obj.opts);
+      obj.opts.blockType = defoptsi(obj.opts, 'blockType', 'uniform');
       
       % in case of empty set return empty grid
       if isempty(X)
@@ -59,10 +95,21 @@ classdef CMGrid
       % find cells for each point
       blockSize = (obj.ub-obj.lb) ./ obj.blocks;
       for d = 1 : dataDim
-        % lower bounds
-        blockLB(d, 2:obj.blocks(d)) = lb(d) + (1:(obj.blocks(d)-1)) * blockSize(d);
-        % upper bounds
-        blockUB(d, 1:end-1) = blockLB(d, 1:end-1) + blockSize(d);
+        % block bounds in uniform distance
+        if strcmp(obj.opts.blockType, 'uniform')
+          % lower bounds
+          blockLB(d, 2:obj.blocks(d)) = obj.lb(d) + (1:(obj.blocks(d)-1)) * blockSize(d);
+          % upper bounds
+          blockUB(d, 1:end-1) = blockLB(d, 1:end-1) + blockSize(d);
+        % block bounds in quantile-based distance
+        else
+          blockSize = quantile(X(:, d), obj.blocks(d) - 1);
+          % lower bounds
+          blockLB(d, 2:obj.blocks(d)) = blockSize';
+          % upper bounds
+          blockUB(d, 1:obj.blocks(d)-1) = blockSize';
+          blockUB(isnan(blockUB)) = obj.ub(d);
+        end
         % for each point find containing cells 
         for i = 1:nData
           pointCellId(i, d) = find(X(i, d) <= blockUB(d, 1:obj.blocks(d)), 1, 'first');
@@ -280,7 +327,8 @@ classdef CMGrid
       obj.pointId = [];
       obj.cellId = [];
       obj.nCells = [];
-      obj.cmCells = CMCell();     
+      obj.cmCells = CMCell();
+      obj.opts = struct();
     end
     
     function state = isempty(obj)

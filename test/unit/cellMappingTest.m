@@ -10,19 +10,22 @@ function testCMGrid(testCase)
   cmg = CMGrid();
   verifyInstanceOf(testCase, cmg, 'CMGrid')
   fnGrid = fieldnames(cmg);
-  for f = 1:numel(fnGrid)
+  optsId = strcmp(fnGrid, 'opts'); % opts should be struct()
+  for f = find(~optsId)'
     verifyEmpty(testCase, cmg.(fnGrid{f}))
   end
+  verifyEqual(testCase, cmg.opts, struct())
   
   % random input
-  dim = 3;
+  dim = 5;
   nData = 50*dim;
   X = rand(nData, dim);
   y = randn(nData, 1);
   lb = zeros(1, dim);
   ub = ones(1, dim);
   blocks = [4, 4, 3*ones(1, dim-2)];
-  cmg = CMGrid(X, y, lb, ub, blocks);
+  settings.blockType = 'quantile';
+  cmg = CMGrid(X, y, lb, ub, blocks, settings);
   nCells = cmg.nCells;
   % function verification
   verifyNotEmpty(testCase, cmg.getMin)
@@ -42,9 +45,11 @@ function testCMGrid(testCase)
   cmg.getGradHomogeneity();
   verifySize(testCase, cmg.isCellEmpty(ones(1, dim)), [1, 1])
   % fit linear model
-  lm = cmg.fitLinearModel();
-  verifySize(testCase, lm, [nCells, 1])
-  verifyInstanceOf(testCase, lm, 'LinearModel')
+  lm = cmg.fitPolyModel();
+  verifyEqual(testCase, numel(lm), nCells)
+  for l = 1:numel(lm)
+    verifyInstanceOf(testCase, lm{l}, 'LinearModel')
+  end
 end
 
 function testCMCell(testCase)

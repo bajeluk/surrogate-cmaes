@@ -69,8 +69,8 @@ function ft = feature_cmaes(X, ~, settings)
   if isempty(X)
     ft.cma_lik = NaN;
   else
-    Xcmean = X - repmat(cmean, N, 1);
-    ft.cma_lik = -1/2 * (N * (log(det(ccov)) - dim * log (2*pi)) - ...
+    Xcmean = (X - repmat(cmean, N, 1)) / step_size;
+    ft.cma_lik = -1/2 * (N * (2*log(step_size) + log(det(ccov)) - dim * log (2*pi)) - ...
                  sum( diag(Xcmean*(ccov\Xcmean')) ));
   end
 end

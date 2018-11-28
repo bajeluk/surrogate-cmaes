@@ -129,8 +129,9 @@ function yTest = oneFold(xTrain, yTrain, xTest, type, discr_anal_fcn)
       yTest = nominal(yTest == 2);
     end
   catch err
-    rep = getReport(err);
-    fprintf('Failed with error: %s\n', rep);
+    % uncomment for debugging:
+    % rep = getReport(err);
+    % fprintf('Failed with error: %s\n', rep);
     yTest = NaN(size(xTest, 1), 1);
   end
 end

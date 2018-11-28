@@ -19,6 +19,7 @@ function ft = feature_cm_convexity(X, y, settings)
 %
 % settings:
 %   blocks     - number of cell blocks per dimension
+%   cm_opts    - additional cell mapping options
 %   distance   - distance metric (similar to pdist function) | default:
 %                'euclidean'
 %   dist_param - additional parameter to distance (similar to pdist 
@@ -49,6 +50,7 @@ function ft = feature_cm_convexity(X, y, settings)
   blocks = defopts(settings, 'blocks', 3);
   metric = defopts(settings, 'distance', 'euclidean');
   dist_param = defopts(settings, 'dist_param', defMetricParam(metric, X));
+  gridOpts = defopts(settings, 'cm_opts', struct());
   
   % checkout number of cells per dimension
   if any(blocks < 3)
@@ -57,7 +59,7 @@ function ft = feature_cm_convexity(X, y, settings)
   end
   
   % create grid of cells
-  cmg = CMGrid(X, y, lb, ub, blocks);
+  cmg = CMGrid(X, y, lb, ub, blocks, gridOpts);
   nCells = cmg.nCells;
   sumCells = prod(cmg.blocks);
   dim = cmg.dim;
