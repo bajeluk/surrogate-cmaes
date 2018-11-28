@@ -185,5 +185,6 @@ if [ $NOSTATE -eq 1 ]; then
 fi
 
 #rm $TMPFILE
+rm /tmp/file*.json
 
 exit 0
