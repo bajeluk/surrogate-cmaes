@@ -1,6 +1,6 @@
 # Makefile for Matlab Compiler
-# 
-# It makes binary executable file which afterwards does not need 
+#
+# It makes binary executable file which afterwards does not need
 # any Matlab license, but it requires Matlab Compiler Runtime (MCR)
 # to be installed on the destination system
 #
@@ -39,6 +39,9 @@ $(OUT_METALEARN):  $(SRC_METALEARN) $(OTHERS) exp/experiments/exp_metaLearn*.m
 model:	$(OUT_MODEL)
 
 metalearn: $(OUT_METALEARN)
+
+jq:
+	cd exp/vendor/jq-1.6 &&	git submodule update --init && autoreconf -fi && ./configure --with-oniguruma=builtin && $(MAKE) -j8
 
 all:	$(OUT)
 

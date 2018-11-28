@@ -222,7 +222,9 @@ classdef GpModel < Model
           multi_start_points = bsxfun(@times, multi_start_points, exp(ub)-exp(lb));
           multi_start_points = log(bsxfun(@plus, multi_start_points, exp(lb)));
         case 'normal'
-          multi_start_points = lhsnorm(linear_hyp, obj.hypRestartSigma, N, 'on');
+          const_hyp_idx = (lb == ub);
+          sigma = obj.hypRestartSigma(~const_hyp_idx, ~const_hyp_idx);
+          multi_start_points = lhsnorm(linear_hyp, sigma, N, 'on');
         otherwise
           error('Unrecognized ''restartDesign'' value %s', obj.restartDesign);
       end
@@ -369,8 +371,8 @@ classdef GpModel < Model
           fprintf('%d / %d invalid starting points replaced.\n', c, length(invalid_idx));
         end
 
-        fprintf('Linear hyp: \n');
-        disp(linear_hyp);
+%         fprintf('Linear hyp: \n');
+%         disp(linear_hyp);
 
         trainErrs = false(obj.nRestarts);
         for i = 1:obj.nRestarts
