@@ -27,7 +27,7 @@ function HELP {
 # Filter output of qstat in json format using jq parser
 function QSTAT_FILTER {
   # jq (json parser) executable
-  local JQ_PATH=$CWD/vendor/jq-1.6/jq
+  local JQ_PATH=$CWD/vendor/jq-linux64
   # path to qstat output
   local QSTAT_FILE=$1
   local EXPID=$2
