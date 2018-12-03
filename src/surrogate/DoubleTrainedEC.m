@@ -592,9 +592,14 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         [~, pointID] = sort(modelOutput, 'ascend');
       end
 
-      notOrigEvaledID = find(~pop.origEvaled);
-      reevalID = false(1, pop.lambda);
-      reevalID(notOrigEvaledID(pointID(1:nPoints))) = true;
+      if pointID
+        notOrigEvaledID = find(~pop.origEvaled);
+        reevalID = false(1, pop.lambda);
+        reevalID(notOrigEvaledID(pointID(1:nPoints))) = true;
+      else
+        % model inference failed, re-evaluate the whole pop
+        reevalID = true(1, pop.lambda);
+      end
       %
       % Check the value of origRatio
       assert(obj.origRatioUpdater.getLastRatio() >= 0 && obj.origRatioUpdater.getLastRatio() <= 1, 'origRatio out of bounds [0,1]');
