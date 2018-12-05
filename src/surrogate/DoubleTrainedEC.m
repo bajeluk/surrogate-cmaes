@@ -664,8 +664,13 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     % (if the second model is trained)
       if (~isempty(obj.retrainedModel) && obj.retrainedModel.isTrained())
         yModel2 = obj.retrainedModel.predict(obj.pop.x');
-        rankErr = errRankMu(yModel1(obj.pop.phase ~= 0), yModel2(obj.pop.phase ~= 0), ...
-            obj.cmaesState.mu);
+        if isempty(yModel2)
+          % prediction failed => ranking error cannot be calculated
+          rankErr = NaN;
+        else
+          rankErr = errRankMu(yModel1(obj.pop.phase ~= 0), yModel2(obj.pop.phase ~= 0), ...
+              obj.cmaesState.mu);
+        end
         % Debug:
         % fprintf('  2 models rank error: %.3f                  %s\n', rankErr, decorateKendall(1-rankErr*2));
       else
