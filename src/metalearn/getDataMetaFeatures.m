@@ -1,9 +1,9 @@
 function getDataMetaFeatures(folder, varargin)
-% getDataMetaFeatures(dataname) calculates metafeatures on large set of
-% data
+% getDataMetaFeatures(folder, settings) calculates metafeatures on large 
+% set of data
 % 
 % Input:
-%   folder   - data input folder
+%   folder   - data input folder or file
 %   settings - pairs of property (string) and value, or struct with 
 %              properties as fields:
 %     'Design'    - sampling design of source data (use only if data was 
@@ -83,7 +83,14 @@ function getRegularDataMetaFeatures(folder, settings)
   % gather all MAT-files
   datalist = {};
   for f = 1:length(folder)
-    actualDataList = searchFile(folder{f}, '*.mat');
+    if isdir(folder{f})
+      actualDataList = searchFile(folder{f}, '*.mat');
+    elseif isfile(folder{f}) && strcmp(folder{f}(end-3:end), '.mat') 
+      actualDataList = folder(f);
+    else
+      warning('%s is not a directory or MAT-file', folder{f})
+      actualDataList = {};
+    end
     if numel(actualDataList) > 0
       datalist(end+1 : end+length(actualDataList)) = actualDataList;
     end

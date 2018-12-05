@@ -19,6 +19,9 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 %                          string
 %       .maxEvals        - maximal number of FE per dimensions to consider 
 %                          | integer
+%       .mfts_settings   - settings of data metafeatures (keep empty if no
+%                          metafeature calculation should be performed) |
+%                          struct
 %       .rewrite_results - whether to rewrite already saved results | bool
 %       .saveModels      - whether the models should be saved, too, default 
 %                          FALSE | bool
@@ -34,7 +37,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 %                  string
 %
 % See Also:
-%   modelTestSets, testOneModel
+%   modelTestSets, testOneModel, getDataMetaFeatures
 
   % Default input parameters settings
   if nargin < 5
@@ -75,6 +78,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
   opts.saveModels = defopts(opts, 'saveModels', false);
   opts.scratch    = defopts(opts, 'scratch', fullfile(opts.exppath_short, opts.exp_id));
   opts.rewrite_results = defopts(opts, 'rewrite_results', false);
+  opts.mfts_settings = defopts(opts, 'mfts_settings', []);
 
   % Load the dataset and its parameters
   assert(isfield(opts, 'dataset'), 'opts does not include a dataset');
@@ -244,7 +248,11 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
       end  % model loop
     end  % function loop
   end  % dimension loop
-
+  
+  % calculate metafeatures of the dataset
+  if ~isempty(opts.mfts_settings)
+    getDataMetaFeatures(opts.dataset, opts.mfts_settings)
+  end
   
   fprintf('****************************  FINISH  ****************************\n')
 end
