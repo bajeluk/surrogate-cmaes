@@ -110,7 +110,7 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
         nSnapshots = ceil(nSnapshots * nGenerations);
       end
 
-      if (opts.uniqueGenerations || contains(opts.randomSampleMethod, 'wor'))
+      if (opts.uniqueGenerations || contains(opts.sampleMethod, 'wor'))
         % do not save the same generation multiple times, take only available
         % number of snapshots
         nSnapshots = min(nSnapshots, nGenerations);
@@ -118,7 +118,7 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
       end
 
       % third: sample nSnapshots generations
-      switch opts.randomSampleMethod
+      switch opts.sampleMethod
         case 'uniform_wor'
           gens = sort(randsample(firstGeneration:lastGeneration, nSnapshots, false));
         case 'uniform'
