@@ -79,7 +79,7 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
         [X_train, y_train] = thisArchive.getTrainsetData(modelOpts.trainsetType, ...
             myeval(modelOpts.trainsetSizeMax), ...
             ds.cmaesStates{i}.xmean', modelOpts.trainRange, ...
-            ds.cmaesStates{i}.sigma, ds.cmaesStates{i}.BD, thisPopulation);
+            ds.cmaesStates{i}.sigma, ds.BDs{i}, thisPopulation);
       else
         X_train = [];
         y_train = [];
@@ -98,11 +98,16 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
 
           thisArchive = ds.archive.duplicate();
           thisArchive = thisArchive.restrictToGenerations(1:(g-j));
-          m = m.train(X_train, y_train, ds.cmaesStates{i,j}, ds.sampleOpts{i,j}, ...
+
+          cmaesState = getCmaesState(ds, i, j);
+
+          m = m.train(X_train, y_train, cmaesState, ds.sampleOpts{i,j}, ...
               thisArchive, thisPopulation);
         end
       else
-        m = m.train(X_train, y_train, ds.cmaesStates{i}, ds.sampleOpts{i}, ...
+        cmaesState = getCmaesState(ds, i);
+
+        m = m.train(X_train, y_train, cmaesState, ds.sampleOpts{i}, ...
             thisArchive, thisPopulation);
       end
 
@@ -143,7 +148,8 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
         stats.(fname)(i) = predictionStats(y, y_models{i}, opts.statistics{st});
       end
       % calculate RDE statistic on independent populations
-      stats.rdeValid(i) = validationRDE(m, ds.cmaesStates{i}, 10, opts.bbob_func);
+      cmaesState = getCmaesState(ds, i);
+      stats.rdeValid(i) = validationRDE(m, cmaesState, 10, opts.bbob_func);
 
       if (isfield(stats, 'mse') && isfield(stats, 'kendall') && isfield(stats, 'rde'))
         fprintf('Model (gen. # %3d, %3d pts) MSE = %e, Kendall = %.2f, rankDiffErr = %.2f\n', ...
@@ -193,7 +199,8 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
 
         if (retrainM2)
           % train the retrained model
-          m2 = m2.train([], [], ds.cmaesStates{i}, ds.sampleOpts{i}, ...
+          cmaesState = getCmaesState(ds, i);
+          m2 = m2.train([], [], cmaesState, ds.sampleOpts{i}, ...
               thisArchive, thisPopulation);
         end
 
@@ -202,7 +209,7 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
           stats.rde2models(i) = errRankMu(y_models{i}, y_models2{i}, m2.stateVariables.mu);
           stats.rde2(i) = errRankMu(y_models2{i}, y, m2.stateVariables.mu);
           % calculate RDE statistic on independent populations
-          stats.rdeValid2(i) = validationRDE(m2, ds.cmaesStates{i}, 10, opts.bbob_func);
+          stats.rdeValid2(i) = validationRDE(m2, getCmaesState(ds, i), 10, opts.bbob_func);
           y_m1_replace = y_models{i};
           y_m1_replace(thisPopulation.origEvaled) = y(thisPopulation.origEvaled);
           stats.rdeM1_M1WReplace(i) = errRankMu(y_models{i}, y_m1_replace, m.stateVariables.mu);
@@ -274,3 +281,25 @@ function rde = validationRDE(model, cmaesState, nRepeats, bbob_func_handle)
   rde = nanmean(rdeValid);
 end
 
+
+function cmaesState = getCmaesState(ds, varargin)
+  % fill in fields that are stored in the outer level for memory
+  % efficiency
+
+  if nargin > 2
+    i = varargin{1};
+    j = varargin{2};
+    cmaesState = ds.cmaesStates{i, j};
+    cmaesState.BD = ds.BDs{i, j};
+    cmaesState.diagD = ds.diagDs{i, j};
+    cmaesState.diagC = ds.diagCs{i, j};
+  elseif nargin > 1
+    i = varargin{1};
+    cmaesState = ds.cmaesStates{i};
+    cmaesState.BD = ds.BDs{i};
+    cmaesState.diagD = ds.diagDs{i};
+    cmaesState.diagC = ds.diagCs{i};
+  else
+    error('Index not given');
+  end
+end
