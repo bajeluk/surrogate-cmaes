@@ -46,7 +46,7 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
   % prepare output variable
   nInstances = length(inst);
   nIds = length(id);
-  dataset = cell(1, nInstances * nIds);
+  dataset = cell(nInstances, nIds);
 
   for ii_id = 1:nIds
     id_no = id(ii_id);
@@ -69,14 +69,13 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
 
     % cycle through instances
     for i_inst = 1:nInstances
-      idx = (ii_id-1)*nInstances + i_inst;
       instanceNo = inst(i_inst);
       expInstanceId = find(exp_instances == instanceNo, 1);
 
       % look into the cmaes_out whether there this instance really is
       if (isempty(expInstanceId) || i_inst > length(SF.cmaes_out) || isempty(SF.cmaes_out{expInstanceId}{1}))
         warning('Instance %d is missing in the ''%s'' file.', instanceNo, scmaesOutFile);
-        dataset{idx} = [];
+        dataset{i_inst, ii_id} = [];
         % and skip this instance if not
         continue;
       end
@@ -144,10 +143,10 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
             draws = draws + 1;
             draw = randsample(firstGeneration:lastGeneration, 1, true, w);
 
-            idx = find(gens >= draw, 1);
-            if idx && gens(idx) > draw
+            i_inst, ii_id = find(gens >= draw, 1);
+            if i_inst, ii_id && gens(i_inst, ii_id) > draw
               % insert sort with uniqueness
-              gens = [gens(1:idx-1) draw gens(idx:end)];
+              gens = [gens(1:i_inst, ii_id-1) draw gens(i_inst, ii_id:end)];
             end
 
             if draws >= 1000 * nSnapshots
@@ -164,32 +163,32 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
       end
 
       % prepare output fields
-      dataset{idx} = struct();
-      dataset{idx}.archive  = [];
+      dataset{i_inst, ii_id} = struct();
+      dataset{i_inst, ii_id}.archive  = [];
       if (isForModelPool)
-        dataset{idx}.testSetX = cell(nSnapshots, nPreviousGenerations+1);
-        dataset{idx}.testSetY = cell(nSnapshots, nPreviousGenerations+1);
-        dataset{idx}.means    = cell(nSnapshots, nPreviousGenerations+1);
-        dataset{idx}.sigmas   = cell(nSnapshots, nPreviousGenerations+1);
-        dataset{idx}.BDs      = cell(nSnapshots, nPreviousGenerations+1);
-        dataset{idx}.diagDs   = cell(nSnapshots, nPreviousGenerations+1);
-        dataset{idx}.diagCs   = cell(nSnapshots, nPreviousGenerations+1);
-        dataset{idx}.pcs      = cell(nSnapshots, nPreviousGenerations+1);
-        dataset{idx}.pss      = cell(nSnapshots, nPreviousGenerations+1);
-        dataset{idx}.iruns    = zeros(nSnapshots, nPreviousGenerations+1);
-        dataset{idx}.cmaesStates = cell(nSnapshots, nPreviousGenerations+1);
+        dataset{i_inst, ii_id}.testSetX = cell(nSnapshots, nPreviousGenerations+1);
+        dataset{i_inst, ii_id}.testSetY = cell(nSnapshots, nPreviousGenerations+1);
+        dataset{i_inst, ii_id}.means    = cell(nSnapshots, nPreviousGenerations+1);
+        dataset{i_inst, ii_id}.sigmas   = cell(nSnapshots, nPreviousGenerations+1);
+        dataset{i_inst, ii_id}.BDs      = cell(nSnapshots, nPreviousGenerations+1);
+        dataset{i_inst, ii_id}.diagDs   = cell(nSnapshots, nPreviousGenerations+1);
+        dataset{i_inst, ii_id}.diagCs   = cell(nSnapshots, nPreviousGenerations+1);
+        dataset{i_inst, ii_id}.pcs      = cell(nSnapshots, nPreviousGenerations+1);
+        dataset{i_inst, ii_id}.pss      = cell(nSnapshots, nPreviousGenerations+1);
+        dataset{i_inst, ii_id}.iruns    = zeros(nSnapshots, nPreviousGenerations+1);
+        dataset{i_inst, ii_id}.cmaesStates = cell(nSnapshots, nPreviousGenerations+1);
       else
-        dataset{idx}.testSetX = cell(1, nSnapshots);
-        dataset{idx}.testSetY = cell(1, nSnapshots);
-        dataset{idx}.means    = cell(1, nSnapshots);
-        dataset{idx}.sigmas   = cell(1, nSnapshots);
-        dataset{idx}.BDs      = cell(1, nSnapshots);
-        dataset{idx}.diagDs   = cell(1, nSnapshots);
-        dataset{idx}.diagDs   = cell(1, nSnapshots);
-        dataset{idx}.pcs      = cell(1, nSnapshots);
-        dataset{idx}.pss      = cell(1, nSnapshots);
-        dataset{idx}.iruns    = zeros(1, nSnapshots);
-        dataset{idx}.cmaesStates = cell(1, nSnapshots);
+        dataset{i_inst, ii_id}.testSetX = cell(1, nSnapshots);
+        dataset{i_inst, ii_id}.testSetY = cell(1, nSnapshots);
+        dataset{i_inst, ii_id}.means    = cell(1, nSnapshots);
+        dataset{i_inst, ii_id}.sigmas   = cell(1, nSnapshots);
+        dataset{i_inst, ii_id}.BDs      = cell(1, nSnapshots);
+        dataset{i_inst, ii_id}.diagDs   = cell(1, nSnapshots);
+        dataset{i_inst, ii_id}.diagDs   = cell(1, nSnapshots);
+        dataset{i_inst, ii_id}.pcs      = cell(1, nSnapshots);
+        dataset{i_inst, ii_id}.pss      = cell(1, nSnapshots);
+        dataset{i_inst, ii_id}.iruns    = zeros(1, nSnapshots);
+        dataset{i_inst, ii_id}.cmaesStates = cell(1, nSnapshots);
       end
 
       % Dataset generation
@@ -243,31 +242,31 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
 
           % Save everything needed
           if (isForModelPool)
-            dataset{idx}.testSetX{sni, genShift+1}    = arxvalid';
-            dataset{idx}.testSetY{sni, genShift+1}    = fgeneric(arxvalid)';
-            dataset{idx}.means{sni, genShift+1}       = xmean';
-            dataset{idx}.sigmas{sni, genShift+1}      = sigma;
-            dataset{idx}.BDs{sni, genShift+1}         = BD;
-            dataset{idx}.cmaesStates{sni, genShift+1} = cmaesState;
-            dataset{idx}.sampleOpts{sni, genShift+1}  = sampleOpts;
-            dataset{idx}.diagDs{sni, genShift+1}      = diagD;
-            dataset{idx}.diagCs{sni, genShift+1}      = diagC;
-            dataset{idx}.pcs{sni, genShift+1}         = pc;
-            dataset{idx}.pss{sni, genShift+1}         = ps;
-            dataset{idx}.iruns(sni, genShift+1)       = irun;
+            dataset{i_inst, ii_id}.testSetX{sni, genShift+1}    = arxvalid';
+            dataset{i_inst, ii_id}.testSetY{sni, genShift+1}    = fgeneric(arxvalid)';
+            dataset{i_inst, ii_id}.means{sni, genShift+1}       = xmean';
+            dataset{i_inst, ii_id}.sigmas{sni, genShift+1}      = sigma;
+            dataset{i_inst, ii_id}.BDs{sni, genShift+1}         = BD;
+            dataset{i_inst, ii_id}.cmaesStates{sni, genShift+1} = cmaesState;
+            dataset{i_inst, ii_id}.sampleOpts{sni, genShift+1}  = sampleOpts;
+            dataset{i_inst, ii_id}.diagDs{sni, genShift+1}      = diagD;
+            dataset{i_inst, ii_id}.diagCs{sni, genShift+1}      = diagC;
+            dataset{i_inst, ii_id}.pcs{sni, genShift+1}         = pc;
+            dataset{i_inst, ii_id}.pss{sni, genShift+1}         = ps;
+            dataset{i_inst, ii_id}.iruns(sni, genShift+1)       = irun;
           else
-            dataset{idx}.testSetX{sni}  = arxvalid';
-            dataset{idx}.testSetY{sni}  = fgeneric(arxvalid)';
-            dataset{idx}.means{sni}     = xmean';
-            dataset{idx}.sigmas{sni}    = sigma;
-            dataset{idx}.BDs{sni}       = BD;
-            dataset{idx}.cmaesStates{sni} = cmaesState;
-            dataset{idx}.sampleOpts{sni}  = sampleOpts;
-            dataset{idx}.diagDs{sni}      = diagD;
-            dataset{idx}.diagCs{sni}      = diagC;
-            dataset{idx}.pcs{sni}         = pc;
-            dataset{idx}.pss{sni}         = ps;
-            dataset{idx}.iruns(sni)       = irun;
+            dataset{i_inst, ii_id}.testSetX{sni}  = arxvalid';
+            dataset{i_inst, ii_id}.testSetY{sni}  = fgeneric(arxvalid)';
+            dataset{i_inst, ii_id}.means{sni}     = xmean';
+            dataset{i_inst, ii_id}.sigmas{sni}    = sigma;
+            dataset{i_inst, ii_id}.BDs{sni}       = BD;
+            dataset{i_inst, ii_id}.cmaesStates{sni} = cmaesState;
+            dataset{i_inst, ii_id}.sampleOpts{sni}  = sampleOpts;
+            dataset{i_inst, ii_id}.diagDs{sni}      = diagD;
+            dataset{i_inst, ii_id}.diagCs{sni}      = diagC;
+            dataset{i_inst, ii_id}.pcs{sni}         = pc;
+            dataset{i_inst, ii_id}.pss{sni}         = ps;
+            dataset{i_inst, ii_id}.iruns(sni)       = irun;
           end
 
           % save models if required
@@ -282,19 +281,19 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
                 thisG = g;
               end
               if (MF.models{thisG}.isTrained())
-                dataset{idx}.models{sni}  = MF.models{thisG};
+                dataset{i_inst, ii_id}.models{sni}  = MF.models{thisG};
               else
-                dataset{idx}.models{sni}  = [];
+                dataset{i_inst, ii_id}.models{sni}  = [];
               end
               % Try to save also the second model, if it is from that generation
               if (length(MF.models2) >= thisG && ~isempty(MF.models2{thisG}) ...
                   && MF.models2{thisG}.isTrained() && MF.models2{thisG}.trainGeneration == g)
-                dataset{idx}.models2{sni} = MF.models2{thisG};
+                dataset{i_inst, ii_id}.models2{sni} = MF.models2{thisG};
               else
-                dataset{idx}.models2{sni}  = [];
+                dataset{i_inst, ii_id}.models2{sni}  = [];
               end
             else
-              dataset{idx}.models{sni}  = [];
+              dataset{i_inst, ii_id}.models{sni}  = [];
             end
           end
 
@@ -308,13 +307,13 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
       y_orig = cmo.fvalues(orig_id)';
       archive.save(X_orig, y_orig, cmo.generations(orig_id));
 
-      dataset{idx}.archive     = archive;
-      dataset{idx}.generations = gens;
-      dataset{idx}.function  = fun;
-      dataset{idx}.dim       = dim;
-      dataset{idx}.id        = id_no;
-      dataset{idx}.instance  = instanceNo;
-      dataset{idx}.maxEval   = opts.maxEval;
+      dataset{i_inst, ii_id}.archive     = archive;
+      dataset{i_inst, ii_id}.generations = gens;
+      dataset{i_inst, ii_id}.function  = fun;
+      dataset{i_inst, ii_id}.dim       = dim;
+      dataset{i_inst, ii_id}.id        = id_no;
+      dataset{i_inst, ii_id}.instance  = instanceNo;
+%       dataset{i_inst, ii_id}.maxEval   = opts.maxEval;
 
       fgeneric('finalize');
     end  % instances loop

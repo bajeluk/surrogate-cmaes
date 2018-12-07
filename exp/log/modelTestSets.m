@@ -15,10 +15,11 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
 %                              dimension to load | 250
 %     'nPreviousGenerations' - number of previous generations to load for
 %                              ModelPool testing | 0
-%     'nSnapshotsPerRun'     - number of generated datasets per one CMA-ES 
+%     'nSnapshotsPerRun'     - number of generated datasets per one CMA-ES
 %                              run | 10
 %     'outputDirname'        - name of dataset output directory | 
 %                              'exp_modeltest_01'
+%     'modelSettings'             - ids of unique model settings to load
 %
 % Output:
 %   ds - loaded data | #fun x #dim cell-array
@@ -79,10 +80,15 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
     exp_model_settings = 1;
   end
 
+  modelSettings = defopts(opts, 'modelSettings', exp_model_settings);
+
   % take only dimensions and function which exist in the logging experiment
   dim = restricToDataset(dim, exp_dim, 'Dimensions');
   fun = restricToDataset(fun, exp_fun, 'Functions');
   inst = restricToDataset(inst, exp_inst, 'Instances');
+  % TODO: should also be user-specified and restricted to dataset
+  modelSettings = restricToDataset(modelSettings, exp_model_settings, 'Model settings');
+
   IDsPerInstance = ...
     (prod(arrayfun(@(s) length(s.values), exp_par.bbParamDef)) / (length(exp_fun)*length(exp_dim))) * ...
     prod(arrayfun(@(s) length(s.values), exp_par.cmParamDef)) * ...
@@ -105,11 +111,11 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
       is_ds_loaded = true;
     end
   else
-    f_ds = struct('ds', {{}}, 'fun', {[]}, 'dim', {[]}, 'inst', {[]}, 'maxEval', {opts.maxEval});
+    f_ds = struct('ds', {{}}, 'fun', {[]}, 'dim', {[]}, 'inst', {[]}, 'modelSettings', {[]}, 'maxEval', {opts.maxEval});
   end
 
   % prepare output dataset
-  ds = cell(length(fun), length(dim), length(inst)*length(exp_model_settings));
+  ds = cell(length(fun), length(dim), length(inst), length(exp_model_settings));
 
   % dimension loop
   for di = 1:length(dim)
@@ -120,24 +126,26 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
       f_exp = find(fun(fi) == exp_fun, 1);
 
       % check whether if we have some instances loaded
-      instancesDone = false(1, length(inst));
+      instancesDone = false(length(inst), length(modelSettings));
       if (is_ds_loaded)
         for ii = 1:length(inst)
-          % i_exp = find(inst(ii) == exp_inst, 1);
-          d_loaded = find(dim(di) == f_ds.dim, 1);
-          f_loaded = find(fun(fi) == f_ds.fun, 1);
-          i_loaded = find(inst(ii) == f_ds.inst, 1);
-          if ((~isempty(d_loaded) && ~isempty(f_loaded) && ~isempty(i_loaded)) ...
-              &&  ~isempty(f_ds.ds{f_loaded, d_loaded, i_loaded}) ...
-              &&  isstruct(f_ds.ds{f_loaded, d_loaded, i_loaded}))
-            instancesDone(ii) = true;
+          for mi = 1:length(modelSettings)
+            % i_exp = find(inst(ii) == exp_inst, 1);
+            d_loaded = find(dim(di) == f_ds.dim, 1);
+            f_loaded = find(fun(fi) == f_ds.fun, 1);
+            m_loaded = find(modelSettings(mi) == f_ds.modelSettings);
+            i_loaded = find(inst(ii) == f_ds.inst, 1);
+            if ((~isempty(d_loaded) && ~isempty(f_loaded) && ~isempty(i_loaded)) ...
+                && ~isempty(m_loaded) ...
+                && ~isempty(f_ds.ds{f_loaded, d_loaded, i_loaded, m_loaded}) ...
+                && isstruct(f_ds.ds{f_loaded, d_loaded, i_loaded, m_loaded}))
+              instancesDone(ii, mi) = true;
 
-            for k = exp_model_settings
-              ds{fi, di, (k-1)*length(inst)+ii } = f_ds.ds{f_loaded, d_loaded, (k-1)*length(f_ds.inst)+i_loaded};
+              ds{fi, di, ii, mi} = f_ds.ds{f_loaded, d_loaded, i_loaded, m_loaded};
             end
           end
         end
-        if (all(instancesDone))
+        if (all(all(instancesDone)))
           fprintf('All instances are done. Advancing to the next function...\n');
           continue
         end
@@ -147,40 +155,38 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
       for ii_cell = 1:length(exp_inst_cell)
         instancesInThisID = exp_inst_cell{ii_cell};
 
-        id = (d_exp-1)*length(exp_fun)*length(exp_inst_cell)*IDsPerInstance + ...
-          (f_exp-1)*length(exp_inst_cell)*IDsPerInstance + ...
-          (ii_cell-1)*length(exp_inst_cell) + ...
-          exp_model_settings;
-        fprintf('#### f%d in %dD (id=%s) ####\n', fun(fi), dim(di), num2str(id));
+        % model settings loop
+        for m_exp = 1:length(exp_model_settings)
+          modelSettingsInThisID = exp_model_settings(m_exp);
 
-        % load dataset from saved modellog/cmaes_out of the corresponding instance
-        [~, instanceIndicesToProcess] = ismember(instancesInThisID, inst);
-        instanceIndicesToProcess(instanceIndicesToProcess == 0) = [];
-        instancesToProcess = intersect(inst(instanceIndicesToProcess), inst(~instancesDone));
-        [~, instanceIndicesToProcess] = ismember(instancesToProcess, inst);
-        if (~isempty(instancesToProcess))
-          ds_actual = datasetFromInstances(opts, opts.nSnapshotsPerRun, ...
-            fun(fi), dim(di), inst(instanceIndicesToProcess), id, ...
-            opts.isForModelPool, opts.nPreviousGenerations, opts.loadModels);
-%           idx = arrayfun(@(i) (exp_model_settings - 1) * length(inst) + i, instanceIndicesToProcess, ...
-%             'UniformOutput', false);
+          fprintf('#### f%d in %dD, model setting %d ####\n', fun(fi), dim(di), modelSettings(mi));
 
-          idx = [];
-          for k = exp_model_settings
-            for l = instanceIndicesToProcess
-              idx(end+1) = (k-1) * length(inst) + l;
-            end
+          % load dataset from saved modellog/cmaes_out of the corresponding instance
+          [~, instanceIndicesToProcess] = ismember(instancesInThisID, inst);
+          instanceIndicesToProcess(instanceIndicesToProcess == 0) = [];
+          instancesToProcess = intersect(inst(instanceIndicesToProcess), inst(~all(instancesDone, 2)));
+          [~, instanceIndicesToProcess] = ismember(instancesToProcess, inst);
+
+          [~, modelSettingsIndicesToProcess] = ismember(modelSettingsInThisID, modelSettings);
+          modelSettingsIndicesToProcess(modelSettingsIndicesToProcess == 0) = [];
+          modelSettingsToProcess = intersect(modelSettings(modelSettingsIndicesToProcess), modelSettings(~all(instancesDone, 1)));
+          [~, modelSettingsIndicesToProcess] = ismember(modelSettingsToProcess, modelSettings);
+
+          if (~isempty(instancesToProcess))
+            ds_actual = datasetFromInstances(opts, opts.nSnapshotsPerRun, ...
+              fun(fi), dim(di), inst(instanceIndicesToProcess), modelSettings(modelSettingsIndicesToProcess), ...
+              opts.isForModelPool, opts.nPreviousGenerations, opts.loadModels);
+
+            ds(fi, di, instanceIndicesToProcess, modelSettings) = ds_actual;
           end
-          ds(fi, di, idx) = ds_actual;
-        end
+        end % model settings loop end
       end  % instances loop end
-
     end  % function loop end
 
     % save the dataset
     maxEval = opts.maxEval;
     nSnapshotsPerRun = opts.nSnapshotsPerRun;
-    save(opts.datasetFile, 'ds', 'fun', 'dim', 'inst', 'maxEval', 'nSnapshotsPerRun', 'opts');
+    save(opts.datasetFile, 'ds', 'fun', 'dim', 'inst', 'modelSettings', 'maxEval', 'nSnapshotsPerRun', 'opts');
 
   end  % dimension loop end
 end
