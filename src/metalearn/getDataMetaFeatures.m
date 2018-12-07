@@ -11,6 +11,7 @@ function getDataMetaFeatures(folder, varargin)
 %     'MetaInput' - input sets for metafeature calculation | {'archive',
 %                   'test', 'train', 'traintest'}
 %     'Output'    - output folder | string
+%     'Rewrite'   - rewrite already computed results | boolean | false
 %     'TrainOpts' - training set options | structure with fields 
 %                   evoControlTrainNArchivePoints, evoControlTrainRange,
 %                   trainRange, trainsetSizeMax, and trainSetType
@@ -20,7 +21,7 @@ function getDataMetaFeatures(folder, varargin)
 %                 - should have the same lenght as 'MetaInput'
 %
 % See Also:
-%   getMetaFeatures
+%   getMetaFeatures, testModels
 
   
   if nargin < 1
@@ -28,48 +29,34 @@ function getDataMetaFeatures(folder, varargin)
     return
   end
   
+  listFeatures = {'basic', ...
+              'cm_angle', ...
+              'cm_convexity', ...
+              'cm_gradhomo', ...
+              'cmaes', ...
+              'dispersion', ...
+              'ela_distribution', ...
+              'ela_levelset', ...
+              'ela_metamodel', ...
+              'gcm', ...
+              'infocontent', ...
+              'linear_model', ...
+              'nearest_better', ...
+              'pca' ...
+             };
+  
   % parse settings
   settings = settings2struct(varargin{:});
   design = defoptsi(settings, 'Design', '');
-  
-  % data may be divided between multiple folders
-  if (~iscell(folder))
-    folder = {folder};
-  end
-  
-  % get data according to design
-  if isempty(design)
-    getRegularDataMetaFeatures(folder, settings);
-  else
-    getDesignedDataMetaFeatures(folder, design);
-  end
-  
-end
-
-function getRegularDataMetaFeatures(folder, settings)
-% get metafeatures from data in folder without specified generation design
-  
-  listFeatures = {'basic', ...
-                'cm_angle', ...
-                'cm_convexity', ...
-                'cm_gradhomo', ...
-                'cmaes', ...
-                'dispersion', ...
-                'ela_distribution', ...
-                'ela_levelset', ...
-                'ela_metamodel', ...
-                'gcm', ...
-                'infocontent', ...
-                'linear_model', ...
-                'nearest_better', ...
-                'pca' ...
-               };
-
-  % parse settings
+  % parse options
   opts.lb = defopts(settings, 'lb', '-5*ones(1, dim)');
   opts.ub = defopts(settings, 'ub', ' 5*ones(1, dim)');
+  opts.dim = defoptsi(settings, 'dim', []);
   opts.features = defoptsi(settings, 'features', listFeatures);
+  opts.fun       = defoptsi(settings, 'Fun', []);
+  opts.inst      = defoptsi(settings, 'Instances', []);
   opts.metaInput = defoptsi(settings, 'MetaInput', {'archive'});
+  opts.rewrite   = defoptsi(settings, 'Rewrite', false);
   opts.trainOpts = defoptsi(settings, 'TrainOpts', struct());
   opts.transform = defoptsi(settings, 'TransData', {'none'});
   if ~iscell(opts.transform)
@@ -79,6 +66,38 @@ function getRegularDataMetaFeatures(folder, settings)
   if numel(opts.metaInput) > numel(opts.transform)
     opts.transform(end+1 : numel(opts.metaInput)) = {'none'};
   end
+  
+  % direct calculation of data -> input is structure
+  if isstruct(folder)
+    fun = opts.fun;
+    dim = opts.dim;
+    inst = opts.inst;
+    fileString = sprintf('data_f%d_%dD_i%d_fts.mat', fun, dim, inst);
+    outputFile = defoptsi(settings, 'Output', fileString);
+    if opts.rewrite || ~isfile(outputFile) 
+      res = getSingleDataMF(folder, opts);
+    end
+    % save results
+    save(outputFile, 'res', 'fun', 'dim', 'inst')
+    return
+  end
+    
+  % data may be divided between multiple folders
+  if (~iscell(folder))
+    folder = {folder};
+  end
+  
+  % get data according to design
+  if isempty(design)
+    getRegularDataMetaFeatures(folder, opts);
+  else
+    getDesignedDataMetaFeatures(folder, design);
+  end
+  
+end
+
+function getRegularDataMetaFeatures(folder, settings)
+% get metafeatures from data in folder without specified generation design
 
   % gather all MAT-files
   datalist = {};
@@ -113,6 +132,22 @@ function getRegularDataMetaFeatures(folder, settings)
       % get dataset size (function * dimension * (instances * models))
       [nFun, nDim, instMod] = size(data.ds);
       
+      % important information about the dataset to be saved in resulting
+      % file
+      fun = data.fun;
+      dim = data.dim;
+      inst = data.inst;
+      % save data
+      [~, filename] = fileparts(datalist{dat});
+      % TODO: check uniqueness of output filenames
+      outputFile = fullfile(outputFolder, [filename, '_fts.mat']);
+      % try to load result file
+      if isfile(outputFile)
+        out = load(outputFile, 'res', 'fun', 'dim', 'inst');
+      else
+        out.res = cell(nFun, nDim, instMod);
+      end
+      
       res = cell(nFun, nDim, instMod);
       % function loop
       for f = 1:nFun
@@ -127,22 +162,21 @@ function getRegularDataMetaFeatures(folder, settings)
             fprintf('%s  %s  %s\n', ...
                     req(40), countState, req(40));
             fprintf('%s\n', req(84 + lState))
-            % metafeature calculation for different generations
-            res{f, d, im} = getSingleDataMF(data.ds{f, d, im}, opts);
+            % empty output or always rewriting option causes metafeature
+            % calculation
+            if isempty(out.res{f, d, im}) || opts.rewrite
+              % metafeature calculation for different generations
+              res{f, d, im} = getSingleDataMF(data.ds{f, d, im}, opts);
+              % save results
+              save(outputFile, 'res', 'fun', 'dim', 'inst')
+            % skip calculation
+            else
+              fprintf('Already saved in %s\n', outputFile)
+            end
           end
         end
       end
       
-      % important information about the dataset to be saved in resulting
-      % file
-      fun = data.fun;
-      dim = data.dim;
-      inst = data.inst;
-      % save data
-      [~, filename] = fileparts(datalist{dat});
-      % TODO: check uniqueness of output filenames
-      outputFile = fullfile(outputFolder, [filename, '_fts.mat']);
-      save(outputFile, 'res', 'fun', 'dim', 'inst')
     else
       fprintf('Variable ''ds'', ''fun'', ''dim'', or ''inst'' not found in %s.\n', datalist{dat})
     end

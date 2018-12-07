@@ -131,9 +131,12 @@ function [ft, values] = getMetaFeatures(X, y, settings)
   if strcmp(features, 'all')
     features = listFeatures;
   else
+    if ~iscell(features)
+      features = {features};
+    end
     assert(all(cellfun(@(x) any(strcmp(x, listFeatures)), features)), ...
       'Feature names are not correct.')
-    assert(numel(features) > 1, 'No features were selected')
+    assert(numel(features) > 0, 'No features were selected')
   end
   nFeat = numel(features);
   
@@ -161,8 +164,12 @@ function [ft, values] = getMetaFeatures(X, y, settings)
       feat_settings.(group_fields{gf}) = group_settings.(group_fields{gf});
     end
     
+    % uncomment for debugging:
+    % tic
+    % fprintf('feature_%s\n', features{f})
     % run feature group calculation
     ft.(features{f}) = eval(['feature_', features{f}, '(X, y, feat_settings)']);
+    % toc
 
     % struct2array unavailable since 2017a
     % see: https://www.mathworks.com/matlabcentral/answers/357399-conversion-of-structure-to-double-in-r2017a

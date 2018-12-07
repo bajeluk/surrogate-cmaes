@@ -155,6 +155,8 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
               break;
             end
           end
+        case 'equidistant'
+          gens = floor(linspace(firstGeneration, lastGeneration, nSnapshots));
         otherwise % case 'equidistant'
           warning('sampleMethod ''%s not'' recognized, fall back to ''equidistant''', ...
             opts.sampleMethod);

@@ -48,15 +48,19 @@ function ft = feature_cm_gradhomo(X, y, settings)
   % create grid of cells
   cmg = CMGrid(X, y, lb, ub, blocks, gridOpts);
   nCells = cmg.nCells;
+  sumCells = prod(cmg.blocks);
   
   % calculate gradient homogeneity in all cells
   gradHomo = cmg.getGradHomogeneity(metric, dist_param);
+  nGradHomo = numel(gradHomo);
                              
   % checkout number of filled cells
   if nCells > numel(gradHomo)
-    warning(['%d out of %d cells (%0.2f%%) contain less than three observations.', ...
+    warning(['%d out of %d non-empty cells (%0.2f%%) contain less than three observations. ', ...
+             '%d out of %d cells (%0.2f%%) is empty. ', ...
              'This may affect the results.'], ...
-            nCells - numel(gradHomo), nCells, (nCells - numel(gradHomo))/nCells * 100)
+            nCells - nGradHomo, nCells, (nCells - nGradHomo)/nCells * 100, ...
+            sumCells - nCells, sumCells, (sumCells - nCells)/sumCells * 100)
   end
   
   % calculate features

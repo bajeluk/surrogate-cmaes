@@ -110,6 +110,9 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
     % TODO: ensure, that this name is really unique
     modelFolder{m}   = fullfile(opts.exppath_short, opts.exp_id, [modelHashName{m}, '_', num2str(maxEvals), 'FE']);
   end
+  % create folder for metafeatures
+  mftsFolder = fullfile(opts.exppath_short, opts.exp_id, 'metafeatures');
+  [~, ~] = mkdir(mftsFolder);
 
   % dimension loop
   for dim = dimsToTest
@@ -244,15 +247,23 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
             end
           end
           save(modelFile, 'stats', modelsVarString{:}, 'instances', 'modelOptions', 'fun', 'dim')
+          
+          % calculate metafeatures of the dataset if not calculated earlier
+          % or rewrite results setting is on
+          opts.mfts_settings.fun = fun;
+          opts.mfts_settings.dim = dim;
+          opts.mfts_settings.instances = inst;
+          opts.mfts_settings.output = ...
+            sprintf('%s%sdata_f%d_%dD_i%d_fts.mat', ...
+                    mftsFolder, filesep, fun, dim, inst);
+          if ~isempty(opts.mfts_settings) && ...
+              (opts.rewrite_results || ~isfile(opts.mfts_settings.output))
+            getDataMetaFeatures(data{f_data, d_data, i_data}, opts.mfts_settings)
+          end
         end  % instance loop
       end  % model loop
     end  % function loop
   end  % dimension loop
-  
-  % calculate metafeatures of the dataset
-  if ~isempty(opts.mfts_settings)
-    getDataMetaFeatures(opts.dataset, opts.mfts_settings)
-  end
   
   fprintf('****************************  FINISH  ****************************\n')
 end

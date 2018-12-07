@@ -59,6 +59,14 @@ function ft = feature_cm_angle(X, y, settings)
   
   % create grid of cells
   cmg = CMGrid(X, y, lb, ub, blocks, gridOpts);
+  nCells = cmg.nCells;
+  sumCells = prod(cmg.blocks);
+  
+  % warn in case of empty cells
+  if nCells < sumCells
+    warning('%d out of %d cells (%0.2f%%) is empty. This may affect the results.', ...
+            sumCells - nCells, sumCells, (sumCells - nCells)/sumCells * 100)
+  end
   
   % distances max - center in all cells
   distCentMax = cmg.getDistCtr2Max();
