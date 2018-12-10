@@ -170,7 +170,10 @@ classdef CMCell
         lm = fitlm(obj.X, obj.y, modelspec);
       else
         % empty linear model
-        lm = LinearModel();
+        % lm = LinearModel();
+        % only empty coefficients for feature calculation (computational
+        % cost)
+        lm.Coefficients = table();
       end
     end
     

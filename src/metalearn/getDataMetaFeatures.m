@@ -166,7 +166,7 @@ function getRegularDataMetaFeatures(folder, settings)
             % calculation
             if isempty(out.res{f, d, im}) || opts.rewrite
               % metafeature calculation for different generations
-              res{f, d, im} = getSingleDataMF(data.ds{f, d, im}, opts);
+              res{f, d, im} = getSingleDataMF(data.ds{f, d, im}, settings);
               % save results
               save(outputFile, 'res', 'fun', 'dim', 'inst')
             % skip calculation

@@ -49,7 +49,7 @@ classdef MDAModel < handle
 
       nIterSmallDiff = 0;
       nIterSmallDiffThres = 3;
-      negLDiffThres = -2e0;
+      % negLDiffThres = -2e0;
       minLDiff = 1e-3;
 
       for iter = 1:obj.nIter
@@ -60,6 +60,7 @@ classdef MDAModel < handle
         if iter == 1
           % init via k-means clustering
           % TODO: other option -- LVQ
+          %       init via faster method
           for j = 1:obj.J
             gj = find(g == j);
             Xj = X(gj, :);
@@ -77,7 +78,8 @@ classdef MDAModel < handle
             Y = obj.mu(j, 1:obj.R(j), :);
             assert(all(size(Y) == [1, obj.R(j), obj.d]));
             Y = reshape(Y, obj.R(j), obj.d);
-            D = obj.mahalsq(X, Y);
+            % squared mahalanobis distance for all (x, y) pairs
+            D = (pdist2(X, Y, 'mahalanobis', obj.sigma)).^2;
             assert(all(size(D) == [n, obj.R(j)]));
             
             A = bsxfun(@times, obj.rProb(j, 1:obj.R(j)), exp(-D/2));
@@ -113,14 +115,21 @@ classdef MDAModel < handle
           Xj = X(gj, :);
 
           for r = 1:obj.R(j)
-            for k = 1:numel(gj)
-              assert(all(size(mu1(j, r, :)) == [1 1 obj.d]));
-              mujr = reshape(mu1(j, r, :), 1, obj.d);
-              assert(all(size(Xj(k, :)) == size(mujr)));
-
-              diff = Xj(k, :)' - mujr';
-              sigma1 = sigma1 + pc(gj(k), r, j) * diff * diff';
-            end
+            % assert(all(size(mu1(j, r, :)) == [1 1 obj.d]));
+            mujr = reshape(mu1(j, r, :), 1, obj.d);
+            diff = Xj - repmat(mujr, numel(gj), 1);
+            presigma = bsxfun(@times, permute(diff, [2, 3, 1]), ...
+              permute(diff, [3, 2, 1])); % dim x dim x numel(gj)
+            % sum over third matrix dimension (gj elements) - see code 
+            % below
+            sigma1 = sigma1 + sum( ...
+              bsxfun(@times, permute(pc(gj, r, j), [3, 2, 1]), presigma), 3);
+            
+            % previous version:
+            % for k = 1:numel(gj)
+              % assert(all(size(Xj(k, :)) == size(mujr)));
+              % sigma1 = sigma1 + pc(gj(k), r, j).* (diff(k, :)' * diff(k, :));
+            % end
           end
         end
         sigma1 = sigma1 / n;
@@ -187,28 +196,12 @@ classdef MDAModel < handle
         Y = obj.mu(j, 1:obj.R(j), :);
         assert(all(size(Y) == [1, obj.R(j), obj.d]));
         Y = reshape(Y, obj.R(j), obj.d);
-        D = obj.mahalsq(X, Y);
+        % squared mahalanobis distance for all (x, y) pairs
+        D = (pdist2(X, Y, 'mahalanobis', obj.sigma)).^2;
 
         assert(all(size(D) == [n, obj.R(j)]));
         A = bsxfun(@times, obj.rProb(j, 1:obj.R(j)), exp(-D/2));
         G(:, j) = sqrt((2*pi)^obj.d * det(obj.sigma)) * sum(A, 2);
-      end
-    end
-
-    function dist = mahalsq(obj, X, Y)
-      % squared mahalanobis distance for all (x, y) pairs
-      n = size(X, 1);
-      m = size(Y, 1);
-      d = size(X, 2);
-      assert(d == size(Y, 2));
-
-      dist = zeros(n, m);
-      % TODO: vectorize
-      for i = 1:n
-        for j = 1:m
-          z = obj.L \ (X(i, :) - Y(j, :))';
-          dist(i, j) = z' * z;
-        end
       end
     end
 
