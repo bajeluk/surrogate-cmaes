@@ -56,6 +56,7 @@ function ft = feature_cm_convexity(X, y, settings)
   if any(blocks < 3)
     warning('The minimal number of cells per dimension is 3.')
     ft = struct();
+    return
   end
   
   % create grid of cells
@@ -70,7 +71,8 @@ function ft = feature_cm_convexity(X, y, settings)
   
   % warn in case of empty cells
   if nCells < sumCells
-    warning('%d out of %d cells (%0.2f%%) is empty. This may affect the results.', ...
+    warning('mfts:emptyCells', ...
+            '%d out of %d cells (%0.2f%%) is empty. This may affect the results.', ...
             sumCells - nCells, sumCells, (sumCells - nCells)/sumCells * 100)
   end
   

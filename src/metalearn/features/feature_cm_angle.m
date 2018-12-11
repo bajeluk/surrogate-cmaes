@@ -64,7 +64,8 @@ function ft = feature_cm_angle(X, y, settings)
   
   % warn in case of empty cells
   if nCells < sumCells
-    warning('%d out of %d cells (%0.2f%%) is empty. This may affect the results.', ...
+    warning('mfts:emptyCells', ...
+            '%d out of %d cells (%0.2f%%) is empty. This may affect the results.', ...
             sumCells - nCells, sumCells, (sumCells - nCells)/sumCells * 100)
   end
   
