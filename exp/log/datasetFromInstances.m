@@ -24,16 +24,18 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
   opts.startEval = defopts(opts, 'startEval', 1);
   % process the results only until this number of evalutions per dimension
   opts.maxEval = defopts(opts, 'maxEval', 250);
-  % make multiple testcases per generation even if there is more snapshots 
+  % make multiple testcases per generation even if there is more snapshots
   % than generations to test
   opts.uniqueGenerations = defopts(opts, 'uniqueGenerations', false);
 
   % sampleMethod:
   %   equidistant: deterministic with equal spacing
-  %   rnd_uniform_wor: random sample without replacement, uniform
+  %   uniform_wor: random sample without replacement, uniform
   %   weights
-  %   rnd_uniform: random sample with replacement, uniform weights
-  %   rnd_geometric: random sample with replacement, geometrical weights
+  %   uniform: random sample with replacement, uniform weights
+  %   geometric: random sample with replacement, geometrical weights
+  %   geometric: random sample with replacement, geometrical weights
+  %   geometric_wor: random sample without replacement, geometrical weights
   opts.sampleMethod = defopts(opts, 'sampleMethod', 'equidistant');
 
   if ~exist('isForModelPool', 'var')
@@ -87,18 +89,13 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
       fgeneric('initialize', exp_settings.bbob_function, instanceNo, BBOB_PATH);
 
       % identify snapshot generations
-      % TODO: make exponential gaps between snapshot generations
-      %       to have higher density at start of optim. run
-      %
       cmo = cmaes_out{expInstanceId}{1};
-      % first, identify the first maxEval*dim orig-evaluated points
-      origEvaledIdStart = find(cmo.origEvaled, opts.startEval*dim, 'first');
-      lastOrigEvaledIdStart = origEvaledIdStart(end);
+      % identify the first maxEval*dim orig-evaluated points
       origEvaledIdMax = find(cmo.origEvaled, opts.maxEval*dim, 'first');
       lastOrigEvaledIdMax = origEvaledIdMax(end);
-      % second, identify its generation
-      firstGeneration = cmo.generations(lastOrigEvaledIdStart);
-      lastGeneration = cmo.generations(lastOrigEvaledIdMax);
+
+      firstGeneration = cmo.generations(find(~cmo.origEvaled, 1));
+      lastGeneration = cmo.generations(end);
       if (loadModels)
         lastGeneration = min(lastGeneration, length(MF.models));
       end
