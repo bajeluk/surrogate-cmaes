@@ -161,7 +161,7 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
         % load dataset from saved modellog/cmaes_out of the corresponding instance
         [~, instanceIndicesToProcess] = ismember(instancesInThisID, inst);
         instanceIndicesToProcess(instanceIndicesToProcess == 0) = [];
-        instancesToProcess = intersect(inst(instanceIndicesToProcess), inst(~all(instancesDone, 2)));
+        instancesToProcess = intersect(inst(instanceIndicesToProcess), inst(~instancesDone));
         [~, instanceIndicesToProcess] = ismember(instancesToProcess, inst);
 
         if (~isempty(instancesToProcess))
