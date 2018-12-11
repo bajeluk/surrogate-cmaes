@@ -1,4 +1,4 @@
-function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_str, opts_str, dataset)
+function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_str, ids_str, opts_str, dataset)
 % exp_GPtest_01 model testing experiment -- Matlab part to be MCR-compiled
 %
 % Usage:
@@ -15,11 +15,14 @@ function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_st
     inst_str = []; end
   if (~exist('opts_str', 'var'))
     opts_str = []; end
+  if (~exist('ids_str', 'var'))
+    ids_str = []; end
 
   func          = parseCmdParam('func_str', func_str, 1:24);
   dims          = parseCmdParam('dim_str',  dim_str,  [2, 5, 10]);
   instances     = parseCmdParam('inst_str', inst_str, [1:5, 41:50]);
   cmd_opts      = parseCmdParam('opts_str', opts_str, struct());
+  ids           = parseCmdParam('ids_str', ids_str, 1);
 
   % run the script EXP_ID.m if it exists
   opts = struct();
@@ -125,10 +128,11 @@ function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_st
   fprintf('   functions:    %s\n', num2str(func));
   fprintf('   dimensions:   %s\n', num2str(dims));
   fprintf('   instances:    %s\n', num2str(instances));
+  fprintf('   ids:          %s\n', num2str(ids));
   fprintf('=======================================\n');
 
   %% test chosen models
-  modelFolders = testModels(modelOptions_fullfact, opts, func, dims, instances);
+  modelFolders = testModels(modelOptions_fullfact, opts, func, dims, instances, ids);
 
   %% load and calculate results
   % [rdeTable, mseTable, RDEs, MSEs] = modelStatistics(modelFolders, func, dims, instances);
