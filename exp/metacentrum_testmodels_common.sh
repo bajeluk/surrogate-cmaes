@@ -64,6 +64,7 @@ export ID
 export DIM
 export FUNC
 export INST
+export IDS
 export OPTS
 export MATLAB_FCN
 
@@ -75,11 +76,11 @@ subtask() {
   fi
 
   if [ "$useMCR" = 1 ]; then
-    echo "MCR binary submit: ID=$ID : DIM=$DIM : FUNC=$FUNC : INST=$INST : OPTS=$OPTS : DATASET=$DATASET"
+    echo "MCR binary submit: ID=$ID : DIM=$DIM : FUNC=$FUNC : INST=$INST : IDS=$IDS : OPTS=$OPTS : DATASET=$DATASET"
     if [ "$DRY_RUN" = 0 ]; then
-      qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,OPTS,EXPID,EXPPATH_SHORT,DATASET $EXPPATH_SHORT/../modelTesting_binary_metajob.sh
+      qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,IDS,OPTS,EXPID,EXPPATH_SHORT,DATASET $EXPPATH_SHORT/../modelTesting_binary_metajob.sh
     else
-      echo qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,OPTS,EXPID,EXPPATH_SHORT,DATASET $EXPPATH_SHORT/../modelTesting_binary_metajob.sh
+      echo qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,IDS,OPTS,EXPID,EXPPATH_SHORT,DATASET $EXPPATH_SHORT/../modelTesting_binary_metajob.sh
     fi
 
   else

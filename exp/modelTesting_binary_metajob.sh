@@ -1,5 +1,5 @@
 #!/bin/sh
-#PBS -l select=1:ncpus=1:mem=2500mb:scratch_local=1gb
+#PBS -l select=1:ncpus=1:mem=3000mb:scratch_local=1500mb
 
 # a bit restrictive: PBS -l select=1:ncpus=1:mem=1500mb:scratch_local=1gb:cl_minos=False:cl_mudrc=False:cl_mandos=False:cl_losgar=False:cl_haldir=False
 # very restrictive: PBS -l select=1:ncpus=1:mem=1500mb:scratch_local=1gb:cl_minos=False:cl_mudrc=False:cl_krux=False:cl_perian=False:cl_phi=False:cl_zewura=False:cl_zebra=False:cl_mandos=False:cl_loslab=False:cl_losgar=False:cl_haldir=False
@@ -9,6 +9,7 @@
 #   FUNC           -- list of integers of functions
 #   DIM            -- list of integers of dimensions
 #   INST           -- list of instances to process
+#   IDS            -- list of input model settings
 #   OPTS           -- string with options to be eval()-ed
 #   EXPID          -- string with the experiment name
 #   EXPPATH_SHORT  -- usually $APPROOT/exp/experiments
@@ -62,10 +63,10 @@ echo "====================="
 ######### CALL #########
 #
 echo '##############'
-echo Will be called: $MATLAB_BINARY_CALL \"$EXPID\" \"$EXPPATH_SHORT\" \"$FUNC\" \"$DIM\" \"$INST\" \"$OPTS\" \"$DATASET\"
+echo Will be called: $MATLAB_BINARY_CALL \"$EXPID\" \"$EXPPATH_SHORT\" \"$FUNC\" \"$DIM\" \"$INST\" \"$IDS\" \"$OPTS\" \"$DATASET\"
 echo '##############'
 
-$MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" "$FUNC" "$DIM" "$INST" "$OPTS" "$DATASET"
+$MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" "$FUNC" "$DIM" "$INST" "$IDS" "$OPTS" "$DATASET"
 #
 ########################
 
