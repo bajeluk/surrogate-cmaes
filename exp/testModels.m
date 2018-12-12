@@ -312,7 +312,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
                       mftsFolder, filesep, fun, dim, inst, id);
             if ~isempty(opts.mfts_settings) && ...
                 (opts.rewrite_results || ~isfile(opts.mfts_settings.output))
-              % getDataMetaFeatures(data{f_data, d_data, i_data, i_id}, opts.mfts_settings)
+              getDataMetaFeatures(data{f_data, d_data, i_data, i_id}, opts.mfts_settings)
             end
           end % id loop
         end  % instance loop

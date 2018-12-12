@@ -12,9 +12,11 @@ function getDataMetaFeatures(folder, varargin)
 %                   string
 %     'MetaInput' - input sets for metafeature calculation | {'archive',
 %                   'test', 'train', 'traintest'}
-%     'OmitFeat'  - feature ids from 'Features' to be omitted for specific
-%                   input set | vector of boolean
-%                 - should have the same lenght as 'MetaInput'
+%     'MixTrans'  - results of different transformation settings for one
+%                   input set are returned in one structure | boolean
+%                 - previously calculated results are replaced by new ones
+%                 - this can cause the number of resulting fields will be
+%                   lower than the number of elements in values vector
 %     'Output'    - output folder | string
 %     'Rewrite'   - rewrite already computed results | boolean | false
 %     'TrainOpts' - training set options | structure with fields 
@@ -24,6 +26,11 @@ function getDataMetaFeatures(folder, varargin)
 %                     'none' - raw data X are used for calculation
 %                     'cma'  - X_t = ( (sigma * BD) \ X')';
 %                 - should have the same lenght as 'MetaInput'
+%     'UseFeat'   - feature ids from 'Features' to be used for specific
+%                   input set | cell-array of boolean or double
+%                 - should have the same lenght as 'MetaInput' (one vector
+%                   for one input), 'true' can be used for calculation of
+%                   all metafeatures
 %     'Warnings'  - show metafeature warnings during computation | boolean
 %                   | true
 %
@@ -63,7 +70,8 @@ function getDataMetaFeatures(folder, varargin)
   opts.fun       = defoptsi(settings, 'Fun', []);
   opts.inst      = defoptsi(settings, 'Instances', []);
   opts.metaInput = defoptsi(settings, 'MetaInput', {'archive'});
-  opts.omitFeat  = defoptsi(settings, 'OmitFeat', {false(1, numel(listFeatures))});
+  opts.mixTrans  = defoptsi(settings, 'MixTrans', false);
+  opts.useFeat   = defoptsi(settings, 'UseFeat', []);
   opts.rewrite   = defoptsi(settings, 'Rewrite', false);
   opts.trainOpts = defoptsi(settings, 'TrainOpts', struct());
   opts.transform = defoptsi(settings, 'TransData', {'none'});
@@ -180,12 +188,16 @@ function getRegularDataMetaFeatures(folder, settings)
             fprintf('%s\n', req(84 + lState))
             % empty output or always rewriting option causes metafeature
             % calculation
-            if isempty(out.res{f, d, im}) || settings.rewrite
+            if ~isempty(data.ds{f, d, im}) && ...
+               (isempty(out.res{f, d, im}) || settings.rewrite)
               % metafeature calculation for different generations
               res{f, d, im} = getSingleDataMF(data.ds{f, d, im}, settings);
               % save results
               save(outputFile, 'res', 'fun', 'dim', 'inst')
-            % skip calculation
+            % skip calculation due to missing data
+            elseif isempty(data.ds{f, d, im})
+              fprintf('Data is missing in %s\n', datalist{dat})
+            % skip already calculated
             else
               fprintf('Already saved in %s\n', outputFile)
             end
@@ -203,10 +215,32 @@ end
 
 function res = getSingleDataMF(ds, opts)
 % calculate metafeatures in different generations
+  
+  nFeat  = numel(opts.features);
+  nInput = numel(opts.metaInput);
 
   % get generations
   generations = ds.generations;
   nGen = numel(generations);
+  
+  % prepare result variable
+  res.ft(1:nGen) = struct();
+  res.values = [];
+  
+  useFeat = cell(1, nInput);
+  % feature settings for individual input sets
+  if isempty(opts.useFeat) || (islogical(opts.useFeat) && opts.useFeat)
+    useFeat(1:nInput) = {true(1, nFeat)};
+  else
+    for iSet = 1:nInput
+      % can be set using one logical value
+      if islogical(opts.useFeat{iSet}) && numel(opts.useFeat{iSet}) == 1
+        useFeat{iSet}(1:nInput) = ~opts.useFeat{iSet};
+      else
+        useFeat{iSet} = opts.useFeat{iSet};
+      end
+    end
+  end
   
   % generation loop
   for g = 1:nGen
@@ -225,9 +259,11 @@ function res = getSingleDataMF(ds, opts)
     end
     
     % meta input set loop
-    for iSet = 1:numel(opts.metaInput)
+    for iSet = 1:nInput
+      mtInput = lower(opts.metaInput{iSet});
+      
       % get correct input
-      switch lower(opts.metaInput{iSet})
+      switch mtInput
         case 'archive'
           X = ds.archive.X(ds.archive.gens < generations(g), :);
           y = ds.archive.y(ds.archive.gens < generations(g), :);
@@ -244,17 +280,21 @@ function res = getSingleDataMF(ds, opts)
           y = [y; NaN(size(ds.testSetX{g}, 1), 1)];
         otherwise
           error('%s is not correct input set name (see help getDataMetafeatures)', ...
-                opts.metaInput{iSet})
+                mtInput)
       end
       % transform data
-      if strcmp(opts.transform{iSet}, 'cma') && ~isempty(X)
+      if strcmpi(opts.transform{iSet}, 'cma') && ~isempty(X)
         X = ( (ds.sigmas{g} * ds.BDs{g}) \ X')';
       end
       
+      % create metafeature options without additional settings
+      optsMF = rmfield(opts, {'dim', 'fun', 'inst', ...
+                              'metaInput', 'mixTrans', 'output', ...
+                              'rewrite', ...
+                              'transform', 'useFeat', 'warnings'...
+                             });
       % omit selected features
-      if ~isempty(opts.omitFeat)
-        % TODO: omitFeat
-      end
+      optsMF.features = optsMF.features(useFeat{iSet});
       
       % suppress warnings
       if ~opts.warnings
@@ -268,8 +308,23 @@ function res = getSingleDataMF(ds, opts)
         % precision in linear model
         warning('off', 'stats:LinearModel:RankDefDesignMat')
       end
+      
       % calculate metafeatures
-      [res.ft(g).(opts.metaInput{iSet}), values{iSet}] = getMetaFeatures(X, y, opts);
+      [res_fts, values{iSet}] = getMetaFeatures(X, y, optsMF);
+      
+      % result structure mixing
+      if opts.mixTrans
+        % check if input set was used before
+        if isfield(res.ft(g), mtInput)
+          res.ft(g).(mtInput) = catstruct(res.ft(g).(mtInput), res_fts);
+        else
+          res.ft(g).(mtInput) = res_fts;
+        end
+      % create unique fieldnames
+      else
+        res.ft(g).([mtInput, '_', lower(opts.transform{iSet})]) = res_fts;
+      end
+      
       % enable warnings
       if ~opts.warnings
         warning('on', 'mfts:emptyCells')
