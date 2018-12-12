@@ -306,7 +306,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
             % or rewrite results setting is on
             opts.mfts_settings.fun = fun;
             opts.mfts_settings.dim = dim;
-            opts.mfts_settings.instances = inst;
+            opts.mfts_settings.inst = inst;
             opts.mfts_settings.output = ...
               sprintf('%s%sdata_f%d_%dD_inst%d_id%d_fts.mat', ...
                       mftsFolder, filesep, fun, dim, inst, id);
