@@ -1,7 +1,14 @@
-modelOptions.useShift   = 0;
 modelOptions.predictionType = 'poi';
 modelOptions.trainAlgorithm = 'fmincon';
 modelOptions.normalizeY = 1;
+modelOptions.restartDesign = 'normal';
+modelOptions.meanFcn = 'meanConst';
+modelOptions.useShift = 0;
+modelOptions.normalizeY = 1;
+modelOptions.trainsetType = 'nearest';
+modelOptions.trainRange = 4.0;
+modelOptions.trainsetSizeMax = '20*dim';
+modelOptions.nRestarts = 2;
 modelOptions.cmaesCheckBounds = false;
 
 modelOptions.hypOptions = {};
@@ -60,17 +67,13 @@ modelOptions.hypOptions{end}.covFcn          = '{@covSEvlen, {@meanSum, {@meanLi
 modelOptions.hypOptions{end}.hyp             = struct('lik', log(0.01), 'cov', { '[zeros(1, obj.dim) 0.5 log([2])]' } );
 modelOptions.hypOptions{end}.hypRestartSigma = 'diag([2 10 * ones(1, obj.dim) 10 5 0.01])';
 
-modelOptions.trainsetType    = 'nearest';
-modelOptions.trainRange      = 4.0;
-modelOptions.trainsetSizeMax = '20*dim';
-
 opts.snapshotsToTest    = 1:25;
 
 opts.alwaysRetrain      = true;
 opts.trySecondModel     = true;
 opts.statistics         = { 'mse', 'mzoe', 'kendall', 'rankmse', 'rankmzoe', 'rde', 'rde2', 'rde2models', 'rdeValid', 'rdeValid2', 'rdeM1_M1WReplace', 'rdeM1_M2WReplace', 'rdeM2_M2WReplace', 'mae', 'r2' };
 opts.testOrigRatio      = 0.05;
-opts.dataset            = 'dataset/DTS_meta_004';
+opts.dataset            = 'exp/experiments/dataset/DTS_meta_004';
 opts.saveModels         = false;
 
 % opts.aggFunction        = @(x) nanmedian(reshape(x, [], 1));
