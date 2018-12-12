@@ -50,10 +50,10 @@ modelOptions.hypOptions{end}.hyp             = struct('lik', log(0.01), 'cov', {
 modelOptions.hypOptions{end}.hypRestartSigma = diag([2 5 5 0.01]);
 
 % ADD
-% modelOptions.hypOptions{end+1}               = struct();
-% modelOptions.hypOptions{end}.covFcn          = '{@covADD, {[1 max(2, ceil(obj.dim/2))], @covSEisoU}}';
-% modelOptions.hypOptions{end}.hyp             = struct('lik', log(0.1), 'cov', { [log(0.5) 1 1] } );
-% modelOptions.hypOptions{end}.hypRestartSigma = 'diag([2 2 * ones(1, obj.dim) 2 2 0.01])';
+modelOptions.hypOptions{end+1}               = struct();
+modelOptions.hypOptions{end}.covFcn          = '{@covADD, {[1 max(2, ceil(obj.dim/2))], @covSEisoU}}';
+modelOptions.hypOptions{end}.hyp             = struct('lik', log(0.1), 'cov', { [log(0.5) 1 1] } );
+modelOptions.hypOptions{end}.hypRestartSigma = 'diag([2 2 * ones(1, obj.dim) 2 2 0.01])';
 
 % SE + QUAD
 modelOptions.hypOptions{end+1}               = struct();
@@ -75,6 +75,7 @@ opts.statistics         = { 'mse', 'mzoe', 'kendall', 'rankmse', 'rankmzoe', 'rd
 opts.testOrigRatio      = 0.05;
 opts.dataset            = 'exp/experiments/dataset/DTS_meta_004';
 opts.saveModels         = false;
+opts.modelOptionsIndices = [1:6 8:9]; % leaving out ADD kernel for now
 
 % opts.aggFunction        = @(x) nanmedian(reshape(x, [], 1));
 % opts.aggSnapshots       = { 1:3, 4:6 };
