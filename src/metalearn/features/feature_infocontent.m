@@ -129,6 +129,9 @@ function ft = feature_infocontent(X, y, settings)
   % ratio of partial information sensitivity
   ft.eps_ratio = log10(max(epsilon(M > eps_ratio_tresh * ft.m0)));
   
+  % ensure features to be non-empty
+  ft = repStructVal(ft, @isempty, NaN, 'test');
+  
 end
 
 function [seq, distSeq] = nnSequence(X, nn_seed, nn_dist)
