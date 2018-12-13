@@ -50,7 +50,7 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
     if i > length(ds.testSetX)
       break;
     end
-    
+
     [lambda, dim] = size(ds.testSetX{i});
     g = ds.generations(i);
 
@@ -276,7 +276,11 @@ function rde = validationRDE(model, cmaesState, nRepeats, bbob_func_handle)
     end
     % kendallValid(i) = corr(yPredict, yTest, 'type', 'Kendall');
     % rmseValid(i) = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
-    rdeValid(rep) = errRankMu(yPredict, yTest, cmaesState.mu);
+    if yPredict
+      rdeValid(rep) = errRankMu(yPredict, yTest, cmaesState.mu);
+    else
+      rdeValid(rep) = NaN;
+    end
   end
   rde = nanmean(rdeValid);
 end
