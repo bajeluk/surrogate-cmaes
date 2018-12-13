@@ -175,6 +175,14 @@ function [ft, values] = getMetaFeatures(X, y, settings)
     % see: https://www.mathworks.com/matlabcentral/answers/357399-conversion-of-structure-to-double-in-r2017a
     ft1 = ft.(features{f});
     c = struct2cell(ft1);
+
+    % replace empty vectors with NaN, so that the output size is consistent
+    empty = cellfun(@isempty, c);
+
+    if any(empty)
+      c{empty} = NaN;
+    end
+
     values = [values; [c{:}]'];
   end
 
