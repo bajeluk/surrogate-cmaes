@@ -80,7 +80,7 @@ opts.modelOptionsIndices = [1:6 8:9]; % leaving out ADD kernel for now
 % opts.aggFunction        = @(x) nanmedian(reshape(x, [], 1));
 % opts.aggSnapshots       = { 1:3, 4:6 };
 
-opts.scratch = [getenv('SCRATCH') '/tmp/repjak'];
+opts.scratch = [getenv('SCRATCH') '/tmp/' getenv('USER')];
 [~, ~] = mkdir(opts.scratch);
 
 % metafeatures settings
