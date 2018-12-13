@@ -4,7 +4,7 @@
 # It is expected to be located in exp/experiments/
 
 export EXPID='exp_DTSmodels_meta_01'
-export DATASET="exp/experiments/dataset/DTS_meta_004.mat"
+export DATASET="DTS_meta_004"
 
 # Enable this option for using Matlab MCR compilated binaries:
 export useMCR=1

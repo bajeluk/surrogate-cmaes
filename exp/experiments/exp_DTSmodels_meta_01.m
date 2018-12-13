@@ -73,7 +73,7 @@ opts.alwaysRetrain      = true;
 opts.trySecondModel     = true;
 opts.statistics         = { 'mse', 'mzoe', 'kendall', 'rankmse', 'rankmzoe', 'rde', 'rde2', 'rde2models', 'rdeValid', 'rdeValid2', 'rdeM1_M1WReplace', 'rdeM1_M2WReplace', 'rdeM2_M2WReplace', 'mae', 'r2' };
 opts.testOrigRatio      = 0.05;
-opts.dataset            = 'exp/experiments/dataset/DTS_meta_004';
+opts.dataset            = 'DTS_meta_004';
 opts.saveModels         = false;
 opts.modelOptionsIndices = [1:6 8:9]; % leaving out ADD kernel for now
 
