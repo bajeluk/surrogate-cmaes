@@ -82,16 +82,16 @@ function getDataMetaFeatures(folder, varargin)
   % parse options
   settings.lb = defopts(settings, 'lb', '-5*ones(1, dim)');
   settings.ub = defopts(settings, 'ub', ' 5*ones(1, dim)');
-  settings.dim = defoptsi(settings, 'Dim', []);
-  settings.features = defoptsi(settings, 'Features', listFeatures);
-  settings.fun       = defoptsi(settings, 'Fun', []);
-  settings.inst      = defoptsi(settings, 'Inst', []);
-  settings.metaInput = defoptsi(settings, 'MetaInput', {'archive'});
-  settings.mixTrans  = defoptsi(settings, 'MixTrans', false);
-  settings.useFeat   = defoptsi(settings, 'UseFeat', []);
-  settings.rewrite   = defoptsi(settings, 'Rewrite', false);
-  settings.trainOpts = defoptsi(settings, 'TrainOpts', struct());
-  settings.transform = defoptsi(settings, 'TransData', {'none'});
+  settings = defoptsiStr(settings, 'Dim', [], 'dim');
+  settings = defoptsiStr(settings, 'Features', listFeatures, 'features');
+  settings = defoptsiStr(settings, 'Fun', [], 'fun');
+  settings = defoptsiStr(settings, 'Inst', [], 'inst');
+  settings = defoptsiStr(settings, 'MetaInput', {'archive'}, 'metaInput');
+  settings = defoptsiStr(settings, 'MixTrans', false, 'mixTrans');
+  settings = defoptsiStr(settings, 'UseFeat', [], 'useFeat');
+  settings = defoptsiStr(settings, 'Rewrite', false, 'rewrite');
+  settings = defoptsiStr(settings, 'TrainOpts', struct(), 'trainOpts');
+  settings = defoptsiStr(settings, 'TransData', {'none'}, 'transform');
   if ~iscell(settings.transform)
     settings.transform = {settings.transform};
   end
@@ -99,7 +99,7 @@ function getDataMetaFeatures(folder, varargin)
   if numel(settings.metaInput) > numel(settings.transform)
     settings.transform(end+1 : numel(settings.metaInput)) = {'none'};
   end
-  settings.warnings = defoptsi(settings, 'Warnings', true);
+  settings = defoptsiStr(settings, 'Warnings', true, 'warnings');
   
   % direct calculation of data -> input is structure
   if isstruct(folder)
@@ -124,7 +124,7 @@ function getDataMetaFeatures(folder, varargin)
   
   % get data according to design
   if isempty(design)
-    settings.output = defoptsi(settings, 'Output', []);
+    settings = defoptsiStr(settings, 'Output', [], 'output');
     getRegularDataMetaFeatures(folder, settings);
   else
     getDesignedDataMetaFeatures(folder, design);
@@ -516,5 +516,19 @@ function str = prtShortInt(vec)
     end
   else
     str = '';
+  end
+end
+
+function S = defoptsiStr(S, oldfield, defValue, newfield)
+% defoptsi returning whole structure where old field is checked for value
+% and replaced by newfields with specified value
+  
+  if nargin > 3
+    newValue = defoptsi(S, oldfield, defValue);
+    S = safermfield(S, oldfield);
+    S.(newfield) = newValue;
+  % default defoptsi
+  else
+    S.(oldfield) = defoptsi(S, oldfield, defValue);
   end
 end
