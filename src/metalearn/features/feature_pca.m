@@ -63,7 +63,7 @@ function ft = feature_pca(X, y, settings)
   settings.cov_init = defopts(settings, 'cov_init', 0.9);
   settings.corr_init = defopts(settings, 'corr_init', 0.9);
   
-  dim = size(X, 2);
+  [nData, dim] = size(X);
   
   % initial design with the objective values
   X_init = [X, y];
@@ -74,7 +74,11 @@ function ft = feature_pca(X, y, settings)
     corr_x = NaN;
   else
     cov_x = explainVariance(X, @cov);
-    corr_x = explainVariance(X, @corr);
+    if nData < 2
+      corr_x = NaN;
+    else
+      corr_x = explainVariance(X, @corr);
+    end
   end
   
   % calculate features
@@ -91,7 +95,11 @@ function ft = feature_pca(X, y, settings)
   else
     % calculate explaining variances
     cov_init = explainVariance(X_init, @cov);
-    corr_init = explainVariance(X_init, @corr);
+    if nData > 1
+      corr_init = explainVariance(X_init, @corr);
+    else
+      corr_init = NaN;
+    end
     % calculate features
     ft.pca_cov_init = find(cov_init >= settings.cov_init, 1, 'first') / (dim + 1);
     ft.pca_corr_init = find(corr_init >= settings.corr_init, 1, 'first') / (dim + 1);
@@ -99,8 +107,8 @@ function ft = feature_pca(X, y, settings)
     ft.pca_pc1_corr_init = corr_init(1);
   end
   
-  % ensure features to be non-empty in case of empty input
-  if isempty(X) || isempty(y)
+  % ensure features to be non-empty in case of low number of points
+  if nData < 2
     ft = repStructVal(ft, @isempty, NaN, 'test');
   end
   

@@ -37,8 +37,8 @@ function ft = feature_basic(X, y, settings)
     settings = struct();
   end
   
-  lb = defopts(settings, 'lb', min(X));
-  ub = defopts(settings, 'ub', max(X));
+  lb = defopts(settings, 'lb', min(X, [], 1));
+  ub = defopts(settings, 'ub', max(X, [], 1));
   blocks = defopts(settings, 'blocks', ~isempty(X));
   min_fun = defopts(settings, 'minimize', true);
   

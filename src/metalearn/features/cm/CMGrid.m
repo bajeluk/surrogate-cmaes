@@ -42,13 +42,13 @@ classdef CMGrid
       nArgs = numel(varargin);
       % parse lower bounds
       if nArgs < 1 || isempty(varargin{1})
-        lb = min(X) - eps;
+        lb = min(X, [], 1) - eps;
       else
         lb = varargin{1};
       end
       % parse lower bounds
       if nArgs < 2 || isempty(varargin{2})
-        ub = max(X) + eps;
+        ub = max(X, [], 1) + eps;
       else
         ub = varargin{2};
       end
@@ -80,9 +80,9 @@ classdef CMGrid
 
       % checkout blocks settings input
       obj.lb = checkBlockVal(lb, 'lb', dataDim);
-      assert(all(obj.lb <= min(X)), 'Some points are out of lower bounds. Check your settings.')
+      assert(all(obj.lb <= min(X, [], 1)), 'Some points are out of lower bounds. Check your settings.')
       obj.ub = checkBlockVal(ub, 'ub', dataDim);
-      assert(all(obj.ub >= max(X)), 'Some points are out of upper bounds. Check your settings.')
+      assert(all(obj.ub >= max(X, [], 1)), 'Some points are out of upper bounds. Check your settings.')
       obj.blocks = checkBlockVal(blocks, 'blocks', dataDim);
       assert(all(obj.blocks > 0 & mod(blocks, 1) == 0), 'Block numbers has to be natural.')
 
