@@ -49,7 +49,8 @@ function ft = feature_cmaes(X, ~, settings)
   ft.cma_step_size = step_size;
   ft.cma_restart = restart;
   % mahalanobis distance of the CMA mean to dataset
-  if isempty(X)
+  if N < dim + 1
+    % number of points should be greater than dimension
     ft.cma_mean_dist = NaN;
   else
     ft.cma_mean_dist = sqrt(mahal(cmean, X));

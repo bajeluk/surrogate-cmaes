@@ -35,8 +35,8 @@ function ft = feature_ela_levelset(X, y, settings)
   end
   
   emptyInput = false;
-  % empty set case due to cvpartition
-  if isempty(X) || isempty(y)
+  % less than two points cannot be divided to groups (in cvpartition)
+  if size(X, 1) < 2 || numel(y) < 2
     X = [NaN; NaN];
     y = X;
     emptyInput = true;

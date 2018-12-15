@@ -109,8 +109,8 @@ function [ft, values] = getMetaFeatures(X, y, settings)
   end
 
   % parse settings
-  lb = defopts(settings, 'lb', min(X) - eps);
-  ub = defopts(settings, 'ub', max(X) + eps);
+  lb = defopts(settings, 'lb', min(X, [], 1) - eps);
+  ub = defopts(settings, 'ub', max(X, [], 1) + eps);
   features = defopts(settings, 'features', 'all');
   listFeatures = {'basic', ...
                   'cmaes', ...

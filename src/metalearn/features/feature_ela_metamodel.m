@@ -38,8 +38,8 @@ function ft = feature_ela_metamodel(X, y, ~)
   
   dim = size(X, 2);
   
-  % y-values not available
-  if all(isnan(y))
+  % not enough y-values available
+  if sum(~isnan(y)) < dim + 1
     ft.lin_simple_adj_r2 = NaN;
     ft.lin_simple_intercept = NaN;
     ft.lin_simple_coef_min = NaN;

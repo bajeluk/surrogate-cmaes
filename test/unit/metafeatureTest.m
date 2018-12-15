@@ -164,7 +164,8 @@ function testInfocontent(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_infocontent()));
   % test data
-  X = rand(30, 10);
+  dim = 10;
+  X = rand(30, dim);
   y = randn(30, 1);
   % output fields without settings
   featFields = {'h_max', 'eps_s', 'eps_max', 'eps_ratio', 'm0'};
@@ -184,14 +185,24 @@ function testInfocontent(testCase)
   for m = 1:numel(featFields)
     verifyTrue(testCase, isnan(ft.(featFields{m})))
   end
+  
+  % test one point input
+  X = rand(1, dim);
+  y = randn(1, 1);
+  ft = feature_infocontent(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
 end
 
 function testPCA(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_pca()));
   % test data
-  X = rand(30, 10);
-  y = randn(30, 1);
+  nData = 30;
+  dim = 10;
+  X = rand(nData, dim);
+  y = randn(nData, 1);
   % output fields without settings
   featFields = {'pca_cov_x', 'pca_corr_x', 'pca_cov_init', 'pca_corr_init', ...
                 'pca_pc1_cov_x', 'pca_pc1_corr_x', 'pca_pc1_cov_init', ...
@@ -206,7 +217,8 @@ function testPCA(testCase)
   end
   
   % test NaN values
-  y = [y(1:20, :); NaN(10, 1)];
+  origFracId = floor(2*nData/3);
+  y = [y(1:origFracId, :); NaN(nData-origFracId, 1)];
   ft = feature_pca(X, y);
   for m = 1:numel(featFields)
     if isempty(strfind(featFields{m}, 'init'))
@@ -216,7 +228,7 @@ function testPCA(testCase)
     end
   end
   % test all NaN values
-  y = NaN(30, 1);
+  y = NaN(nData, 1);
   ft = feature_pca(X, y);
   for m = 1:numel(featFields)
     if isempty(strfind(featFields{m}, 'init'))
@@ -234,14 +246,21 @@ function testPCA(testCase)
     verifyTrue(testCase, isnan(ft.(featFields{m})))
   end
   
+  % test one point input
+  X = rand(1, dim);
+  y = randn(1, 1);
+  feature_pca(X, y);
+  
 end
 
 function testNearestBetterClustering(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_nearest_better()));
   % test data
-  X = rand(30, 3);
-  y = randn(30, 1);
+  nData = 30;
+  dim = 3;
+  X = rand(nData, dim);
+  y = randn(nData, 1);
   % test settings
   settings.distance = 'minkowski';
   % output fields with settings
@@ -253,6 +272,14 @@ function testNearestBetterClustering(testCase)
   % test empty input
   X = [];
   y = [];
+  ft = feature_nearest_better(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
+  
+  % test one point input
+  X = rand(1, dim);
+  y = randn(1, 1);
   ft = feature_nearest_better(X, y);
   for m = 1:numel(featFields)
     verifyTrue(testCase, isnan(ft.(featFields{m})))
@@ -323,7 +350,8 @@ function testELALevelset(testCase)
   verifyEmpty(testCase, fieldnames(feature_ela_levelset()));
   % test data
   nData = 100;
-  X = rand(nData, 3);
+  dim = 3;
+  X = rand(nData, dim);
   y = randn(nData, 1);
   qnt = [10, 25, 50];
   % output fields
@@ -358,6 +386,13 @@ function testELALevelset(testCase)
     verifyTrue(testCase, isnan(ft.(featFields{m})))
   end
   
+  % test one point input
+  X = rand(1, dim);
+  y = randn(1, 1);
+  ft = feature_ela_levelset(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
 end
 
 function testELAMetamodel(testCase)
@@ -365,8 +400,10 @@ function testELAMetamodel(testCase)
   verifyEmpty(testCase, fieldnames(feature_ela_metamodel()));
   
   % test data
-  X = rand(30, 3);
-  y = randn(30, 1);
+  nData = 30;
+  dim = 3;
+  X = rand(nData, dim);
+  y = randn(nData, 1);
   % output fields
   featFields = {'lin_simple_adj_r2', 'lin_simple_intercept', 'lin_simple_coef_min', ...
                 'lin_simple_coef_max', 'lin_simple_coef_max_by_min', ...
@@ -376,7 +413,7 @@ function testELAMetamodel(testCase)
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
   
   % test full NaN input
-  y = NaN(30, 1);
+  y = NaN(nData, 1);
   ft = feature_ela_metamodel(X, y);
   for m = 1:numel(featFields)
     verifyTrue(testCase, isnan(ft.(featFields{m})))
@@ -385,6 +422,14 @@ function testELAMetamodel(testCase)
   % test empty input
   X = [];
   y = [];
+  ft = feature_ela_metamodel(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, isnan(ft.(featFields{m})))
+  end
+  
+  % test one point input
+  X = rand(1, dim);
+  y = randn(1, 1);
   ft = feature_ela_metamodel(X, y);
   for m = 1:numel(featFields)
     verifyTrue(testCase, isnan(ft.(featFields{m})))
@@ -424,7 +469,7 @@ function testCMA(testCase)
   % empty input should not generate error
   verifyEmpty(testCase, fieldnames(feature_cmaes()));
   % test data
-  X = [-2.025294, 1.578529, -2.106864, -3.601003, -2.289839;
+  XX = [-2.025294, 1.578529, -2.106864, -3.601003, -2.289839;
        -5, 1.219689, -1.481228, -5, -3.095459; 
        2.882095, 3.838150, -2.825522, -2.757357, 0.691988; 
        -0.100039, 5, -3.633954, -4.906271, -2.461931; 
@@ -472,7 +517,7 @@ function testCMA(testCase)
        -0.0580385, -1.978201, -1.902091, 0.350758, -1.624527; 
        1.197027, -0.925229, -0.927442, 1.161695, -1.754044; 
        -0.0488689, -1.588799, -1.652942, 1.612937, -1.626606];
-  y = [124.769083; 161.439962; 149.072393; 172.711806; 115.044425; 
+  yy = [124.769083; 161.439962; 149.072393; 172.711806; 115.044425; 
     161.531515; 128.940939; 149.757730; 159.803659; 152.457874; 
     177.478509; 151.751605; 143.394776; 163.885905; 124.512268; 
     103.796681; 113.581530; 178.849583; 91.102733; 125.224467; 
@@ -498,6 +543,8 @@ function testCMA(testCase)
                 'cma_mean_dist', 'cma_evopath_c_norm', ...
                 'cma_evopath_s_norm', ... 'cma_cov_dist', ...
                };
+  X = XX;
+  y = yy;
   ft = feature_cmaes(X, y);
   returnedFields = fieldnames(ft);
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featFields)))
@@ -515,6 +562,13 @@ function testCMA(testCase)
   X = [];
   y = [];
   feature_cmaes(X, y, settings);
+  
+  % test one point input
+  X = XX(1, :);
+  y = yy(1);
+  ft = feature_cmaes(X, y, settings);
+  verifyTrue(testCase, isnan(ft.cma_mean_dist))
+  
 end
 
 function testGetMetaFeatures(testCase)
@@ -549,7 +603,7 @@ function testGetMetaFeatures(testCase)
   returnedFields = fieldnames(mf);
   verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featGroups)))
   % test with settings
-  settings.features = {'cm_angle', 'cm_convexity', 'cm_gradhomo'};
+  settings.features = {'cm_convexity', 'cm_gradhomo'};
   settings.blocks = 3*ones(1, dim);
   settings.cm_gradhomo.blocks = 3*ones(1, dim);
   tic
@@ -559,6 +613,22 @@ function testGetMetaFeatures(testCase)
   verifyEqual(testCase, numel(struct2cell(mf)), 2)
   % six features
   verifyEqual(testCase, numel(values), 6)
+  
+  % test empty input
+  X = [];
+  y = [];
+  [mf, values] = getMetaFeatures(X, y);
+  returnedFields = fieldnames(mf);
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featGroups)))
+  verifyTrue(testCase, all(isnan(values) | values == 0 | values == 1))
+  
+%   % one point input
+  X = rand(1, dim);
+  y = randn(1, 1);
+  [mf, values] = getMetaFeatures(X, y);
+  returnedFields = fieldnames(mf);
+  verifyTrue(testCase, all(cellfun(@(x) any(strcmp(x, returnedFields)), featGroups)))
+
 end
 
 function testGetDataMetaFeatures(testCase)

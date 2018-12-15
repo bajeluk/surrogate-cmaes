@@ -52,8 +52,8 @@ function ft = feature_nearest_better(X, y, settings)
     settings = struct();
   end
   
-  % empty set case
-  if isempty(X) || isempty(y)
+  % neighbors has to be at least two
+  if size(X, 1) < 2 || numel(y) < 2
     ft.nb_std_ratio = NaN;
     ft.nb_mean_ratio = NaN;
     ft.nb_cor = NaN;

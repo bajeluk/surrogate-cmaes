@@ -56,8 +56,8 @@ function ft = feature_infocontent(X, y, settings)
     settings = struct();
   end
   
-  % empty set case
-  if isempty(X) || isempty(y)
+  % features cannot be computed if the number of points is lower than 2
+  if size(X, 1) < 2 || numel(y) < 2
     ft.h_max = NaN;
     ft.eps_s = NaN;
     ft.eps_max = NaN;
