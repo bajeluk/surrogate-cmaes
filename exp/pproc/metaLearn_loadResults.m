@@ -6,9 +6,11 @@ function [results, settings, resParams] = metaLearn_loadResults(folders, varargi
 %   folders  - path to data | string or cell-array of strings
 %   varargin - pairs of property (string) and value or struct with 
 %              properties as fields:
+%     'ExpType'        - type of experiment | {'design', 'cma-run'} 
 %     'IgnoreSettings' - list of fields in meta-settings to ignore (e.g. in
 %                        case of random initialization) | string or 
 %                        cell-array of strings
+%     'Instances'      - instances used in the experiment | double
 %     'ShowOutput'     - print output of data loading to screen | boolean
 %
 % Output:
@@ -36,7 +38,6 @@ function [results, settings, resParams] = metaLearn_loadResults(folders, varargi
   function_settings = settings2struct(varargin);
   
   % parse settings
-  
 
   % load data from first folder (temporary)
   [results, settings, resParams] = metaLearn_loadOneFolder(folders{1}, function_settings);
@@ -50,6 +51,227 @@ end
 function [results, settings, res_params] = metaLearn_loadOneFolder(exp_folder, fSettings)
 % load results from one folder
   
+  % parse settings
+  expType = defopts(fSettings, 'ExpType', 'cma-run');
+
+  if strcmp(expType, 'design')
+    [result, settings, res_params] = metaLearn_loadDesignedExp(exp_folder, fSettings);
+  else
+    [result, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSettings);
+  end
+  
+  
+end
+
+function [results, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSettings)
+% load experiment results from one folder gained through CMA-ES run
+
+  % parse settings
+  ignoreSettings = defopts(fSettings, 'IgnoreSettings', {''});
+  if ~iscell(ignoreSettings)
+    ignoreSettings = {ignoreSettings};
+  end
+  showOutput = defopts(fSettings, 'ShowOutput', false);
+  exp_instances = defopts(fSettings, 'Instances', []);
+  
+  % gain file list
+  if showOutput
+    fprintf('Searching for MAT-files in folder %s\n', exp_folder)
+  end
+  listDir = dir(exp_folder);
+  % extract features
+  mftId = strcmp({listDir.name}, 'metafeatures');
+  mftList = searchFile(fullfile(exp_folder, listDir(mftId).name), '*.mat');
+  
+  % remove position and dataset folder, checkout feature folder
+  remId = strcmp({listDir.name}, '.');
+  remId = remId | strcmp({listDir.name}, '..');
+  % exclude dataset files (due to large size and therefore long loading
+  % time)
+  remId = remId | strcmp({listDir.name}, 'dataset');
+  remId = remId | mftId;
+  listDir(remId) = [];
+  folderFiles = cell(numel(listDir), 1);
+  % search files in individual folders
+  for d = 1:numel(listDir)
+    % suppose naming finished by dimension denotation *D.mat to ignore
+    % *D_missing_data.mat files
+    folderFiles{d} = (searchFile(fullfile(exp_folder, listDir(d).name), '*D.mat'))';
+  end
+  % cat dataset files
+  fileList = [folderFiles{:}]';  
+  
+  % init variables
+  settings = {};
+  results = table();
+  nFiles = numel(fileList);
+  % load file sequentially
+  for f = 1:nFiles
+    if showOutput
+      fprintf('Loading %s\n', fileList{f})
+    else
+      warning('off', 'MATLAB:load:variableNotFound')
+    end
+    S = load(fileList{f}, '-mat', 'dim', 'fun', 'instances', 'ids', 'modelOptions', 'modelType', 'stats');
+    warning('on', 'MATLAB:load:variableNotFound')
+    if all(isfield(S, {'dim', 'fun', 'instances', 'ids', 'modelOptions', 'stats'}))
+      % check problematic loaded variables
+      if iscell(S.modelOptions) || ~isfield(S, 'modelType')
+        [~, actualFName] = fileparts(fileList{f});
+        fname_parts = strsplit(actualFName, '_');
+        if numel(fname_parts) ~= 4
+          warning('Number of file name parts is not 4 in %s. This may cause some malfunction.', fileList{f})
+        end
+        % not specified model options will be searched through hash
+        % calculation and file name analysis
+        if iscell(S.modelOptions)
+          loadedHashNumbers = cellfun(@modelHash, S.modelOptions, 'UniformOutput', false);
+          mOptsId = strcmp(fname_parts{2}, loadedHashNumbers);
+          if sum(mOptsId) == 1
+            S.modelOptions = S.modelOptions{mOptsId};
+          % catch multiple same hashes
+          elseif sum(mOptsId) > 1
+            warning('Multiple settings has the same hash number in %s.', fileList{f})
+            S.modelOptions = S.modelOptions{find(mOptsId, 1)};
+          % no appropriate hash
+          else
+            warning('No match between hash numbers of model options and file name in %s.', fileList{f})
+          end
+        end
+        % search missing model type in file name
+        if ~isfield(S, 'modelType')
+          if strcmp(fname_parts{1}(end-4:end), 'model')
+            S.modelType = fname_parts{1}(1:end-5);
+          else
+            S.modelType = fname_parts{1};
+          end
+        end
+      end
+      
+      % unify parameters to one settings structure
+      actualSettings = S.modelOptions;
+      actualSettings.modelType = S.modelType;
+      actualSettings.modelHash = [S.modelType, '_', modelHash(S.modelOptions)];
+      
+      % ignore chosen settings
+      if ~isempty(ignoreSettings{1})
+        actualSettings = safermfield(actualSettings, ignoreSettings);
+      end
+      
+      % get names of statistics
+      statNames = fieldnames(S.stats);
+      [nInst, nIds, nGen] = size(S.stats.(statNames{1}));
+      % checkout number of instances - if it is not defined (can be found
+      % in the experiment), try to estimate it from the rest of data
+      % nInst - number of instances in results
+      % S.instances - actually calculated results
+      if nInst > numel(S.instances)
+        if nInst == numel(exp_instances)
+          calculatedInst = ismember(exp_instances, S.instances);
+          S.instances = exp_instances(calculatedInst);
+        % not all instance numbers are known from user -> estimate rows
+        elseif isempty(exp_instances) && nInst > numel(exp_instances)
+           missResRows = all(isnan(S.stats.(statNames{1})), 2);
+           if sum(~missResRows) == nInst
+             calculatedInst = ~missResRows;
+           else
+             warning(['Number of instances in stats is greater than ', ...
+                     'number of user defined instances in %s. ', ...
+                     'Ignoring extra results.'], fileList{f})
+            calculatedInst = [true(numel(exp_instances), 1); false(nInst - numel(exp_instances), 1)];
+            S.instances = exp_instances;
+           end
+        elseif nInst > numel(exp_instances)
+          warning(['Number of instances in stats is greater than ', ...
+                   'number of user defined instances in %s. ', ...
+                   'Ignoring extra results.'], fileList{f})
+          calculatedInst = [true(numel(exp_instances), 1); false(nInst - numel(exp_instances), 1)];
+          S.instances = exp_instances;
+        else
+          warning(['Number of instances in stats is lower than ', ...
+                   'number of user defined instances in %s. ', ...
+                   'Ignoring extra instances.'], fileList{f})
+          calculatedInst = true(nInst, 1);
+          S.instances = exp_instances(calculatedInst);
+        end
+      elseif nInst < numel(S.instances)
+        warning(['Number of results in stats is lower than ', ...
+                 'number of calculated instances in %s. ', ...
+                 'Ignoring extra calculated instances.'], fileList{f})
+        calculatedInst = true(nInst, 1);
+        S.instances = S.instances(1:nInst);
+      else
+        calculatedInst = true(nInst, 1);
+      end
+      % recalculate number of instances
+      nInst = sum(calculatedInst);
+      nActualData = nInst * nIds * nGen;
+      
+      % find settings identifier
+      [settingsId, settings] = propertyId(settings, actualSettings);
+      
+      % create table of base data identifiers
+      actualTable = table(...
+                          ones(nActualData, 1) * S.fun, ...
+                          ones(nActualData, 1) * S.dim, ...
+                          repmat(S.instances(:), nIds*nGen, 1), ...
+                          repmat(reshape(repmat(S.ids, nInst, 1), [nInst*nIds, 1]), nGen, 1), ...
+                          reshape(repmat(1:nGen, nInst*nIds, 1), [nActualData, 1]), ...
+                          ones(nActualData, 1) * settingsId, ...
+                          'VariableNames', ...
+                          {'fun', 'dim', 'inst', 'id', 'gen', 'model'});
+      
+      % add statistics to table
+      for s = 1:numel(statNames)
+        statTable = S.stats.(statNames{s});
+        actualTable.(statNames{s}) = reshape(statTable(calculatedInst, :, :), ...
+                                             [nActualData, 1, 1]);
+      end  
+      
+      % save results to proper position
+      results = [results; actualTable];
+      
+    end
+  end
+  
+  % load metafeatures
+  nMFiles = numel(mftList);
+  mftTable = table();
+  for m = 1:nMFiles
+    % TODO
+    [~, actualFile] = fileparts(mftList{m});
+    % gain function, dimension, instance, and id from filename
+    fileNumbers = sscanf(actualFile, 'data_f%d_%dD_inst%d_id%d_fts.mat');
+    S = load(mftList{m}, '-mat', 'fun', 'dim', 'inst', 'res');
+    % TODO: check matching file name and inner parameters
+    nGen = size(S.res.values, 2);
+    % create table of base data identifiers
+    actualTable = table(...
+                        ones(nGen, 1) * S.fun, ...
+                        ones(nGen, 1) * S.dim, ...
+                        ones(nGen, 1) * S.inst, ...
+                        ones(nGen, 1) * fileNumbers(4), ...
+                        (1:nGen)', ...
+                        S.res.values', ...
+                        'VariableNames', ...
+                        {'fun', 'dim', 'inst', 'id', 'gen', 'mfts'});
+    mftTable = [mftTable; actualTable];
+  end
+  
+  % return loaded functions, dimensions, instances, ids and generations
+  res_params.functions = unique(results.fun);
+  res_params.dimensions = unique(results.dim);
+  res_params.instances = unique(results.inst);
+  res_params.ids = unique(results.id);
+  res_params.gens = unique(results.gen);
+  res_params.mfts = mftTable;
+  
+end
+
+function [results, settings, res_params] = metaLearn_loadDesignedExp(exp_folder, fSettings)
+% load experiment using some sort of design to sample points
+
+  % parse settings
   ignoreSettings = defopts(fSettings, 'IgnoreSettings', {''});
   if ~iscell(ignoreSettings)
     ignoreSettings = {ignoreSettings};
@@ -125,7 +347,7 @@ function [results, settings, res_params] = metaLearn_loadOneFolder(exp_folder, f
   results = results(funSortId, dimSortId, :);
   instances = instances(funSortId, dimSortId, :);
   
-  % return loaded functions, dimenstion and experiment settings
+  % return loaded functions, dimension and experiment settings
   res_params.functions = functions;
   res_params.dimensions = dimensions;
   res_params.metalearn_params = params;
