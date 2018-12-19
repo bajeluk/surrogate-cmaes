@@ -428,7 +428,7 @@ classdef GpModel < Model
         yTrain = (obj.getDataset_y() - obj.shiftY) / obj.stdY;
         % calculate GP models' prediction in X
         [y, gp_sd2] = gp(obj.hyp, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, obj.getDataset_X(), yTrain, XWithShift);
-        if any(isnan(y)) || isstruct(gp_sd2)
+        if any(isnan(y)) || isstruct(gp_sd2) || any(imag(y))
           y = []; sd2 = [];
           fprintf(2, 'GpModel.predict(): inference failed!\n');
         else
