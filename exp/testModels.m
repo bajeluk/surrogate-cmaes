@@ -300,7 +300,8 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
                 models2(ii, i_id, :) = thisModels2;
               end
             end
-            save(modelFile, 'stats', modelsVarString{:}, 'instances', 'ids', 'modelOptions', 'fun', 'dim');
+            modelOptions1 = modelOptions{m};
+            save(modelFile, 'stats', modelsVarString{:}, 'instances', 'ids', 'modelOptions', 'modelOptions1', 'fun', 'dim');
 
             % calculate metafeatures of the dataset if not calculated earlier
             % or rewrite results setting is on
