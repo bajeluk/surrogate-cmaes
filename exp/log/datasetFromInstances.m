@@ -66,7 +66,7 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
       end
     catch
       warning('Model file or scmaes output file is missing in f%d %dD (id %d).', fun, dim, id_no)
-      return
+      continue;
     end
 
     % cycle through instances
