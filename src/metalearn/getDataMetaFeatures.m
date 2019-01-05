@@ -150,17 +150,30 @@ function getRegularDataMetaFeatures(folder, settings)
       datalist(end+1 : end+length(actualDataList)) = actualDataList;
     end
   end
+  
+  % return if no data to calculates
+  if isempty(datalist)
+    warning('No data to calculate in input folders. Ending getDataMetaFeatures.')
+    return
+  end
 
   % create feature folder
-  % TODO: adaptively create folders according to the original file
-  % structure
-  if isdir(folder{1})
-    defFolder = [folder{1}, '_fts'];
-  else
-    [datapath, dataname] = fileparts(folder{1});
-    defFolder = fullfile(datapath, [dataname, '_fts']);
+  outputFolder = defoptsi(settings, 'Output', 'default_folder');
+  if strcmp(outputFolder, 'default_folder') || isempty(outputFolder)
+    % TODO: adaptively create folders according to the original file
+    % structure
+    for fol = 1:numel(folder)
+      if isdir(folder{1})
+        outputFolder = [folder{1}, '_fts'];
+      elseif isfile(folder{1})
+        [datapath, dataname] = fileparts(folder{1});
+        outputFolder = fullfile(datapath, [dataname, '_fts']);
+      % error if no input folder is a really a file or folder
+      elseif fol == numel(folder)
+        error('No input folder is actually file or folder')
+      end
+    end
   end
-  outputFolder = defoptsi(settings, 'Output', defFolder); 
   [~, ~] = mkdir(outputFolder);
   
   % list through all data
