@@ -83,6 +83,11 @@ function ft = feature_infocontent(X, y, settings)
   nData = numel(y);
   nEps = numel(epsilon);
   
+  % initialize random number generator to gain identical feature values for
+  % identical data
+  rng_seed = rng;
+  rng(nData)
+  
   nn_seed = defopts(settings, 'nn_seed', randi(nData));
   
   % TODO: find and process duplicates in data
@@ -104,6 +109,9 @@ function ft = feature_infocontent(X, y, settings)
     seq = randperm(nData)';
     distSeq = arrayfun(@(x) pdist2(X(seq(x), :), X(seq(x+1), :), distance), 1:nData-1)';
   end
+  
+  % return random number generator settings to original value
+  rng(rng_seed)
   
   % for each epsilon calculate information content H and partial
   % information content M

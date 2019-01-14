@@ -85,6 +85,7 @@ function getDataMetaFeatures(folder, varargin)
   settings = defoptsiStr(settings, 'Dim', [], 'dim');
   settings = defoptsiStr(settings, 'Features', listFeatures, 'features');
   settings = defoptsiStr(settings, 'Fun', [], 'fun');
+  settings = defoptsiStr(settings, 'Id', [], 'id');
   settings = defoptsiStr(settings, 'Inst', [], 'inst');
   settings = defoptsiStr(settings, 'MetaInput', {'archive'}, 'metaInput');
   settings = defoptsiStr(settings, 'MixTrans', false, 'mixTrans');
@@ -106,8 +107,10 @@ function getDataMetaFeatures(folder, varargin)
     fun = settings.fun;
     dim = settings.dim;
     inst = settings.inst;
-    fileString = sprintf('data_f%s_%sD_i%s_fts.mat', ...
-                   prtShortInt(fun), prtShortInt(dim), prtShortInt(inst));
+    id = settings.id;
+    fileString = sprintf('data_f%s_%sD_i%s_id%s_fts.mat', ...
+                   prtShortInt(fun), prtShortInt(dim), ...
+                   prtShortInt(inst), prtShortInt(id));
     outputFile = defoptsi(settings, 'Output', fileString);
     if settings.rewrite || ~isfile(outputFile) 
       res = getSingleDataMF(folder, settings);
@@ -179,19 +182,26 @@ function getRegularDataMetaFeatures(folder, settings)
   % list through all data
   for dat = 1:length(datalist)
     % load data
+    fprintf('Loading %s\n', datalist{dat})
     warning('off', 'MATLAB:load:variableNotFound')
     data = load(datalist{dat}, '-mat', 'ds', 'fun', 'dim', 'inst');
     warning('on', 'MATLAB:load:variableNotFound')
     if all(isfield(data, {'ds', 'fun', 'dim', 'inst'}))
       
-      % get dataset size (function * dimension * (instances * models))
-      [nFun, nDim, instMod] = size(data.ds);
+      % get dataset size (function * dimension * instances * models)
+      [nFun, nDim, nInst, nId] = size(data.ds);
       
       % important information about the dataset to be saved in resulting
       % file
       fun = data.fun;
       dim = data.dim;
       inst = data.inst;
+      modId = 1:nId;
+      % check input information to be calculated
+      calcFun = checkCalcVal(fun, settings.fun, 'Function');
+      calcDim = checkCalcVal(dim, settings.dim, 'Dimension');
+      calcInst = checkCalcVal(inst, settings.inst, 'Instance');
+      calcId = checkCalcVal(modId, settings.id, 'Model id');
       % save data
       [~, filename] = fileparts(datalist{dat});
       % TODO: check uniqueness of output filenames
@@ -200,37 +210,47 @@ function getRegularDataMetaFeatures(folder, settings)
       if isfile(outputFile)
         out = load(outputFile, 'res', 'fun', 'dim', 'inst');
       else
-        out.res = cell(nFun, nDim, instMod);
+        out.res = cell(nFun, nDim, nInst, nId);
       end
       
-      res = cell(nFun, nDim, instMod);
+      res = cell(nFun, nDim, nInst, nId);
       % function loop
-      for f = 1:nFun
+      for f = 1:numel(calcFun)
         % dimension loop
-        for d = 1:nDim
-          % instance * model loop
-          for im = 1:instMod
-            countState = sprintf('f%d, %dD, inst*model %d', ...
-                                 data.fun(f), data.dim(d), im);
-            lState = numel(countState);
-            fprintf('%s\n', req(84 + lState))
-            fprintf('%s  %s  %s\n', ...
-                    req(40), countState, req(40));
-            fprintf('%s\n', req(84 + lState))
-            % empty output or always rewriting option causes metafeature
-            % calculation
-            if ~isempty(data.ds{f, d, im}) && ...
-               (isempty(out.res{f, d, im}) || settings.rewrite)
-              % metafeature calculation for different generations
-              res{f, d, im} = getSingleDataMF(data.ds{f, d, im}, settings);
-              % save results
-              save(outputFile, 'res', 'fun', 'dim', 'inst')
-            % skip calculation due to missing data
-            elseif isempty(data.ds{f, d, im})
-              fprintf('Data is missing in %s\n', datalist{dat})
-            % skip already calculated
-            else
-              fprintf('Already saved in %s\n', outputFile)
+        for d = 1:numel(calcDim)
+          % instance loop
+          for im = 1:numel(calcInst)
+            % model loop
+            for id = 1:numel(calcId)
+              % get original ids
+              fId = ismember(fun, calcFun(f));
+              dId = ismember(dim, calcDim(d));
+              imId = ismember(inst, calcInst(im));
+              mId = ismember(modId, calcId(id));
+              % print calculation status
+              countState = sprintf('f%d, %dD, inst %d, id %d', ...
+                                   calcFun(f), calcDim(d), ...
+                                   calcInst(im), calcId(id));
+              lState = numel(countState);
+              fprintf('%s\n', req(84 + lState))
+              fprintf('%s  %s  %s\n', ...
+                      req(40), countState, req(40));
+              fprintf('%s\n', req(84 + lState))
+              % empty output or always rewriting option causes metafeature
+              % calculation
+              if ~isempty(data.ds{fId, dId, imId, mId}) && ...
+                 (isempty(out.res{fId, dId, imId, mId}) || settings.rewrite)
+                % metafeature calculation for different generations
+                res{fId, dId, imId, mId} = getSingleDataMF(data.ds{fId, dId, imId, mId}, settings);
+                % save results
+                save(outputFile, 'res', 'fun', 'dim', 'inst')
+              % skip calculation due to missing data
+              elseif isempty(data.ds{fId, dId, imId, mId})
+                fprintf('Data is missing in %s\n', datalist{dat})
+              % skip already calculated
+              else
+                fprintf('Already saved in %s\n', outputFile)
+              end
             end
           end
         end
@@ -313,9 +333,14 @@ function res = getSingleDataMF(ds, opts)
           error('%s is not correct input set name (see help getDataMetafeatures)', ...
                 mtInput)
       end
-      % transform data
+      % transform input space data
       if strcmpi(opts.transform{iSet}, 'cma') && ~isempty(X)
         X = ( (ds.sigmas{g} * ds.BDs{g}) \ X')';
+      end
+      % transform output space data
+      normalizeY = defopts(opts.trainOpts, 'normalizeY', false);
+      if normalizeY
+        y = (y - nanmean(y)) / nanstd(y);
       end
       
       % create metafeature options without additional settings
@@ -544,4 +569,20 @@ function S = defoptsiStr(S, oldfield, defValue, newfield)
   else
     S.(oldfield) = defoptsi(S, oldfield, defValue);
   end
+end
+
+function val = checkCalcVal(dataVal, settingsVal, valName)
+% check value to be calculated
+
+  if isempty(settingsVal)
+    val = dataVal;
+    return
+  end
+  % check input information to be calculated
+  val = dataVal(ismember(dataVal, settingsVal));
+  if any(~ismember(settingsVal, val))
+    warning('%s %d is not in the dataset', valName, ...
+      settingsVal(~ismember(settingsVal, val)))
+  end
+  
 end

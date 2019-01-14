@@ -55,6 +55,10 @@ function ft = feature_ela_levelset(X, y, settings)
   if nData < nFolds
     nFolds = nData;
   end
+  % initialize random number generator to gain the same CV partitions (and
+  % identical feature values for identical data)
+  rng_seed = rng;
+  rng(nData)
   % create instances for n-fold CV
   cp = cvpartition(nData, 'KFold', nFolds);
   % quantile tresholds
@@ -100,6 +104,9 @@ function ft = feature_ela_levelset(X, y, settings)
       end
     end
   end
+  
+  % return random number generator settings to original value
+  rng(rng_seed)
   
 end
 
