@@ -208,12 +208,15 @@ function getRegularDataMetaFeatures(folder, settings)
       outputFile = fullfile(outputFolder, [filename, '_fts.mat']);
       % try to load result file
       if isfile(outputFile)
-        out = load(outputFile, 'res', 'fun', 'dim', 'inst');
+        fprintf('Loading output file %s\n', outputFile)
+        out = load(outputFile, 'res');
+        res = out.res;
+        % clear due to memory requirements
+        clear out
       else
-        out.res = cell(nFun, nDim, nInst, nId);
+        res = cell(nFun, nDim, nInst, nId);
       end
       
-      res = cell(nFun, nDim, nInst, nId);
       % function loop
       for f = 1:numel(calcFun)
         % dimension loop
@@ -239,7 +242,7 @@ function getRegularDataMetaFeatures(folder, settings)
               % empty output or always rewriting option causes metafeature
               % calculation
               if ~isempty(data.ds{fId, dId, imId, mId}) && ...
-                 (isempty(out.res{fId, dId, imId, mId}) || settings.rewrite)
+                 (isempty(res{fId, dId, imId, mId}) || settings.rewrite)
                 % metafeature calculation for different generations
                 res{fId, dId, imId, mId} = getSingleDataMF(data.ds{fId, dId, imId, mId}, settings);
                 % save results
