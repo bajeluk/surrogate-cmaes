@@ -75,6 +75,7 @@ function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_st
 
   % other settings
   opts.rewrite_results = defopts(opts, 'rewrite_results', false);
+  opts.mfts_only = defopts(opts, 'mfts_only', false);
 
   % directory with the dataset and results
   opts.exppath = fullfile(opts.exppath_short, opts.exp_id);

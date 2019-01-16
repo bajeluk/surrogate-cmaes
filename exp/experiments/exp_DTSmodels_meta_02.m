@@ -95,3 +95,5 @@ opts.mfts_settings.trainOpts = modelOptions;
 opts.mfts_settings.warnings = false;
 opts.mfts_settings.mixTrans = true;
 opts.mfts_settings.output = 'exp/experiments/exp_DTSmodels_meta_02/metafeatures';
+%% use when only metafeatures are required
+% opts.mfts_settings.rewrite = true;

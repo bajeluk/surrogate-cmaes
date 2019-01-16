@@ -84,6 +84,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
   opts.scratch    = defopts(opts, 'scratch', fullfile(opts.exppath_short, opts.exp_id));
   opts.rewrite_results = defopts(opts, 'rewrite_results', false);
   opts.mfts_settings = defopts(opts, 'mfts_settings', []);
+  opts.mfts_only = defopts(opts, 'mfts_only', false);
 
   % Load the dataset and its parameters
   assert(isfield(opts, 'dataset'), 'opts does not include a dataset');
@@ -123,6 +124,11 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 
   % dimension loop
   for dim = dimsToTest
+    if opts.mfts_only
+      fprintf('Only metafeatures, skipping model testing in %dD\n', dim);
+      continue;
+    end
+
     d_data = find(dim == dataDims, 1);
 
     % function loop
@@ -302,22 +308,51 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
             end
             modelOptions1 = modelOptions{m};
             save(modelFile, 'stats', modelsVarString{:}, 'instances', 'ids', 'modelOptions', 'modelOptions1', 'fun', 'dim');
-
-            % calculate metafeatures of the dataset if not calculated earlier
-            % or rewrite results setting is on
-            opts.mfts_settings.fun = fun;
-            opts.mfts_settings.dim = dim;
-            opts.mfts_settings.inst = inst;
-            opts.mfts_settings.output = ...
-              sprintf('%s%sdata_f%d_%dD_inst%d_id%d_fts.mat', ...
-                      mftsFolder, filesep, fun, dim, inst, id);
-            if ~isempty(opts.mfts_settings) && ...
-                (opts.rewrite_results || ~isfile(opts.mfts_settings.output))
-              getDataMetaFeatures(data{f_data, d_data, i_data, i_id}, opts.mfts_settings)
-            end
           end % id loop
         end  % instance loop
       end  % model loop
+    end  % function loop
+  end  % dimension loop
+
+
+  %%% METAFEATURES %%%
+
+  % dimension loop
+  for dim = dimsToTest
+    d_data = find(dim == dataDims, 1);
+
+    % function loop
+    for fun = funcToTest
+      f_data = find(fun == dataFunc, 1);
+
+      % Check that we really have this data
+      if (isempty(data{f_data, d_data}))
+        warning('Data of func %d in dim %d is missing in the dataset!', dataFunc(f_data), dataDims(d_data));
+        continue;
+      end
+
+      % instances loop
+      for ii = 1:length(instToTest)
+        for i_id = 1:length(idsToTest)
+          inst = instToTest(ii);
+          id = idsToTest(i_id);
+          i_data = find(inst == dataInst, 1);
+          id_data = find(id == dataIds, 1);
+
+          % calculate metafeatures of the dataset if not calculated earlier
+          % or rewrite results setting is on
+          opts.mfts_settings.fun = fun;
+          opts.mfts_settings.dim = dim;
+          opts.mfts_settings.inst = inst;
+          opts.mfts_settings.output = ...
+            sprintf('%s%sdata_f%d_%dD_inst%d_id%d_fts.mat', ...
+                    mftsFolder, filesep, fun, dim, inst, id);
+          if ~isempty(opts.mfts_settings) && ...
+              (opts.rewrite_results || ~isfile(opts.mfts_settings.output))
+            getDataMetaFeatures(data{f_data, d_data, i_data, id_data}, opts.mfts_settings)
+          end
+        end % id loop
+      end  % instance loop
     end  % function loop
   end  % dimension loop
 
