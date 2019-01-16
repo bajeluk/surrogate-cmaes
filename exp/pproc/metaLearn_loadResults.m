@@ -11,6 +11,7 @@ function [results, settings, resParams] = metaLearn_loadResults(folders, varargi
 %                        case of random initialization) | string or 
 %                        cell-array of strings
 %     'Instances'      - instances used in the experiment | double
+%     'SaveResults'    - output file containing loaded results | string
 %     'ShowOutput'     - print output of data loading to screen | boolean
 %
 % Output:
@@ -38,6 +39,8 @@ function [results, settings, resParams] = metaLearn_loadResults(folders, varargi
   function_settings = settings2struct(varargin);
   
   % parse settings
+  saveResults = defopts(function_settings, 'SaveResults', '');
+  showOutput = defopts(function_settings, 'ShowOutput', false);
 
   % load data from first folder (temporary)
   [results, settings, resParams] = metaLearn_loadOneFolder(folders{1}, function_settings);
@@ -46,6 +49,16 @@ function [results, settings, resParams] = metaLearn_loadResults(folders, varargi
 %   for s = 1:length(folders)
 %     [exp_results{s}, settings{s}] = metaLearn_loadOneFolder(folders{s});
 %   end
+  
+  if ~isempty(saveResults)
+    filepath = fileparts(saveResults);
+    [~, ~] = mkdir(filepath);
+    save(saveResults, 'results', 'settings', 'resParams')
+    if showOutput
+      fprintf('Results saved to %s\n', saveResults)
+    end
+  end
+
 end
 
 function [results, settings, res_params] = metaLearn_loadOneFolder(exp_folder, fSettings)
@@ -55,9 +68,9 @@ function [results, settings, res_params] = metaLearn_loadOneFolder(exp_folder, f
   expType = defopts(fSettings, 'ExpType', 'cma-run');
 
   if strcmp(expType, 'design')
-    [result, settings, res_params] = metaLearn_loadDesignedExp(exp_folder, fSettings);
+    [results, settings, res_params] = metaLearn_loadDesignedExp(exp_folder, fSettings);
   else
-    [result, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSettings);
+    [results, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSettings);
   end
   
   
@@ -160,7 +173,9 @@ function [results, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSet
       
       % get names of statistics
       statNames = fieldnames(S.stats);
-      [nInst, nIds, nGen] = size(S.stats.(statNames{1}));
+      [nInst, ~, nGen] = size(S.stats.(statNames{1}));
+      % number of actually calculated ids
+      nIds = numel(S.ids);
       % checkout number of instances - if it is not defined (can be found
       % in the experiment), try to estimate it from the rest of data
       % nInst - number of instances in results
@@ -224,7 +239,7 @@ function [results, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSet
       % add statistics to table
       for s = 1:numel(statNames)
         statTable = S.stats.(statNames{s});
-        actualTable.(statNames{s}) = reshape(statTable(calculatedInst, :, :), ...
+        actualTable.(statNames{s}) = reshape(statTable(calculatedInst, 1:nIds, :), ...
                                              [nActualData, 1, 1]);
       end  
       
@@ -237,14 +252,28 @@ function [results, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSet
   % load metafeatures
   nMFiles = numel(mftList);
   mftTable = table();
+  % load metafeature names
+  if nMFiles > 0
+    % TODO: proper metafeature list (even missing metafeatures considered)
+    S = load(mftList{1}, '-mat', 'res');
+    % list all metafeature names
+    mftsNames = strsplit(printStructure(S.res.ft(1), 'Format', 'field'));
+    mftsNames = mftsNames(1:3:end-1);
+    mftsNames = cellfun(@(x) strrep(x, '.', '_'), mftsNames', 'UniformOutput', false)';
+  end
+  % load metafeatures
   for m = 1:nMFiles
-    % TODO
     [~, actualFile] = fileparts(mftList{m});
     % gain function, dimension, instance, and id from filename
     fileNumbers = sscanf(actualFile, 'data_f%d_%dD_inst%d_id%d_fts.mat');
+    if showOutput
+      fprintf('Loading metafeatures in %s\n', mftList{m})
+    end
     S = load(mftList{m}, '-mat', 'fun', 'dim', 'inst', 'res');
     % TODO: check matching file name and inner parameters
     nGen = size(S.res.values, 2);
+    % prepare metafeature values
+    metaVal = mat2cell(S.res.values', nGen, ones(1, numel(mftsNames)));
     % create table of base data identifiers
     actualTable = table(...
                         ones(nGen, 1) * S.fun, ...
@@ -252,9 +281,9 @@ function [results, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSet
                         ones(nGen, 1) * S.inst, ...
                         ones(nGen, 1) * fileNumbers(4), ...
                         (1:nGen)', ...
-                        S.res.values', ...
+                        metaVal{:}, ...
                         'VariableNames', ...
-                        {'fun', 'dim', 'inst', 'id', 'gen', 'mfts'});
+                        [{'fun', 'dim', 'inst', 'id', 'gen'}, mftsNames]);
     mftTable = [mftTable; actualTable];
   end
   

@@ -54,7 +54,6 @@ function getDataMetaFeatures(folder, varargin)
 % See Also:
 %   getMetaFeatures, testModels, modelTestSets
 
-  
   if nargin < 1
     help getDataMetaFeatures
     return
@@ -270,6 +269,9 @@ end
 function res = getSingleDataMF(ds, opts)
 % calculate metafeatures in different generations
   
+  % parse settings
+  normalizeY = defopts(opts.trainOpts, 'normalizeY', false);
+
   nFeat  = numel(opts.features);
   nInput = numel(opts.metaInput);
 
@@ -341,7 +343,6 @@ function res = getSingleDataMF(ds, opts)
         X = ( (ds.sigmas{g} * ds.BDs{g}) \ X')';
       end
       % transform output space data
-      normalizeY = defopts(opts.trainOpts, 'normalizeY', false);
       if normalizeY
         y = (y - nanmean(y)) / nanstd(y);
       end
