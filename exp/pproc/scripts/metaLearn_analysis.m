@@ -1,15 +1,17 @@
 %% Read model options
 
-exp_id = 'exp_DTSmodels_meta_01';
+exp_id = 'exp_DTSmodels_meta_02';
 exppath_short = 'exp/experiments';
 func = 1:24;
 dim = [2 3 5 10 20];
 inst = 11:15;
-snModelIds = 1:8;
+snModelIds = [1:6 8 9];
 statistics = {'rde'};
 
 exp_script_path = fullfile(exppath_short, [exp_id, '.m']);
 run(exp_script_path);
+
+opts.modelOptionsIndices = [1:6 8 9];
 
 modelOptions_fullfact  = combineFieldValues(modelOptions);
 modelOptionsTested = modelOptions_fullfact(opts.modelOptionsIndices);
@@ -18,13 +20,15 @@ modelOptionsTestedL = {'LIN', 'QUAD', 'SE', 'MAT5', 'RQ', 'NN', 'SE_PLUS_QUAD', 
 assert(length(modelOptionsTestedL) == nModels, ...
   'Check whether model labels match model options.');
 
-if exist(fullfile('/tmp', 'metaLearn_analysis_table.mat'), 'file')
-  load(fullfile('/tmp', 'metaLearn_analysis_table.mat'));
+if exist(fullfile('exp/pproc', 'metaLearn_analysis_table.mat'), 'file')
+  load(fullfile('exp/pproc', 'metaLearn_analysis_table.mat'));
 else
   %% Read model results
   
   model_results = cell(1, nModels);
   
+  missingData = zeros(0, 3);
+
   for m = 1:nModels
     modelHashName{m} = ['gpmodel_' modelHash(modelOptionsTested{m})];
     modelFolder{m} = fullfile(exppath_short, exp_id, [modelHashName{m}  '_250FE']);
@@ -47,10 +51,26 @@ else
         R = load(fullfile(modelFolder{m}, sprintf('%s_f%d_%dD.mat', modelHashName{m}, f, d)));
 
         for i = 1:size(R.stats.mse, 1)
+          data_inst = find(R.instances == inst(i), 1);
+
+          if isempty(data_inst)
+            warning('f%d %dD inst%d missing\n', f, d, inst(i));
+            missingData(end+1, :) = [opts.modelOptionsIndices(m), f, d];
+            continue;
+          end
+
           for modelId = 1:size(R.stats.mse, 2)
+            data_modelId = find(snModelIds(modelId) == R.ids, 1);
+
+            if isempty(data_modelId)
+              warning('f%d %dD inst%d id%d missing\n', f, d, i, snModelIds(modelId));
+              missingData(end+1, :) = [opts.modelOptionsIndices(m), f, d];
+              continue;
+            end
+
             for sn = 1:size(R.stats.mse, 3)
               model_results{m}(end+1, 1:nCols) = { ...
-                f, d, inst(i), R.ids(modelId), sn, ...
+                f, d, data_inst, data_modelId, sn, ...
                 R.stats.mse(i, modelId, sn), ...
                 R.stats.mzoe(i, modelId, sn), ...
                 R.stats.kendall(i, modelId, sn), ...
@@ -128,4 +148,14 @@ for m = 1:nModels
   colName = [modelOptionsTestedL{m} '_' stats_name];
   nan_counts(m) = sum(isnan(model_results{m}.(colName)))/length(model_results{m}.(colName));
 end
-m
+
+%% Friedman test on RDE
+stats_name = 'rde';
+colNames = cellfun(@(m) strjoin({m, stats_name}, '_'), modelOptionsTestedL, 'UniformOutput', false);
+d = results{:, colNames};
+% remove datasets where no models was trained
+d(all(isnan(d), 2), :) = [];
+% replace non-trained or no-prediction cases with infinite negative likelihood
+d(isnan(d)) = Inf;
+% run friedman
+friedman(d)
