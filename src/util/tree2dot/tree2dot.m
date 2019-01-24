@@ -10,7 +10,21 @@ function dot = tree2dot(fid, tree, varargin)
 %     InnerNodeProperties -- properties of the inner nodes (struct)
 %     LeftEdgeProperties  -- properties of the left edges (struct)
 %     RightEdgeProperties -- properties of the left edges (struct)
-%   Returns a string in the dot language.
+%
+%  Prints the tree into an open file fid.
+%
+%  Example demonstrating default default TeX format for labels and custom
+%  leaf properties, which depend on class stored in the leaf. Such a format
+%  may be further exported to TeX by dot2tex program.
+%
+%  >> load ionospehere;
+%  >> tc = fitctree(X, Y);
+%  >> settings.LeafProperties = @meta_leaf_fmt;
+%  >> f = fopen('tree.gv', 'w');
+%  >> tree2dot(f, tc, settings);
+%  >> fclose(f);
+%
+%  See also NODE2DOT, EDGE2DOT, META_LEAF_FMT
 
   settings = settings2struct(varargin{:});
   
