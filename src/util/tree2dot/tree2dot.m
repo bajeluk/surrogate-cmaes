@@ -6,14 +6,17 @@ function dot = tree2dot(fid, tree, varargin)
 %     LeafNodeFormat      -- leaf format (string)
 %     LeftEdgeFormat      -- format of the edge to the left child (string)
 %     RightEdgeFormat     -- format of the edge to the right child (string)
-%     LeafProperties      -- properties of the leaf nodes (struct)
-%     InnerNodeProperties -- properties of the inner nodes (struct)
-%     LeftEdgeProperties  -- properties of the left edges (struct)
-%     RightEdgeProperties -- properties of the left edges (struct)
+%     LeafProperties      -- properties of the leaf nodes (function string -> struct)
+%     InnerNodeProperties -- properties of the inner nodes (function string -> struct)
+%     LeftEdgeProperties  -- properties of the left edges (function int, int -> struct)
+%     RightEdgeProperties -- properties of the right edges (function int, int -> struct)
 %
 %  Prints the tree into an open file fid.
 %
-%  Example demonstrating default default TeX format for labels and custom
+%  Note that setting named *Properties are handles to functions that return
+%  a structure of dot properties depending on given node / edge.
+%
+%  Following example demonstrates default TeX format for labels and custom
 %  leaf properties, which depend on class stored in the leaf. Such a format
 %  may be further exported to TeX by dot2tex program.
 %
