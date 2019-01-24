@@ -14,9 +14,13 @@ function handle = metafeaturePlot(mftsVal, dataVal, varargin)
 %     'DataNames'     - cell array of data names (e.g. names of algorithms)
 %                       | cell array of strings
 %                       (e.g. {'alg1', 'alg2', 'alg3'})
+%     'LogBound'      - exponential bound for logarithmic scale | double
 %     'MedianLS'      - median line style (specification) | double
 %     'MedianLW'      - median line width | double
+%     'MftsNames'     - metafeature names | cell-array of string
 %     'NValues'       - number of values to plot | integer
+%     'QuantileRange' - range of metafeatures according to quantile values 
+%                       | double (e.g. 5% interval [0.05, 0.95])
 %     'QuartileLS'    - quartile line style (specification) | double
 %     'QuartileLW'    - quartile line width | double
 %     'ShowLegend'    - show plot legend | boolean
@@ -58,13 +62,14 @@ function handle = metafeaturePlot(mftsVal, dataVal, varargin)
   % parse settings
   kerColor = defopts(settings, 'DataColor', getAlgColors(1:nData)/255);
   dataNames = defopts(settings, 'DataNames', defDataNames);
-  medianLineWidth = defopts(settings, 'MedianLW', 1.8);
-  quartileLineWidth = defopts(settings, 'QuartileLW', 1);
-  medianLineStyle = defopts(settings, 'MedianLS', '-');
-  quartileLineStyle = defopts(settings, 'QuartileLS', '-.');
+  plotSet.medianLineWidth = defopts(settings, 'MedianLW', 1.8);
+  plotSet.quartileLineWidth = defopts(settings, 'QuartileLW', 1);
+  plotSet.medianLineStyle = defopts(settings, 'MedianLS', '-');
+  plotSet.quartileLineStyle = defopts(settings, 'QuartileLS', '-.');
   nPointsToPlot = defopts(settings, 'NValues', 200);
   logBound = defopts(settings, 'LogBound', 5);
   mftsNames = defopts(settings, 'MftsNames', defMftsNames);
+  quantRange = defopts(settings, 'QuantileRange', [0, 1]);
   showLegend = defopts(settings, 'ShowLegend', true);
   
   % check names format
@@ -83,124 +88,101 @@ function handle = metafeaturePlot(mftsVal, dataVal, varargin)
     % get default nPointsToPlot value
     nPointsToPlotAct = nPointsToPlot;
     
-    % remove metafeature NaN and Inf values
-    nanOrInf = isnan(mftsVal(:, mf)) | isinf(mftsVal(:, mf));
-    actual_mftsVal = mftsVal(~nanOrInf, mf);
+    % remove metafeature values out of quantile range (automatically
+    % removes Inf and NaN)
+    quantBounds = quantile(mftsVal(:, mf), quantRange);
+    inBounds = (mftsVal(:, mf) >= quantBounds(1) & ...
+                mftsVal(:, mf) <= quantBounds(2));
+    actual_mftsVal = mftsVal(inBounds, mf);
+    % prepare minimal and maximal value
+    mnmx = minmax(actual_mftsVal');
     % create x-values for plot
+    % small number of values
     if numel(unique(actual_mftsVal)) < nPointsToPlotAct
       nPointsToPlotAct = numel(unique(actual_mftsVal));
-      xBound = [min(actual_mftsVal) - 1, unique(actual_mftsVal')]; % quantile(actual_dataVal, nPointsToPlotAct)];
-      logAxis = false;
-    elseif abs(diff(log10(minmax(actual_mftsVal(~isinf(actual_mftsVal))')))) > logBound      
+      plotSet.xBound = [mnmx(1) - 1, unique(actual_mftsVal')]; % quantile(actual_dataVal, nPointsToPlotAct)];
+      plotSet.logAxis = false;
+    % logarithmic scale in case large exponential differences and no
+    % positive and negative values at the same moment
+    elseif abs(diff(log10(mnmx))) > logBound && ...
+           abs(sum(sign(mnmx))) > 0
       % xBound = logspace(log10(min(actual_dataVal) - eps), log10(max(actual_dataVal)), nPointsToPlotAct + 1);
-      xBound = [min(actual_mftsVal) - 1, quantile(actual_mftsVal, nPointsToPlotAct)];
-      logAxis = true;
+      plotSet.xBound = [mnmx(1) - 1, quantile(actual_mftsVal, nPointsToPlotAct)];
+      plotSet.logAxis = true;
+    % linear scale
     else
       % xBound = linspace(min(actual_dataVal) - eps, max(actual_dataVal), nPointsToPlotAct + 1);
-      xBound = [min(actual_mftsVal) - 1, quantile(actual_mftsVal, nPointsToPlotAct)];
-      logAxis = false;
+      plotSet.xBound = [mnmx(1) - 1, quantile(actual_mftsVal, nPointsToPlotAct)];
+      plotSet.logAxis = false;
     end
-    yVal = NaN(nPointsToPlotAct, 3);
-  
-    % name of first model error
-    actual_dataVal = dataVal(~nanOrInf, 1);
-    % create median and quartiles of data values for plot
-    for xb = 1:nPointsToPlotAct
-      yVal(xb, :) = quantile((actual_dataVal(actual_mftsVal >  xBound(xb) & ...
-                                             actual_mftsVal <= xBound(xb+1))), ...
-                             [1/4, 1/2, 3/4]);
-    end
-    % check missing values
-    plotPointId = ~all(isnan(yVal), 2);
+    plotSet.yVal = NaN(nPointsToPlotAct, 3);
     
     % create figure
     handle{mf} = figure();
     h = [];
-    if logAxis
-      h(1) = semilogx(xBound([false; plotPointId]), yVal(plotPointId, 1), ...
-        'Color', kerColor(1, :), ...
-        'LineStyle', quartileLineStyle, ...
-        'LineWidth', quartileLineWidth);
-      hold on
-      h(end+1) = semilogx(xBound([false; plotPointId]), yVal(plotPointId, 2), ...
-        'Color', kerColor(1, :), ...
-        'LineStyle', medianLineStyle, ...
-        'LineWidth', medianLineWidth);
-      h(end+1) = semilogx(xBound([false; plotPointId]), yVal(plotPointId, 3), ...
-        'Color', kerColor(1, :), ...
-        'LineStyle', quartileLineStyle, ...
-        'LineWidth', quartileLineWidth);
-    else
-      h(1) = plot(xBound([false; plotPointId]), yVal(plotPointId, 1), ...
-        'Color', kerColor(1, :), ...
-        'LineStyle', quartileLineStyle, ...
-        'LineWidth', quartileLineWidth);
-      hold on
-      h(end+1) = plot(xBound([false; plotPointId]), yVal(plotPointId, 2), ...
-        'Color', kerColor(1, :), ...
-        'LineStyle', medianLineStyle, ...
-        'LineWidth', medianLineWidth);
-      h(end+1) = plot(xBound([false; plotPointId]), yVal(plotPointId, 3), ...
-        'Color', kerColor(1, :), ...
-        'LineStyle', quartileLineStyle, ...
-        'LineWidth', quartileLineWidth);
-    end
   
-    % add the rest of models
-    for m = 2:nData
-      actual_dataVal = dataVal(~nanOrInf, m);
+    % data loop
+    for m = 1:nData
+      actual_dataVal = dataVal(inBounds, m);
   
       % create median and quartiles of data values for plot
       for xb = 1:nPointsToPlotAct
-        yVal(xb, :) = quantile((actual_dataVal(actual_mftsVal > xBound(xb) & actual_mftsVal <= xBound(xb+1))), [1/4, 1/2, 3/4]);
+        plotSet.yVal(xb, :) = quantile(...
+          (actual_dataVal(actual_mftsVal >  plotSet.xBound(xb) & ...
+                          actual_mftsVal <= plotSet.xBound(xb+1))), ...
+           [1/4, 1/2, 3/4]);
       end
       % check missing values
-      plotPointId = ~all(isnan(yVal), 2);
-      if logAxis
-        h(end+1) = semilogx(xBound([false; plotPointId]), yVal(plotPointId, 1), ...
-          'Color', kerColor(m, :), ...
-          'LineStyle', quartileLineStyle, ...
-          'LineWidth', quartileLineWidth);
-        h(end+1) = semilogx(xBound([false; plotPointId]), yVal(plotPointId, 2), ...
-          'Color', kerColor(m, :), ...
-          'LineStyle', medianLineStyle, ...
-          'LineWidth', medianLineWidth);
-        h(end+1) = semilogx(xBound([false; plotPointId]), yVal(plotPointId, 3), ...
-          'Color', kerColor(m, :), ...
-          'LineStyle', quartileLineStyle, ...
-          'LineWidth', quartileLineWidth);
-      else
-        h(end+1) = plot(xBound([false; plotPointId]), yVal(plotPointId, 1), ...
-          'Color', kerColor(m, :), ...
-          'LineStyle', quartileLineStyle, ...
-          'LineWidth', quartileLineWidth);
-        h(end+1) = plot(xBound([false; plotPointId]), yVal(plotPointId, 2), ...
-          'Color', kerColor(m, :), ...
-          'LineStyle', medianLineStyle, ...
-          'LineWidth', medianLineWidth);
-        h(end+1) = plot(xBound([false; plotPointId]), yVal(plotPointId, 3), ...
-          'Color', kerColor(m, :), ...
-          'LineStyle', quartileLineStyle, ...
-          'LineWidth', quartileLineWidth);
-      end
+      plotSet.plotPointId = ~all(isnan(plotSet.yVal), 2);
+      % prepare color
+      plotSet.kerColor = kerColor(m, :);
+      % plot data
+      h(end+1) = plotLine(1, plotSet);
+      hold on
+      h(end+1) = plotLine(2, plotSet);
+      h(end+1) = plotLine(3, plotSet);
     end
+    
+    % additional figure captions and ranges
     title(strrep(mftsNames{mf}, '_', '\_'))
     xlabel('feature value')
     ylabel('model RDE')
     if showLegend
       legend(h(2:3:end), dataNames, 'Location', 'Best')
     end
-    axis([xBound(2), xBound(end), 0, 1])
+    axis([plotSet.xBound(2), plotSet.xBound(end), 0, 1])
     hold off
   
-  end
+  end % mfts loop
   
 end
 
-function h = plotLine(plotType, xBound, yVal, plotPointId)
+function h = plotLine(quartNumber, plotSet)
 % plot median or quartile line
-  h = plot(xBound([false; plotPointId]), yVal(plotPointId, 3), ...
-           'Color', kerColor(m, :), ...
-           'LineStyle', quartileLineStyle, ...
-           'LineWidth', quartileLineWidth);
+  plotInput = {...
+           plotSet.xBound([false; plotSet.plotPointId]), ...
+           plotSet.yVal(plotSet.plotPointId, quartNumber), ...
+           'Color', plotSet.kerColor ...
+           };
+  % median
+  if quartNumber == 2
+    plotInput = [plotInput, {...
+                              'LineStyle', plotSet.medianLineStyle, ...
+                              'LineWidth', plotSet.medianLineWidth ...
+                            }];
+  % quartiles
+  else
+    plotInput = [plotInput, {...
+                              'LineStyle', plotSet.quartileLineStyle, ...
+                              'LineWidth', plotSet.quartileLineWidth ...
+                            }];
+  end
+  % logarithmic scale
+  if plotSet.logAxis
+    h = semilogx(plotInput{:});
+  % linear scale
+  else
+    h = plot(plotInput{:});
+  end
+  
 end

@@ -20,7 +20,7 @@ else
 expfolder = fullfile('exp', 'experiments');
 exp_id = 'exp_DTSmodels_meta_02';
 exp_meta_output = fullfile(expfolder, exp_id, 'meta_output', 'exp_DTSmodels_meta_02_res.mat');
-printScriptMess = true;
+printScriptMess = false;
 
 if ~isfile(exp_meta_output)
   if printScriptMess
@@ -280,135 +280,19 @@ kerColor = getAlgColors([1, 2, 3, 12, 10, 11, 8, 5]) / 255;
 
 close all
 
-metafeaturePlot(mfts_err(:, 14:15), mfts_err(:, 6:13), ...
+% metafeaturePlot(mfts_err.train_dispersion_diff_mean_02, mfts_err(:, 6:13), ...
+metafeaturePlot(mfts_err(:, 14:end), mfts_err(:, 6:13), ...
                 'DataColor', kerColor, ...
                 'DataNames', modelLabels, ...
-                'MftsNames', {'dimension', 'observations'}, ...
+                'MftsNames', mfts_err.Properties.VariableNames(14:end), ...
                 'NValues', 200, ...
-                'LogBound', 5, ...
+                'LogBound', 2, ...
+                'QuantileRange', [0.05, 0.95], ...
                 'MedianLW', 1.8, ...
                 'QuartileLW', 1, ...
                 'MedianLS', '-', ...
                 'QuartileLS', '-.' ...
-  )
-%%
-for mf = 1:nFeat
-% for mf = nFeat-1
-  %%
-  
-  % mf init
-  nPointsToPlotAct = nPointsToPlot;
-  logAxis = false;
-  
-  mfts_name = mfts_indep.Properties.VariableNames{mf+5};
-  % remove metafeature NaN and Inf values
-  nanOrInf = isnan(mfts_err.(mfts_name)) | isinf(mfts_err.(mfts_name));
-  actual_mfts_err = mfts_err.(mfts_name)(~nanOrInf);
-  % create x-values for plot
-  if numel(unique(actual_mfts_err)) < nPointsToPlotAct
-    nPointsToPlotAct = numel(unique(actual_mfts_err));
-    xBound = [min(actual_mfts_err) - 1, unique(actual_mfts_err')]; % quantile(actual_mfts_err, nPointsToPlotAct)];
-  elseif abs(diff(log10(minmax(actual_mfts_err(~isinf(actual_mfts_err))')))) > logBound
-      
-%     xBound = logspace(log10(min(actual_mfts_err) - eps), log10(max(actual_mfts_err)), nPointsToPlotAct + 1);
-    xBound = [min(actual_mfts_err) - 1, quantile(actual_mfts_err, nPointsToPlotAct)];
-    logAxis = true;
-  else
-%     xBound = linspace(min(actual_mfts_err) - eps, max(actual_mfts_err), nPointsToPlotAct + 1);
-    xBound = [min(actual_mfts_err) - 1, quantile(actual_mfts_err, nPointsToPlotAct)];
-  end
-  yVal = NaN(nPointsToPlotAct, 3);
-  
-  % name of first model error
-  model_err_name = sprintf('model%d_%s', 1, err_name);
-  actual_model_err = mfts_err.(model_err_name)(~nanOrInf);
-  % create y-values for plot
-%   yVal = NaN(nPointsToPlotAct, 1);
-  for xb = 1:nPointsToPlotAct
-%     yVal(xb) = nanmean(actual_model_err(actual_mfts_err > xBound(xb) & actual_mfts_err <= xBound(xb+1)));
-    yVal(xb, :) = quantile((actual_model_err(actual_mfts_err > xBound(xb) & actual_mfts_err <= xBound(xb+1))), [1/4, 1/2, 3/4]);
-  end
-  % check missing values
-  plotPointId = ~all(isnan(yVal), 2);
-  h = [];
-  if logAxis
-    h(1) = semilogx(xBound([false; plotPointId]), yVal(plotPointId, 1), ...
-      'Color', kerColor(1, :), ...
-      'LineStyle', quartileLineStyle, ...
-      'LineWidth', quartileLineWidth);
-    hold on
-    h(end+1) = semilogx(xBound([false; plotPointId]), yVal(plotPointId, 2), ...
-      'Color', kerColor(1, :), ...
-      'LineStyle', medianLineStyle, ...
-      'LineWidth', medianLineWidth);
-    h(end+1) = semilogx(xBound([false; plotPointId]), yVal(plotPointId, 3), ...
-      'Color', kerColor(1, :), ...
-      'LineStyle', quartileLineStyle, ...
-      'LineWidth', quartileLineWidth);
-  else
-    h(1) = plot(xBound([false; plotPointId]), yVal(plotPointId, 1), ...
-      'Color', kerColor(1, :), ...
-      'LineStyle', quartileLineStyle, ...
-      'LineWidth', quartileLineWidth);
-    hold on
-    h(end+1) = plot(xBound([false; plotPointId]), yVal(plotPointId, 2), ...
-      'Color', kerColor(1, :), ...
-      'LineStyle', medianLineStyle, ...
-      'LineWidth', medianLineWidth);
-    h(end+1) = plot(xBound([false; plotPointId]), yVal(plotPointId, 3), ...
-      'Color', kerColor(1, :), ...
-      'LineStyle', quartileLineStyle, ...
-      'LineWidth', quartileLineWidth);
-  end
-  
-  
-  % add the rest of models
-  for m = 2:nModel
-    model_err_name = sprintf('model%d_%s', m, err_name);
-    actual_model_err = mfts_err.(model_err_name)(~nanOrInf);
-    
-    % create y-values for plot
-    for xb = 1:nPointsToPlotAct
-%       yVal(xb) = nanmean(actual_model_err(actual_mfts_err > xBound(xb) & actual_mfts_err <= xBound(xb+1)));
-      yVal(xb, :) = quantile((actual_model_err(actual_mfts_err > xBound(xb) & actual_mfts_err <= xBound(xb+1))), [1/4, 1/2, 3/4]);
-    end
-    % check missing values
-    plotPointId = ~all(isnan(yVal), 2);
-    if logAxis
-      h(end+1) = semilogx(xBound([false; plotPointId]), yVal(plotPointId, 1), ...
-        'Color', kerColor(m, :), ...
-        'LineStyle', quartileLineStyle, ...
-        'LineWidth', quartileLineWidth);
-      h(end+1) = semilogx(xBound([false; plotPointId]), yVal(plotPointId, 2), ...
-        'Color', kerColor(m, :), ...
-        'LineStyle', medianLineStyle, ...
-        'LineWidth', medianLineWidth);
-      h(end+1) = semilogx(xBound([false; plotPointId]), yVal(plotPointId, 3), ...
-        'Color', kerColor(m, :), ...
-        'LineStyle', quartileLineStyle, ...
-        'LineWidth', quartileLineWidth);
-    else
-      h(end+1) = plot(xBound([false; plotPointId]), yVal(plotPointId, 1), ...
-        'Color', kerColor(m, :), ...
-        'LineStyle', quartileLineStyle, ...
-        'LineWidth', quartileLineWidth);
-      h(end+1) = plot(xBound([false; plotPointId]), yVal(plotPointId, 2), ...
-        'Color', kerColor(m, :), ...
-        'LineStyle', medianLineStyle, ...
-        'LineWidth', medianLineWidth);
-      h(end+1) = plot(xBound([false; plotPointId]), yVal(plotPointId, 3), ...
-        'Color', kerColor(m, :), ...
-        'LineStyle', quartileLineStyle, ...
-        'LineWidth', quartileLineWidth);
-    end
-  end
-  title(strrep(mfts_name, '_', '\_'))
-  xlabel('feature value')
-  ylabel('model RDE')
-  legend(h(2:3:end), modelLabels, 'Location', 'Best')
-  axis([xBound(2), xBound(end), 0, 1])
-  hold off
-end
+  );
 
 %% Correlation analysis
 % Spearman correlation coefficients of Gaussian process model prediction
@@ -461,7 +345,9 @@ imageFolder = fullfile('test', 'local', 'images');
 resPdf = fullfile(imageFolder, 'gp_cov_meta_DTS_01_spearman.pdf');
 print2pdf(han, resPdf, 1)
 
-%% Decision tree analysis
+%%
+
+% Decision tree analysis
 
 if printScriptMess
   fprintf('Starting decision tree analysis\n')
@@ -477,60 +363,77 @@ model_err = table2array(mfts_err(:, 5 + (1:nModel)));
 % CT = fitctree(mfts_arr_pen, best_model_id);
 % CT = CT.prune('Level', 80);
 
-%% Regression tree analysis
+%% 
 
-if printScriptMess
-  fprintf('Starting regression tree analysis\n')
-end
-nFolds = 5;
+% Regression tree analysis
 
-RT = cell(1, nModel);
-cvErrRT = NaN(nModel, nFolds);
-cvErrRF_100 = NaN(nModel, nFolds);
-cvId = cvInd(size(mfts_arr_pen, 1), nFolds);
-for m = 1:nModel
-  for f = 1:nFolds
-    if printScriptMess
-      fprintf('Model %d Fold %d\n', m, f)
-    end
-    trainId = cvId ~= f;
-    testId = ~trainId;
+% if printScriptMess
+%   fprintf('Starting regression tree analysis\n')
+% end
+% nFolds = 5;
+% 
+% RT = cell(1, nModel);
+% cvErrRT = NaN(nModel, nFolds);
+% cvErrRF_100 = NaN(nModel, nFolds);
+% cvId = cvInd(size(mfts_arr_pen, 1), nFolds);
+% for m = 1:nModel
+%   for f = 1:nFolds
+%     if printScriptMess
+%       fprintf('Model %d Fold %d\n', m, f)
+%     end
+%     trainId = cvId ~= f;
+%     testId = ~trainId;
 %     fprintf('Tree model\n')
 %     % regression tree
 %     actRT = fitrtree(mfts_arr_pen(trainId, :), model_err(trainId, m));
 %     errPred = actRT.predict(mfts_arr_pen(testId, :));
 %     cvErrRT(m, f) = mseLossFunc(errPred, model_err(testId, m));
 %     fprintf('Forest model\n')
-    % regression forest
-    tic
-    actRF = TreeBagger(100, mfts_arr_pen(trainId, :), model_err(trainId, m), ...
-                       'Method', 'regression');
-    errPred = actRF.predict(mfts_arr_pen(testId, :));
-    cvErrRF_100(m, f) = mseLossFunc(errPred, model_err(testId, m));
-    toc
-  end
-  if printScriptMess
-    fprintf('Model %d RT training\n', m)
-  end
-%   RT{m} = fitrtree(mfts_arr_pen, model_err(:, m));
-end
+%     % regression forest
+%     tic
+%     actRF = TreeBagger(100, mfts_arr_pen(trainId, :), model_err(trainId, m), ...
+%                        'Method', 'regression');
+%     errPred = actRF.predict(mfts_arr_pen(testId, :));
+%     cvErrRF_100(m, f) = mseLossFunc(errPred, model_err(testId, m));
+%     toc
+%   end
+%   if printScriptMess
+%     fprintf('Model %d RT training\n', m)
+%   end
+% %   RT{m} = fitrtree(mfts_arr_pen, model_err(:, m));
+% end
 
 %% Multi-label classification
 
-% if printScriptMess
-%   fprintf('Starting multi-label classification\n')
-% end
-% % find which models have error smaller than 0.1 quantile 
-% good_model = model_err <= repmat(quantile(model_err, .1, 2), 1, 8);
-% % cases where all models are bad
-% good_model(model_err == errPenalty) = false;
-% 
-% % train classifier for each model separately
-% for m = 1:nModel
-%   fprintf('Training classifier %d\n', m)
+if printScriptMess
+  fprintf('Starting multi-label classification\n')
+end
+% find which models have error smaller than 0.1 quantile 
+good_model = model_err <= repmat(quantile(model_err, 0.00, 2), 1, 8);
+% cases where all models are bad
+good_model(model_err == errPenalty) = false;
+
+uni_good_model = unique(good_model, 'rows');
+% print number of different classes
+fprintf('Results contain %d of different classes:\n', ...
+        size(uni_good_model, 1))
+for cl = 1:size(uni_good_model)
+  fprintf('%d: %s\n', cl, ...
+    printStructure(modelLabels(logical(uni_good_model(cl, :))), 'Format', 'values'))
+end
+
+% train classifier for each model separately
+for m = 1:nModel
+  if printScriptMess
+    fprintf('Training classifier %d\n', m)
+  end
+%   tic
 %   modelClassifier{m} = TreeBagger(100, mfts_arr_pen, good_model(:, m));
 %   mlcPred(:, m) = modelClassifier{m}.predict(mfts_arr_pen);
-% end
+%   modelDT{m} = fitctree(mfts_arr_pen, good_model(:, m));
+%   mlcPredDT(:, m) = modelDT{m}.predict(mfts_arr_pen);
+%   toc
+end
 
 %% One-way ANOVA
 
@@ -545,3 +448,18 @@ nAllErr = numel(model_err);
   anova1(reshape(model_err, nAllErr, 1), ...
          reshape(repmat(modelLabels, size(model_err, 1), 1), nAllErr, 1));
 [multcomp_c, multcomp_m, multcomp_h, multcomp_nms] = multcompare(anova_stats);
+
+%%
+% ANOVA table and multcompare figure visualising differences among model
+% RDE on the whole dataset.
+
+%% PCA
+
+close all
+
+pca_input = table2array(mfts_err(:, 6+nModel:end));
+pca_input(any(isinf(pca_input) | isnan(pca_input), 2), :) = [];
+
+fprintf('Number of data (rows) not containing NaN or Inf: %d/%d\n', ...
+  size(pca_input, 1), size(mfts_err, 1))
+% pca(pca_input)
