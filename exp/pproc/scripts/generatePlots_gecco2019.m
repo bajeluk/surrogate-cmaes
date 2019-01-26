@@ -50,7 +50,7 @@ mfts = res.resParams.mfts;
 nModel = numel(unique(results.model));
 % create model labels
 modelLabels = {'NN', 'SE', 'LIN', 'QUAD', ...
-               'Matern', 'RQ', 'SE + QUAD', 'Gibbs'};             
+               'Matern', 'RQ', 'SE + QUAD', 'Gibbs'};
 
 %% RDE ranks 
 
@@ -139,9 +139,21 @@ for ms = 1:numel(mfts_sets)
       [mss, 'ela_metamodel_lin_simple_intercept'] ...
     }];
 end
-% also remove dimension of training set, because it cannot be determined by
-% next steps
-rem_mfts = [rem_mfts, 'train_basic_dim'];
+% also remove only train and trainset metafeatures identical for all mfts
+% sets
+rem2_mfts = {};
+for ms = 2:numel(mfts_sets)
+  mss = [mfts_sets{ms}, '_'];
+  rem2_mfts = [rem2_mfts, {...
+      [mss, 'basic_dim'], ...
+      [mss, 'cmaes_cma_evopath_c_norm'], ...
+      [mss, 'cmaes_cma_evopath_s_norm'], ...
+      [mss, 'cmaes_cma_generation'], ...
+      [mss, 'cmaes_cma_restart'], ...
+      [mss, 'cmaes_cma_step_size'] ...
+    }];
+end
+rem_mfts = [rem_mfts, rem2_mfts];
 
 fprintf('Removing user-defined metafeatures:\n')
 for m = 1:numel(rem_mfts)
@@ -149,6 +161,26 @@ for m = 1:numel(rem_mfts)
   fprintf('%s\n', rem_mfts{m})
   mfts = mfts(:, ~mId);
 end
+
+% rename archive identical columns (see above)
+mfts.Properties.VariableNames{'archive_basic_dim'} = 'dimension';
+mfts.Properties.VariableNames{'archive_cmaes_cma_evopath_c_norm'} = ...
+                                      'cmaes_evopath_c_norm';
+mfts.Properties.VariableNames{'archive_cmaes_cma_evopath_s_norm'} = ...
+                                      'cmaes_evopath_s_norm';
+mfts.Properties.VariableNames{'archive_cmaes_cma_generation'} = ...
+                                      'cmaes_generation';
+mfts.Properties.VariableNames{'archive_cmaes_cma_restart'} = ...
+                                      'cmaes_restart';
+mfts.Properties.VariableNames{'archive_cmaes_cma_step_size'} = ...
+                                      'cmaes_step_size';
+% rename observations columns
+mfts.Properties.VariableNames{'archive_basic_observations'} = 'archive_observations';
+mfts.Properties.VariableNames{'train_basic_observations'}   = 'train_observations';
+mfts.Properties.VariableNames{'traintest_basic_observations'} = 'traintest_observations';
+
+% create mfts table, where only user defined metafeatures are not present
+full_mfts = mfts;
 
 %%
 
@@ -245,6 +277,15 @@ for m = 1:nModel
     err_table = outerjoin(err_table, model_err, 'MergeKeys', true);
   end
 end
+% join all metafeatures and error values of individual models without
+% replacing missing errors
+full_mfts_err = innerjoin(err_table, full_mfts);
+% remove identification columns (fun, dim, inst, gen, model)
+full_mfts_err = full_mfts_err(:, 6:end);
+modelLabels_rde = {'rde_NN', 'rde_SE', 'rde_LIN', 'rde_QUAD', ...
+                   'rde_Matern', 'rde_RQ', 'rde_SE_QUAD', 'rde_Gibbs'};
+full_mfts_err.Properties.VariableNames = ...
+  [modelLabels_rde, full_mfts_err.Properties.VariableNames(9:end)];
 % replace missing errors and inf errors by penalty term
 % cannot use fillmissing(err_table, 'constant', errPenalty) - not 
 % implemented in R2015b
