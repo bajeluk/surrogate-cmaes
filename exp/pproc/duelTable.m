@@ -100,9 +100,7 @@ function [dTable, ranks] = duelTable(data, varargin)
   switch tableFormat
     % prints table to latex file
     case {'tex', 'latex'}
-      if ~exist(resultFolder, 'dir')
-        mkdir(resultFolder)
-      end
+      [~, ~] = mkdir(resultFolder);
 
       FID = fopen(resultFile, 'w');
       printTableTex(FID, dTable, dims, evaluations, ...
