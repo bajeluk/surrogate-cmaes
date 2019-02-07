@@ -39,6 +39,8 @@ if ~isfile(exp_meta_output)
     'SaveResults', exp_meta_output);
 end
 
+clear actualFolder articleFolder
+
 %%
 
 % Load calculated data
@@ -58,52 +60,52 @@ mfts = res.resParams.mfts;
 nModel = numel(unique(results.model));
 % create model labels
 modelLabels = {'NN', 'SE', 'LIN', 'Q', ...
-               'Mat', 'RQ', 'SE + Q', 'Gibbs'};
+               'Mat', 'RQ', 'SE+Q', 'Gibbs'};
 
 %% RDE ranks 
 
-if printScriptMess
-  fprintf('Calculating RDE ranks\n')
-end
-
-rdeRankFile = fullfile('/tmp', 'normSumRDE.mat');
-if ~exist('normSumRank', 'var') || ~isfile(rdeRankFile)
-  % find unique data results
-  [uniData, ia, ic] = unique(results(:, 1:5), 'rows');
-
-  sumRank = zeros(nModel); % model x position
-  for i = 1:size(ia, 1)
-    if printScriptMess
-      fprintf('%d/%d\n', i, size(ia, 1))
-    end
-    modelNum = results.model(ic == i);
-    % use only results where 2 or more models are available
-    if numel(modelNum) > 1
-      values = results.rde(ic == i);
-      % precise rank (from createRankingTable)
-      [~, ~, tr] = unique(values);
-      tr = tr';
-      pr = arrayfun(@(x) sum(tr < x), tr) + 1;
-      % add positions
-      for m = 1:numel(modelNum)
-        sumRank(modelNum(m), pr(m)) = sumRank(modelNum(m), pr(m)) + 1;
-      end
-    end
-  end
-
-  % normalize due to different numbers of comparisons (sometimes only two
-  % models on one dataset are available)
-  normSumRank = sumRank.*repmat(1./sum(sumRank, 2), 1, nModel);
-  normSumRank = array2table(normSumRank, 'RowNames', modelLabels, ...
-                'VariableNames', {'sum_1st', 'sum_2nd', 'sum_3rd', 'sum_4th', ...
-                                  'sum_5th', 'sum_6th', 'sum_7th', 'sum_8th'});
-  % save RDE rank result
-  save(rdeRankFile, 'normSumRank')
-elseif ~exist('normSumRank', 'var') && isfile(rdeRankFile)
-  nsRank = load(rdeRankFile);
-  normSumRank = nsRank.normSumRank;
-end
-disp(normSumRank)
+% if printScriptMess
+%   fprintf('Calculating RDE ranks\n')
+% end
+% 
+% rdeRankFile = fullfile('/tmp', 'normSumRDE.mat');
+% if ~exist('normSumRank', 'var') || ~isfile(rdeRankFile)
+%   % find unique data results
+%   [uniData, ia, ic] = unique(results(:, 1:5), 'rows');
+% 
+%   sumRank = zeros(nModel); % model x position
+%   for i = 1:size(ia, 1)
+%     if printScriptMess
+%       fprintf('%d/%d\n', i, size(ia, 1))
+%     end
+%     modelNum = results.model(ic == i);
+%     % use only results where 2 or more models are available
+%     if numel(modelNum) > 1
+%       values = results.rde(ic == i);
+%       % precise rank (from createRankingTable)
+%       [~, ~, tr] = unique(values);
+%       tr = tr';
+%       pr = arrayfun(@(x) sum(tr < x), tr) + 1;
+%       % add positions
+%       for m = 1:numel(modelNum)
+%         sumRank(modelNum(m), pr(m)) = sumRank(modelNum(m), pr(m)) + 1;
+%       end
+%     end
+%   end
+% 
+%   % normalize due to different numbers of comparisons (sometimes only two
+%   % models on one dataset are available)
+%   normSumRank = sumRank.*repmat(1./sum(sumRank, 2), 1, nModel);
+%   normSumRank = array2table(normSumRank, 'RowNames', modelLabels, ...
+%                 'VariableNames', {'sum_1st', 'sum_2nd', 'sum_3rd', 'sum_4th', ...
+%                                   'sum_5th', 'sum_6th', 'sum_7th', 'sum_8th'});
+%   % save RDE rank result
+%   save(rdeRankFile, 'normSumRank')
+% elseif ~exist('normSumRank', 'var') && isfile(rdeRankFile)
+%   nsRank = load(rdeRankFile);
+%   normSumRank = nsRank.normSumRank;
+% end
+% disp(normSumRank)
 
 %% Removing metafeatures
 % Remove user-defined, constant, NaN, and linearly dependent metafeatures.
@@ -190,6 +192,8 @@ mfts.Properties.VariableNames{'traintest_basic_observations'} = 'traintest_obser
 % create mfts table, where only user defined metafeatures are not present
 full_mfts = mfts;
 
+clear rem_mfts rem2_mfts m mId mss
+
 %%
 
 % Remove constant or NaN features
@@ -220,6 +224,8 @@ if any(nanId)
 end
 % actual removement
 mfts(:, constId | nanId) = [];
+
+clear varMfts constId nanId constNumId nanNumId m
 
 %%
 
@@ -266,6 +272,9 @@ if nFeat < numel(mfts_only.Properties.VariableNames)
   end
 end
 
+clear tol mfts_only mfts_arr nanInfMftsId nanInfDependent nanInfGroup mfId ...
+      g gid subArray gEqId gDepId gidNum nFeat mfts_dep m
+
 %%
 
 % Cat model results with metafeatures
@@ -300,6 +309,8 @@ for e = 1:numel(err_name)
 %   full_mfts_err.Properties.VariableNames = ...
 %     [modelLabels_err, full_mfts_err.Properties.VariableNames(9:end)];
 end
+% create extra full_mfts_err for visualisation
+full_mfts_vis = full_mfts_err;
 % remove identification columns (fun, dim, inst, gen, model)
 full_mfts_err = full_mfts_err(:, [1, 3, 5, 6:end]);
 
@@ -313,6 +324,10 @@ end
 
 % join metafeatures and error values of individual models
 mfts_err = innerjoin(err_table, mfts_indep);
+full_mfts_vis = innerjoin(err_table, full_mfts_vis(:, [1:5, 22:end]));
+
+clear err_name errPenalty modelLabels_friend full_mfts full_mfts_err e m ...
+      model_err err_table col_name
 
 %%
 if (~exist(tmpFName, 'file'))
@@ -337,13 +352,38 @@ quartileLineStyle = '-.';
 
 kerColor = getAlgColors([1, 2, 3, 12, 10, 11, 8, 5]) / 255;
 
-close all
+nExtF = 55;
+mfts_order = [14, 16:18, 20:21, ... identical
+              15, 80, 138, ... observations
+              19, 78, 136, ... cma_mean_dist
+              22, 79, 137, ... cma_lik
+              reshape(22 + repmat([0,58,116]', 1, nExtF) ...
+                + [(1:nExtF); (1:nExtF); (1:nExtF)], 1, 3*nExtF)];
 
-% metafeaturePlot(mfts_err.train_dispersion_diff_mean_02, mfts_err(:, 6:13), ...
-metafeaturePlot(mfts_err(:, 14:end), mfts_err(:, 6:13), ...
+close all
+ 
+% metafeaturePlot(full_mfts_vis(:, mfts_order), full_mfts_vis(:, 6:13), ...
+%                 'DataColor', kerColor, ...
+%                 'DataNames', modelLabels, ...
+%                 'MftsNames', full_mfts_vis.Properties.VariableNames(mfts_order), ...
+%                 'NValues', 200, ...
+%                 'LogBound', 2, ...
+%                 'QuantileRange', [0.05, 0.95], ...
+%                 'MedianLW', 1.8, ...
+%                 'QuartileLW', 1, ...
+%                 'MedianLS', '-', ...
+%                 'QuartileLS', '-.' ...
+%   );
+
+% print archive_cma_lik
+mftId = 22;
+mftName = ' ';
+pdfNames = {fullfile(plotResultsFolder, 'archive_cma_lik.pdf')};
+
+han = metafeaturePlot(table2array(full_mfts_vis(:, 22)), full_mfts_vis(:, 6:13), ...
                 'DataColor', kerColor, ...
                 'DataNames', modelLabels, ...
-                'MftsNames', mfts_err.Properties.VariableNames(14:end), ...
+                'MftsNames', mftName, ...
                 'NValues', 200, ...
                 'LogBound', 2, ...
                 'QuantileRange', [0.05, 0.95], ...
@@ -353,68 +393,70 @@ metafeaturePlot(mfts_err(:, 14:end), mfts_err(:, 6:13), ...
                 'QuartileLS', '-.' ...
   );
 
+print2pdf(han, pdfNames, 1)
+
 %% Correlation analysis
 % Spearman correlation coefficients of Gaussian process model prediction
 % RDE and ELA features.
 
-if printScriptMess
-  fprintf('Starting correlation analysis\n')
-end
-err_corr = NaN(nFeat, nModel);
-for m = 1:nModel
-  model_err_name = sprintf('model%d_%s', m, err_name);
-  for mf = 1:nFeat
-    mfts_name = mfts_indep.Properties.VariableNames{mf+5};
-    % remove metafeature NaN and Inf values
-    nanOrInf = isnan(mfts_err.(mfts_name)) | isinf(mfts_err.(mfts_name));
-    actual_mfts_err = mfts_err.(mfts_name)(~nanOrInf);
-    actual_model_err = mfts_err.(model_err_name)(~nanOrInf);
-    err_corr(mf, m) = corr(actual_mfts_err, actual_model_err, ...
-                           'Type', 'Spearman');
-  end
-end
-
-% create feature labels
-featureLabels = mfts_indep.Properties.VariableNames(6:end);
-featureLabels = cellfun(@(x) strrep(x, '_', '\_'), featureLabels, 'UniformOutput', false);
-
-% draw coeffs
-close all
-% image settings
-labelRot = 60;
-sizeX = 20;
-sizeY = 46;
-% draw coeffs without colorbar
-han{1} = figure('Units', 'centimeters', ...
-                'Position', [1 1 sizeX sizeY], ...
-                'PaperSize', [sizeX + 2, sizeY + 2]);
-imagesc(err_corr);
-colorbar
-% axis square
-ax = gca;
-ax.YTick = 1:nFeat;
-ax.YTickLabel = featureLabels;
-ax.XTick = 1:nModel;
-ax.XTickLabel = modelLabels;
-ax.XTickLabelRotation = labelRot;
-
-% print result to file
-imageFolder = fullfile('test', 'local', 'images');
-[~, ~] = mkdir(imageFolder);
-resPdf = fullfile(imageFolder, 'gp_cov_meta_DTS_01_spearman.pdf');
-print2pdf(han, resPdf, 1)
+% if printScriptMess
+%   fprintf('Starting correlation analysis\n')
+% end
+% err_corr = NaN(nFeat, nModel);
+% for m = 1:nModel
+%   model_err_name = sprintf('model%d_%s', m, err_name{e});
+%   for mf = 1:nFeat
+%     mfts_name = mfts_indep.Properties.VariableNames{mf+5};
+%     % remove metafeature NaN and Inf values
+%     nanOrInf = isnan(mfts_err.(mfts_name)) | isinf(mfts_err.(mfts_name));
+%     actual_mfts_err = mfts_err.(mfts_name)(~nanOrInf);
+%     actual_model_err = mfts_err.(model_err_name)(~nanOrInf);
+%     err_corr(mf, m) = corr(actual_mfts_err, actual_model_err, ...
+%                            'Type', 'Spearman');
+%   end
+% end
+% 
+% % create feature labels
+% featureLabels = mfts_indep.Properties.VariableNames(6:end);
+% featureLabels = cellfun(@(x) strrep(x, '_', '\_'), featureLabels, 'UniformOutput', false);
+% 
+% % draw coeffs
+% close all
+% % image settings
+% labelRot = 60;
+% sizeX = 20;
+% sizeY = 46;
+% % draw coeffs without colorbar
+% han{1} = figure('Units', 'centimeters', ...
+%                 'Position', [1 1 sizeX sizeY], ...
+%                 'PaperSize', [sizeX + 2, sizeY + 2]);
+% imagesc(err_corr);
+% colorbar
+% % axis square
+% ax = gca;
+% ax.YTick = 1:nFeat;
+% ax.YTickLabel = featureLabels;
+% ax.XTick = 1:nModel;
+% ax.XTickLabel = modelLabels;
+% ax.XTickLabelRotation = labelRot;
+% 
+% % print result to file
+% imageFolder = fullfile('test', 'local', 'images');
+% [~, ~] = mkdir(imageFolder);
+% resPdf = fullfile(imageFolder, 'gp_cov_meta_DTS_01_spearman.pdf');
+% print2pdf(han, resPdf, 1)
 
 %%
 
 % Decision tree analysis
 
-if printScriptMess
-  fprintf('Starting decision tree analysis\n')
-end
-% mfts array with penalty terms
-mfts_arr_pen = real(table2array(mfts_err(:, 6+nModel:end)));
-
-model_err = table2array(mfts_err(:, 5 + (1:nModel)));
+% if printScriptMess
+%   fprintf('Starting decision tree analysis\n')
+% end
+% % mfts array with penalty terms
+% mfts_arr_pen = real(table2array(mfts_err(:, 6+nModel:end)));
+% 
+% model_err = table2array(mfts_err(:, 5 + (1:nModel)));
 
 % % case where we ignore that more models can have the same performance
 % [~, best_model_id] = min(model_err, [], 2);
@@ -464,49 +506,49 @@ model_err = table2array(mfts_err(:, 5 + (1:nModel)));
 
 %% Multi-label classification
 
-if printScriptMess
-  fprintf('Starting multi-label classification\n')
-end
-% find which models have error smaller than 0.1 quantile 
-good_model = model_err <= repmat(quantile(model_err, 0.00, 2), 1, 8);
-% cases where all models are bad
-good_model(model_err == errPenalty) = false;
-
-uni_good_model = unique(good_model, 'rows');
-% print number of different classes
-fprintf('Results contain %d of different classes:\n', ...
-        size(uni_good_model, 1))
-for cl = 1:size(uni_good_model)
-  fprintf('%d: %s\n', cl, ...
-    printStructure(modelLabels(logical(uni_good_model(cl, :))), 'Format', 'values'))
-end
-
-% train classifier for each model separately
-for m = 1:nModel
-  if printScriptMess
-    fprintf('Training classifier %d\n', m)
-  end
+% if printScriptMess
+%   fprintf('Starting multi-label classification\n')
+% end
+% % find which models have error smaller than 0.1 quantile 
+% good_model = model_err <= repmat(quantile(model_err, 0.00, 2), 1, 8);
+% % cases where all models are bad
+% good_model(model_err == errPenalty) = false;
+% 
+% uni_good_model = unique(good_model, 'rows');
+% % print number of different classes
+% fprintf('Results contain %d of different classes:\n', ...
+%         size(uni_good_model, 1))
+% for cl = 1:size(uni_good_model)
+%   fprintf('%d: %s\n', cl, ...
+%     printStructure(modelLabels(logical(uni_good_model(cl, :))), 'Format', 'values'))
+% end
+% 
+% % train classifier for each model separately
+% for m = 1:nModel
+%   if printScriptMess
+%     fprintf('Training classifier %d\n', m)
+%   end
 %   tic
 %   modelClassifier{m} = TreeBagger(100, mfts_arr_pen, good_model(:, m));
 %   mlcPred(:, m) = modelClassifier{m}.predict(mfts_arr_pen);
 %   modelDT{m} = fitctree(mfts_arr_pen, good_model(:, m));
 %   mlcPredDT(:, m) = modelDT{m}.predict(mfts_arr_pen);
 %   toc
-end
+% end
 
 %% One-way ANOVA
 
-close all
-
-if printScriptMess
-  fprintf('Starting one-way ANOVA\n')
-end
-
-nAllErr = numel(model_err);
-[anova_p, anova_tbl, anova_stats] = ...
-  anova1(reshape(model_err, nAllErr, 1), ...
-         reshape(repmat(modelLabels, size(model_err, 1), 1), nAllErr, 1));
-[multcomp_c, multcomp_m, multcomp_h, multcomp_nms] = multcompare(anova_stats);
+% close all
+% 
+% if printScriptMess
+%   fprintf('Starting one-way ANOVA\n')
+% end
+% 
+% nAllErr = numel(model_err);
+% [anova_p, anova_tbl, anova_stats] = ...
+%   anova1(reshape(model_err, nAllErr, 1), ...
+%          reshape(repmat(modelLabels, size(model_err, 1), 1), nAllErr, 1));
+% [multcomp_c, multcomp_m, multcomp_h, multcomp_nms] = multcompare(anova_stats);
 
 %%
 % ANOVA table and multcompare figure visualising differences among model
@@ -514,13 +556,13 @@ nAllErr = numel(model_err);
 
 %% PCA
 
-close all
-
-pca_input = table2array(mfts_err(:, 6+nModel:end));
-pca_input(any(isinf(pca_input) | isnan(pca_input), 2), :) = [];
-
-fprintf('Number of data (rows) not containing NaN or Inf: %d/%d\n', ...
-  size(pca_input, 1), size(mfts_err, 1))
+% close all
+% 
+% pca_input = table2array(mfts_err(:, 6+nModel:end));
+% pca_input(any(isinf(pca_input) | isnan(pca_input), 2), :) = [];
+% 
+% fprintf('Number of data (rows) not containing NaN or Inf: %d/%d\n', ...
+%   size(pca_input, 1), size(mfts_err, 1))
 % pca(pca_input)
 
 %% Kolmogorov-Smirnov test
@@ -575,7 +617,7 @@ fprintf('Number of data (rows) not containing NaN or Inf: %d/%d\n', ...
 
 % load Martin's results
 ks_res_file = fullfile(expfolder, exp_id, 'kstest_meta.mat');
-ks_res = load(ks_res_file);
+ks_res = load(ks_res_file, 'CorrectedSignificance');
 %%
 
 % significance table
@@ -594,7 +636,7 @@ end
 
 % ks table setting
 ksTabSet.ResultFile = fullfile(tableFolder, 'ksTable.tex');
-ksTabSet.ColGroups = modelLabels;
+ksTabSet.ColGroups = {'NN', 'SE', 'LIN', 'Q', 'Mat', 'RQ', 'SE + Q', 'Gibbs'};
 ksTabSet.ColGroupNum = 3*ones(1, nModel);
 ksTabSet.ColValName = '$\sampleset$';
 ksTabSet.ColNames = repmat(...
@@ -686,14 +728,16 @@ ksTabSet.RowGroups = {'\npt', '$\featCMA$', '$\featDisp$', '$\featyDis$', ...
                       };
 ksTabSet.RowGroupNum = [1, 2, 16, 3, 18, 8, 5, 5];
 ksTabSet.RowValName = '$\featset{}$';
-ksTabSet.Caption = ['Kolmogorov-Smirnov test p-values comparing equality ',...
-        'of individual feature distribution on data suitable for a particular model with covariance function $\cov$ using sample set $\sampleset$', ...
-        'and on all data regardless model $\cov$. ', ...
-        'P-values in \textbf{bold} denote KS test results, where ', ...
-        'the hypothesis of distribution equality is rejected with the Bonferroni ', ...
-        'correction at family-wise significance level $\alpha=0.05$. ', ...
-        'Missing values in $\trainpredset$ column denotes features impossible to calculate with points without fitness values. ', ...
-        'Zeros indicate p-values lower than computer precision. '];
+ksTabSet.Caption = ['The p-values of the Kolmogorov-Smirnov test comparing the equality ',...
+        'probability distributions of individual features on all data ', ...
+        'and on those data on which a particular covariance function scored best. ', ...
+        'P-values in \textbf{bold} denote KS test results ', ...
+        'rejecting the equality of both distributions with the Holm ', ...
+        'correction at the family-wise significance level $\alpha=0.05$. ', ...
+        'Missing values in $\trainpredset$ column denote features impossible to calculate with points without fitness values. ', ...
+        'Zeros indicate p-values below the smallest double precision number. ', ...
+        '$\featMM$ notation: \texttt{l} -- \texttt{lin}, \texttt{q} -- \texttt{quad}, \texttt{s} -- \texttt{simple}, ', ...
+        '\texttt{i} -- \texttt{interact}, \texttt{c} -- \texttt{coef}.'];
                           
 % print ks table
 prtSignifTable(ks_sign_2(featNonId, :), ksTabSet)
@@ -708,14 +752,20 @@ ksTabSetInd.RowGroupNum = [1, 5];
 ksTabSetInd.ResultFile = fullfile(tableFolder, 'ksIndTable.tex');
 ksTabSetInd.TableWidth = '\columnwidth';
 ksTabSetInd.OneColumn = true;
-ksTabSetInd.Caption = ['Kolmogorov-Smirnov test p-values comparing equality ',...
-        'of individual feature distribution on data suitable for a particular model with covariance function $\cov$ ', ...
-        'and on all data regardless model $\cov$. ', ...
-        'Features in table are identical for all types of sample sets. ', ...
-        'P-values in \textbf{bold} denote KS test results, where ', ...
-        'the hypothesis of distribution equality is rejected with the Bonferroni ', ...
-        'correction at family-wise significance level $\alpha=0.05$. ', ...
-        'Zeros indicate p-values lower than computer precision. '];
+ksTabSetInd.Caption = ['The p-values of the Kolmogorov-Smirnov test comparing the equality ',...
+        'probability distributions of individual features on all data ', ...
+        'and on those data on which a particular covariance function scored best. ', ...
+        'Features in table pertain to all types of sample sets. ', ...
+        'P-values in \textbf{bold} denote KS test results ', ...
+        'rejecting the equality of both distributions with the Holm ', ...
+        'correction at the family-wise significance level $\alpha=0.05$. ', ...
+        'Zeros indicate p-values below the smallest double precision number. '];
 
 % print ks table for feature origin identical metafeatures
 prtSignifTable(ks_sign_2(1:nIdentical, 1:3:end), ksTabSetInd)
+
+%%
+
+% finalize script
+clear
+close all

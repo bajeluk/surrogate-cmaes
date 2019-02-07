@@ -18,7 +18,7 @@ function prtSignifTable(data, varargin)
   defResultFolder = fullfile('exp', 'pproc', 'tex');
   resultFile = defopts(settings, 'ResultFile', ...
                        fullfile(defResultFolder, 'signifTable.tex'));
-  resultFolder = fileparts(resultFile); 
+  [resultFolder, par.resultLabel] = fileparts(resultFile); 
   par.alpha = defopts(settings, 'Alpha', 0.05);
   par.printHeader = defopts(settings, 'PrintHeader', true);
   par.tableWidth = defopts(settings, 'TableWidth', '\textwidth');
@@ -194,7 +194,7 @@ function printTableTex(FID, data, par)
     fprintf(FID, '\\setlength{\\tabcolsep}{\\savetabcolsep}\n');
     fprintf(FID, '\\setlength{\\cmidrulekern}{\\savecmidrulekern}\n');
     
-    fprintf(FID, '\\label{tab:sign}\n');
+    fprintf(FID, '\\label{tab:%s}\n', par.resultLabel);
     if par.oneColumn
       fprintf(FID, '\\end{table}\n');
     else

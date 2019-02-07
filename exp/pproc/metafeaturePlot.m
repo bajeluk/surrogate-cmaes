@@ -118,8 +118,9 @@ function handle = metafeaturePlot(mftsVal, dataVal, varargin)
     plotSet.yVal = NaN(nPointsToPlotAct, 3);
     
     % create figure
-    handle{mf} = figure();
+    handle{mf} = figure('PaperSize', [14, 12]);
     h = [];
+    dataId = [];
   
     % data loop
     for m = 1:nData
@@ -134,23 +135,29 @@ function handle = metafeaturePlot(mftsVal, dataVal, varargin)
       end
       % check missing values
       plotSet.plotPointId = ~all(isnan(plotSet.yVal), 2);
-      % prepare color
-      plotSet.kerColor = kerColor(m, :);
-      % plot data
-      h(end+1) = plotLine(1, plotSet);
-      hold on
-      h(end+1) = plotLine(2, plotSet);
-      h(end+1) = plotLine(3, plotSet);
+      if ~isempty(plotSet.plotPointId)
+        % prepare color
+        plotSet.kerColor = kerColor(m, :);
+        % plot data
+        h(end+1) = plotLine(1, plotSet);
+        hold on
+        h(end+1) = plotLine(2, plotSet);
+        h(end+1) = plotLine(3, plotSet);
+        % add data id
+        dataId(end+1) = m;
+      end
     end
     
     % additional figure captions and ranges
     title(strrep(mftsNames{mf}, '_', '\_'))
     xlabel('feature value')
-    ylabel('model RDE')
+    ylabel('RDE_\mu')
     if showLegend
-      legend(h(2:3:end), dataNames, 'Location', 'Best')
+      legend(h(2:3:end), dataNames(dataId), 'Location', 'Best')
     end
-    axis([plotSet.xBound(2), plotSet.xBound(end), 0, 1])
+    if numel(plotSet.xBound) > 1
+      axis([plotSet.xBound(2), plotSet.xBound(end), 0, 1])
+    end
     hold off
   
   end % mfts loop
