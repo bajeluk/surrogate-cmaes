@@ -170,14 +170,16 @@ function printTableTex(FID, data, par)
       signif = dt < par.alpha;
 
       fprintf(FID, ' & ');
-      if signif
-        fprintf(FID, '\\textbf{');
-      end
+%       if signif
+%         fprintf(FID, '\\textbf{');
+%       end
       % print number
-      fprintf(FID, ' \\tiny{%s}', prtTexNum(dt));
-      if signif
-        fprintf(FID, '}');
-      end
+        fprintf(FID, ' \\tiny{%s}', prtTexNum(dt, signif));
+%       if signif
+%         fprintf(FID, '}');
+%       else
+%         fprintf(FID, '\\makebox{---}');
+%       end
 
     end
     fprintf(FID, '\\\\[-%dpt]\n', rowShrink);
@@ -208,12 +210,15 @@ function cellOfStr = formatCell(fmt, cellOfStr)
   cellOfStr = cellfun(@(x) sprintf(fmt, x), cellOfStr, 'UniformOutput', false);
 end
 
-function texNum = prtTexNum(num)
+function texNum = prtTexNum(num, signif)
 % print number in exponential tex format
-  NASymbol = '\makebox{---}';
+  NASymbol = 'X';
+  nonSignSymbol = '\makebox{---}';
 
   if isnan(num)
     texNum = NASymbol; %fprintf(FID, ' %s', NASymbol);
+  elseif ~signif
+    texNum = nonSignSymbol;
   elseif mod(num, 1) == 0
     % whole number
     texNum = num2str(num); % fprintf(FID, ' %d}', dt);
