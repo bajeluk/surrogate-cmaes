@@ -139,6 +139,10 @@ function Fvalue = fgeneric(x, FUNC_ID, itrial, dataPath, PARAMS)
       h2 = benchmarksnoisy('handles');
       handlesF(100+(1:length(h2))) = h2;  % index and function ID must agree
     end
+    if exist('benchmarksextra', 'file')
+      h2 = benchmarksextra('handles');
+      handlesF(200+(1:length(h2))) = h2;  % index and function ID must agree
+    end
   end
   if isempty(nbPtsEvals) || isempty(nbPtsF)
     nbPtsEvals = 20;
