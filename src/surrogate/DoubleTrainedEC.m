@@ -273,7 +273,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           end
           nToReeval = min(remainingOrigEvals, max(1, round(nToReevalPerIteration)));
           isToReeval = obj.choosePointsForReevaluation(obj.pop, lastModel, nToReeval);
-          assert(nToReeval == sum(isToReeval), 'Not all points aimed for reevaluation has been reevaluated');
+          assert(nToReeval <= sum(isToReeval), 'Not all points aimed for reevaluation has been reevaluated');
+          % if model failed, nToReeval has probably changed
+          nToReeval = sum(isToReeval);
 
           % original-evaluate the chosen point(s)
           xToReeval = obj.pop.x(:, isToReeval);
@@ -592,9 +594,15 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         [~, pointID] = sort(modelOutput, 'ascend');
       end
 
-      notOrigEvaledID = find(~pop.origEvaled);
       reevalID = false(1, pop.lambda);
-      reevalID(notOrigEvaledID(pointID(1:nPoints))) = true;
+      notOrigEvaledID = find(~pop.origEvaled);
+      if pointID
+        reevalID(notOrigEvaledID(pointID(1:nPoints))) = true;
+      else
+        % model inference failed, re-evaluate the remaining points not
+        % evaluated using the original fitness
+        reevalID(notOrigEvaledID) = true;
+      end
       %
       % Check the value of origRatio
       assert(obj.origRatioUpdater.getLastRatio() >= 0 && obj.origRatioUpdater.getLastRatio() <= 1, 'origRatio out of bounds [0,1]');
