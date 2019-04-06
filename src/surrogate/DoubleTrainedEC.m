@@ -612,7 +612,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     function [rmse, kendall, rankErr] = reevalStatistics(obj, yModel1)
       % calculate RMSE and possibly Kendall's coeff. of the re-evaluated point(s)
       % (phase == 1)
-      if (~any(obj.pop.origEvaled))
+      if (~any(obj.pop.origEvaled)) || isempty(yModel1)
         rmse = NaN; kendall = NaN; rankErr = NaN;
         return;
       end
@@ -665,7 +665,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     function rankErr = retrainStatistics(obj, yModel1)
     % get ranking error between the first and the second model
     % (if the second model is trained)
-      if (~isempty(obj.retrainedModel) && obj.retrainedModel.isTrained())
+      if (~isempty(obj.retrainedModel) && obj.retrainedModel.isTrained()) ...
+          && ~isempty(yModel1)
         yModel2 = obj.retrainedModel.predict(obj.pop.x');
         if isempty(yModel2)
           % prediction failed => ranking error cannot be calculated
