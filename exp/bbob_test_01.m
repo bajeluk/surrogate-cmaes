@@ -198,10 +198,12 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
       && exist([localDatapath filesep expFileID], 'dir') ...
       && exist(tmpFile, 'file'))
     [nCompletedInstances, y_evals, exp_results, cmaes_out] = loadInterruptedInstances(tmpFile);
-    system(['cp -pR ' localDatapath '/' expFileID ' ' datapathRoot]);
-    % copy also not-finished logs of this experiment ID
-    % TODO: test this!
-    system(['cp -pR ' localDatapath '/' exp_settings.exp_id '_log_' expFileID '.dat ' datapathRoot]);
+    if nCompletedInstances > 0
+      system(['cp -pR ' localDatapath '/' expFileID ' ' datapathRoot]);
+      % copy also not-finished logs of this experiment ID
+      % TODO: test this!
+      system(['cp -pR ' localDatapath '/' exp_settings.exp_id '_log_' expFileID '.dat ' datapathRoot]);
+    end
   else
     nCompletedInstances = 0;
   end
@@ -277,9 +279,33 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
 
     fgeneric('finalize');
     exp_id = exp_settings.exp_id;
+    % save already calculated instances to a temporary file
     if (~isPureCmaes)
       exp_results.rngState = rng();
-      save(tmpFile, 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams', 'bbParams', 'cmaes_out');
+      % saving loop
+      notSavedTmp = true;
+      nSavingTrials = 0;
+      while notSavedTmp && nSavingTrials < 100
+        % try saving
+        try
+          save(tmpFile, 'exp_id', 'exp_settings', 'exp_results', 'y_evals', ...
+                        'surrogateParams', 'cmaesParams', 'bbParams', 'cmaes_out');
+          notSavedTmp = false;
+        % problem with saving, retry in automatically prolonged intervals
+        catch
+          nSavingTrials = nSavingTrials + 1;
+          warning('Problem while saving temporary results. Retry saving no. %d', ...
+                  nSavingTrials)
+          % 5 minutes of saving at maximum
+          pause(3/50*nSavingTrials)
+        end
+      end
+      % continue without saving
+      if notSavedTmp
+        warning(['Temporary results not saved in %s!', ...
+                 'Unexpected end of run will cause loss of already calculated instances'], ...
+                 tmpFile)
+      end
     end
 
     % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
@@ -313,9 +339,25 @@ function printSettings(fid, exp_settings, exp_results, surrogateParams, cmaesPar
 end
 
 function [nCompletedInstances, y_evals, exp_results, cmaes_out] = loadInterruptedInstances(tmpFile)
+% Load finished instances from previous experiment runs
+
+  % initialize
+  nCompletedInstances = 0;
+  y_evals = {};
+  exp_results = struct();
+  cmaes_out = {};
+
   fprintf('Resuming previously interrupted experiment run...\n');
   fprintf('Loading results from:  %s\n', tmpFile);
-  load(tmpFile);
-  nCompletedInstances = size(y_evals, 1);
-  fprintf('Completed instances (%d):  %s\n', nCompletedInstances, num2str(exp_settings.instances(1:nCompletedInstances)));
+  % load file
+  try
+    load(tmpFile, 'y_evals', 'exp_results', 'exp_settings', 'cmaes_out');
+    nCompletedInstances = size(y_evals, 1);
+    fprintf('Completed instances (%d):  %s\n', nCompletedInstances, ...
+      num2str(exp_settings.instances(1:nCompletedInstances)));
+  % loading error
+  catch err
+    fprintf(2, '%s\n', err.getReport);
+    fprintf('No results loaded from the previous experiment. Starting from the beginning.\n')
+  end
 end
