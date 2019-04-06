@@ -197,8 +197,9 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
   if (~isPureCmaes && exp_settings.resume && ~isempty(localDatapath) ...
       && exist([localDatapath filesep expFileID], 'dir') ...
       && exist(tmpFile, 'file'))
-    [nCompletedInstances, y_evals, exp_results, cmaes_out] = loadInterruptedInstances(tmpFile);
+    [nCompletedInstances, y_evals, exp_res, cmaes_out] = loadInterruptedInstances(tmpFile);
     if nCompletedInstances > 0
+      exp_results = exp_res;
       system(['cp -pR ' localDatapath '/' expFileID ' ' datapathRoot]);
       % copy also not-finished logs of this experiment ID
       % TODO: test this!
