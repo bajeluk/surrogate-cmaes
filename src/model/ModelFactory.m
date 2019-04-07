@@ -56,6 +56,24 @@ classdef ModelFactory
             end
             obj = ModelPool(modelOptions, xMean);
           end
+        case {'meta', 'metamodel'}
+          % use the supplied 'oldModel' if exists
+          if (nargin > 3 && ~isempty(oldModel) && isa(oldModel, 'MetaModel'))
+            obj = oldModel;
+          else
+            if (isfield(modelOptions, 'parameterSets_fullfact') ...
+                && isnumeric(modelOptions.parameterSets))
+              % Identify the right settings according to current dimension.
+              % Dimensions for which we have exact parameterSets are
+              % saved in 'modelOptions.parameterSets_dimensions'
+              dim = size(xMean, 2);
+              [~, fullfactIndex] = min(abs( ...
+                  modelOptions.parameterSets_dimensions - dim ));
+              modelOptions.parameterSets = modelOptions.parameterSets_fullfact( ...
+                  modelOptions.parameterSets(fullfactIndex, :) );
+            end
+            obj = MetaModel(modelOptions, xMean);
+          end
         otherwise
           warning(['ModelFactory.createModel: ' str ' -- no such model available']);
           obj = [];

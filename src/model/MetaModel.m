@@ -31,7 +31,7 @@ classdef MetaModel < Model
     reductionMatrix       % Matrix used for dimensionality reduction
 
     % MetaModel specific properties
-    MetaModelOptions
+    metaModelOptions
     archive
     population
     XTrain
@@ -39,21 +39,17 @@ classdef MetaModel < Model
     modelsCount           % number of models in the MetaModel
     model                 % instances of models, 2D cell array of modelscount*historyLength+1
     bestModelIndex
-    bestModelsHistory     % how many times has been each model chosen as the best one
-    bestModelSelection    % which criterium will be used to select which model is the best
-                          %(mse/mae/rdeAll/rdeOrig/likelihood)
+    bestModelSelection    % method of best model selection
     choosingCriterium     % values of calculated criterium (mse/mae/...) for each model
-    retrainPeriod
     nTrainData            % min of getNTrainData of all created models
     xMean
-    minTrainedModelsPercentileForModelChoice % if percentile of oldest models that are trained
-                                            % drops below this value, we try newer generations of models
-    maxGenerationShiftForModelChoice  % stops trying to find trained generation
-                                      % and switches to likelihood after this value of searched generations
+    isModelTrained
   end
 
   methods (Access = public)
     function obj = MetaModel(modelOptions, xMean)
+    % MetaModel constructor
+    
       obj.metaModelOptions = modelOptions;
       obj.xMean = xMean;
       obj.modelsCount = length(modelOptions.parameterSets);
@@ -61,31 +57,8 @@ classdef MetaModel < Model
 
       obj.bestModelSelection = defopts(modelOptions, 'bestModelSelection', 'pitra2019landscape');
 
-      if (strcmpi(obj.bestModelSelection, 'likelihood')...
-         || strcmpi(obj.bestModelSelection, 'poiavg')...
-         || strcmpi(obj.bestModelSelection, 'poimax')...
-         || strcmpi(obj.bestModelSelection, 'eiavg')...
-         || strcmpi(obj.bestModelSelection, 'eimax'))
-        % these selections do not need older models
-        obj.historyLength = 0;
-      else
-        obj.historyLength = defopts(modelOptions, 'historyLength', 4);
-        if (obj.historyLength < 2)
-          warning('MetaModel: history length needs to be at least 2 in order to choose from at least 1 point, choosing 2 as value.');
-          obj.historyLength = 2;
-        end
-        obj.minTrainedModelsPercentileForModelChoice = defopts(modelOptions, 'minTrainedModelsPercentileForModelChoice', 0.25);
-        obj.maxGenerationShiftForModelChoice = defopts(modelOptions, 'maxGenerationShiftForModelChoice', 1);
-        if obj.maxGenerationShiftForModelChoice >= obj.historyLength -1
-          warning('MetaModel: maxGenerationShiftForModelChoice is too high, choosing %d as value.', obj.historyLength - 2)
-          obj.maxGenerationShiftForModelChoice = obj.historyLength - 2;
-        end
-      end
-
-      obj.retrainPeriod = defopts(modelOptions, 'retrainPeriod', 1);
-      obj.models = cell(obj.modelsCount,obj.historyLength+1);
-      obj.isModelTrained = false(obj.modelsCount,obj.historyLength+1);
-      obj.bestModelsHistory = zeros(1,obj.modelsCount);
+      obj.model = [];
+      obj.isModelTrained = false;
       obj.dim       = size(xMean, 2);
       obj.shiftMean = zeros(1, obj.dim);
       obj.shiftY    = 0;
@@ -97,19 +70,7 @@ classdef MetaModel < Model
       obj.dimReduction = defopts(modelOptions, 'dimReduction', 1);
       obj.options.normalizeY = defopts(modelOptions, 'normalizeY', true);
 
-      obj.nTrainData = Inf;
-      for i=1:obj.modelsCount
-        % create the models, calculate needed properties
-        if (isstruct(obj.MetaModelOptions.parameterSets))
-          modelOptions = obj.MetaModelOptions.parameterSets(i);
-        elseif (iscell(obj.MetaModelOptions.parameterSets))
-          modelOptions = obj.MetaModelOptions.parameterSets{i};
-        end
-        % now obsolete:
-        % obj.MetaModelOptions.parameterSets(i).calculatedTrainRange = MetaModel.calculateTrainRange(modelOptions.trainRange, obj.dim);
-        obj.models{i,1} = obj.createGpModel(i, xMean);
-        obj.nTrainData = min(obj.models{i,1}.getNTrainData(),obj.nTrainData);
-      end
+      obj.nTrainData = 3*obj.dim;
     end
 
     function nData = getNTrainData(obj)
@@ -118,10 +79,10 @@ classdef MetaModel < Model
 
     function trained = isTrained(obj)
       % check whether the model chosen as the best in the newest generation is trained
-      if (isempty(obj.isModelTrained(obj.bestModelIndex,1)))
+      if (isempty(obj.isModelTrained))
         trained = false;
       else
-        trained = obj.isModelTrained(obj.bestModelIndex,1);
+        trained = obj.isModelTrained;
       end
     end
 
@@ -141,28 +102,50 @@ classdef MetaModel < Model
       obj.yTrain = y;
       obj.population = population;
       
-      obj.isTrained = true;
+      obj.trainSigma = stateVariables.sigma;
+      obj.trainBD = stateVariables.BD;
+      
+      obj.isModelTrained = true;
+      
+      
       
     end
 
     function [y, sd2] = modelPredict(obj, X)
     % MetaModel prediction method
     
+      % select best model id
       bestModelId = obj.chooseBestModel(X);
+      % copy general and new values from the chosen settings
+      metaModelOpts = obj.metaModelOptions;
+      bestSetFields = fieldnames(obj.metaModelOptions.parameterSets(bestModelId));
+      for f = 1:numel(bestSetFields)
+        metaModelOpts.(bestSetFields{f}) = ...
+          obj.metaModelOptions.parameterSets(bestModelId).(bestSetFields{f});
+      end
+      
       % model constructor
-      newModel = GpModel(obj.MetaModelOptions.parameterSets(bestModelId), obj.xMean);
+      newModel = GpModel(metaModelOpts, obj.xMean);
       % train new model
-      newModel = newModel.train(obj.trainX, obj.trainy);
-      if ~successfulTraining
-        newModel = obj.model.train(obj.trainX, obj.trainy);
-        if ~oldSuccessful
+      newModel = newModel.train(obj.XTrain, obj.yTrain, obj.stateVariables, ...
+                                obj.sampleOpts, obj.archive, obj.population);
+      if ~newModel.isTrained && ~isempty(obj.model)
+        newModel = obj.model.train(obj.XTrain, obj.yTrain);
+        if ~newModel.isTrained
           newModel = obj.model;
         end
       end
-      obj.model = newModel;
       
       % model prediction
-      [y, sd2] = obj.models.modelPredict(X);
+      if newModel.isTrained
+        obj.model = newModel;
+      
+        [y, sd2] = obj.model.modelPredict(X);
+      else
+        y = []; sd2 = [];
+        fprintf(2, 'MetaModel.predict(): Model training failed. No prediction available.');
+      end
+      
     end
 
     function X = getDataset_X(obj)
@@ -234,6 +217,8 @@ classdef MetaModel < Model
     % (2019): Landscape Analysis of Gaussian Process Surrogates for the
     % Covariance Matrix Adaptation Evolution Strategy
     
+      % TODO: get proper bounds for decision splits
+    
       % models used 1:LIN, 2:SE, 3:MATERN5, 4:RQ, 5:GIBBS
       modelId = []; 
       
@@ -246,9 +231,9 @@ classdef MetaModel < Model
       y_Tp = [y_T; NaN(size(Xtest, 1), 1)];
       
       % feature settings
-      settings.cma_cov = obj.stateVariables;
-      settings.cma_mean = obj.stateVariables;
-      settings.cma_step_size = obj.stateVariables;
+      settings.cma_cov = obj.trainBD*obj.trainBD';
+      settings.cma_mean = obj.xMean;
+      settings.cma_step_size = obj.trainSigma;
       
       % calculate CMA features on archive
       ft_cma_A = feature_cmaes(X_A, y_A, settings);
