@@ -79,7 +79,15 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
 
       y_evals = exp_results.y_evals;
 
-      save([resultsFile '.mat'], 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams', 'bbParams', 'cmaes_out');
+      % saving results
+      varToSave = struct('exp_id', exp_id, 'exp_settings', exp_settings, ...
+                         'exp_results', exp_results, 'y_evals', y_evals, ...
+                         'surrogateParams', surrogateParams, 'cmaesParams', cmaesParams, ...
+                         'bbParams', bbParams, 'cmaes_out', cmaes_out);
+      savedRes = saveBBOB([resultsFile '.mat'], varToSave);
+      assert(savedRes, ['Unable to save results to %s.',... 
+                        'Run task again for few seconds, results are probably saved in temporary result file.'], ...
+                        resultsFile);
 
       % ===== PURE CMAES RESULTS =====
       if (bbParams.runPureCMAES)
@@ -97,7 +105,13 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
           % test if the results still doesn't exist, if no, save them :)
           if (~ exist(cmaesResultsFile, 'file'))
             y_evals = exp_cmaes_results.y_evals;
-            save(cmaesResultsFile, 'exp_id', 'exp_settings', 'exp_cmaes_results', 'y_evals', 'surrogateParams', 'cmaesParams');
+            varToSave = struct('exp_id', exp_id, 'exp_settings', exp_settings, ...
+                         'exp_cmaes_results', exp_cmaes_results, 'y_evals', y_evals, ...
+                         'surrogateParams', surrogateParams, 'cmaesParams', cmaesParams);
+            savedCMA = saveBBOB(cmaesResultsFile, varToSave);
+            if ~savedCMA
+              warning('CMA results not saved to %s.', cmaesResultFile)
+            end
           end
         end
 
@@ -283,26 +297,14 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
     % save already calculated instances to a temporary file
     if (~isPureCmaes)
       exp_results.rngState = rng();
-      % saving loop
-      notSavedTmp = true;
-      nSavingTrials = 0;
-      while notSavedTmp && nSavingTrials < 100
-        % try saving
-        try
-          save(tmpFile, 'exp_id', 'exp_settings', 'exp_results', 'y_evals', ...
-                        'surrogateParams', 'cmaesParams', 'bbParams', 'cmaes_out');
-          notSavedTmp = false;
-        % problem with saving, retry in automatically prolonged intervals
-        catch
-          nSavingTrials = nSavingTrials + 1;
-          warning('Problem while saving temporary results. Retry saving no. %d', ...
-                  nSavingTrials)
-          % 5 minutes of saving at maximum
-          pause(3/50*nSavingTrials)
-        end
-      end
+      % saving results
+      varToSave = struct('exp_id', exp_id, 'exp_settings', exp_settings, ...
+                         'exp_results', exp_results, 'y_evals', y_evals, ...
+                         'surrogateParams', surrogateParams, 'cmaesParams', cmaesParams, ...
+                         'bbParams', bbParams, 'cmaes_out', cmaes_out);
+      savedTmp = saveBBOB(tmpFile, varToSave);
       % continue without saving
-      if notSavedTmp
+      if ~savedTmp
         warning(['Temporary results not saved in %s!', ...
                  'Unexpected end of run will cause loss of already calculated instances'], ...
                  tmpFile)
@@ -361,4 +363,49 @@ function [nCompletedInstances, y_evals, exp_results, cmaes_out] = loadInterrupte
     fprintf(2, '%s\n', err.getReport);
     fprintf('No results loaded from the previous experiment. Starting from the beginning.\n')
   end
+end
+
+function [state, err] = saveBBOB(filename, variables, maxTrials)
+% Save bbob results
+%
+% Input:
+%   filename  - name of resulting file
+%   variables - structure of variables to be saved
+%   maxTrials - maximum number of saving trials
+%
+% Output:
+%   state - state of saving | boolean
+%   err   - cell-array of errors caught in individual trials
+
+  % initialize
+  if nargin < 3
+    maxTrials = 100;
+  end
+  err = {};
+
+  % check variables
+  assert(isstruct(variables), 'Variables must be a structure')
+
+  % saving loop
+  notSaved = true;
+  nSavingTrials = 0;
+  while notSaved && nSavingTrials < maxTrials
+    % try saving
+    try
+      save(filename, '-struct', 'variables');
+      notSaved = false;
+    % problem with saving, retry in automatically prolonged intervals
+    catch actualErr
+      nSavingTrials = nSavingTrials + 1;
+      err{nSavingTrials} = actualErr;
+      warning('Problem while saving %s. Retry saving no. %d', ...
+              filename, nSavingTrials)
+      % 5 minutes of saving at maximum
+      pause(3/50*nSavingTrials)
+    end
+  end
+
+  % return resulting state
+  state = ~notSaved;
+
 end
