@@ -117,6 +117,8 @@ classdef MetaModel < Model
       obj.trainBD = stateVariables.BD;
       
       % model training
+      obj.models = cell(1, obj.modelsCount);
+      obj.trainedModels = false(1, obj.modelsCount);
       
       % select best model id
       [bestModelId, obj.metaTrainFlag] = obj.chooseBestModelTrain();
@@ -165,10 +167,10 @@ classdef MetaModel < Model
       y = []; sd2 = [];
     
       % is another selection necessary?
-      if obj.metaTrainFlag > 0
+      if sum(obj.trainedModels) > 1
         modelId = obj.chooseBestModelPredict(X);
       % only one model trained
-      elseif obj.metaTrainFlag == 0
+      elseif sum(obj.trainedModels) == 1
         modelId = find(obj.trainedModels);
       % no model trained
       else
@@ -282,26 +284,21 @@ classdef MetaModel < Model
       % calculate CMA features on archive
       ft_cma_A = feature_cmaes(X_A, y_A, settings);
       % first node of the tree
-      if ft_cma_A.cma_lik < 0
-        % calculate dispersion on traintest set
-%         ft_dis_Tp = feature_dispersion(X_Tp, y_Tp, settings);
-%         if ft_dis_Tp.ratio_median_02 < 0
-%           modelId = 3; % MATERN5
-%         else
-%           modelId = 4; % RQ
-%         end
+      if ft_cma_A.cma_lik < -1.05034e8
+        % necessary dispersion on traintest set will be calculated in 
+        % getTree2019Predict
         modelId = [3, 4];
         metaTrainFlag = 1;
       else
         % calculate metamodel features on archive
         ft_mm_A = feature_ela_metamodel(X_A, y_A, settings);
-        if ft_mm_A.lin_simple_adj_r2 < 0
+        if ft_mm_A.lin_simple_adj_r2 < 0.965407
           if obj.dim < 15
             % calculate dispersion features on archive
             ft_dis_A = feature_dispersion(X_A, y_A, settings);
-            if ft_dis_A.ratio_mean_25 < 0
+            if ft_dis_A.ratio_mean_25 < 0.245507
               % metamodel fts on archive
-              if ft_mm_A.quad_simple_adj_r2 < 0
+              if ft_mm_A.quad_simple_adj_r2 < 0.999398
                 modelId = 3; % MATERN5
               else
                 modelId = 4; % RQ
@@ -309,29 +306,24 @@ classdef MetaModel < Model
             else
               % calculate metamodel fts on train set
               ft_mm_T = feature_ela_metamodel(X_T, y_T, settings);
-              if ft_mm_T.quad_simple_adj_r2 < 0
+              if ft_mm_T.quad_simple_adj_r2 < 0.998876
                 % calculate levelset fts on archive
                 ft_lvl_A = feature_ela_levelset(X_A, y_A, settings);
-                if ft_lvl_A.mmce_qda_50 < 0
+                if ft_lvl_A.mmce_qda_50 < 0.205074
                   modelId = 5; % GIBBS
                 else
                   % metamodel fts on archive
-                  if ft_mm_A.quad_simple_adj_r2 < 0
+                  if ft_mm_A.quad_simple_adj_r2 < 0.218322
                     % calculate dispersion fts on train set
                     ft_dis_T = feature_dispersion(X_T, y_T, settings);
-                    if ft_dis_T.ratio_median_02 < 0
+                    if ft_dis_T.ratio_median_02 < 0.0313419
                       modelId = 2; % SE
                     else
                       modelId = 5; % GIBBS
                     end
                   else
-                    % calculate information content fts on traintest set
-%                     ft_inf_Tp = feature_infocontent(X_Tp, y_Tp, settings);
-%                     if ft_inf_Tp.eps_max < 0
-%                       modelId = 5; % GIBBS
-%                     else
-%                       modelId = 4; % RQ
-%                     end
+                    % necessary information content fts on traintest set
+                    % will be calculated in getTree2019Predict
                     modelId = [4, 5];
                     metaTrainFlag = 2;
                   end
@@ -343,9 +335,9 @@ classdef MetaModel < Model
           else % dimension >= 15
             % calculate metamodel fts on train set
             ft_mm_T = feature_ela_metamodel(X_T, y_T, settings);
-            if ft_mm_T.quad_simple_adj_r2 < 0
+            if ft_mm_T.quad_simple_adj_r2 < 0.999377
               % metamodel fts on train set
-              if ft_mm_T.quad_w_interact_adj_r2 < 0
+              if ft_mm_T.quad_w_interact_adj_r2 < 1
                 modelId = 4; % RQ
               else
                 modelId = 3; % MATERN5
@@ -373,7 +365,7 @@ classdef MetaModel < Model
         case 1
           % calculate dispersion on traintest set
           ft_dis_Tp = feature_dispersion(X_Tp, y_Tp);
-          if ft_dis_Tp.ratio_median_02 < 0
+          if ft_dis_Tp.ratio_median_02 < 0.10666
             modelId = 3; % MATERN5
           else
             modelId = 4; % RQ
@@ -381,7 +373,7 @@ classdef MetaModel < Model
         case 2
           % calculate information content fts on traintest set
           ft_inf_Tp = feature_infocontent(X_Tp, y_Tp);
-          if ft_inf_Tp.eps_max < 0
+          if ft_inf_Tp.eps_max < 0.0783446
             modelId = 5; % GIBBS
           else
             modelId = 4; % RQ
