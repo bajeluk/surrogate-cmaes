@@ -32,12 +32,14 @@ classdef MetaModel < Model
 
     % MetaModel specific properties
     metaModelOptions
+    metaTrainFlag         % flag denoting result of training selection
     archive
     population
     XTrain
     yTrain
     modelsCount           % number of models in the MetaModel
-    model                 % instances of models, 2D cell array of modelscount*historyLength+1
+    models                % instances of models
+    trainedModels         % indicatior of trained models
     bestModelIndex
     bestModelSelection    % method of best model selection
     choosingCriterium     % values of calculated criterium (mse/mae/...) for each model
@@ -57,12 +59,15 @@ classdef MetaModel < Model
 
       obj.bestModelSelection = defopts(modelOptions, 'bestModelSelection', 'pitra2019landscape');
 
-      obj.model = [];
+      obj.models = [];
       obj.isModelTrained = false;
       obj.dim       = size(xMean, 2);
       obj.shiftMean = zeros(1, obj.dim);
       obj.shiftY    = 0;
       obj.stdY      = 1;
+      
+      obj.dataset.X = [];
+      obj.dataset.y = [];
 
       % general model prediction options
       obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
@@ -70,6 +75,10 @@ classdef MetaModel < Model
       obj.dimReduction = defopts(modelOptions, 'dimReduction', 1);
       obj.options.normalizeY = defopts(modelOptions, 'normalizeY', true);
 
+      % meta model
+      obj.models = cell(1, obj.modelsCount);
+      obj.trainedModels = false(1, obj.modelsCount);
+      
       obj.nTrainData = 3*obj.dim;
     end
 
@@ -98,62 +107,82 @@ classdef MetaModel < Model
       obj.stateVariables = stateVariables;
       obj.sampleOpts = sampleOpts;
       obj.xMean = stateVariables.xmean';
-      obj.XTrain = X;
-      obj.yTrain = y;
+      if (~isempty(X) && ~isempty(y))
+        obj.dataset.X = X;
+        obj.dataset.y = y;
+      end
       obj.population = population;
       
       obj.trainSigma = stateVariables.sigma;
       obj.trainBD = stateVariables.BD;
       
-      obj.isModelTrained = true;
+      % model training
       
+      % select best model id
+      [bestModelId, obj.metaTrainFlag] = obj.chooseBestModelTrain();
       
+      % train all selected models
+      for m = 1:numel(bestModelId)
+        % copy general and new values from the chosen settings
+        metaModelOpts = obj.metaModelOptions;
+        bestSetFields = fieldnames(obj.metaModelOptions.parameterSets(bestModelId(m)));
+        for f = 1:numel(bestSetFields)
+          metaModelOpts.(bestSetFields{f}) = ...
+            obj.metaModelOptions.parameterSets(bestModelId(m)).(bestSetFields{f});
+        end
+
+        try
+          % model constructor
+          newModel = GpModel(metaModelOpts, obj.xMean);
+          % train new model
+          newModel = newModel.train(obj.getDataset_X(), obj.getDataset_y(), obj.stateVariables, ...
+                                    obj.sampleOpts, obj.archive, obj.population);
+
+          % save new model
+          obj.models{bestModelId(m)} = newModel;
+          obj.trainedModels(bestModelId(m)) = true;
+        catch
+          fprintf(2, 'MetaModel.train(): Selected model id %d training failed.\n', bestModelId(m));
+        end
+      end
+            
+      % if any model is trained, the metamodel can make predictions
+      if any(obj.trainedModels)
+        obj.isModelTrained = true;
+      else
+        obj.metaTrainFlag = -1;
+      end
+      % only one model trained
+      if sum(obj.trainedModels) == 1
+        obj.metaTrainFlag = 0;
+      end
       
     end
 
     function [y, sd2] = modelPredict(obj, X)
     % MetaModel prediction method
+      
+      y = []; sd2 = [];
     
-      % select best model id
-      bestModelId = obj.chooseBestModel(X);
-      % copy general and new values from the chosen settings
-      metaModelOpts = obj.metaModelOptions;
-      bestSetFields = fieldnames(obj.metaModelOptions.parameterSets(bestModelId));
-      for f = 1:numel(bestSetFields)
-        metaModelOpts.(bestSetFields{f}) = ...
-          obj.metaModelOptions.parameterSets(bestModelId).(bestSetFields{f});
-      end
-      
-      % model constructor
-      newModel = GpModel(metaModelOpts, obj.xMean);
-      % train new model
-      newModel = newModel.train(obj.XTrain, obj.yTrain, obj.stateVariables, ...
-                                obj.sampleOpts, obj.archive, obj.population);
-      if ~newModel.isTrained && ~isempty(obj.model)
-        newModel = obj.model.train(obj.XTrain, obj.yTrain);
-        if ~newModel.isTrained
-          newModel = obj.model;
-        end
-      end
-      
-      % model prediction
-      if newModel.isTrained
-        obj.model = newModel;
-      
-        [y, sd2] = obj.model.modelPredict(X);
+      % is another selection necessary?
+      if obj.metaTrainFlag > 0
+        modelId = obj.chooseBestModelPredict(X);
+      % only one model trained
+      elseif obj.metaTrainFlag == 0
+        modelId = find(obj.trainedModels);
+      % no model trained
       else
-        y = []; sd2 = [];
-        fprintf(2, 'MetaModel.predict(): Model training failed. No prediction available.');
+        fprintf(2, 'MetaModel.predict(): No model trained. MetaModel prediction failed.\n');
+        return
+      end
+    
+      % model prediction
+      if obj.isTrained
+        [y, sd2] = obj.models{modelId}.modelPredict(X);
+      else
+        fprintf(2, 'MetaModel.predict(): Model prediction failed.\n');
       end
       
-    end
-
-    function X = getDataset_X(obj)
-      X = obj.models{obj.bestModelIndex,1}.getDataset_X();
-    end
-
-    function y = getDataset_y(obj)
-      y = obj.models{obj.bestModelIndex,1}.getDataset_y();
     end
 
   end
@@ -174,22 +203,38 @@ classdef MetaModel < Model
 
     end
 
-    function [bestModelIndex] = chooseBestModel(obj, Xtest)
-    % Select the most convenient model for actual training plus testing 
-    % dataset.
+    function [bestModelIndex, metaTrainFlag] = chooseBestModelTrain(obj)
+    % Select the most convenient models for actual training dataset.
     
       switch lower(obj.bestModelSelection)
         case 'pitra2019landscape'
-          bestModelIndex = obj.getTree2019(Xtest);
+          [bestModelIndex, metaTrainFlag] = obj.getTree2019Train();
           % calculate metafeatures
           % find appropriate model
         otherwise
-          error(['MetaModel.chooseBestModel: ', ...
+          error(['MetaModel.chooseBestModelTrain: ', ...
                  obj.MetaModelOptions.bestModelSelection, ...
                  ' -- no such option available']);
       end
 
     end
+    
+    function [bestModelIndex] = chooseBestModelPredict(obj, Xtest)
+    % Select the most convenient model for actual prediction dataset.
+    
+      switch lower(obj.bestModelSelection)
+        case 'pitra2019landscape'
+          bestModelIndex = obj.getTree2019Predict(Xtest);
+          % calculate metafeatures
+          % find appropriate model
+        otherwise
+          error(['MetaModel.chooseBestModelPredict: ', ...
+                 obj.MetaModelOptions.bestModelSelection, ...
+                 ' -- no such option available']);
+      end
+
+    end
+
 
     function obj = copyPropertiesFromBestModel(obj)
       obj.stdY = obj.models{obj.bestModelIndex,1}.stdY;
@@ -212,8 +257,8 @@ classdef MetaModel < Model
       obj.sampleOpts = obj.models{obj.bestModelIndex,1}.sampleOpts;
     end
 
-    function modelId = getTree2019(obj, Xtest)
-    % Select the model using decision tree from article Pitra et al.
+    function [modelId, metaTrainFlag] = getTree2019Train(obj)
+    % Select the models using decision tree from article Pitra et al.
     % (2019): Landscape Analysis of Gaussian Process Surrogates for the
     % Covariance Matrix Adaptation Evolution Strategy
     
@@ -221,14 +266,13 @@ classdef MetaModel < Model
     
       % models used 1:LIN, 2:SE, 3:MATERN5, 4:RQ, 5:GIBBS
       modelId = []; 
+      metaTrainFlag = 0; % only one model trained
       
       % data variables
       X_A = obj.archive.X;
       y_A = obj.archive.y;
-      X_T = obj.XTrain;
-      y_T = obj.yTrain;
-      X_Tp = [X_T; Xtest];
-      y_Tp = [y_T; NaN(size(Xtest, 1), 1)];
+      X_T = obj.getDataset_X();
+      y_T = obj.getDataset_y();
       
       % feature settings
       settings.cma_cov = obj.trainBD*obj.trainBD';
@@ -240,12 +284,14 @@ classdef MetaModel < Model
       % first node of the tree
       if ft_cma_A.cma_lik < 0
         % calculate dispersion on traintest set
-        ft_dis_Tp = feature_dispersion(X_Tp, y_Tp, settings);
-        if ft_dis_Tp.ratio_median_02 < 0
-          modelId = 3; % MATERN5
-        else
-          modelId = 4; % RQ
-        end
+%         ft_dis_Tp = feature_dispersion(X_Tp, y_Tp, settings);
+%         if ft_dis_Tp.ratio_median_02 < 0
+%           modelId = 3; % MATERN5
+%         else
+%           modelId = 4; % RQ
+%         end
+        modelId = [3, 4];
+        metaTrainFlag = 1;
       else
         % calculate metamodel features on archive
         ft_mm_A = feature_ela_metamodel(X_A, y_A, settings);
@@ -280,12 +326,14 @@ classdef MetaModel < Model
                     end
                   else
                     % calculate information content fts on traintest set
-                    ft_inf_Tp = feature_infocontent(X_Tp, y_Tp, settings);
-                    if ft_inf_Tp.eps_max < 0
-                      modelId = 5; % GIBBS
-                    else
-                      modelId = 4; % RQ
-                    end
+%                     ft_inf_Tp = feature_infocontent(X_Tp, y_Tp, settings);
+%                     if ft_inf_Tp.eps_max < 0
+%                       modelId = 5; % GIBBS
+%                     else
+%                       modelId = 4; % RQ
+%                     end
+                    modelId = [4, 5];
+                    metaTrainFlag = 2;
                   end
                 end
               else
@@ -311,7 +359,39 @@ classdef MetaModel < Model
         end
       end
       
-    end % obj.getTree2019
+    end % obj.getTree2019Train
+    
+    function modelId = getTree2019Predict(obj, Xtest)
+    % Select the models using decision tree from article Pitra et al.
+    % (2019): Landscape Analysis of Gaussian Process Surrogates for the
+    % Covariance Matrix Adaptation Evolution Strategy
+    
+      X_Tp = [obj.getDataset_X(); Xtest];
+      y_Tp = [obj.getDataset_y(); NaN(size(Xtest, 1), 1)];
+    
+      switch obj.metaTrainFlag
+        case 1
+          % calculate dispersion on traintest set
+          ft_dis_Tp = feature_dispersion(X_Tp, y_Tp);
+          if ft_dis_Tp.ratio_median_02 < 0
+            modelId = 3; % MATERN5
+          else
+            modelId = 4; % RQ
+          end
+        case 2
+          % calculate information content fts on traintest set
+          ft_inf_Tp = feature_infocontent(X_Tp, y_Tp);
+          if ft_inf_Tp.eps_max < 0
+            modelId = 5; % GIBBS
+          else
+            modelId = 4; % RQ
+          end
+        otherwise
+          % return existing modelId's
+          modelId = find(obj.trainedModels);
+      end
+    
+    end
     
   end
 
