@@ -620,6 +620,7 @@ ks_res_file = fullfile(expfolder, exp_id, 'kstest_meta.mat');
 ks_res = load(ks_res_file, 'CorrectedSignificance', 'ReorderedTable', ...
                            'MetafeatureNames', 'Best', 'Distributions');
 %%
+% KS test table
 
 % significance table
 ks_sign = ks_res.CorrectedSignificance;
@@ -645,7 +646,7 @@ ksTabSet.ColValName = '$\sampleset$';
 ksTabSet.ColNames = repmat(...
                     {'$\archive$', '$\trainset$', '$\trainpredset$'}, ...
                     1, nModel);
-tableFeatNames = { ...
+featNames = { ...
     'dimension', ...
     ... cmaes
     'generation', ...
@@ -722,7 +723,7 @@ tableFeatNames = { ...
   };
 % change _ to \_
 tableFeatNames = cellfun(@(x) ['\\texttt{', strrep(x, '_', '\\_'), '}'], ...
-                            tableFeatNames, ...
+                            featNames, ...
                             'UniformOutput', false);
 featNonId = [nIdentical + [3,1,2], nIdentical+4 : numel(tableFeatNames)];
 ksTabSet.RowNames = tableFeatNames(featNonId);
@@ -768,6 +769,41 @@ ksTabSetInd.Caption = ['The p-values of the Kolmogorov-Smirnov test comparing th
 
 % print ks table for feature origin identical metafeatures
 prtSignifTable(ks_sign_2(1:nIdentical, 1:3:end), ksTabSetInd)
+
+%% 
+% KS test image
+close all
+
+% image settings
+sizeY = 17;
+sizeX = 34;
+labelRot = 60;
+plotNames = {fullfile(plotResultsFolder, 'ks_fig.pdf')};
+
+% change _ to \_
+imgFeatNames = cellfun(@(x) strrep(x, '_', '\_'), ...
+                            featNames, ...
+                            'UniformOutput', false);
+
+% draw coeffs without colorbar
+han{1} = figure('Units', 'centimeters', ...
+                'Position', [1 1 sizeX sizeY], ...
+                'PaperSize', [sizeX + 2, sizeY + 2]);
+% draw image
+hold on
+imagesc(-log(ks_sign_2(featNonId, :)'))
+colorbar
+
+% axis square
+ax = gca;
+ax.XTick = 1:numel(featNonId);
+ax.XTickLabel = imgFeatNames(featNonId);
+ax.YTick = 1:(3*nModel);
+ax.YTickLabel = [modelLabels, modelLabels, modelLabels];
+ax.XTickLabelRotation = labelRot;
+
+hold off
+print2pdf(han, plotNames, 1)
 
 %% Distribution plots
 
