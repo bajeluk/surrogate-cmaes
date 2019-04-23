@@ -23,6 +23,7 @@ function handle = metafeaturePlot(mftsVal, dataVal, varargin)
 %                       | double (e.g. 5% interval [0.05, 0.95])
 %     'QuartileLS'    - quartile line style (specification) | double
 %     'QuartileLW'    - quartile line width | double
+%     'Select'        - select only values | {'positive', 'negative', []}
 %     'ShowLegend'    - show plot legend | boolean
 %
 % Output:
@@ -70,6 +71,7 @@ function handle = metafeaturePlot(mftsVal, dataVal, varargin)
   logBound = defopts(settings, 'LogBound', 5);
   mftsNames = defopts(settings, 'MftsNames', defMftsNames);
   quantRange = defopts(settings, 'QuantileRange', [0, 1]);
+  selectVals = defopts(settings, 'Select', []);
   showLegend = defopts(settings, 'ShowLegend', true);
   
   % check names format
@@ -94,6 +96,12 @@ function handle = metafeaturePlot(mftsVal, dataVal, varargin)
     inBounds = (mftsVal(:, mf) >= quantBounds(1) & ...
                 mftsVal(:, mf) <= quantBounds(2));
     actual_mftsVal = mftsVal(inBounds, mf);
+    % remove positive of negative values if required
+    if strcmp(selectVals, 'positive')
+      actual_mftsVal(actual_mftsVal <= 0) = [];
+    elseif strcmp(selectVals, 'negative')
+      actual_mftsVal(actual_mftsVal >= 0) = [];
+    end
     % prepare minimal and maximal value
     mnmx = minmax(actual_mftsVal');
     % create x-values for plot
@@ -151,9 +159,10 @@ function handle = metafeaturePlot(mftsVal, dataVal, varargin)
     % additional figure captions and ranges
     title(strrep(mftsNames{mf}, '_', '\_'))
     xlabel('feature value')
-    ylabel('RDE_\mu')
+    ylabel('$\mathit{RDE}_{\hspace{-1pt}\mu}$', 'Interpreter', 'latex')
     if showLegend
-      legend(h(2:3:end), dataNames(dataId), 'Location', 'Best')
+      legend(h(2:3:end), dataNames(dataId), 'Location', 'Best', ...
+                                            'Interpreter', 'latex')
     end
     if numel(plotSet.xBound) > 1
       axis([plotSet.xBound(2), plotSet.xBound(end), 0, 1])

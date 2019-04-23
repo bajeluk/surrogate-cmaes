@@ -1,11 +1,28 @@
-%% GECCO 2019 article plots
-% Script for analysing GP covariance function dependence on data sampled 
-% from DTS-CMA-ES run over the noiseless part of the BBOB framework.
-% Script also creates graphs and tables.
+%% GECCO 2019 article plots: Landscape Analysis of Gaussian Process Surrogates for the Covariance Matrix Adaptation Evolution Strategy
+%
+% *Paper abstract:*
+% Gaussian processes modeling technique has been shown as a valuable 
+% surrogate model for the Covariance Matrix Adaptation Evolution 
+% Strategy (CMA-ES) in continuous single-objective black-box
+% optimization tasks, where the optimized function is expensive. 
+% In this paper, we investigate how different Gaussian process settings
+% influence the error between the predicted and genuine population
+% ordering in connection with features representing the fitness landscape. 
+% Apart from using features for landscape analysis known
+% from the literature, we propose a new set of features based on CMA-ES 
+% state variables. We perform the landscape analysis of a large
+% set of data generated using runs of a surrogate-assisted version of
+% the CMA-ES on the noiseless part of the Comparing Continuous
+% Optimisers benchmark function testbed.
 % 
-% Created for GECCO 2019 main track article.
+% Here we provide additional material which was not fully incorporated in
+% the original paper.
+%
+% Created for GECCO 2019 article.
 
-%% load data
+%%
+
+% load data
 
 % checkout file containing all loaded data
 tmpFName = fullfile('/tmp', 'gecco2019_data.mat');
@@ -62,52 +79,9 @@ nModel = numel(unique(results.model));
 modelLabels = {'NN', 'SE', 'LIN', 'Q', ...
                'Mat', 'RQ', 'SE+Q', 'Gibbs'};
 
-%% RDE ranks 
+%% 
 
-% if printScriptMess
-%   fprintf('Calculating RDE ranks\n')
-% end
-% 
-% rdeRankFile = fullfile('/tmp', 'normSumRDE.mat');
-% if ~exist('normSumRank', 'var') || ~isfile(rdeRankFile)
-%   % find unique data results
-%   [uniData, ia, ic] = unique(results(:, 1:5), 'rows');
-% 
-%   sumRank = zeros(nModel); % model x position
-%   for i = 1:size(ia, 1)
-%     if printScriptMess
-%       fprintf('%d/%d\n', i, size(ia, 1))
-%     end
-%     modelNum = results.model(ic == i);
-%     % use only results where 2 or more models are available
-%     if numel(modelNum) > 1
-%       values = results.rde(ic == i);
-%       % precise rank (from createRankingTable)
-%       [~, ~, tr] = unique(values);
-%       tr = tr';
-%       pr = arrayfun(@(x) sum(tr < x), tr) + 1;
-%       % add positions
-%       for m = 1:numel(modelNum)
-%         sumRank(modelNum(m), pr(m)) = sumRank(modelNum(m), pr(m)) + 1;
-%       end
-%     end
-%   end
-% 
-%   % normalize due to different numbers of comparisons (sometimes only two
-%   % models on one dataset are available)
-%   normSumRank = sumRank.*repmat(1./sum(sumRank, 2), 1, nModel);
-%   normSumRank = array2table(normSumRank, 'RowNames', modelLabels, ...
-%                 'VariableNames', {'sum_1st', 'sum_2nd', 'sum_3rd', 'sum_4th', ...
-%                                   'sum_5th', 'sum_6th', 'sum_7th', 'sum_8th'});
-%   % save RDE rank result
-%   save(rdeRankFile, 'normSumRank')
-% elseif ~exist('normSumRank', 'var') && isfile(rdeRankFile)
-%   nsRank = load(rdeRankFile);
-%   normSumRank = nsRank.normSumRank;
-% end
-% disp(normSumRank)
-
-%% Removing metafeatures
+% Removing metafeatures
 % Remove user-defined, constant, NaN, and linearly dependent metafeatures.
 
 % Process metafeatures
@@ -336,9 +310,12 @@ end
 
 end
 
-%% Visual inspection
-% Medians (thick lines) and quartiles (thin and dash-dotted lines) of GP 
-% model RDE dependency on individual metafeatures.
+%% $\textrm{RDE}_\mu$ regardless sample set
+% Features in the following plots pertain to all types of sample sets.
+% 
+% Median (solid lines) and first and third quartiles
+% (dash-dot lines) of $\textrm{RDE}_\mu$ values dependency on individual
+% features for all tested covariances calculated on all available datasets.
 
 if printScriptMess
   fprintf('Starting visual inspection\n')
@@ -353,7 +330,8 @@ quartileLineStyle = '-.';
 kerColor = getAlgColors([1, 2, 3, 12, 10, 11, 8, 5]) / 255;
 
 nExtF = 55;
-mfts_order = [14, 16:18, 20:21, ... identical
+mfts_order_id = [14, 16:18, 20:21]; % identical for sample sets
+mfts_order_nonid = [...        not identical for sample sets
               15, 80, 138, ... observations
               19, 78, 136, ... cma_mean_dist
               22, 79, 137, ... cma_lik
@@ -362,28 +340,10 @@ mfts_order = [14, 16:18, 20:21, ... identical
 
 close all
  
-% metafeaturePlot(full_mfts_vis(:, mfts_order), full_mfts_vis(:, 6:13), ...
-%                 'DataColor', kerColor, ...
-%                 'DataNames', modelLabels, ...
-%                 'MftsNames', full_mfts_vis.Properties.VariableNames(mfts_order), ...
-%                 'NValues', 200, ...
-%                 'LogBound', 2, ...
-%                 'QuantileRange', [0.05, 0.95], ...
-%                 'MedianLW', 1.8, ...
-%                 'QuartileLW', 1, ...
-%                 'MedianLS', '-', ...
-%                 'QuartileLS', '-.' ...
-%   );
-
-% print archive_cma_lik
-mftId = 22;
-mftName = ' ';
-pdfNames = {fullfile(plotResultsFolder, 'archive_cma_lik.pdf')};
-
-han = metafeaturePlot(table2array(full_mfts_vis(:, 22)), full_mfts_vis(:, 6:13), ...
+metafeaturePlot(full_mfts_vis(:, mfts_order_id), full_mfts_vis(:, 6:13), ...
                 'DataColor', kerColor, ...
                 'DataNames', modelLabels, ...
-                'MftsNames', mftName, ...
+                'MftsNames', full_mfts_vis.Properties.VariableNames(mfts_order_id), ...
                 'NValues', 200, ...
                 'LogBound', 2, ...
                 'QuantileRange', [0.05, 0.95], ...
@@ -393,179 +353,271 @@ han = metafeaturePlot(table2array(full_mfts_vis(:, 22)), full_mfts_vis(:, 6:13),
                 'QuartileLS', '-.' ...
   );
 
-print2pdf(han, pdfNames, 1)
-
-%% Correlation analysis
-% Spearman correlation coefficients of Gaussian process model prediction
-% RDE and ELA features.
-
-% if printScriptMess
-%   fprintf('Starting correlation analysis\n')
-% end
-% err_corr = NaN(nFeat, nModel);
-% for m = 1:nModel
-%   model_err_name = sprintf('model%d_%s', m, err_name{e});
-%   for mf = 1:nFeat
-%     mfts_name = mfts_indep.Properties.VariableNames{mf+5};
-%     % remove metafeature NaN and Inf values
-%     nanOrInf = isnan(mfts_err.(mfts_name)) | isinf(mfts_err.(mfts_name));
-%     actual_mfts_err = mfts_err.(mfts_name)(~nanOrInf);
-%     actual_model_err = mfts_err.(model_err_name)(~nanOrInf);
-%     err_corr(mf, m) = corr(actual_mfts_err, actual_model_err, ...
-%                            'Type', 'Spearman');
-%   end
-% end
+%% $\textrm{RDE}_\mu$ on number of observations
 % 
-% % create feature labels
-% featureLabels = mfts_indep.Properties.VariableNames(6:end);
-% featureLabels = cellfun(@(x) strrep(x, '_', '\_'), featureLabels, 'UniformOutput', false);
+% Number of observations differs according to the sample set on
+% which they were calculated: 
+% |archive| $\mathcal{A}$, 
+% |train| $\mathcal{T}$, and
+% |traintest| $\mathcal{T}_\mathcal{P}$.
+%
+% Median (solid lines) and first and third quartiles
+% (dash-dot lines) of $\textrm{RDE}_\mu$ values dependency on individual
+% features for all tested covariances calculated on all available datasets.
+
+close all
+
+fId = 1:3;
+
+metafeaturePlot(full_mfts_vis(:, mfts_order_nonid(fId)), full_mfts_vis(:, 6:13), ...
+                'DataColor', kerColor, ...
+                'DataNames', modelLabels, ...
+                'MftsNames', full_mfts_vis.Properties.VariableNames(mfts_order_nonid(fId)), ...
+                'NValues', 200, ...
+                'LogBound', 2, ...
+                'QuantileRange', [0.05, 0.95], ...
+                'MedianLW', 1.8, ...
+                'QuartileLW', 1, ...
+                'MedianLS', '-', ...
+                'QuartileLS', '-.' ...
+  );
+
+%% $\textrm{RDE}_\mu$ on CMA-ES features
 % 
-% % draw coeffs
-% close all
-% % image settings
-% labelRot = 60;
-% sizeX = 20;
-% sizeY = 46;
-% % draw coeffs without colorbar
-% han{1} = figure('Units', 'centimeters', ...
-%                 'Position', [1 1 sizeX sizeY], ...
-%                 'PaperSize', [sizeX + 2, sizeY + 2]);
-% imagesc(err_corr);
-% colorbar
-% % axis square
-% ax = gca;
-% ax.YTick = 1:nFeat;
-% ax.YTickLabel = featureLabels;
-% ax.XTick = 1:nModel;
-% ax.XTickLabel = modelLabels;
-% ax.XTickLabelRotation = labelRot;
+% CMA features differ according to the sample set on
+% which they were calculated: 
+% |archive| $\mathcal{A}$, 
+% |train| $\mathcal{T}$, and
+% |traintest| $\mathcal{T}_\mathcal{P}$.
+%
+% Median (solid lines) and first and third quartiles
+% (dash-dot lines) of $\textrm{RDE}_\mu$ values dependency on individual
+% features for all tested covariances calculated on all available datasets.
+
+close all
+
+fId = 4:7;
+
+metafeaturePlot(full_mfts_vis(:, mfts_order_nonid(fId)), full_mfts_vis(:, 6:13), ...
+                'DataColor', kerColor, ...
+                'DataNames', modelLabels, ...
+                'MftsNames', full_mfts_vis.Properties.VariableNames(mfts_order_nonid(fId)), ...
+                'NValues', 200, ...
+                'LogBound', 2, ...
+                'QuantileRange', [0.05, 0.95], ...
+                'MedianLW', 1.8, ...
+                'QuartileLW', 1, ...
+                'MedianLS', '-', ...
+                'QuartileLS', '-.' ...
+  );
+
+metafeaturePlot(full_mfts_vis(:, mfts_order_nonid(8:9)), full_mfts_vis(:, 6:13), ...
+                'DataColor', kerColor, ...
+                'DataNames', modelLabels, ...
+                'MftsNames', full_mfts_vis.Properties.VariableNames(mfts_order_nonid(8:9)), ...
+                'NValues', 200, ...
+                'LogBound', 2, ...
+                'QuantileRange', [0.05, 0.95], ...
+                'Select', 'negative', ...
+                'MedianLW', 1.8, ...
+                'QuartileLW', 1, ...
+                'MedianLS', '-', ...
+                'QuartileLS', '-.' ...
+  );
+
+%% $\textrm{RDE}_\mu$ on Dispersion features
 % 
-% % print result to file
-% imageFolder = fullfile('test', 'local', 'images');
-% [~, ~] = mkdir(imageFolder);
-% resPdf = fullfile(imageFolder, 'gp_cov_meta_DTS_01_spearman.pdf');
-% print2pdf(han, resPdf, 1)
+% Dispersion features differ according to the sample set on
+% which they were calculated: 
+% |archive| $\mathcal{A}$, 
+% |train| $\mathcal{T}$, and
+% |traintest| $\mathcal{T}_\mathcal{P}$.
+%
+% Median (solid lines) and first and third quartiles
+% (dash-dot lines) of $\textrm{RDE}_\mu$ values dependency on individual
+% features for all tested covariances calculated on all available datasets.
 
-%%
+close all
 
-% Decision tree analysis
+fId = 10:57;
 
-% if printScriptMess
-%   fprintf('Starting decision tree analysis\n')
-% end
-% % mfts array with penalty terms
-% mfts_arr_pen = real(table2array(mfts_err(:, 6+nModel:end)));
+metafeaturePlot(full_mfts_vis(:, mfts_order_nonid(fId)), full_mfts_vis(:, 6:13), ...
+                'DataColor', kerColor, ...
+                'DataNames', modelLabels, ...
+                'MftsNames', full_mfts_vis.Properties.VariableNames(mfts_order_nonid(fId)), ...
+                'NValues', 200, ...
+                'LogBound', 2, ...
+                'QuantileRange', [0.05, 0.95], ...
+                'MedianLW', 1.8, ...
+                'QuartileLW', 1, ...
+                'MedianLS', '-', ...
+                'QuartileLS', '-.' ...
+  );
+
+%% $\textrm{RDE}_\mu$ on y-Distribution features
 % 
-% model_err = table2array(mfts_err(:, 5 + (1:nModel)));
+% y-Distribution features differ according to the sample set on
+% which they were calculated: 
+% |archive| $\mathcal{A}$, 
+% |train| $\mathcal{T}$, and
+% |traintest| $\mathcal{T}_\mathcal{P}$.
+%
+% Median (solid lines) and first and third quartiles
+% (dash-dot lines) of $\textrm{RDE}_\mu$ values dependency on individual
+% features for all tested covariances calculated on all available datasets.
 
-% % case where we ignore that more models can have the same performance
-% [~, best_model_id] = min(model_err, [], 2);
+close all
+
+fId = 58:66;
+
+metafeaturePlot(full_mfts_vis(:, mfts_order_nonid(fId)), full_mfts_vis(:, 6:13), ...
+                'DataColor', kerColor, ...
+                'DataNames', modelLabels, ...
+                'MftsNames', full_mfts_vis.Properties.VariableNames(mfts_order_nonid(fId)), ...
+                'NValues', 200, ...
+                'LogBound', 2, ...
+                'QuantileRange', [0.05, 0.95], ...
+                'MedianLW', 1.8, ...
+                'QuartileLW', 1, ...
+                'MedianLS', '-', ...
+                'QuartileLS', '-.' ...
+  );
+
+%% $\textrm{RDE}_\mu$ on Levelset features
 % 
-% CT = fitctree(mfts_arr_pen, best_model_id);
-% CT = CT.prune('Level', 80);
+% Levelset features differ according to the sample set on
+% which they were calculated: 
+% |archive| $\mathcal{A}$, 
+% |train| $\mathcal{T}$, and
+% |traintest| $\mathcal{T}_\mathcal{P}$.
+%
+% Median (solid lines) and first and third quartiles
+% (dash-dot lines) of $\textrm{RDE}_\mu$ values dependency on individual
+% features for all tested covariances calculated on all available datasets.
 
-%% 
+close all
 
-% Regression tree analysis
+fId = 67:120;
 
-% if printScriptMess
-%   fprintf('Starting regression tree analysis\n')
-% end
-% nFolds = 5;
+metafeaturePlot(full_mfts_vis(:, mfts_order_nonid(fId)), full_mfts_vis(:, 6:13), ...
+                'DataColor', kerColor, ...
+                'DataNames', modelLabels, ...
+                'MftsNames', full_mfts_vis.Properties.VariableNames(mfts_order_nonid(fId)), ...
+                'NValues', 200, ...
+                'LogBound', 2, ...
+                'QuantileRange', [0.05, 0.95], ...
+                'MedianLW', 1.8, ...
+                'QuartileLW', 1, ...
+                'MedianLS', '-', ...
+                'QuartileLS', '-.' ...
+  );
+
+%% $\textrm{RDE}_\mu$ on Metamodel features
 % 
-% RT = cell(1, nModel);
-% cvErrRT = NaN(nModel, nFolds);
-% cvErrRF_100 = NaN(nModel, nFolds);
-% cvId = cvInd(size(mfts_arr_pen, 1), nFolds);
-% for m = 1:nModel
-%   for f = 1:nFolds
-%     if printScriptMess
-%       fprintf('Model %d Fold %d\n', m, f)
-%     end
-%     trainId = cvId ~= f;
-%     testId = ~trainId;
-%     fprintf('Tree model\n')
-%     % regression tree
-%     actRT = fitrtree(mfts_arr_pen(trainId, :), model_err(trainId, m));
-%     errPred = actRT.predict(mfts_arr_pen(testId, :));
-%     cvErrRT(m, f) = mseLossFunc(errPred, model_err(testId, m));
-%     fprintf('Forest model\n')
-%     % regression forest
-%     tic
-%     actRF = TreeBagger(100, mfts_arr_pen(trainId, :), model_err(trainId, m), ...
-%                        'Method', 'regression');
-%     errPred = actRF.predict(mfts_arr_pen(testId, :));
-%     cvErrRF_100(m, f) = mseLossFunc(errPred, model_err(testId, m));
-%     toc
-%   end
-%   if printScriptMess
-%     fprintf('Model %d RT training\n', m)
-%   end
-% %   RT{m} = fitrtree(mfts_arr_pen, model_err(:, m));
-% end
+% Metamodel features differ according to the sample set on
+% which they were calculated: 
+% |archive| $\mathcal{A}$, 
+% |train| $\mathcal{T}$, and
+% |traintest| $\mathcal{T}_\mathcal{P}$.
+%
+% Median (solid lines) and first and third quartiles
+% (dash-dot lines) of $\textrm{RDE}_\mu$ values dependency on individual
+% features for all tested covariances calculated on all available datasets.
 
-%% Multi-label classification
+close all
 
-% if printScriptMess
-%   fprintf('Starting multi-label classification\n')
-% end
-% % find which models have error smaller than 0.1 quantile 
-% good_model = model_err <= repmat(quantile(model_err, 0.00, 2), 1, 8);
-% % cases where all models are bad
-% good_model(model_err == errPenalty) = false;
+fId = 121:144;
+
+metafeaturePlot(full_mfts_vis(:, mfts_order_nonid(fId)), full_mfts_vis(:, 6:13), ...
+                'DataColor', kerColor, ...
+                'DataNames', modelLabels, ...
+                'MftsNames', full_mfts_vis.Properties.VariableNames(mfts_order_nonid(fId)), ...
+                'NValues', 200, ...
+                'LogBound', 2, ...
+                'QuantileRange', [0.05, 0.95], ...
+                'MedianLW', 1.8, ...
+                'QuartileLW', 1, ...
+                'MedianLS', '-', ...
+                'QuartileLS', '-.' ...
+  );
+
+%% $\textrm{RDE}_\mu$ on Information content features
 % 
-% uni_good_model = unique(good_model, 'rows');
-% % print number of different classes
-% fprintf('Results contain %d of different classes:\n', ...
-%         size(uni_good_model, 1))
-% for cl = 1:size(uni_good_model)
-%   fprintf('%d: %s\n', cl, ...
-%     printStructure(modelLabels(logical(uni_good_model(cl, :))), 'Format', 'values'))
-% end
-% 
-% % train classifier for each model separately
-% for m = 1:nModel
-%   if printScriptMess
-%     fprintf('Training classifier %d\n', m)
-%   end
-%   tic
-%   modelClassifier{m} = TreeBagger(100, mfts_arr_pen, good_model(:, m));
-%   mlcPred(:, m) = modelClassifier{m}.predict(mfts_arr_pen);
-%   modelDT{m} = fitctree(mfts_arr_pen, good_model(:, m));
-%   mlcPredDT(:, m) = modelDT{m}.predict(mfts_arr_pen);
-%   toc
-% end
+% Information content features differ according to the sample set on
+% which they were calculated: 
+% |archive| $\mathcal{A}$, 
+% |train| $\mathcal{T}$, and
+% |traintest| $\mathcal{T}_\mathcal{P}$.
+%
+% Median (solid lines) and first and third quartiles
+% (dash-dot lines) of $\textrm{RDE}_\mu$ values dependency on individual
+% features for all tested covariances calculated on all available datasets.
 
-%% One-way ANOVA
+close all
 
-% close all
-% 
-% if printScriptMess
-%   fprintf('Starting one-way ANOVA\n')
-% end
-% 
-% nAllErr = numel(model_err);
-% [anova_p, anova_tbl, anova_stats] = ...
-%   anova1(reshape(model_err, nAllErr, 1), ...
-%          reshape(repmat(modelLabels, size(model_err, 1), 1), nAllErr, 1));
-% [multcomp_c, multcomp_m, multcomp_h, multcomp_nms] = multcompare(anova_stats);
+fId = 145:159;
 
-%%
-% ANOVA table and multcompare figure visualising differences among model
-% RDE on the whole dataset.
+metafeaturePlot(full_mfts_vis(:, mfts_order_nonid(fId)), full_mfts_vis(:, 6:13), ...
+                'DataColor', kerColor, ...
+                'DataNames', modelLabels, ...
+                'MftsNames', full_mfts_vis.Properties.VariableNames(mfts_order_nonid(fId)), ...
+                'NValues', 200, ...
+                'LogBound', 2, ...
+                'QuantileRange', [0.05, 0.95], ...
+                'MedianLW', 1.8, ...
+                'QuartileLW', 1, ...
+                'MedianLS', '-', ...
+                'QuartileLS', '-.' ...
+  );
 
-%% PCA
+%% $\textrm{RDE}_\mu$ on NBC features
+% 
+% NBC features differ according to the sample set on
+% which they were calculated: 
+% |archive| $\mathcal{A}$ and 
+% |train| $\mathcal{T}$.
+% NBC features are 
+% impossible to calculate using points without fitness values.
+% Therefore, values calculated on |traintest| $\mathcal{T}_\mathcal{P}$ 
+% are missing.
+%
+% Median (solid lines) and first and third quartiles
+% (dash-dot lines) of $\textrm{RDE}_\mu$ values dependency on individual
+% features for all tested covariances calculated on all available datasets.
 
-% close all
-% 
-% pca_input = table2array(mfts_err(:, 6+nModel:end));
-% pca_input(any(isinf(pca_input) | isnan(pca_input), 2), :) = [];
-% 
-% fprintf('Number of data (rows) not containing NaN or Inf: %d/%d\n', ...
-%   size(pca_input, 1), size(mfts_err, 1))
-% pca(pca_input)
+close all
+
+% remove traintest plots
+fId = sort([160:3:174, 161:3:174]);
+
+metafeaturePlot(full_mfts_vis(:, mfts_order_nonid(fId)), full_mfts_vis(:, 6:13), ...
+                'DataColor', kerColor, ...
+                'DataNames', modelLabels, ...
+                'MftsNames', full_mfts_vis.Properties.VariableNames(mfts_order_nonid(fId)), ...
+                'NValues', 200, ...
+                'LogBound', 2, ...
+                'QuantileRange', [0.05, 0.95], ...
+                'MedianLW', 1.8, ...
+                'QuartileLW', 1, ...
+                'MedianLS', '-', ...
+                'QuartileLS', '-.' ...
+  );
 
 %% Kolmogorov-Smirnov test
+% The visualisation of the p-values of the Kolmogorov-Smirnov test 
+% comparing the equality of probability distributions of individual 
+% features on all data and on those data on which a particular covariance 
+% function scored best. Non-red colored squares denote KS test results 
+% rejecting the equality of both distributions with the Holm correction at 
+% the family-wise significance level $\alpha = 0.05$, otherwise, p-values 
+% are visualised as red squares. Missing squares in 
+% $\mathcal{T}_\mathcal{P}$ rows denote features impossible
+% to calculate using points without fitness values. 
+% $\Phi_\textrm{MM}$ notation: |l| – |lin|, |q| – |quad|, |s| – |simple|, 
+% |i| – |interact|, |c| – |coef|.
+%
+% The exact p-values can be found 
+% <http://uivty.cs.cas.cz/~cma/gecco2019/ksres.pdf here>.
 
 % Martin's code:
 % UsableTable = full_mfts_err(~all(isnan(table2array(full_mfts_err(:, 1:8))), 2), :);
@@ -619,7 +671,8 @@ print2pdf(han, pdfNames, 1)
 ks_res_file = fullfile(expfolder, exp_id, 'kstest_meta.mat');
 ks_res = load(ks_res_file, 'CorrectedSignificance', 'ReorderedTable', ...
                            'MetafeatureNames', 'Best', 'Distributions');
-%%
+%% 
+
 % KS test table
 
 % significance table
@@ -743,9 +796,6 @@ ksTabSet.Caption = ['The p-values of the Kolmogorov-Smirnov test comparing the e
         'Zeros indicate p-values below the smallest double precision number. ', ...
         '$\featMM$ notation: \texttt{l} -- \texttt{lin}, \texttt{q} -- \texttt{quad}, \texttt{s} -- \texttt{simple}, ', ...
         '\texttt{i} -- \texttt{interact}, \texttt{c} -- \texttt{coef}.'];
-                          
-% print ks table
-prtSignifTable(ks_sign_2(featNonId, :), ksTabSet)
 
 % settings for identical ks table
 ksTabSetInd.ColGroups = '';
@@ -767,10 +817,8 @@ ksTabSetInd.Caption = ['The p-values of the Kolmogorov-Smirnov test comparing th
         'otherwise, p-values are not shown. ', ...
         'Zeros indicate p-values below the smallest double precision number. '];
 
-% print ks table for feature origin identical metafeatures
-prtSignifTable(ks_sign_2(1:nIdentical, 1:3:end), ksTabSetInd)
-
 %% 
+
 % KS test image
 close all
 
@@ -906,79 +954,6 @@ grid off
 han{1}.Colormap(end, :) = [1 0 0];
 
 hold off
-print2pdf(han, plotNames, 1)
-
-%% Distribution plots
-
-close all
-q_bound = [0.05, 0.95];
-
-for r = 2 % 2:4
-  for c = 20% 1:53 + 5*sign(4-r)
-    distr_all = ks_res.Distributions{r,c};
-    q_d_all = quantile(distr_all, q_bound);
-    
-    d_all_show = distr_all(distr_all > q_d_all(1) & distr_all < q_d_all(2));
-    % x values for plot
-    x_val = linspace(min(d_all_show), max(d_all_show));
-%     x_val = logspace(log10(-min(d_all_show)), log10(-max(d_all_show)));
-    pdca_all = fitdist(d_all_show, 'Kernel');    
-    all_pdf = pdf(pdca_all, x_val);
-    
-          han = figure('Units', 'centimeters', ...
-                   'Position', [1, 1, 16, 20], ...
-                   'PaperSize', [16, 20]);
-    
-    % model loop
-    for m = 1:nModel
-      % values of covariance and sample set for distribution
-      distr_cov = ks_res.ReorderedTable(~isnan(ks_res.ReorderedTable(:, c+14+(r-2)*58)) & ...
-                                   ks_res.Best(:, m), c+14+(r-2)*58);
-    
-      q_d_cov = quantile(distr_cov, q_bound);  
-      % range
-      d_cov_show = distr_cov(distr_cov > q_d_cov(1) & distr_cov < q_d_cov(2));
-    
-      % fit probability distribution
-      pdca_cov = fitdist(d_cov_show, 'Kernel');    
-      cov_pdf = pdf(pdca_cov, x_val);
-    
-%       han(m) = figure('PaperSize', [14, 12]);
-      subplot(nModel/2, 2, m) 
-      area(x_val, all_pdf, 'LineWidth', 2, ...
-                           'FaceColor', 'r', ...
-                           'EdgeColor', 'r', ...
-                           'FaceAlpha', 0.2 ...
-          )
-      hold on
-      area(x_val, cov_pdf, 'LineWidth', 2, ...
-                           'FaceColor', 'b', ...
-                           'EdgeColor', 'b', ...
-                           'FaceAlpha', 0.2 ...
-          )
-      gca_act = gca;
-      axis([min(d_all_show), max(d_all_show), 0, 0.25])
-      if mod(m, 2) == 1
-        ylabel('PDF', 'Interpreter', 'latex')
-      end
-%       title([ks_res.MetafeatureNames{r, c}, ' for ', modelLabels{m}])
-      title(modelLabels{m}, 'Interpreter', 'latex')
-      legend({'all', modelLabels{m}}, 'Interpreter', 'latex')
-      hold off
-    end
-%     h_cov = histfit(distr_cov(distr_cov > q_d_cov(1) & distr_cov < q_d_cov(2)), ...
-%                     100, 'kernel');
-%     h_all = histfit(distr_all(distr_all > q_d_all(1) & distr_all < q_d_all(2)), ...
-%                     100, 'kernel');
-%     figure(4)
-    
-  end
-end
-
-% distrFigNames = cellfun(@(x) fullfile(plotResultsFolder, ['skew_', x, '.pdf']), ...
-%                         modelLabels, 'UniformOutput', false);
-distrFigNames = {fullfile(plotResultsFolder, 'archive_skewness.pdf')};
-print2pdf(han, distrFigNames, 1)
 
 %%
 
