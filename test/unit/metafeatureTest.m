@@ -531,7 +531,7 @@ function testCMA(testCase)
     -0.256917, -0.0929742, -0.266166, 0.11819, -0.0419549; 
     -0.045735, -0.127559, 0.222661, 0.200064, -0.660851; 
     -0.00479693, -0.12268, 0.140304, 0.291703, 0.66289];
-  settings.cma_cov = BD*BD;
+  settings.cma_cov = BD*BD';
   settings.cma_evopath_c = [-0.100072; 0.275547; 0.00793752; -1.043735; 0.982928]';
   settings.cma_evopath_s = [0.217826; 0.611778; 0.0882615; -1.217561; 1.058476]';
   settings.cma_generation = 20;
@@ -557,6 +557,7 @@ function testCMA(testCase)
   for m = 1:numel(featFields)
     verifyTrue(testCase, ~isnan(ft.(featFields{m})))
   end
+  verifyTrue(testCase, ft.cma_lik < 0)
   
   % test empty input
   X = [];
@@ -569,6 +570,26 @@ function testCMA(testCase)
   ft = feature_cmaes(X, y, settings);
   verifyTrue(testCase, isnan(ft.cma_mean_dist))
   
+  % test random input
+  for dim = 5 %1:20
+    % trials
+    for i = 1:1000
+      N = 100;
+      X = 10*rand(N, dim);
+%       X = XX;
+      y = randn(N, 1);
+      settings.cma_cov = BD*BD'; %cov(rand(N, dim));
+      settings.cma_generation = randi(dim*250);
+      settings.cma_evopath_c = randn(1, dim);
+      settings.cma_evopath_s = randn(1, dim);
+      settings.cma_mean = randn(1, dim);
+      settings.cma_restart = randi(10)-1;
+      settings.cma_step_size = abs(randn());
+
+      ft = feature_cmaes(X, y, settings);
+      verifyTrue(testCase, ft.cma_lik < 0)
+    end
+  end
 end
 
 function testGetMetaFeatures(testCase)

@@ -113,9 +113,9 @@ function getDataMetaFeatures(folder, varargin)
     outputFile = defoptsi(settings, 'Output', fileString);
     if settings.rewrite || ~isfile(outputFile) 
       res = getSingleDataMF(folder, settings);
+      % save results
+      save(outputFile, 'res', 'fun', 'dim', 'inst')
     end
-    % save results
-    save(outputFile, 'res', 'fun', 'dim', 'inst')
     return
   end
     
