@@ -18,7 +18,7 @@ function HELP {
   echo "  ${REV}-r${NORM}  --List running tasks."
   echo "  ${REV}-q${NORM}  --List queued tasks."
   echo "  ${REV}-n${NORM}  --List not completed, running or queued tasks."
-  echo "  ${REV}-e${NORM}  --Tasks that are not running or queued according to qstat, but have no FINISHED message in their stdout."
+  echo "  ${REV}-e${NORM}  --Tasks that are not completed, running, or queued according to qstat, but have no FINISHED message in their stdout."
   echo -e "  ${REV}-h${NORM}  --Displays this help message. No further functions are performed."\\n
   echo -e "Example: ${BOLD}$SCRIPT -cr exp_CMA-ES_01 {100..200}${NORM}"\\n
   exit 1
@@ -47,6 +47,9 @@ RUNNING=0
 QUEUED=0
 NOSTATE=0
 ERRORED=0
+# json and results usage
+USE_JSON=0
+USE_RESULTS=0
 
 #TODO: no options - default : crqn
 
@@ -54,18 +57,25 @@ while getopts "ecrqnh:" FLAG; do
   case $FLAG in
     c)  #set option "c"
       COMPLETED=1
+      USE_RESULTS=1
       ;;
     r)  #set option "r"
       RUNNING=1
+      USE_JSON=1
       ;;
     q)  #set option "q"
       QUEUED=1
+      USE_JSON=1
       ;;
     n)  #set option "n"
       NOSTATE=1
+      USE_JSON=1
+      USE_RESULTS=1
       ;;
     e)  #set option "e"
       ERRORED=1
+      USE_JSON=1
+      USE_RESULTS=1
       ;;
     h)  #show help
       HELP
@@ -88,9 +98,20 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 cd $CWD/experiments/$EXPID
 
-ls -1 ${EXPID}_results_*[0-9].mat calculating_* queued_* > $TMPFILE
+# list full and temporary results
+if [ $USE_RESULTS -eq 1 ]; then
+  ls -1 ${EXPID}_results_*[0-9].mat ${EXPID}_tmp_*[0-9].mat > $TMPFILE
+fi
 
+# list qstat for running, queued, and error states
 QSTAT_OUT=""
+if [ $USE_JSON -eq 1 ] && [ -n $QSTAT_OUT ]; then
+  QSTAT_OUT=`tempfile`.json
+  # export qstat to json file
+  qstat -f -F json > $QSTAT_OUT
+  # remove non-printable characters
+  sed -i 's/[\d0-\d31]//g' $QSTAT_OUT
+fi
 
 # completed
 if [ $COMPLETED -eq 1 ]; then
@@ -106,11 +127,6 @@ fi
 
 # running
 if [ $RUNNING -eq 1 ]; then
-  if [ -n $QSTAT_OUT ]; then
-    QSTAT_OUT=`tempfile`.json
-    qstat -f -F json > $QSTAT_OUT
-  fi
-
   echo "Running:"
   LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID R`
   for i in $IDS; do
@@ -123,12 +139,7 @@ fi
 
 # queued
 if [ $QUEUED -eq 1 ]; then
-  if [ -n $QSTAT_OUT ]; then
-    QSTAT_OUT=`tempfile`.json
-    qstat -f -F json > $QSTAT_OUT
-  fi
-
-  echo "Queued (removing queued files is not reliable):"
+  echo "Queued:"
   LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID Q`
   for i in $IDS; do
     if echo $LIST | grep -q "\"${i}\""; then
@@ -140,19 +151,14 @@ fi
 
 # errored out
 if [ $ERRORED -eq 1 ]; then
-  echo $CWD/..
-  if [ -n $QSTAT_OUT ]; then
-    QSTAT_OUT=`tempfile`.json
-    qstat -f -F json > $QSTAT_OUT
-  fi
-
   echo "Errored out:"
   Q_LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID Q`
   R_LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID R`
   for i in $IDS; do
+    RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
     echo $Q_LIST | grep -q "\"${i}\"" || echo $R_LIST | grep -q "\"${i}\""
-    if [ $? -eq 0 ]; then
-      # job running or queued, skip
+    if [ $? -eq 0 ] || grep -q "$RES_FILE" $TMPFILE; then
+      # job running, queued, or completed -> skip
       continue;
     fi
 
@@ -170,21 +176,44 @@ if [ $ERRORED -eq 1 ]; then
   echo ""
 fi
 
-
-
 # no state
 if [ $NOSTATE -eq 1 ]; then
   echo "No status:"
+  Q_LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID Q`
+  R_LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID R`
   for i in $IDS; do
     RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
-    if ! grep -q "$RES_FILE"'$\|'"calculating_${i}$"'$\|'"queued_${i}$"'$' $TMPFILE; then
-      echo -n "$i "
+    TMP_RES_FILE="${EXPID}_tmp_[0-9D_]*_${i}.mat"
+    echo $Q_LIST | grep -q "\"${i}\"" || echo $R_LIST | grep -q "\"${i}\""
+    if [ $? -eq 0 ] || grep -q "$RES_FILE"'$\|'"$TMP_RES_FILE" $TMPFILE; then
+      # job running, queued, or completed -> skip
+      continue;
+    fi
+
+    OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
+    if [ -z "$OUTS" ]; then
+      # outputs not present
+      echo -n "${i} ";
+      continue;
+    fi
+
+    grep -q FINISHED $OUTS
+    if [ $? -ne 0 ]; then
+      # errored task
+      continue;
+    else
+      echo -n "${i} ";
     fi
   done
   echo ""
 fi
 
-#rm $TMPFILE
-rm /tmp/file*.json
+# remove temporary files
+if [ $USE_RESULTS -eq 1 ]; then
+  rm $TMPFILE
+fi
+if [ $USE_JSON -eq 1 ]; then
+  rm /tmp/file*.json
+fi
 
 exit 0
