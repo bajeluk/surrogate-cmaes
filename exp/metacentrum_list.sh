@@ -11,14 +11,15 @@ function HELP {
   NORM=`tput sgr0`
   BOLD=`tput bold`
   REV=`tput smso`
-  echo -e "\nUsage:\n$SCRIPT -ecrqn [EXPID] [ID1] [ID2] ...\n"
+  echo -e "\nUsage:\n$SCRIPT -ecrqng [EXPID] [ID1] [ID2] ...\n"
   echo "where [ID*] are the experiment ID# (accessible from allids.txt)"
   echo "Command line switches are optional. The following switches are recognized."
   echo "  ${REV}-c${NORM}  --List completed tasks."
   echo "  ${REV}-r${NORM}  --List running tasks."
   echo "  ${REV}-q${NORM}  --List queued tasks."
-  echo "  ${REV}-n${NORM}  --List not completed, running or queued tasks."
-  echo "  ${REV}-e${NORM}  --Tasks that are not completed, running, or queued according to qstat, but have no FINISHED message in their stdout."
+  echo "  ${REV}-e${NORM}  --Tasks that are not completed, running, exiting, or queued according to qstat, but have no FINISHED message in their stdout."
+  echo "  ${REV}-n${NORM}  --List not completed, running, queued, exiting, or errored tasks."
+  echo "  ${REV}-g${NORM}  --List tasks in groups according to states."
   echo -e "  ${REV}-h${NORM}  --Displays this help message. No further functions are performed."\\n
   echo -e "Example: ${BOLD}$SCRIPT -cr exp_CMA-ES_01 {100..200}${NORM}"\\n
   exit 1
@@ -50,10 +51,12 @@ ERRORED=0
 # json and results usage
 USE_JSON=0
 USE_RESULTS=0
+# show groups
+SHOW_GROUPS=0
 
 #TODO: no options - default : crqn
 
-while getopts "ecrqnh:" FLAG; do
+while getopts "ecrqngh:" FLAG; do
   case $FLAG in
     c)  #set option "c"
       COMPLETED=1
@@ -77,6 +80,9 @@ while getopts "ecrqnh:" FLAG; do
       USE_JSON=1
       USE_RESULTS=1
       ;;
+    g) #show groups
+      SHOW_GROUPS=1
+      ;;
     h)  #show help
       HELP
       ;;
@@ -87,6 +93,17 @@ while getopts "ecrqnh:" FLAG; do
   esac
 done
 shift $((OPTIND-1))  #This tells getopts to move on to the next argument.
+
+# if no groups of states are chosen and show groups option is on, show all groups
+if [ $SHOW_GROUPS -eq 1 ] && [ $COMPLETED -eq 0 ] && [ $RUNNING -eq 0 ] && [ $QUEUED -eq 0 ] && [ $NOSTATE -eq 0 ] && [ $ERRORED -eq 0 ]; then
+  COMPLETED=1
+  RUNNING=1
+  QUEUED=1
+  NOSTATE=1
+  ERRORED=1
+  USE_JSON=1
+  USE_RESULTS=1
+fi
 
 EXPID="$1"
 shift;
@@ -111,101 +128,189 @@ if [ $USE_JSON -eq 1 ] && [ -n $QSTAT_OUT ]; then
   qstat -f -F json > $QSTAT_OUT
   # remove non-printable characters
   sed -i 's/[\d0-\d31]//g' $QSTAT_OUT
+
+  # prepare lists
+  if [ $RUNNING -eq 1 ] || [ $ERRORED -eq 1 ] || [ $NOSTATE -eq 1 ]; then
+    R_LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID R`
+  fi
+  if [ $QUEUED -eq 1 ] || [ $ERRORED -eq 1 ] || [ $NOSTATE -eq 1 ]; then
+    Q_LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID Q`
+  fi
+  if [ $ERRORED -eq 1 ] || [ $NOSTATE -eq 1 ]; then
+    E_LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID E`
+  fi
 fi
 
-# completed
-if [ $COMPLETED -eq 1 ]; then
-  echo "Completed:"
+# show results as one output
+if [ $SHOW_GROUPS -eq 0 ]; then
+
   for i in $IDS; do
-    RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
-    if grep -q "$RES_FILE" $TMPFILE; then
-      echo -n "$i "
+
+    # completed
+    if [ $COMPLETED -eq 1 ]; then
+      RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
+      if grep -q "$RES_FILE" $TMPFILE; then
+        echo -n "$i "
+        continue;
+      fi
+    fi
+
+    # running
+    if [ $RUNNING -eq 1 ]; then
+      if echo $R_LIST | grep -q "\"${i}\""; then
+        echo -n "$i "
+        continue;
+      fi
+    fi
+
+    # queued
+    if [ $QUEUED -eq 1 ]; then
+      if echo $Q_LIST | grep -q "\"${i}\""; then
+        echo -n "$i "
+        continue;
+      fi
+    fi
+
+    # errored
+    if [ $ERRORED -eq 1 ]; then
+      RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
+      echo $Q_LIST | grep -q "\"${i}\"" || echo $R_LIST | grep -q "\"${i}\"" || echo $E_LIST | grep -q "\"${i}\""
+      if [ $? -eq 0 ] || grep -q "$RES_FILE" $TMPFILE; then
+        # job running, queued, exiting, or completed -> skip
+        continue;
+      fi
+
+      OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
+      if [ -z "$OUTS" ]; then
+        # outputs not present
+        continue;
+      fi
+
+      grep -q FINISHED $OUTS
+      if [ $? -ne 0 ]; then
+        echo -n "${i} ";
+      fi
+    fi
+
+    # no state
+    if [ $NOSTATE -eq 1 ]; then
+      RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
+      echo $Q_LIST | grep -q "\"${i}\"" || echo $R_LIST | grep -q "\"${i}\"" || echo $E_LIST | grep -q "\"${i}\""
+      if [ $? -eq 0 ] || grep -q "$RES_FILE" $TMPFILE; then
+        # job running, queued, or completed -> skip
+        continue;
+      fi
+
+      OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
+      if [ -z "$OUTS" ]; then
+        # outputs not present
+        echo -n "${i} ";
+        continue;
+      fi
+
+      grep -q FINISHED $OUTS
+      if [ $? -ne 0 ]; then
+        # errored task
+        continue;
+      else
+        echo -n "${i} ";
+      fi
     fi
   done
   echo ""
-fi
 
-# running
-if [ $RUNNING -eq 1 ]; then
-  echo "Running:"
-  LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID R`
-  for i in $IDS; do
-    if echo $LIST | grep -q "\"${i}\""; then
-      echo -n "$i "
-    fi
-  done
-  echo ""
-fi
+# show results in groups
+else
 
-# queued
-if [ $QUEUED -eq 1 ]; then
-  echo "Queued:"
-  LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID Q`
-  for i in $IDS; do
-    if echo $LIST | grep -q "\"${i}\""; then
-      echo -n "$i "
-    fi
-  done
-  echo ""
-fi
+  # completed
+  if [ $COMPLETED -eq 1 ]; then
+    echo "Completed:"
+    for i in $IDS; do
+      RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
+      if grep -q "$RES_FILE" $TMPFILE; then
+        echo -n "$i "
+      fi
+    done
+    echo ""
+  fi
 
-# errored out
-if [ $ERRORED -eq 1 ]; then
-  echo "Errored out:"
-  Q_LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID Q`
-  R_LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID R`
-  for i in $IDS; do
-    RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
-    echo $Q_LIST | grep -q "\"${i}\"" || echo $R_LIST | grep -q "\"${i}\""
-    if [ $? -eq 0 ] || grep -q "$RES_FILE" $TMPFILE; then
-      # job running, queued, or completed -> skip
-      continue;
-    fi
+  # running
+  if [ $RUNNING -eq 1 ]; then
+    echo "Running:"
+    for i in $IDS; do
+      if echo $R_LIST | grep -q "\"${i}\""; then
+        echo -n "$i "
+      fi
+    done
+    echo ""
+  fi
 
-    OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
-    if [ -z "$OUTS" ]; then
-      # outputs not present
-      continue;
-    fi
+  # queued
+  if [ $QUEUED -eq 1 ]; then
+    echo "Queued:"
+    for i in $IDS; do
+      if echo $Q_LIST | grep -q "\"${i}\""; then
+        echo -n "$i "
+      fi
+    done
+    echo ""
+  fi
 
-    grep -q FINISHED $OUTS
-    if [ $? -ne 0 ]; then
-      echo -n "${i} ";
-    fi
-  done
-  echo ""
-fi
+  # errored out
+  if [ $ERRORED -eq 1 ]; then
+    echo "Errored out:"
+    for i in $IDS; do
+      RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
+      echo $Q_LIST | grep -q "\"${i}\"" || echo $R_LIST | grep -q "\"${i}\"" || echo $E_LIST | grep -q "\"${i}\""
+      if [ $? -eq 0 ] || grep -q "$RES_FILE" $TMPFILE; then
+        # job running, queued, exiting, or completed -> skip
+        continue;
+      fi
 
-# no state
-if [ $NOSTATE -eq 1 ]; then
-  echo "No status:"
-  Q_LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID Q`
-  R_LIST=`QSTAT_FILTER $QSTAT_OUT $EXPID R`
-  for i in $IDS; do
-    RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
-    TMP_RES_FILE="${EXPID}_tmp_[0-9D_]*_${i}.mat"
-    echo $Q_LIST | grep -q "\"${i}\"" || echo $R_LIST | grep -q "\"${i}\""
-    if [ $? -eq 0 ] || grep -q "$RES_FILE"'$\|'"$TMP_RES_FILE" $TMPFILE; then
-      # job running, queued, or completed -> skip
-      continue;
-    fi
+      OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
+      if [ -z "$OUTS" ]; then
+        # outputs not present
+        continue;
+      fi
 
-    OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
-    if [ -z "$OUTS" ]; then
-      # outputs not present
-      echo -n "${i} ";
-      continue;
-    fi
+      grep -q FINISHED $OUTS
+      if [ $? -ne 0 ]; then
+        echo -n "${i} ";
+      fi
+    done
+    echo ""
+  fi
 
-    grep -q FINISHED $OUTS
-    if [ $? -ne 0 ]; then
-      # errored task
-      continue;
-    else
-      echo -n "${i} ";
-    fi
-  done
-  echo ""
+  # no state
+  if [ $NOSTATE -eq 1 ]; then
+    echo "No status:"
+    for i in $IDS; do
+      RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
+      # TMP_RES_FILE="${EXPID}_tmp_[0-9D_]*_${i}.mat"
+      echo $Q_LIST | grep -q "\"${i}\"" || echo $R_LIST | grep -q "\"${i}\"" || echo $E_LIST | grep -q "\"${i}\""
+      if [ $? -eq 0 ] || grep -q "$RES_FILE" $TMPFILE; then
+        # job running, queued, or completed -> skip
+        continue;
+      fi
+
+      OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
+      if [ -z "$OUTS" ]; then
+        # outputs not present
+        echo -n "${i} ";
+        continue;
+      fi
+
+      grep -q FINISHED $OUTS
+      if [ $? -ne 0 ]; then
+        # errored task
+        continue;
+      else
+        echo -n "${i} ";
+      fi
+    done
+    echo ""
+  fi
+
 fi
 
 # remove temporary files
