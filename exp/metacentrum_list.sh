@@ -115,9 +115,19 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 cd $CWD/experiments/$EXPID
 
+# no IDS as input -> load from allids.txt
+if [ -z "${IDS}" ]; then
+  if [ -f allids.txt ]; then
+    IDS=$(cat allids.txt)
+  else
+    echo "Ids not defined (allids.txt does not exist)"
+    exit 1
+  fi
+fi
+
 # list full and temporary results
 if [ $USE_RESULTS -eq 1 ]; then
-  ls -1 ${EXPID}_results_*[0-9].mat ${EXPID}_tmp_*[0-9].mat > $TMPFILE
+  ls -1 ${EXPID}_results_*[0-9].mat > $TMPFILE
 fi
 
 # list qstat for running, queued, and error states
