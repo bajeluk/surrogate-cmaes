@@ -123,11 +123,19 @@ fi
 # list qstat for running, queued, and error states
 QSTAT_OUT=""
 if [ $USE_JSON -eq 1 ] && [ -n $QSTAT_OUT ]; then
+  # check Kerberos credentials
+  if ! klist -s; then
+    echo "No Kerberos credentials found. Running kinit"
+    kinit
+    # finish if still no credentials
+    if ! klist -s; then exit 1; fi
+  fi
+
   QSTAT_OUT=`tempfile`.json
   # export qstat to json file
   qstat -f -F json > $QSTAT_OUT
-  # remove non-printable characters
-  sed -i 's/[\d0-\d31]//g' $QSTAT_OUT
+  # remove non-printable characters (Ctrl+A - Ctrl+Z)
+  sed -i 's/[\x01-\x1A]//g' $QSTAT_OUT
 
   # prepare lists
   if [ $RUNNING -eq 1 ] || [ $ERRORED -eq 1 ] || [ $NOSTATE -eq 1 ]; then
@@ -318,7 +326,7 @@ if [ $USE_RESULTS -eq 1 ]; then
   rm $TMPFILE
 fi
 if [ $USE_JSON -eq 1 ]; then
-  rm /tmp/file*.json
+  rm $QSTAT_OUT
 fi
 
 exit 0
