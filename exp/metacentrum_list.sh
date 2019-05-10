@@ -34,9 +34,8 @@ function QSTAT_FILTER {
   local EXPID=$2
   local JOB_STATE=$3
 
-  # filter jobs by names matching a regexp and state codes equal to a string; output numerical job suffix
-  # TODO: filter according to user
-  $JQ_PATH ".Jobs[] | select((.Job_Name | tostring | test(\"^${EXPID}__[0-9]+$\")) and .job_state == \"${JOB_STATE}\") | .Job_Name | sub(\"${EXPID}__\"; \"\")" $QSTAT_FILE;
+  # filter jobs by names matching a regexp, state codes equal to a string, and user equal to a string; output numerical job suffix
+  $JQ_PATH ".Jobs[] | select((.Job_Name | tostring | test(\"^${EXPID}__[0-9]+$\")) and .job_state == \"${JOB_STATE}\" and .Job_Owner == \"${USER}@META\") | .Job_Name | sub(\"${EXPID}__\"; \"\")" $QSTAT_FILE;
 }
 
 if [ "$#" -eq 0 ]; then
@@ -54,8 +53,6 @@ USE_JSON=0
 USE_RESULTS=0
 # show groups
 SHOW_GROUPS=0
-
-#TODO: no options - default : g => show all in groups
 
 while getopts "ecrqngh:" FLAG; do
   case $FLAG in
@@ -95,8 +92,9 @@ while getopts "ecrqngh:" FLAG; do
 done
 shift $((OPTIND-1))  #This tells getopts to move on to the next argument.
 
-# if no groups of states are chosen and show groups option is on, show all groups
-if [ $SHOW_GROUPS -eq 1 ] && [ $COMPLETED -eq 0 ] && [ $RUNNING -eq 0 ] && [ $QUEUED -eq 0 ] && [ $NOSTATE -eq 0 ] && [ $ERRORED -eq 0 ]; then
+# default: if no groups of states are chosen, show all groups in group settings on
+if [ $COMPLETED -eq 0 ] && [ $RUNNING -eq 0 ] && [ $QUEUED -eq 0 ] && [ $NOSTATE -eq 0 ] && [ $ERRORED -eq 0 ]; then
+  SHOW_GROUPS=1
   COMPLETED=1
   RUNNING=1
   QUEUED=1
@@ -145,7 +143,6 @@ if [ $USE_JSON -eq 1 ] && [ -n $QSTAT_OUT ]; then
 
   QSTAT_OUT=`tempfile`.json
   # export qstat to json file
-  # TODO: export only USERs tasks
   qstat -f -F json > $QSTAT_OUT
   # remove non-printable characters (Ctrl+A - Ctrl+Z)
   sed -i 's/[\x01-\x1A]//g' $QSTAT_OUT
