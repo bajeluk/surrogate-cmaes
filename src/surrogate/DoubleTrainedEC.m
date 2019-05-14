@@ -573,17 +573,18 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           ok = false;
         end
         if (ok)
-          mu = ceil(obj.cmaesState.mu * (size(notOrigEvaledX ,2) / obj.cmaesState.lambda));
-          [pointID, errs] = expectedRankDiff(thisModel, notOrigEvaledX, mu);
-          if (~ sum(errs >= eps) > (size(notOrigEvaledX,2)/2))
-            warning('exptectedRankDiff() returned more than lambda/2 points with zero expected rankDiff error. Using "sd2" criterion.');
+          modelOutput = thisModel.getModelOutput(notOrigEvaledX');
+          if (~ (sum(modelOutput >= eps) > (size(notOrigEvaledX, 2)/2)) )
+            warning('expectedRankDiff() returned more than half of points with zero or NaN expected rankDiff error. Using "sd2" criterion.');
             ok = false;
           end
         end
         if (~ok)
-          [~, sd2] = thisModel.predict(notOrigEvaledX');
-          [~, pointID] = sort(sd2, 'descend');
+          % predict sd2
+          [~, modelOutput] = thisModel.predict(notOrigEvaledX');
         end
+        % higher criterion values are better (expectedrank, sd2)
+        [~, pointID] = sort(modelOutput, 'descend');
         % Debug:
         % y_r = ranking(y_m);
         % fprintf('  Expected permutation of sorted f-values: %s\n', num2str(y_r(pointID)'));
