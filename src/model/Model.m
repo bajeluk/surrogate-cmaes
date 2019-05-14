@@ -214,10 +214,18 @@ classdef (Abstract) Model
     % in new points X. Values of PoI  and EI can be transformed to last
     % known fvalue range.
 
+      % model prediction
       [y, sd2] = obj.predict(X);
 
-      if isempty(y) || isempty(sd2)
+      % output default
+      if iscell(obj.predictionType)
+        output = cell(1, numel(obj.predictionType));
+      else
         output = [];
+      end
+
+      % empty prediction case
+      if isempty(y) || isempty(sd2)
         y = [];
         return;
       end
@@ -225,40 +233,61 @@ classdef (Abstract) Model
       fmin = min(obj.getDataset_y());
       fmax = max(obj.getDataset_y());
 
-      switch lower(obj.predictionType)
-        case 'fvalues' % mean function values
-          output = y;
+      % case of multiple prediction type output
+      if iscell(obj.predictionType)
+        predType = obj.predictionType;
+      else
+        predType = {obj.predictionType};
+      end
 
-        case 'sd2' % variance
-          output = sd2;
+      % multiple output loop
+      for t = 1:numel(predType)
+        switch lower(predType{t})
+          case 'fvalues' % mean function values
+            output{t} = y;
 
-        case 'poi' % probability of improvement
-          target = fmin - 0.05 * (fmax - fmin);
-          output = getPOI(X, y, sd2, target);
+          case 'sd2' % variance
+            output{t} = sd2;
 
-        case 'ei' % expected improvement
-          output = getEI(X, y, sd2, fmin);
+          case 'poi' % probability of improvement
+            target = fmin - 0.05 * (fmax - fmin);
+            output{t} = getPOI(X, y, sd2, target);
 
-        case 'lcb' % lower confidence bound
-          output = y - 2 * sqrt(sd2);
+          case 'ei' % expected improvement
+            output{t} = getEI(X, y, sd2, fmin);
 
-        case 'fpoi' % PoI scaled using function values
-          target = fmin - 0.05 * (fmax - fmin);
-          poi = getPOI(X, y, sd2, target);
-          poiMax = max(poi);
-          poiMin = min(poi);
-          % map the higest PoI to the smallest function value and vice versa
-          output = (fmax-fmin)*(poiMax - poi)/(poiMax-poiMin)+fmin;
+          case 'expectedrank' % expected ranking difference error
+            mu = ceil(obj.stateVariables.mu * (size(X, 1) / obj.stateVariables.lambda));
+            [~, output{t}] = expectedRankDiff(obj, X', mu);
 
-        case 'fei' % EI scaled using function values
-          ei = getEI(X, y, sd2, fmin);
-          eiMax = max(ei);
-          eiMin = min(ei);
-          % map the higest EI to the smallest function value and vice versa
-          output = (fmax-fmin)*(eiMax-ei)/(eiMax-eiMin)+fmin;
+          case 'lcb' % lower confidence bound
+            output{t} = y - 2 * sqrt(sd2);
 
-        otherwise % otherwise return sd2
-          output = sd2;
+          case 'fpoi' % PoI scaled using function values
+            target = fmin - 0.05 * (fmax - fmin);
+            poi = getPOI(X, y, sd2, target);
+            poiMax = max(poi);
+            poiMin = min(poi);
+            % map the highest PoI to the smallest function value and vice
+            % versa
+            output{t} = (fmax-fmin)*(poiMax - poi)/(poiMax-poiMin)+fmin;
+
+          case 'fei' % EI scaled using function values
+            ei = getEI(X, y, sd2, fmin);
+            eiMax = max(ei);
+            eiMin = min(ei);
+            % map the highest EI to the smallest function value and vice
+            % versa
+            output{t} = (fmax-fmin)*(eiMax-ei)/(eiMax-eiMin)+fmin;
+
+          otherwise % otherwise return sd2
+            output{t} = sd2;
+        end
+      end
+
+      % no multiple prediction
+      if ~iscell(obj.predictionType)
+        output = output{1};
       end
 
     end
