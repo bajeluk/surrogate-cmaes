@@ -1,31 +1,58 @@
 function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpts, ds, nSnapshots, opts)
-% modelTest(modelType, modelOpts, ds) compute statistics on chosen model
+% testOneModel(modelType, modelOpts, ds, nSnapshots, opts) compute 
+% statistics on chosen model.
+%
+% [stats, models, y_models] = testOneModel(...) return statistics, trained
+%   models and model predicted values.
+%
+% [..., models2, y_models2] = testOneModel(...) return also second training
+%   models and predicted values.
+%
+% [..., models2, y_models2, modelOutput] = testOneModel(...) return also 
+%   second training models, their predicted values, and outputs of first
+%   training models.
 %
 % Input:
 %   modelType   - type of tested model acc. to ModelFactory | string
 %   modelOpts   - options of the tested model | struct
 %   ds          - dataset for testing | struct
-%   nSnapshots  - the number of snapshots recorded as a dataset per CMA-ES run;
-%                 there must be the same number of datasets in 'ds.testSetX'
+%   nSnapshots  - the number of snapshots recorded as a dataset per CMA-ES 
+%                 run - there must be the same number of datasets in 
+%                 'ds.testSetX' | integer
 %   opts        - other options and settings:
-%       .statistics      -- names of statistics to calculate; default: {'mse'}
-%                           | cell-array of strings
-%       .snapshotsToTest -- array of snapshots integer indices to test
-%                           default: [1:nSnapshots] | array of integers
+%     .snapshotsToTest - array of snapshots integer indices to test;
+%                         default: [1:nSnapshots] | array of integers
+%     .statistics      - names of statistics to calculate; default: {'mse'}
+%                        | cell-array of strings
+%     .testModelOutput - test also output of the model (e.g. PoI, EI);
+%                        default: false | boolean
+%     .testOrigRatio   - value of origRatio (from DTS) used in tests;
+%                        default: 0 | non-negative double
+%     .tolX            - tolerance of distance between individual points;
+%                        default: 1e-12 | non-negative double
+%     .trySecondModel  - test also the second (retrained) model; default:
+%                        false | boolean
 %
 % Output:
-%   stats       - cell array of structures with calculated statistics (one per snapshot)
-%   models      - trained models (one per snapshot) | cell-array
-%   y_models    - predicted values (one per snapshot) | cell-array
+%   stats        - structures with calculated statistics (one per snapshot)
+%                  | cell-array
+%   models       - trained models (one per snapshot) | cell-array
+%   y_models     - predicted values (one per snapshot) | cell-array
+%   models2      - trained (second-training) models (one per snapshot) | 
+%                  cell-array
+%   y_models2    - predicted values of second-training models (one per 
+%                  snapshot) | cell-array
+%   modelOutputs - outputs of first-training models (one per snapshot) | 
+%                  cell-array
 %
-% See Also:
-%   datasetFromInstance
-%
-% E.g.
+% Example:
 %
 %   [new_stats, models(i_data, :), y_models(i_data, :)] = ...
 %       testOneModel(modelType{m}, modelOptions{m}, ...
 %       data{f_data, d_data, i_data}, dataNSnapshots, opts);
+%
+% See Also:
+%   testModels, datasetFromInstance
 
   if (isempty(nSnapshots))
     nSnapshots = length(ds.testSetX);
@@ -35,6 +62,7 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
   opts.trySecondModel = defopts(opts, 'trySecondModel', false);
   opts.tolX = defopts(opts, 'tolX', 1e-12);
   opts.testOrigRatio = defopts(opts, 'testOrigRatio', 0);
+  opts.testModelOutput = defopts(opts, 'testModelOutput', false);
 
   % prepare output fields
   for st = 1:length(opts.statistics)
@@ -44,6 +72,19 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
   y_models = cell(1, nSnapshots);
   models2 = cell(1, nSnapshots);
   y_models2 = cell(1, nSnapshots);
+  % prepare model outputs
+  if opts.testModelOutput
+    modelOutputs = cell(1, nSnapshots);
+    if ~iscell(modelOpts.predictionType)
+      modelOpts.predictionType = {modelOpts.predictionType};
+    end
+    for pt = 1:numel(modelOpts.predictionType)
+      for st = 1:numel(opts.statistics)
+        stats.outputs.(modelOpts.predictionType{pt}).(opts.statistics{st}) ...
+          = num2cell(NaN(1, nSnapshots));
+      end
+    end
+  end
 
   % cycle through all snapshots (usually 10)
   for i = opts.snapshotsToTest
@@ -155,6 +196,47 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
         fprintf('Model (gen. # %3d, %3d pts) MSE = %e, Kendall = %.2f, rankDiffErr = %.2f\n', ...
             g, size(m.getDataset_y(), 1), stats.mse(i), stats.kendall(i), stats.rde(i));
       end
+      
+      % get model outputs
+      if opts.testModelOutput
+        % get outputs to cell-array
+        modelOutputs{i} = m.getModelOutput(ds.testSetX{i});
+        if ~iscell(modelOutputs{i})
+          modelOutputs{i} = {modelOutputs{i}};
+        end
+        % model output type loop
+        for mo = 1:numel(modelOutputs{i})
+          if ~iscell(m.predictionType)
+            predType = m.predictionType;
+          else
+            predType = m.predictionType{mo};
+          end
+          % sort output values
+          if any(strcmpi(predType, {'sd2', 'poi', 'ei', 'erde', 'expectedrank'}))
+            sortOrder = 'descend';
+          else
+            sortOrder = 'ascend';
+          end
+          [~, pointId] = sort(modelOutputs{i}{mo}, sortOrder);
+
+          % calculate and save statistics for populations evaluated partially
+          % by original fitness and partially by the model
+
+          % loop according to the number of points evaluated using the 
+          % original fitness
+          for p = 1:numel(ds.testSetY{i})
+            % create y-set composed of original and fitness evaluated
+            % points
+            ySet = y_models{i};
+            ySet(pointId(1:p-1)) = y(pointId(1:p-1));
+            % calculate statistics for this y-set
+            for st = 1:length(opts.statistics)
+              fname = opts.statistics{st};
+              stats.outputs.(predType).(fname){i}(p) = predictionStats(y, ySet, fname);
+            end
+          end
+        end
+      end
 
       if (opts.trySecondModel)
         % Try also the second (retrained) model
@@ -237,8 +319,9 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
     models{i} = m;
   end
 
-  if (opts.trySecondModel)
-    varargout = {models2, y_models2};
+  if nargout > 3
+    extraoutput = {models2, y_models2, modelOutputs};
+    varargout = extraoutput(1:nargout-3);
   end
 end
 

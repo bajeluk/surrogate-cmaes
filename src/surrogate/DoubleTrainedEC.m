@@ -562,7 +562,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         modelOutput = thisModel.getModelOutput(notOrigEvaledX');
         [~, pointID] = sort(modelOutput, 'descend');
 
-      elseif (strcmpi(thisModel.predictionType, 'expectedrank'))
+      elseif any(strcmpi(thisModel.predictionType, {'erde', 'expectedrank'}))
         ok = true;
         if (isempty(thisModel) || ~thisModel.isTrained())
           warning('No valid model for calculating expectedRankDiff(). Using "sd2" criterion.');

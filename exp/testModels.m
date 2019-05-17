@@ -28,6 +28,8 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 %       .scratch         - scrath directory | string
 %       .statistics      - cell-array of statistics' names | cell array of
 %                          strings
+%       .(fieldname)     - testOneModel function opts fields | see
+%                          testOneModel
 %   funcToTest   - functions  to test | array of integers
 %   dimsToTest   - dimensions to test | array of integers
 %   instToTest   - instances  to test | array of integers
@@ -111,6 +113,8 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
   funcToTest = restricToDataset(funcToTest, dataFunc, 'Functions');
   instToTest = restricToDataset(instToTest, dataInst, 'Instances');
   idsToTest = restricToDataset(idsToTest, dataIds, 'Model settings');
+  allInstances = instToTest;
+  allIds = idsToTest;
 
   % Assign (hopefully) unique names and output directories to models
   for m = 1:nModel
@@ -151,29 +155,67 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
         missingDataFile = fullfile(modelFolder{m}, sprintf('%s_f%d_%dD_missing_data.mat', modelHashName{m}, fun, dim));
 
         % do not rewrite existing files unless wanted
-        finishedInstances = false(size(instToTest));
-        finishedIds = false(size(idsToTest));
+        savedInstances = false(size(instToTest));
+        savedIds = false(size(idsToTest));
+        % create table marking finished combinations of instances and ids
+        finished = newFinishedTable(idsToTest, instToTest);
         if (exist(modelFile, 'file') && ~opts.rewrite_results)
-          % there are some already calculated results, try to load them and continue
-          try
+          % there are some already calculated results, try to load them and continue          
+          varToLoad = {'stats', 'y_models', 'instances', 'ids', 'modelOptions', 'fun', 'dim', 'finished'};          
+          if (opts.saveModels)
+            varToLoad{end+1} = 'models';
+          end
+          if (isfield(opts, 'trySecondModel') && opts.trySecondModel)
+            varToLoad{end+1} = 'y_models2';
             if (opts.saveModels)
-              oldResults = load(modelFile, 'stats', 'models', 'y_models', 'instances', 'ids', 'modelOptions', 'fun', 'dim');
-            else
-              oldResults = load(modelFile, 'stats', 'y_models', 'instances', 'ids', 'modelOptions', 'fun', 'dim');
+              varToLoad{end+1} = 'models2';
             end
-            finishedInstances = ismember(instToTest, oldResults.instances);
-            finishedIds = ismember(idsToTest, oldResults.ids);
+          end
+          if (isfield(opts, 'testModelOutput') && opts.testModelOutput)
+            varToLoad(end+(1:2)) = {'modelOutputs', 'outputStats'}; 
+          end
+          % variable loading
+          try
+            oldResults = load(modelFile, varToLoad{:});
+            % unify calculated instances and those to test
+            allInstances = unique([instToTest, oldResults.instances]);
+            allIds = unique([idsToTest, oldResults.ids]);
+            % find saved instances and ids
+            savedInstances = ismember(allInstances, oldResults.instances);
+            savedIds = ismember(allIds, oldResults.ids);
+            % find finished instances and ids
+            finished = newFinishedTable(allIds, allInstances);
+            if isfield(oldResults, 'finished')
+              for old_id = 1:size(oldResults.finished, 1)
+                for old_ii = 1:size(oldResults.finished, 2)
+                  if oldResults.finished{old_id, old_ii}
+                    finished{oldResults.finished.Properties.RowNames{old_id}, ...
+                             oldResults.finished.Properties.VariableNames{old_ii}} = true; 
+                  end
+                end
+              end
+            else
+              % mark as finished if any y_models result exists
+              for old_id = 1:size(oldResults.y_models, 2)
+                for old_ii = 1:size(oldResults.y_models, 1)
+                  if ~all( cellfun(@isempty, oldResults.y_models(old_ii, old_id, :)) )
+                    finished{['id_', num2str(oldResults.ids(old_id))], ...
+                             ['inst_', num2str(oldResults.instances(old_ii))]} = true; 
+                  end
+                end
+              end
+            end
           catch err
             warning('File %s is corrupted. Will be rewritten. Error: %s', modelFile, err.message);
           end
-          if (all(finishedInstances) && all(finishedIds))
+          if ( all(all(table2array(finished))) )
             fprintf('All instances in %s already calculated. \nSkipping model testing.\n', modelFile);
             continue;
           end
         end
 
         % matrix of missing dim, fun, inst, id combinations
-        if (exist(missingDataFile))
+        if (isfile(missingDataFile))
           load(missingDataFile, 'missingData');
         else
           missingData = zeros(0, 4);
@@ -182,27 +224,57 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
         % prepare output variables
         stats = struct();
         for st = 1:length(opts.statistics)
-          stats.(opts.statistics{st}) = NaN(length(instToTest), length(idsToTest), dataNSnapshots);
+          stats.(opts.statistics{st}) = NaN(length(allInstances), length(allIds), dataNSnapshots);
         end
-        models   = cell(length(instToTest), length(idsToTest), dataNSnapshots);
-        y_models = cell(length(instToTest), length(idsToTest), dataNSnapshots);
+        models   = cell(length(allInstances), length(allIds), dataNSnapshots);
+        y_models = cell(length(allInstances), length(allIds), dataNSnapshots);
+        models2   = cell(length(allInstances), length(allIds), dataNSnapshots);
+        y_models2 = cell(length(allInstances), length(allIds), dataNSnapshots);
+        outputStats = struct();
+        if ~iscell(modelOptions{m}.predictionType)
+          outputStats.(modelOptions{m}.predictionType) = NaN;
+        else
+          for os = 1:numel(modelOptions{m}.predictionType)
+            outputStats.(modelOptions{m}.predictionType{os}) = NaN;
+          end
+        end
+        modelOutputs = cell(length(allInstances), length(allIds), dataNSnapshots);
 
-        if (any(finishedInstances) && any(finishedIds))
+        % gain existing results
+        if (any(savedInstances) && any(savedIds))
           fprintf('Some instances and ids already calculated in %s.\n', modelFile);
           % copy in finished hypercube
-          for i_inst = 1:length(instToTest)
-            for i_id = 1:length(idsToTest)
-              if finishedInstances(i_inst) && finishedIds(i_id)
-                j_inst = find(instToTest(i_inst) == oldResults.instances, 1);
-                j_id = find(idsToTest(i_id) == oldResults.ids, 1);
+          for i_inst = 1:length(allInstances)
+            for i_id = 1:length(allIds)
+              if finished{i_id, i_inst}
+                j_inst = find(allInstances(i_inst) == oldResults.instances, 1);
+                j_id = find(allIds(i_id) == oldResults.ids, 1);
+                % copy statistics of model predictions
                 for st = 1:length(opts.statistics)
                   stats.(opts.statistics{st})(i_inst, i_id, :) = oldResults.stats.(opts.statistics{st})(j_inst, j_id, :);
                 end
 
+                % copy models
                 if (opts.saveModels)
-                  models{i_inst, i_id} = oldResults.models{j_inst, j_id};
+                  models(i_inst, i_id, :) = oldResults.models(j_inst, j_id, :);
+                  if isfield(oldResults, 'models2')
+                    models2(i_inst, i_id, :) = oldResults.models2(j_inst, j_id, :);
+                  end
                 end
-                y_models{i_inst, i_id} = oldResults.y_models{j_inst, j_id};
+                % copy resulting y-values
+                y_models(i_inst, i_id, :) = oldResults.y_models(j_inst, j_id, :);
+                if isfield(oldResults, 'y_models2')
+                  y_models2(i_inst, i_id, :) = oldResults.y_models2(j_inst, j_id, :);
+                end
+                % copy statistics of model output values
+                if isfield(oldResults, 'outputStats')
+                  outputStats(i_inst, i_id, :) = oldResults.outputStats(j_inst, j_id, :);
+                end
+                % copy model output values
+                if isfield(oldResults, 'modelOutputs')
+                  modelOutputs(i_inst, i_id, :) = oldResults.modelOutputs(j_inst, j_id, :);
+                end
+                
               end
             end
           end
@@ -223,6 +295,8 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
             id = idsToTest(i_id);
             i_data = find(inst == dataInst, 1);
             id_data = find(id == dataIds, 1);
+            inst_all = find(inst == allInstances, 1);
+            id_all = find(id == allIds, 1);
 
             idx = [dim, fun, inst, id];
             is_missing = ismember(missingData, idx, 'rows');
@@ -242,9 +316,11 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
                 save(missingDataFile, 'missingData');
               end
             end
-
-            if ~any(is_missing) && finishedInstances(ii) && finishedIds(i_id)
-              fprintf('Skipping already finished inst %d, id %d\n', ii, i_id);
+            
+            % skip already finished instance and id combinations
+            if ~any(is_missing) && ...
+                finished{['id_', num2str(id)], ['inst_', num2str(inst)]}
+              fprintf('Skipping already finished inst %d, id %d\n', inst, id);
               continue;
             end
 
@@ -270,8 +346,9 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 
             % train & test the model on the 'dataNSnapshots' datasets
             % from the current instance
-            if (~isfield(opts, 'trySecondModel') || ~opts.trySecondModel)
-              [new_stats, thisModels, y_models(ii, i_id, :)] = ...
+            if (~isfield(opts, 'trySecondModel')  || ~opts.trySecondModel) && ...
+               (~isfield(opts, 'testModelOutput') || ~opts.testModelOutput)
+              [new_stats, thisModels, y_models(inst_all, id_all, :)] = ...
                   testOneModel(modelType{m}, modelOptions{m}, ...
                   data{f_data, d_data, i_data, id_data}, dataNSnapshots, opts);
               modelsVarString = { 'y_models' };
@@ -279,10 +356,11 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
                 modelsVarString(end+1) = 'models';
               end
             else
-              [new_stats, thisModels, y_models(ii, i_id, :), thisModels2, y_models2(ii, i_id, :)] = ...
+              [new_stats, thisModels, y_models(inst_all, id_all, :), ...
+               thisModels2, y_models2(inst_all, id_all, :), modelOutputs(inst_all, id_all, :)] = ...
                   testOneModel(modelType{m}, modelOptions{m}, ...
                   data{f_data, d_data, i_data, id_data}, dataNSnapshots, opts);
-              modelsVarString = { 'y_models', 'y_models2' };
+              modelsVarString = { 'y_models', 'y_models2', 'modelOutputs' };
               if (opts.saveModels)
                 modelsVarString(end+(1:2)) = { 'models', 'models2' };
               end
@@ -294,20 +372,29 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
             % save results into output variables
             for st = 1:length(opts.statistics)
               fname = opts.statistics{st};
-              stats.(fname)(ii, i_id, :) = new_stats.(fname);
+              stats.(fname)(inst_all, id_all, :) = new_stats.(fname);
+            end
+            % save output statistics
+            if isfield(new_stats, 'outputs')
+              outputStats(inst_all, id_all, :) = new_stats.outputs;
+              modelsVarString(end+1) = { 'outputStats' };
             end
 
-            % save results of the so-far calculated instances
-            instances = instToTest(1:ii);
-            ids = idsToTest(1:i_id);
+            % save results of the so-far calculated instances and ids
+            instances = allInstances;
+            ids = allIds;
+            finished{['id_', num2str(id)], ['inst_', num2str(inst)]} = true;
             if (opts.saveModels)
-              models(ii, i_id, :) = thisModels;
+              models(inst_all, id_all, :) = thisModels;
               if (isfield(opts, 'trySecondModel') && opts.trySecondModel)
-                models2(ii, i_id, :) = thisModels2;
+                models2(inst_all, id_all, :) = thisModels2;
               end
             end
+            % settings of actual model
             modelOptions1 = modelOptions{m};
-            save(modelFile, 'stats', modelsVarString{:}, 'instances', 'ids', 'modelOptions', 'modelOptions1', 'fun', 'dim');
+            save(modelFile, ...
+                 'stats', modelsVarString{:}, 'instances', 'ids', ...
+                 'modelOptions', 'modelOptions1', 'fun', 'dim', 'finished');
           end % id loop
         end  % instance loop
       end  % model loop
@@ -316,6 +403,11 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 
 
   %%% METAFEATURES %%%
+  
+  if isempty(opts.mfts_settings)
+    fprintf('****************************  FINISH  ****************************\n')
+    return
+  end
 
   % dimension loop
   for dim = dimsToTest
@@ -379,4 +471,14 @@ function [intToTest] = restricToDataset(intToTest, dataInt, identifier)
       strjoin(arrayfun(@num2str, intToTest(~id_ok), 'UniformOutput', false), ','))
     intToTest = intToTest(id_ok);
   end
+end
+
+function finTable = newFinishedTable(testIds, testInst)
+% Create new table for marking computed combinations of instances and ids
+  nTestIds = numel(testIds);
+  nTestInst = numel(testInst);
+  falseCell = (mat2cell(false(nTestIds, nTestInst), nTestIds, ones(1, nTestInst)));
+  finTable = table(falseCell{:}, ...
+    'VariableNames', regexp(sprintf('inst_%d ', testInst),'\S+','match'), ...
+    'RowNames', regexp(sprintf('id_%d ',testIds),'\S+','match'));
 end

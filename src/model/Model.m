@@ -256,7 +256,7 @@ classdef (Abstract) Model
           case 'ei' % expected improvement
             output{t} = getEI(X, y, sd2, fmin);
 
-          case 'expectedrank' % expected ranking difference error
+          case {'erde', 'expectedrank'} % expected ranking difference error
             mu = ceil(obj.stateVariables.mu * (size(X, 1) / obj.stateVariables.lambda));
             [~, output{t}] = expectedRankDiff(obj, X', mu);
 
