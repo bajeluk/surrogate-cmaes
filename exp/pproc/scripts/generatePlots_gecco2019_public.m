@@ -139,11 +139,13 @@ for ms = 2:numel(mfts_sets)
 end
 rem_mfts = [rem_mfts, rem2_mfts];
 
-fprintf('Removing user-defined metafeatures:\n')
-for m = 1:numel(rem_mfts)
-  mId = strcmp(mfts.Properties.VariableNames, rem_mfts{m});
-  fprintf('%s\n', rem_mfts{m})
-  mfts = mfts(:, ~mId);
+if printScriptMess
+  fprintf('Removing user-defined metafeatures:\n')
+  for m = 1:numel(rem_mfts)
+    mId = strcmp(mfts.Properties.VariableNames, rem_mfts{m});
+    fprintf('%s\n', rem_mfts{m})
+    mfts = mfts(:, ~mId);
+  end
 end
 
 % rename archive identical columns (see above)
@@ -178,7 +180,7 @@ nanId = isnan(varMfts);
 % constant
 % add fun, dim, inst, id, and gen columns
 constId = [false(1, 5), constId]; 
-if any(constId)
+if any(constId) && printScriptMess
   fprintf('Removing constant metafeatures:\n')
   constNumId = find(constId);
   for m = constNumId
@@ -189,7 +191,7 @@ end
 % NaN
 % add fun, dim, inst, id, and gen columns
 nanId = [false(1, 5), nanId]; 
-if any(nanId)
+if any(nanId) && printScriptMess
   fprintf('Removing NaN metafeatures:\n')
   nanNumId = find(nanId);
   for m = nanNumId
@@ -396,7 +398,7 @@ metafeaturePlot(full_mfts_vis(:, mfts_order_nonid(fId)), full_mfts_vis(:, 6:13),
 
 close all
 
-fId = 4:7;
+fId = 4:9;
 
 metafeaturePlot(full_mfts_vis(:, mfts_order_nonid(fId)), full_mfts_vis(:, 6:13), ...
                 'DataColor', kerColor, ...
@@ -405,20 +407,6 @@ metafeaturePlot(full_mfts_vis(:, mfts_order_nonid(fId)), full_mfts_vis(:, 6:13),
                 'NValues', 200, ...
                 'LogBound', 2, ...
                 'QuantileRange', [0.05, 0.95], ...
-                'MedianLW', 1.8, ...
-                'QuartileLW', 1, ...
-                'MedianLS', '-', ...
-                'QuartileLS', '-.' ...
-  );
-
-metafeaturePlot(full_mfts_vis(:, mfts_order_nonid(8:9)), full_mfts_vis(:, 6:13), ...
-                'DataColor', kerColor, ...
-                'DataNames', modelLabels, ...
-                'MftsNames', full_mfts_vis.Properties.VariableNames(mfts_order_nonid(8:9)), ...
-                'NValues', 200, ...
-                'LogBound', 2, ...
-                'QuantileRange', [0.05, 0.95], ...
-                'Select', 'negative', ...
                 'MedianLW', 1.8, ...
                 'QuartileLW', 1, ...
                 'MedianLS', '-', ...
