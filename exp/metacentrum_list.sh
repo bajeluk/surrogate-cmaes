@@ -293,7 +293,7 @@ else
       fi
 
       OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
-      if [ -z "$OUTS" ] || ! grep -q "$TMP_RES_FILE" $TMPFILE; then
+      if [ -z "$OUTS" ] && ! grep -q "$TMP_RES_FILE" $TMPFILE; then
         # output nor tmp file is present => no state
         echo -n "${i} ";
       fi
