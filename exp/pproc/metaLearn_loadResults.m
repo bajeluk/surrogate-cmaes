@@ -116,6 +116,8 @@ function [results, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSet
   
   % init variables
   settings = {};
+%   finished = table();
+  finished = [];
   results = table();
   nFiles = numel(fileList);
   % load file sequentially
@@ -125,7 +127,13 @@ function [results, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSet
     else
       warning('off', 'MATLAB:load:variableNotFound')
     end
-    S = load(fileList{f}, '-mat', 'dim', 'fun', 'instances', 'ids', 'modelOptions', 'modelType', 'stats');
+    try
+      S = load(fileList{f}, '-mat', 'dim', 'fun', 'instances', 'ids', ...
+                         'modelOptions', 'modelType', 'stats', 'finished');
+    catch err
+      warning('%s', getReport(err))
+      S = struct();
+    end
     warning('on', 'MATLAB:load:variableNotFound')
     if all(isfield(S, {'dim', 'fun', 'instances', 'ids', 'modelOptions', 'stats'}))
       % check problematic loaded variables
@@ -246,9 +254,25 @@ function [results, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSet
       % save results to proper position
       results = [results; actualTable];
       
+      % notice finished variants
+      if isfield(S, 'finished') && all(all(table2array(S.finished)))
+        finished = [finished; S.fun, S.dim, settingsId];
+      end
+
     end
   end
-  
+
+  % save finished variants
+  finishedListFile = fullfile(exp_folder, 'finishedList.txt');
+  % open file for writing
+  FID = fopen(finishedListFile, 'wt');
+  fprintf(FID, '# fun dim model\n');
+  % write the matrix
+  if FID > 0
+    fprintf(FID, ' %d %d %d\n', finished');
+    fclose(FID);
+  end
+
   % load metafeatures
   nMFiles = numel(mftList);
   mftTable = table();
