@@ -235,7 +235,7 @@ function reportFile = generateReport(expFolder, varargin)
       % keep only parameter fields
       fieldsToRemove = {'exp_id', 'exppath_short', 'exp_description', 'logDir'};
       parSettings = rmfield(settings{f}, fieldsToRemove(isfield(settings{f}, fieldsToRemove)));
-      printStructure(parSettings, FID, 'StructName', '%%  ')
+      printStructure(parSettings, FID, 'StructName', '%  ')
       fprintf(FID, '%% \n');
     end
   end
