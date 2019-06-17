@@ -30,6 +30,10 @@ classdef ModelFactory
           obj = RfModel(modelOptions, xMean);
         case 'bbob'
           obj = PreciseModel(modelOptions, xMean);
+        case 'reg'
+          obj = RegModel(modelOptions, xMean);
+        case 'lmm'
+          obj = LmmModel(modelOptions, xMean);
         case 'modelpool'
           % use the supplied 'oldModel' if exists
           if (nargin > 3 && ~isempty(oldModel) && isa(oldModel, 'ModelPool'))

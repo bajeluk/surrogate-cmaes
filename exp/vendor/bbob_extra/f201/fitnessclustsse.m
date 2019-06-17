@@ -50,5 +50,4 @@ function fval = fitnessclustsse(centers, data)
   end
 
   fval = errorclust;
-  
 end

@@ -27,3 +27,4 @@ ownUtil/
 doc/gecco2015workshop/ppdata/
 exp_*.o[0-9][0-9][0-9]*
 exp_*.e[0-9][0-9][0-9]*
+exp/vendor/bbob_extra/f207/layouts/*

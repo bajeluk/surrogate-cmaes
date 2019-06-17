@@ -37,7 +37,7 @@
 %%%-------------------------------------------------------------%%%
 function [res, res2] = benchmarksextra(x, strfun, DIM) 
 %
-  Nfcts = 1;
+  Nfcts = 2;
   baseNum = 200;
 
   % return valid function IDs (ie numbers)
@@ -73,16 +73,13 @@ function [res, res2] = benchmarksextra(x, strfun, DIM)
   % return function handles
   elseif ischar(x) && strcmpi(x, 'handles')
     res = {};
-    for i = 1:100
-      try  % exist does not work under Octave
-        eval(['f' num2str(i+baseNum) '([1; 2]);']);
-        res{i} = str2func(['f' num2str(i+baseNum)]); % eval(['@f' num2str(i)]);
-      catch
-        if i < Nfcts
-          disp(sprintf('execution of function %d produces an error', i+baseNum));
-        end
-      end
-    end
+    res{1} = @f201;
+    res{2} = @f202;
+    res{3} = @f203;
+    res{4} = @f204;
+    res{5} = @f205;
+    res{6} = @f206;
+    res{7} = @f207;
     return;
   elseif ischar(x) && strcmpi(x, 'test')
     error('to be implemented');
@@ -120,12 +117,12 @@ end
 
 %%%-------------------------------------------------------------%%%
 function [Fval, Ftrue] = f201(x, DIM, ntrial)
-% sphere with moderate Gauss noise
-% last change: 09/01/03
+% Sum of Squares Clustering Problem
   persistent Fopt Xopt scales linearTF rotation
-  persistent lastSize arrXopt arrScales arrExpo rseed
+  persistent lastSize arrScales arrExpo rseed
+  persistent dataset
 
-  funcID = 201; 
+  funcID = 201;
   rrseed = 1; 
   aXopt = 0; % actual optimum in input space
   
@@ -134,16 +131,17 @@ function [Fval, Ftrue] = f201(x, DIM, ntrial)
     flginputischar = 1;
     strinput = x;
     if nargin < 2 || isempty(DIM)
-      DIM = 2;
+      DIM = 8;
     end
     x = ones(DIM,1);  % setting all persistent variables
   else
     flginputischar = 0;
   end
   % from here on x is assumed a numeric variable
+  x = normalize_arr(x, 0.1, 7.9);
   [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
-  if DIM == 1 
-    error('1-D input is not supported');
+  if mod (DIM, 4) ~= 0 
+    error('Dimension must be divisable by 4');
   end
   
   %----- INITIALIZATION -----
@@ -154,34 +152,46 @@ function [Fval, Ftrue] = f201(x, DIM, ntrial)
   elseif isempty(rseed)
     rseed = rrseed; 
   end
-  if isempty(Fopt)
-    Fopt = 0;
-%     Fopt =1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100));
-  end 
-  Fadd = Fopt;  % value to be added on the "raw" function value
-  % DIM-dependent initialization
-%   if isempty(lastSize) || lastSize.DIM ~= DIM  
-%     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
-%   end
+  
   Xopt = zeros(DIM, 1);
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
     lastSize.POPSI = POPSI; 
     lastSize.DIM = DIM; 
-    arrXopt = repmat(Xopt, 1, POPSI); 
+    dataset = importdata('iris.txt');
+    switch DIM
+        case 8
+            Fopt = 152.347951760358;
+        case 12
+            Fopt = 78.8514414261460;
+        case 16
+            Fopt = 57.2284732142857;
+        case 20
+            Fopt = 46.4461820512821;
+        case 24
+            Fopt = 39.0399872460872;
+        case 28
+            Fopt = 34.2982296650718;
+        case 32
+            Fopt = 29.9889439507861;
+        case 36
+            Fopt = 27.7860924173081;
+        case 40
+            Fopt = 25.834054819972511;
+        otherwise
+            Fopt = 0;
+            disp('Fopt is unknown. Using Fopt = 0');
+    end
   end 
-
-  %----- TRANSFORMATION IN SEARCH SPACE -----
-  x = x - arrXopt;  % shift optimum to zero 
-  x = x + aXopt;    % shift zero to actual optimum
-
+  
+  res = [];
+  for i = 1:POPSI
+      res = [res fitnessclustsse(x(:, i), dataset)];
+  end
+  
   %----- COMPUTATION core -----
-  Ftrue = sum(x.^2, 1);
-  Fval = Ftrue;  % without noise
-
-  %----- FINALIZE -----
-  Ftrue = Ftrue + Fadd;
-  Fval = Fval + Fadd;
+  Ftrue = res;
+  Fval = res;  % without noise
 
   %----- RETURN INFO ----- 
   if flginputischar  
@@ -200,6 +210,590 @@ function [Fval, Ftrue] = f201(x, DIM, ntrial)
   end
 
 end % function
+
+function [Fval, Ftrue] = f202(x, DIM, ntrial)
+% Sum of Squares Clustering Problem
+  persistent Fopt Xopt scales linearTF rotation
+  persistent lastSize arrScales arrExpo rseed
+  persistent dataset
+
+  funcID = 202;
+  rrseed = 1; 
+  aXopt = 0; % actual optimum in input space
+  
+  %----- CHECK INPUT -----
+  if ischar(x) % return Fopt Xopt or linearTF on string argument
+    flginputischar = 1;
+    strinput = x;
+    if nargin < 2 || isempty(DIM)
+      DIM = 4;
+    end
+    x = ones(DIM,1);  % setting all persistent variables
+  else
+    flginputischar = 0;
+  end
+  % from here on x is assumed a numeric variable
+  x = normalize_arr(x, 4, 156);
+  [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
+  if mod (DIM, 2) ~= 0 
+    error('Dimension must be divisable by 2');
+  end
+  
+  %----- INITIALIZATION -----
+  if nargin > 2     % set seed depending on trial index
+    Fopt = [];      % clear previous settings for Fopt
+    lastSize = [];  % clear other previous settings
+    rseed = rrseed + 1e4 * ntrial; 
+  elseif isempty(rseed)
+    rseed = rrseed; 
+  end
+  if isempty(Fopt)
+    Fopt = 0;
+  end 
+  
+  Xopt = zeros(DIM, 1);
+  % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
+  if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
+    lastSize.POPSI = POPSI; 
+    lastSize.DIM = DIM; 
+    dataset = importdata('ruspini.txt');
+    switch DIM
+        case 4
+            Fopt = 89337.832142857;
+        case 6
+            Fopt = 51063.4750456705;
+        case 8
+            Fopt = 12881.0512361466;
+        case 10
+            Fopt = 10126.7197881828;
+        case 12
+            Fopt = 8575.40687645688;
+        case 14
+            Fopt = 7126.19854312354;
+        case 16
+            Fopt = 6149.639019314019;
+        case 18
+            Fopt = 5181.65183982684;
+        case 20
+            Fopt = 4446.28214285714;
+        otherwise
+            Fopt = 0;
+            disp('Fopt is unknown. Using Fopt = 0');
+    end
+  end 
+  
+  res = [];
+  for i = 1:POPSI
+      res = [res fitnessclustsse(x(:, i), dataset)];
+  end
+  
+  %----- COMPUTATION core -----
+  Ftrue = res;
+  Fval = res;  % without noise
+
+  %----- RETURN INFO ----- 
+  if flginputischar  
+    if strcmpi(strinput, 'xopt')
+      Fval = Fopt;
+      Ftrue = Xopt;
+    elseif strcmpi(strinput, 'linearTF')
+      Fval = Fopt;
+      Ftrue = {};
+      Ftrue{1} = linearTF; 
+      Ftrue{2} = rotation; 
+    else  % if strcmpi(strinput, 'info')
+      Ftrue = [];  % benchmarkinfos(funcID); 
+      Fval = Fopt;
+    end
+  end
+
+end
+
+function [Fval, Ftrue] = f203(x, DIM, ntrial)
+% Sum of Squares Clustering Problem
+  persistent Fopt Xopt scales linearTF rotation
+  persistent lastSize arrScales arrExpo rseed
+  persistent dataset
+
+  funcID = 203;
+  rrseed = 1; 
+  aXopt = 0; % actual optimum in input space
+  
+  %----- CHECK INPUT -----
+  if ischar(x) % return Fopt Xopt or linearTF on string argument
+    flginputischar = 1;
+    strinput = x;
+    if nargin < 2 || isempty(DIM)
+      DIM = 6;
+    end
+    x = ones(DIM,1);  % setting all persistent variables
+  else
+    flginputischar = 0;
+  end
+  % from here on x is assumed a numeric variable
+  x = normalize_arr(x, 24.49, 1306024);
+  [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
+  if mod (DIM, 3) ~= 0 
+    error('Dimension must be divisable by 3');
+  end
+  
+  %----- INITIALIZATION -----
+  if nargin > 2     % set seed depending on trial index
+    Fopt = [];      % clear previous settings for Fopt
+    lastSize = [];  % clear other previous settings
+    rseed = rrseed + 1e4 * ntrial; 
+  elseif isempty(rseed)
+    rseed = rrseed; 
+  end
+  if isempty(Fopt)
+    Fopt = 0;
+  end 
+  
+  Xopt = zeros(DIM, 1);
+  % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
+  if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
+    lastSize.POPSI = POPSI; 
+    lastSize.DIM = DIM; 
+    dataset = importdata('german_postal.txt');
+    switch DIM
+        case 6
+            Fopt = 6.025472220938822e+11;
+        case 9
+            Fopt = 2.94506562778027e+11;
+        case 12
+            Fopt = 1.04474664100716e+11;
+        case 15
+            Fopt = 5.97615267205269e+10;
+        case 18
+            Fopt = 3.59085384380298e+10;
+        case 21
+            Fopt = 2.19832076153985e+10;
+        case 24
+            Fopt = 1.33854150525813e+10;
+        case 27
+            Fopt = 8.423750573163314e+09;
+        case 30
+            Fopt = 6.44648364287013e+09;
+        otherwise
+            Fopt = 0;
+            disp('Fopt is unknown. Using Fopt = 0');
+    end
+  end 
+  
+  res = [];
+  for i = 1:POPSI
+      res = [res fitnessclustsse(x(:, i), dataset)];
+  end
+  
+  %----- COMPUTATION core -----
+  Ftrue = res;
+  Fval = res;  % without noise
+
+  %----- RETURN INFO ----- 
+  if flginputischar  
+    if strcmpi(strinput, 'xopt')
+      Fval = Fopt;
+      Ftrue = Xopt;
+    elseif strcmpi(strinput, 'linearTF')
+      Fval = Fopt;
+      Ftrue = {};
+      Ftrue{1} = linearTF; 
+      Ftrue{2} = rotation; 
+    else  % if strcmpi(strinput, 'info')
+      Ftrue = [];  % benchmarkinfos(funcID); 
+      Fval = Fopt;
+    end
+  end
+
+end
+
+function [Fval, Ftrue] = f204(x, DIM, ntrial)
+% Neural network learning Problem
+  persistent Fopt Xopt scales linearTF rotation
+  persistent lastSize arrScales arrExpo rseed
+  persistent dataset
+
+  funcID = 204;
+  rrseed = 1; 
+  aXopt = 0; % actual optimum in input space
+  
+  %----- CHECK INPUT -----
+  if ischar(x) % return Fopt Xopt or linearTF on string argument
+    flginputischar = 1;
+    strinput = x;
+    if nargin < 2 || isempty(DIM)
+      DIM = 10;
+    end
+    x = ones(DIM,1);  % setting all persistent variables
+  else
+    flginputischar = 0;
+  end
+  % from here on x is assumed a numeric variable
+  x = normalize_arr(x, -50, 50);
+  [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
+  if mod ((DIM - 1), 3) ~= 0 
+    error('Dimension must be according to 3k + 1');
+  end
+  
+  %----- INITIALIZATION -----
+  if nargin > 2     % set seed depending on trial index
+    Fopt = [];      % clear previous settings for Fopt
+    lastSize = [];  % clear other previous settings
+    rseed = rrseed + 1e4 * ntrial; 
+    switch ntrial
+        case 1
+            dataset = importdata('quaddata.txt');
+        case 2
+            dataset = importdata('sinedata.txt');
+        case 3
+            dataset = importdata('absdata.txt');
+        case 4
+            dataset = importdata('hsidedata.txt');
+    end
+        
+    
+  elseif isempty(rseed)
+    rseed = rrseed; 
+  end
+  if isempty(Fopt)
+    Fopt = 0;
+  end 
+  
+  Xopt = zeros(DIM, 1);
+  % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
+  if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
+    lastSize.POPSI = POPSI; 
+    lastSize.DIM = DIM; 
+  end 
+  
+  res = zeros(1, POPSI);
+  for i = 1:POPSI
+      params = x(:, i);
+      for j = 1:length(dataset)
+        data = dataset(j, :);
+        prediction = params(1);
+        for k = 0:(((DIM - 1) / 3) - 1)
+            prediction = prediction + params(k*3+2) * tanh(params(k*3+3) + (data(1) * params(k*3+4)));
+        end
+        res(i) = res(i) + ((prediction - data(2)) ^ 2);
+      end
+  end
+  res = res / length(dataset);
+  
+  %----- COMPUTATION core -----
+  Ftrue = res;
+  Fval = res;  % without noise
+
+  %----- RETURN INFO ----- 
+  if flginputischar  
+    if strcmpi(strinput, 'xopt')
+      Fval = Fopt;
+      Ftrue = Xopt;
+    elseif strcmpi(strinput, 'linearTF')
+      Fval = Fopt;
+      Ftrue = {};
+      Ftrue{1} = linearTF; 
+      Ftrue{2} = rotation; 
+    else  % if strcmpi(strinput, 'info')
+      Ftrue = [];  % benchmarkinfos(funcID); 
+      Fval = Fopt;
+    end
+  end
+end
+
+function [Fval, Ftrue] = f205(x, DIM, ntrial)
+% Sammon mapping Problem
+  persistent Fopt Xopt scales linearTF rotation
+  persistent lastSize arrScales arrExpo rseed
+  persistent dataset orig_dist data
+
+  funcID = 205;
+  rrseed = 1; 
+  aXopt = 0; % actual optimum in input space
+  
+  %----- CHECK INPUT -----
+  if ischar(x) % return Fopt Xopt or linearTF on string argument
+    flginputischar = 1;
+    strinput = x;
+    if nargin < 2 || isempty(DIM)
+      DIM = 4;
+    end
+    x = ones(DIM,1);  % setting all persistent variables
+  else
+    flginputischar = 0;
+  end
+  % from here on x is assumed a numeric variable
+  x = normalize_arr(x, -50, 50);
+  [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
+  if mod (DIM, 2) ~= 0 
+    error('Dimension must be divisible by 2');
+  end
+  
+  %----- INITIALIZATION -----
+  if nargin > 2     % set seed depending on trial index
+    Fopt = [];      % clear previous settings for Fopt
+    lastSize = [];  % clear other previous settings
+    rseed = rrseed + 1e4 * ntrial;
+    if (ntrial < 250)
+        data = importdata('virus3.txt');
+    else
+        data = importdata('samp05.txt');
+    end
+    s = rng;
+    rng(ntrial);
+    dataset = datasample(data, DIM / 2, 'Replace', false);  
+    rng(s);
+    orig_dist = pdist(dataset);
+  elseif isempty(rseed)
+    rseed = rrseed; 
+  end
+  if isempty(Fopt)
+    Fopt = 0;
+  end 
+  
+  Xopt = zeros(DIM, 1);
+  % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
+  if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
+    lastSize.POPSI = POPSI; 
+    lastSize.DIM = DIM;
+  end 
+  
+  res = zeros(1, POPSI);
+  
+  for i = 1:POPSI
+    index = 1;
+    solution = x(:, i);
+    sol_dist = pdist(vec2mat(solution, 2));
+    for j = 1:(DIM / 2)
+        for k = (j+1):(DIM / 2)
+            res(i) = res(i) + ((sol_dist(index) - orig_dist(index)).^2) / (orig_dist(index).^2);
+            index = index + 1;
+        end
+    end
+  end
+ 
+  %----- COMPUTATION core -----
+  Ftrue = res;
+  Fval = res;  % without noise
+
+  %----- RETURN INFO ----- 
+  if flginputischar  
+    if strcmpi(strinput, 'xopt')
+      Fval = Fopt;
+      Ftrue = Xopt;
+    elseif strcmpi(strinput, 'linearTF')
+      Fval = Fopt;
+      Ftrue = {};
+      Ftrue{1} = linearTF; 
+      Ftrue{2} = rotation; 
+    else  % if strcmpi(strinput, 'info')
+      Ftrue = [];  % benchmarkinfos(funcID); 
+      Fval = Fopt;
+    end
+  end
+end
+
+function [Fval, Ftrue] = f206(x, DIM, ntrial)
+% Coordinates on map Problem
+  persistent Fopt Xopt scales linearTF rotation
+  persistent lastSize arrScales arrExpo rseed
+  persistent dataset
+
+  funcID = 206;
+  rrseed = 1; 
+  aXopt = 0; % actual optimum in input space
+  
+  %----- CHECK INPUT -----
+  if ischar(x) % return Fopt Xopt or linearTF on string argument
+    flginputischar = 1;
+    strinput = x;
+    if nargin < 2 || isempty(DIM)
+      DIM = 2;
+    end
+    x = ones(DIM,1);  % setting all persistent variables
+  else
+    flginputischar = 0;
+  end
+  % from here on x is assumed a numeric variable
+  x(1, :) = normalize_arr(x(1, :), 1, 4320);
+  x(2, :) = normalize_arr(x(2, :), 1, 2160);
+  [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
+  if DIM ~= 2 
+    error('Dimension must be 2');
+  end
+  
+  %----- INITIALIZATION -----
+  if nargin > 2     % set seed depending on trial index
+    Fopt = [];      % clear previous settings for Fopt
+    lastSize = [];  % clear other previous settings
+    rseed = rrseed + 1e4 * ntrial; 
+    dataset = importdata('earthelevation.txt');    
+  elseif isempty(rseed)
+    rseed = rrseed; 
+  end
+  if isempty(Fopt)
+    Fopt = 255;
+  end 
+  
+  Xopt = zeros(DIM, 1);
+  % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
+  if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
+    lastSize.POPSI = POPSI; 
+    lastSize.DIM = DIM; 
+  end
+  
+  x = round(x);
+  res = zeros(1, POPSI);
+  for i = 1:POPSI
+      coordinates = x(:, i);
+      res(i) = Fopt - dataset(coordinates(2), coordinates(1));
+  end
+  
+  %----- COMPUTATION core -----
+  Ftrue = res;
+  Fval = res;  % without noise
+
+  %----- RETURN INFO ----- 
+  if flginputischar  
+    if strcmpi(strinput, 'xopt')
+      Fval = 0;
+      Ftrue = Xopt;
+    elseif strcmpi(strinput, 'linearTF')
+      Fval = 0;
+      Ftrue = {};
+      Ftrue{1} = linearTF; 
+      Ftrue{2} = rotation; 
+    else  % if strcmpi(strinput, 'info')
+      Ftrue = [];  % benchmarkinfos(funcID); 
+      Fval = 0;
+    end
+  end
+end
+
+function [Fval, Ftrue] = f207(x, DIM, ntrial)
+% Buoy Placement Problem
+% ntrial determines configuration of simulator
+% ntrial format is following: frwh
+% f = frequencies = 1 - 2 - 3 - 5 - 10 - 25
+% r = radius = 2.0 - 2.5 - 3.2 - 4.0 - 5.0
+% w = width = 10 - 25 - 50 - 100 - 200 - 350 - 500 - 1000 - 2500
+% h = height = 10 - 25 - 50 - 100 - 200 - 350 - 500 - 1000 - 2500
+  persistent Fopt Xopt scales linearTF rotation
+  persistent lastSize arrScales arrExpo rseed
+  persistent dataset
+  persistent frequencies radius width height
+
+  funcID = 207;
+  rrseed = 1; 
+  aXopt = 0; % actual optimum in input space
+  
+  %----- CHECK INPUT -----
+  if ischar(x) % return Fopt Xopt or linearTF on string argument
+    flginputischar = 1;
+    strinput = x;
+    if nargin < 2 || isempty(DIM)
+      DIM = 2;
+    end
+    x = ones(DIM,1);  % setting all persistent variables
+  else
+    flginputischar = 0;
+  end
+  % from here on x is assumed a numeric variable
+  
+  [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
+  if mod (DIM, 2) ~= 0 
+    error('Dimension must be divisable by 2');
+  end
+  
+  %----- INITIALIZATION -----
+  if nargin > 2     % set seed depending on trial index
+    Fopt = [];      % clear previous settings for Fopt
+    lastSize = [];  % clear other previous settings
+    tmp = ntrial;
+    w_index = mod(tmp, 10);
+    tmp = tmp - w_index;
+    h_index = mod(tmp, 100) / 10;
+    tmp = tmp - h_index * 10;
+    r_index = mod(tmp, 1000) / 100;
+    tmp = tmp - r_index * 100;
+    f_index = mod(tmp, 10000) / 1000;
+    tmp = [1 2 3 5 10 25];
+    frequencies = tmp(f_index);
+    tmp = [2.0 2.5 3.2 4.0 5.0];
+    radius = tmp(r_index);
+    tmp = [10 25 50 100 200 350 500 1000 2500];
+    width = tmp(w_index);
+    tmp = [10 25 50 100 200 350 500 1000 2500];
+    height = tmp(h_index);
+  elseif isempty(rseed)
+    rseed = rrseed; 
+  end
+  if isempty(Fopt)
+    Fopt = 1;
+  end 
+  
+  Xopt = zeros(DIM, 1);
+  % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
+  if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
+    lastSize.POPSI = POPSI; 
+    lastSize.DIM = DIM; 
+  end
+  
+  x(1, :) = normalize_arr(x(1, :), 1, width);
+  x(2, :) = normalize_arr(x(2, :), 1, height);
+  x = round(x);
+  res = zeros(1, POPSI);
+  buoys_count = DIM / 2;
+  for i = 1:POPSI
+      spheres_x = x(1:buoys_count, i);
+      spheres_y = x(buoys_count+1:DIM, i);
+      radiusSphere = radius*ones(1, buoys_count);
+      
+      try
+        if (frequencies == 1)
+            [MlRCWWeighted, MlParrayAverage] = arrayBuoyPlacementSingleFreq(radiusSphere, spheres_x, spheres_y, 0.7, 0);
+        else
+            [MlRCWWeighted, MlParrayAverage] = arrayBuoyPlacement_v2(radiusSphere, spheres_x, spheres_y, frequencies);
+            end
+        res(i) = Fopt - MlRCWWeighted;
+      catch ME
+        %Simulation can throw exception -> 2 buoyes are on the same
+        %location
+        res(i) = Fopt;
+      end
+  end
+  
+  %----- COMPUTATION core -----
+  Ftrue = res;
+  Fval = res;  % without noise
+
+  %----- RETURN INFO ----- 
+  if flginputischar  
+    if strcmpi(strinput, 'xopt')
+      Fval = 0;
+      Ftrue = Xopt;
+    elseif strcmpi(strinput, 'linearTF')
+      Fval = 0;
+      Ftrue = {};
+      Ftrue{1} = linearTF; 
+      Ftrue{2} = rotation; 
+    else  % if strcmpi(strinput, 'info')
+      Ftrue = [];  % benchmarkinfos(funcID); 
+      Fval = 0;
+    end
+  end
+end
+
+function normalized = normalize_arr(array, x, y)
+     % Normalize to [0, 1]:
+     m = -5;
+     range = 5 - m;
+     array = (array - m) / range;
+
+     % Then scale to [x,y]:
+     range2 = y - x;
+     normalized = (array*range2) + x;
+end
 
 % qqq
 

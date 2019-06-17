@@ -1,4 +1,4 @@
-function Fvalue = fgeneric(x, FUNC_ID, itrial, dataPath, PARAMS)
+function Fvalue = fgeneric(x, FUNC_ID, itrial, dataPath, PARAMS, dimension)
 % FGENERIC is a wrapper function used for the benchmark test functions.
 %    Besides calling a benchmark function it does the housekeeping
 %    and writing of data.
@@ -195,7 +195,7 @@ function Fvalue = fgeneric(x, FUNC_ID, itrial, dataPath, PARAMS)
       end
 
       actFunc = handlesF{FUNC_ID};
-      Fopt = feval(actFunc, 'init', [], itrial);
+      Fopt = feval(actFunc, 'init', dimension, itrial);
       % if ~(nargin > 3 && ~isempty(itrial))
       %   Fopt = feval(actFunc, 'fopt');
       % end

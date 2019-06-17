@@ -50,7 +50,7 @@ classdef GenerationEC < EvolutionControl & Observable
       
       sampleSigma = surrogateOpts.evoControlSampleRange * sigma;
       
-      obj.model = ModelFactory.createModel(surrogateOpts.modelType, surrogateOpts.modelOpts, xmean');
+      obj.model = e.createModel(surrogateOpts.modelType, surrogateOpts.modelOpts, xmean');
 
       if (obj.evaluateOriginal)
         %

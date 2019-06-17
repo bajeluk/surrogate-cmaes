@@ -692,7 +692,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         return;
       end
 
-      N_VALIDATION_CYCLES = 10;
+      N_VALIDATION_CYCLES = 1;
       kendall = NaN(1, N_VALIDATION_CYCLES);
       rmse = NaN(1, N_VALIDATION_CYCLES);
       errRank = NaN(1, N_VALIDATION_CYCLES);

@@ -155,7 +155,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
     fprintf('#########################################################\n');
     % comment the following "exit(1)" when debugging -- it shutdowns the
     % whole Matlab if an error occures
-    exit(1);
+    % exit(1);
     throw(err);
   end
 end
@@ -209,7 +209,7 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
   for iinstance = exp_settings.instances((nCompletedInstances+1):end)   % 15 function instances
     fmin = Inf;
 
-    fgeneric('initialize', exp_settings.bbob_function, iinstance, datapath, opt);
+    fgeneric('initialize', exp_settings.bbob_function, iinstance, datapath, opt, exp_settings.dim);
     yeRestarts = [];
     cmaes_out{end+1}  = {};
     t = tic;

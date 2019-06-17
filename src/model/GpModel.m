@@ -131,7 +131,7 @@ classdef GpModel < Model
       nData = 3 * obj.dim;
     end
 
-    function obj = trainModel(obj, X, y, xMean, generation)
+    function obj = trainModel(obj, X, y, xMean, generation, ~)
       % train the GP model based on the data (X,y)
       % TODO
       %   [ ] implement choosing the best covariance function according to

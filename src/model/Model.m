@@ -314,7 +314,7 @@ classdef (Abstract) Model
           XtransfReduce=XTransf;
         end
 
-        obj = trainModel(obj, XtransfReduce, y, xMean, generation);
+        obj = trainModel(obj, XtransfReduce, y, xMean, generation, archive);
       end
 
 
