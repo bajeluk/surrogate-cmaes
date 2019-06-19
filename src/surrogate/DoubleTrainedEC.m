@@ -153,7 +153,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
         minTrainSize = obj.newModel.getNTrainData();
 
-        nArchivePoints = myeval(obj.surrogateOpts.evoControlTrainNArchivePoints);
+        nArchivePoints = myeval(obj.surrogateOpts.modelOpts.trainsetSizeMax);
         % Choose data from Archive -- the points from this 'getDataNearPoint() 
         % are used only iff modelOpts.trainsetType == 'parameters', otherwise the points
         % are selected later in Model.train() -> ... -> Archive.getTrainsetData()

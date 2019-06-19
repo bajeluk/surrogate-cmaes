@@ -185,7 +185,7 @@ classdef GenerationEC < EvolutionControl & Observable
       isTrained = false;
 
       trainSigma = surrogateOpts.evoControlTrainRange * cmaesState.sigma;
-      nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
+      nArchivePoints = myeval(surrogateOpts.modelOpts.trainsetSizeMax);
 
       nRequired = obj.model.getNTrainData();
       [X, y] = archive.getDataNearPoint(nArchivePoints, cmaesState.xmean', ...
