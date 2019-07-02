@@ -11,6 +11,7 @@ function [results, settings, resParams] = metaLearn_loadResults(folders, varargi
 %                        case of random initialization) | string or 
 %                        cell-array of strings
 %     'Instances'      - instances used in the experiment | double
+%     'OrigExpName'    - name of the original experiment file | string
 %     'SaveResults'    - output file containing loaded results | string
 %     'ShowOutput'     - print output of data loading to screen | boolean
 %
@@ -86,6 +87,7 @@ function [results, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSet
   end
   showOutput = defopts(fSettings, 'ShowOutput', false);
   exp_instances = defopts(fSettings, 'Instances', []);
+  origExpLoc = defopts(fSettings, 'OrigExpName', [exp_folder, '.m']);
   
   % gain file list
   if showOutput
@@ -113,6 +115,14 @@ function [results, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSet
   end
   % cat dataset files
   fileList = [folderFiles{:}]';  
+  
+  % load original experiment settings if possible
+  if isfile(origExpLoc)
+    origSettings = getOrigExpSettings(origExpLoc);
+    origModelOpts = combineFieldValues(origSettings.modelOptions);
+  else
+    fprintf('Impossible to load %s. Settings id will be artificial\n', origExpLoc)
+  end
   
   % init variables
   settings = {};
@@ -255,10 +265,27 @@ function [results, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSet
       results = [results; actualTable];
       
       % notice finished variants
-      if isfield(S, 'finished') && all(all(table2array(S.finished)))
-        finished = [finished; S.fun, S.dim, settingsId];
+      if isfield(S, 'finished')
+        % missing data file
+        missingDataFile = [fileList{f}(1:end-4), '_missing_data.mat'];
+        if isfile(missingDataFile)
+          miss = load(missingDataFile);
+          for mi = 1:size(miss.missingData)
+            % mark missing data as finished
+            S.finished{['id_', num2str(miss.missingData(mi, 4))], ...
+                       ['inst_', num2str(miss.missingData(mi, 3))]} = true;
+          end
+        end
+        % only if all settings are finished add them to finished list
+        if all(all(table2array(S.finished)))
+          % compare to original settings without options added due to
+          % result loading
+          origSettingsId = propertyId(origModelOpts, ...
+            rmfield(actualSettings, {'modelType', 'modelHash'}));
+          finished = [finished; S.fun, S.dim, origSettingsId];
+        end
       end
-
+      
     end
   end
 
@@ -269,7 +296,7 @@ function [results, settings, res_params] = metaLearn_loadRunExp(exp_folder, fSet
   fprintf(FID, '# fun dim model\n');
   % write the matrix
   if FID > 0
-    fprintf(FID, ' %d %d %d\n', finished');
+    fprintf(FID, ' %d %d %d\n', sortrows(finished)');
     fclose(FID);
   end
 
@@ -427,5 +454,15 @@ function [propId, property] = propertyId(property, value)
     else
       propId = find(propId);
     end
+  end
+end
+
+function origOpts = getOrigExpSettings(origExpLoc)
+% get original experiment settings
+  run(origExpLoc)
+  clear('origExpLoc')
+  variables = who();
+  for v = 1:numel(variables)
+    origOpts.(variables{v}) = eval(variables{v});
   end
 end
