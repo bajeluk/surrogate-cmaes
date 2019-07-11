@@ -1,6 +1,9 @@
 function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, isForModelPool, nPreviousGenerations, loadModels)
-%DATASETFROMINSTANCE - generates datasets for specified dim and #fun for offline model tunning
-
+%DATASETFROMINSTANCES - generates datasets for specified dim and #fun for 
+% offline model tunning
+% 
+% dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, ...
+%                         isForModelPool, nPreviousGenerations, loadModels)
 % Generates datasets for offline model tunning from the DTS-CMA-ES
 % results files with 'progressLog' switched on (*_results_*.mat)
 
@@ -14,7 +17,7 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
   % id = 1;
 
   if nargin < 1
-    help datasetFromInstance
+    help datasetFromInstances
     return
   end
   exp_id = opts.inputExp_id;
@@ -129,6 +132,7 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
           w = geopdf(0:nGenerations-1, p);
           gens = sort(randsample(firstGeneration:lastGeneration, nSnapshots, true, w));
         case 'geometric_wor'
+          % TODO: make this part of code more readable
           alpha = 0.9;
           p = 1-nthroot(1-alpha, nGenerations+1);
           w = geopdf(0:nGenerations-1, p);
