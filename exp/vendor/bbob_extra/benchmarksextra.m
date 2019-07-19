@@ -614,26 +614,31 @@ function [Fval, Ftrue] = f206(x, DIM, ntrial)
   else
     flginputischar = 0;
   end
-  % from here on x is assumed a numeric variable
-  x(1, :) = normalize_arr(x(1, :), 1, 4320);
-  x(2, :) = normalize_arr(x(2, :), 1, 2160);
-  [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
-  if DIM ~= 2 
-    error('Dimension must be 2');
-  end
   
   %----- INITIALIZATION -----
   if nargin > 2     % set seed depending on trial index
     Fopt = [];      % clear previous settings for Fopt
     lastSize = [];  % clear other previous settings
     rseed = rrseed + 1e4 * ntrial; 
-    dataset = importdata('earthelevation.txt');    
+    if ntrial == 0
+        dataset = importdata('earthelevation.txt');
+    else
+        data = load('detailed_evelation.mat');
+        dataset = imresize(data.data, 1 / ntrial);
+    end
+    Fopt = max(max(dataset));    
   elseif isempty(rseed)
     rseed = rrseed; 
   end
-  if isempty(Fopt)
-    Fopt = 255;
-  end 
+  
+  % from here on x is assumed a numeric variable
+  [sizeX, sizeY] = size(dataset);
+  x(1, :) = normalize_arr(x(1, :), 1, sizeY);
+  x(2, :) = normalize_arr(x(2, :), 1, sizeX);
+  [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
+  if DIM ~= 2 
+    error('Dimension must be 2');
+  end
   
   Xopt = zeros(DIM, 1);
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
