@@ -53,6 +53,8 @@ function handle = relativeFValuesPlot(data, varargin)
 %                       or [] for plotting x/y-labels everywhere
 %     'ScaleY08'      - whether to always scale the y-axis to [-8, 0]
 %                       true by default
+%     'TitleString'   - string to be shown in title, if empty, default
+%                       names will be used
 %
 % Output:
 %   handle - handles of resulting figures | cell-array
@@ -120,6 +122,7 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.omitYLabel = defopts(settings, 'OmitYLabel', false);
   plotSet.plotGrid = defopts(settings, 'PlotGrid', []);
   plotSet.scaleY08 = defopts(settings, 'ScaleY08', true);
+  plotSet.titleString = defopts(settings, 'TitleString', '');
   % plot-line settings
   defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
   plotSet.lineSpec = defopts(settings, 'LineSpec', defaultLine);
@@ -577,17 +580,23 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   end
 
   % make title
-  titleString = '';
-  if ~aggFuns
-    titleString = ['f', num2str(BBfunc(fId))];
-    if funcNames
-      titleString = [titleString, ' ', bbobFunctionName(BBfunc(fId))];
+  titleString = settings.titleString;
+  % title not defined
+  if isempty(titleString)
+    if ~aggFuns
+      titleString = ['f', num2str(BBfunc(fId))];
+      if funcNames
+        titleString = [titleString, ' ', bbobFunctionName(BBfunc(fId))];
+      end
+    end
+    if ~aggDims
+      titleString = [titleString, ' ', num2str(dims(dId)),'D'];
     end
   end
-  if ~aggDims
-    titleString = [titleString, ' ', num2str(dims(dId)),'D'];
-  end
+  % make
   title(titleString)
+  
+  % axis labels
   if (~omitXLabel)
     xlabel('Number of evaluations / D');
   end
