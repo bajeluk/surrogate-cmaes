@@ -25,6 +25,7 @@ function handle = metafeaturePlot(mftsVal, dataVal, varargin)
 %     'QuartileLW'    - quartile line width | double
 %     'Select'        - select only values | {'positive', 'negative', []}
 %     'ShowLegend'    - show plot legend | boolean
+%     'UseData'       - id's of data to use | integer
 %
 % Output:
 %   handle - handles of resulting figures | cell-array
@@ -73,6 +74,7 @@ function handle = metafeaturePlot(mftsVal, dataVal, varargin)
   quantRange = defopts(settings, 'QuantileRange', [0, 1]);
   selectVals = defopts(settings, 'Select', []);
   showLegend = defopts(settings, 'ShowLegend', true);
+  useData = defopts(settings, 'UseData', 1:nData);
   
   % check names format
   if ~iscell(dataNames)
@@ -143,7 +145,7 @@ function handle = metafeaturePlot(mftsVal, dataVal, varargin)
       end
       % check missing values
       plotSet.plotPointId = ~all(isnan(plotSet.yVal), 2);
-      if ~isempty(plotSet.plotPointId)
+      if ~isempty(plotSet.plotPointId) && ismember(m, useData)
         % prepare color
         plotSet.kerColor = kerColor(m, :);
         % plot data
@@ -164,7 +166,7 @@ function handle = metafeaturePlot(mftsVal, dataVal, varargin)
       legend(h(2:3:end), dataNames(dataId), 'Location', 'Best', ...
                                             'Interpreter', 'latex')
     end
-    if numel(plotSet.xBound) > 1
+    if numel(plotSet.xBound) > 2
       axis([plotSet.xBound(2), plotSet.xBound(end), 0, 1])
     end
     hold off
