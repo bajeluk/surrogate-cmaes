@@ -620,11 +620,11 @@ function [Fval, Ftrue] = f206(x, DIM, ntrial)
     Fopt = [];      % clear previous settings for Fopt
     lastSize = [];  % clear other previous settings
     rseed = rrseed + 1e4 * ntrial; 
-    if ntrial == 0
+    if ntrial == 1
         dataset = importdata('earthelevation.txt');
     else
         data = load('detailed_evelation.mat');
-        dataset = imresize(data.data, 1 / ntrial);
+        dataset = imresize(data.data, 1 / (ntrial - 1));
     end
     Fopt = max(max(dataset));    
   elseif isempty(rseed)
