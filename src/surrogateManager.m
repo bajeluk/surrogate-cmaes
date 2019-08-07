@@ -41,7 +41,7 @@ function [fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, lambda, or
   sDefaults.evoControlSampleRange         = 1;    % 1..inf (reasonable 1--20)
   sDefaults.evoControlOrigGenerations     = 1;    % 1..inf
   sDefaults.evoControlModelGenerations    = 1;    % 0..inf
-  sDefaults.evoControlTrainNArchivePoints = '15*dim';l
+  sDefaults.evoControlTrainNArchivePoints = '15*dim';
   sDefaults.evoControlValidatePoints      = 0;
   sDefaults.evoControlRestrictedParam     = 0.2;    % 0..1
   sDefaults.evoControlAdaptivity          = 0.1;
