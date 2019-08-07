@@ -22,6 +22,8 @@ function handle = relativeFValuesPlot(data, varargin)
 %     'DataFuns'      - functions of data | integer vector
 %                       (e.g. [1, 2, 3, 4, 5, 11, 12])
 %     'FunctionNames' - show function names in header | boolean
+%     'Interpreter'   - interpretation of text characters (default:
+%                       'latex')| {'tex', 'latex', 'none'}
 %     'LegendOption'  - legend settings:
 %                         'show'    - show legend
 %                         'hide'    - do not show legend
@@ -123,6 +125,7 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.plotGrid = defopts(settings, 'PlotGrid', []);
   plotSet.scaleY08 = defopts(settings, 'ScaleY08', true);
   plotSet.titleString = defopts(settings, 'TitleString', '');
+  plotSet.figInterpreter = defopts(settings, 'Interpreter', 'latex');
   % plot-line settings
   defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
   plotSet.lineSpec = defopts(settings, 'LineSpec', defaultLine);
@@ -465,6 +468,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   maxEval = settings.maxEval;
   colors = settings.colors;
   datanames = settings.datanames;
+  figInterpreter = settings.figInterpreter;
   aggFuns = settings.aggFuns;
   aggDims = settings.aggDims;
   funcNames = settings.funcNames;
@@ -566,13 +570,20 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
           legIds(find(legendData, nLegendData - ceil(nLegendData/2), 'last')) = true;
       end
       if any(legIds)
-        legend(h(legIds), datanames(legIds), 'Location', settings.legendLocation)
+        legend(h(legIds), datanames(legIds), ...
+               'Location', settings.legendLocation, ...
+               'Interpreter', figInterpreter)
       end
     end
     ax = gca();
+    % nice latex numbers in axes
+    ax.TickLabelInterpreter = figInterpreter;
+    % rescaling f-values to required format
     if (settings.scaleY08)
+      % normalized format
       ax.YLim = [-8, 0];
     else
+      % realistic format
       ax.YLim = [thisYMin, thisYMax];
     end
   else
@@ -594,14 +605,14 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     end
   end
   % make
-  title(titleString)
+  title(['\textbf{', titleString,'}'], 'Interpreter', figInterpreter)
   
   % axis labels
   if (~omitXLabel)
-    xlabel('Number of evaluations / D');
+    xlabel('Number of evaluations / D', 'Interpreter', figInterpreter);
   end
   if (~omitYLabel)
-    ylabel('\Delta_f^{log}');
+    ylabel('$\Delta_f^\textrm{log}$', 'Interpreter', figInterpreter);
   end
   
   hold off
