@@ -120,7 +120,7 @@ function [Fval, Ftrue] = f201(x, DIM, ntrial)
 % Sum of Squares Clustering Problem
   persistent Fopt Xopt scales linearTF rotation
   persistent lastSize arrScales arrExpo rseed
-  persistent dataset
+  persistent dataset minVal maxVal
 
   funcID = 201;
   rrseed = 1; 
@@ -138,7 +138,6 @@ function [Fval, Ftrue] = f201(x, DIM, ntrial)
     flginputischar = 0;
   end
   % from here on x is assumed a numeric variable
-  x = normalize_arr(x, 0.1, 7.9);
   [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
   if mod (DIM, 4) ~= 0 
     error('Dimension must be divisable by 4');
@@ -149,16 +148,60 @@ function [Fval, Ftrue] = f201(x, DIM, ntrial)
     Fopt = [];      % clear previous settings for Fopt
     lastSize = [];  % clear other previous settings
     rseed = rrseed + 1e4 * ntrial; 
-  elseif isempty(rseed)
-    rseed = rrseed; 
-  end
-  
-  Xopt = zeros(DIM, 1);
-  % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
-  if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
-    lastSize.POPSI = POPSI; 
-    lastSize.DIM = DIM; 
+    
     dataset = importdata('iris.txt');
+    
+    rng(ntrial);
+    theta = randi(360);
+    R = eye(4, 4);
+    R(1, 1) = cosd(theta);
+    R(1, 2) = sind(theta);
+    R(2, 1) = -sind(theta);
+    R(2, 2) = cosd(theta);
+    dataset = (R*dataset')';
+    
+    theta = randi(360);
+    R = eye(4, 4);
+    R(2, 2) = cosd(theta);
+    R(2, 3) = sind(theta);
+    R(3, 2) = -sind(theta);
+    R(3, 3) = cosd(theta);
+    dataset = (R*dataset')';
+    
+    theta = randi(360);
+    R = eye(4, 4);
+    R(1, 1) = cosd(theta);
+    R(1, 3) = -sind(theta);
+    R(3, 1) = sind(theta);
+    R(3, 3) = cosd(theta);
+    dataset = (R*dataset')';
+    
+    theta = randi(360);
+    R = eye(4, 4);
+    R(1, 1) = cosd(theta);
+    R(1, 4) = sind(theta);
+    R(4, 1) = -sind(theta);
+    R(4, 4) = cosd(theta);
+    dataset = (R*dataset')';
+    
+    theta = randi(360);
+    R = eye(4, 4);
+    R(2, 2) = cosd(theta);
+    R(2, 4) = -sind(theta);
+    R(4, 2) = sind(theta);
+    R(4, 4) = cosd(theta);
+    dataset = (R*dataset')';
+    
+    theta = randi(360);
+    R = eye(4, 4);
+    R(3, 3) = cosd(theta);
+    R(3, 4) = -sind(theta);
+    R(4, 3) = sind(theta);
+    R(4, 4) = cosd(theta);
+    dataset = (R*dataset')';
+    
+    minVal = min(min(dataset));
+    maxVal = max(max(dataset));
     switch DIM
         case 8
             Fopt = 152.347951760358;
@@ -182,7 +225,20 @@ function [Fval, Ftrue] = f201(x, DIM, ntrial)
             Fopt = 0;
             disp('Fopt is unknown. Using Fopt = 0');
     end
+    
+  elseif isempty(rseed)
+    rseed = rrseed; 
+  end
+  
+  Xopt = zeros(DIM, 1);
+  % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
+  if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
+    lastSize.POPSI = POPSI; 
+    lastSize.DIM = DIM; 
   end 
+  
+  x = normalize_arr(x, minVal, maxVal);
+
   
   res = [];
   for i = 1:POPSI
@@ -215,7 +271,7 @@ function [Fval, Ftrue] = f202(x, DIM, ntrial)
 % Sum of Squares Clustering Problem
   persistent Fopt Xopt scales linearTF rotation
   persistent lastSize arrScales arrExpo rseed
-  persistent dataset
+  persistent dataset minVal maxVal
 
   funcID = 202;
   rrseed = 1; 
@@ -233,7 +289,7 @@ function [Fval, Ftrue] = f202(x, DIM, ntrial)
     flginputischar = 0;
   end
   % from here on x is assumed a numeric variable
-  x = normalize_arr(x, 4, 156);
+
   [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
   if mod (DIM, 2) ~= 0 
     error('Dimension must be divisable by 2');
@@ -244,19 +300,19 @@ function [Fval, Ftrue] = f202(x, DIM, ntrial)
     Fopt = [];      % clear previous settings for Fopt
     lastSize = [];  % clear other previous settings
     rseed = rrseed + 1e4 * ntrial; 
-  elseif isempty(rseed)
-    rseed = rrseed; 
-  end
-  if isempty(Fopt)
-    Fopt = 0;
-  end 
-  
-  Xopt = zeros(DIM, 1);
-  % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
-  if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
-    lastSize.POPSI = POPSI; 
-    lastSize.DIM = DIM; 
+    
     dataset = importdata('ruspini.txt');
+    
+    %Rotate 
+    rng(ntrial);
+    theta = randi(360);
+    R = [cosd(theta) -sind(theta); sind(theta) cosd(theta)];
+    points = dataset';
+    dataset = (R*points)';
+    minVal = min(min(dataset));
+    maxVal = max(max(dataset));
+    
+    %Known bests
     switch DIM
         case 4
             Fopt = 89337.832142857;
@@ -280,7 +336,20 @@ function [Fval, Ftrue] = f202(x, DIM, ntrial)
             Fopt = 0;
             disp('Fopt is unknown. Using Fopt = 0');
     end
+  elseif isempty(rseed)
+    rseed = rrseed; 
+  end
+  if isempty(Fopt)
+    Fopt = 0;
   end 
+  
+  Xopt = zeros(DIM, 1);
+  % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
+  if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
+    lastSize.POPSI = POPSI; 
+    lastSize.DIM = DIM; 
+  end
+  x = normalize_arr(x, minVal, maxVal);
   
   res = [];
   for i = 1:POPSI
@@ -313,7 +382,7 @@ function [Fval, Ftrue] = f203(x, DIM, ntrial)
 % Sum of Squares Clustering Problem
   persistent Fopt Xopt scales linearTF rotation
   persistent lastSize arrScales arrExpo rseed
-  persistent dataset
+  persistent dataset minVal maxVal
 
   funcID = 203;
   rrseed = 1; 
@@ -331,7 +400,6 @@ function [Fval, Ftrue] = f203(x, DIM, ntrial)
     flginputischar = 0;
   end
   % from here on x is assumed a numeric variable
-  x = normalize_arr(x, 24.49, 1306024);
   [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
   if mod (DIM, 3) ~= 0 
     error('Dimension must be divisable by 3');
@@ -342,19 +410,21 @@ function [Fval, Ftrue] = f203(x, DIM, ntrial)
     Fopt = [];      % clear previous settings for Fopt
     lastSize = [];  % clear other previous settings
     rseed = rrseed + 1e4 * ntrial; 
-  elseif isempty(rseed)
-    rseed = rrseed; 
-  end
-  if isempty(Fopt)
-    Fopt = 0;
-  end 
-  
-  Xopt = zeros(DIM, 1);
-  % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
-  if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
-    lastSize.POPSI = POPSI; 
-    lastSize.DIM = DIM; 
+    
     dataset = importdata('german_postal.txt');
+    
+    rng(ntrial);
+    R = rotx(randi(360));
+    dataset = (R*dataset')';
+    R = roty(randi(360));
+    dataset = (R*dataset')';
+    R = rotz(randi(360));
+    dataset = (R*dataset')';
+    
+    
+    minVal = min(min(dataset));
+    maxVal = max(max(dataset));
+    
     switch DIM
         case 6
             Fopt = 6.025472220938822e+11;
@@ -378,7 +448,21 @@ function [Fval, Ftrue] = f203(x, DIM, ntrial)
             Fopt = 0;
             disp('Fopt is unknown. Using Fopt = 0');
     end
+  elseif isempty(rseed)
+    rseed = rrseed; 
+  end
+  if isempty(Fopt)
+    Fopt = 0;
   end 
+  
+  Xopt = zeros(DIM, 1);
+  % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
+  if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
+    lastSize.POPSI = POPSI; 
+    lastSize.DIM = DIM; 
+  end 
+  
+  x = normalize_arr(x, minVal, maxVal);
   
   res = [];
   for i = 1:POPSI
