@@ -496,6 +496,7 @@ function [Fval, Ftrue] = f204(x, DIM, ntrial)
   persistent Fopt Xopt scales linearTF rotation
   persistent lastSize arrScales arrExpo rseed
   persistent dataset
+  persistent bestResult
 
   funcID = 204;
   rrseed = 1; 
@@ -513,7 +514,7 @@ function [Fval, Ftrue] = f204(x, DIM, ntrial)
     flginputischar = 0;
   end
   % from here on x is assumed a numeric variable
-  x = normalize_arr(x, -50, 50);
+  x = normalize_arr(x, -100, 100);
   [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
   if mod ((DIM - 1), 3) ~= 0 
     error('Dimension must be according to 3k + 1');
@@ -524,18 +525,8 @@ function [Fval, Ftrue] = f204(x, DIM, ntrial)
     Fopt = [];      % clear previous settings for Fopt
     lastSize = [];  % clear other previous settings
     rseed = rrseed + 1e4 * ntrial; 
-    switch ntrial
-        case 1
-            dataset = importdata('quaddata.txt');
-        case 2
-            dataset = importdata('sinedata.txt');
-        case 3
-            dataset = importdata('absdata.txt');
-        case 4
-            dataset = importdata('hsidedata.txt');
-    end
-        
-    
+    dataset = f204Data(ntrial);
+    bestResult = 9000;
   elseif isempty(rseed)
     rseed = rrseed; 
   end
@@ -563,6 +554,10 @@ function [Fval, Ftrue] = f204(x, DIM, ntrial)
       end
   end
   res = res / length(dataset);
+  if min(res) < bestResult
+    bestResult = min(res);
+    disp(bestResult);
+  end
   
   %----- COMPUTATION core -----
   Ftrue = res;
@@ -882,6 +877,33 @@ function normalized = normalize_arr(array, x, y)
      % Then scale to [x,y]:
      range2 = y - x;
      normalized = (array*range2) + x;
+end
+
+function res = f204Data(ntrial)
+    x = importdata('x.txt');
+    switch ntrial
+        case 1
+            res = [x x.^2];
+        case 2
+            res = [x sin(x)];
+        case 3
+            res = [x abs(x)];
+        case 4
+            res = [x sinh(x)];
+        case 5
+            res = [x cos(x)];
+        case 6
+            res = [x tan(x)];
+        case 7
+            res = [x cosh(x)];
+        case 8
+            res = [x tanh(x)];
+        case 9
+            res = [x cot(x)];
+        case 10
+            res = [x coth(x)];
+    end
+            
 end
 
 % qqq
