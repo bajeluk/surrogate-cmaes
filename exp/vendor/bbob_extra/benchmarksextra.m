@@ -496,7 +496,6 @@ function [Fval, Ftrue] = f204(x, DIM, ntrial)
   persistent Fopt Xopt scales linearTF rotation
   persistent lastSize arrScales arrExpo rseed
   persistent dataset
-  persistent bestResult
 
   funcID = 204;
   rrseed = 1; 
@@ -554,10 +553,6 @@ function [Fval, Ftrue] = f204(x, DIM, ntrial)
       end
   end
   res = res / length(dataset);
-  if min(res) < bestResult
-    bestResult = min(res);
-    disp(bestResult);
-  end
   
   %----- COMPUTATION core -----
   Ftrue = res;
