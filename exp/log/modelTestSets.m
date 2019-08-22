@@ -165,10 +165,9 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
         [~, instanceIndicesToProcess] = ismember(instancesToProcess, inst);
 
         if (~isempty(instancesToProcess))
-          ds_actual = datasetFromInstances(opts, opts.nSnapshotsPerRun, ...
-            fun(fi), dim(di), inst(instanceIndicesToProcess), id, ...
-            opts.isForModelPool, opts.nPreviousGenerations, opts.loadModels);
-
+          % create #inst x #id dataset (cell-array of structures with
+          % DTS-CMA-ES state variables as fields)
+          ds_actual = datasetFromInstances(exp_id, fun(fi), dim(di), inst(instanceIndicesToProcess), id, opts);
           ds(fi, di, instanceIndicesToProcess, exp_model_settings) = ds_actual;
         end
       end  % instances loop end

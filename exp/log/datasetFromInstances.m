@@ -1,26 +1,86 @@
-function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, isForModelPool, nPreviousGenerations, loadModels)
+function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
 %DATASETFROMINSTANCES - generates datasets for specified dim and #fun for 
 % offline model tunning
 % 
-% dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, ...
-%                         isForModelPool, nPreviousGenerations, loadModels)
+% dataset = datasetFromInstances(exp_id, fun, dim, inst, id, opts)
 % Generates datasets for offline model tunning from the DTS-CMA-ES
-% results files with 'progressLog' switched on (*_results_*.mat)
+% results files with 'progressLog' switched on (*_results_*.mat).
+%
+% Input:
+%   exp_id - experiment id where the CMA-ES logs are saved | string |
+%            default: 'exp_doubleEC_21_log'
+%   fun    - BBOB function number to load | positive integer scalar |
+%            default: 1
+%   dim    - dimension to load (2, 3, 5, 10, ...) | positive integer scalar
+%            | default: 2
+%   inst   - instance to load (1:5, ...) | positive integer scalar |
+%            default: 1
+%   id     - model settings id to load (1, 2, ...) | positive integer
+%            scalar | default: 1
+%   opts   - pairs of property (string) and value or struct with properties
+%            as fields:
+%     'expPath'              - path to experiment data folder | string |
+%                              default: exp/experiments/exp_id
+%     'isForModelPool'       - dataset for ModelPool testing | boolean |
+%                              default: false
+%     'loadModels'           - load saved models for ModelPool | boolean |
+%                              default: false
+%     'maxEval'              - process the results only until this number
+%                              of evalutions per dimension | positive
+%                              integer scalar | default: 250
+%     'nPreviousGenerations' - number of previous generations to load for
+%                              ModelPool testing | integer scalar |
+%                              default: 0
+%     'nSnapshotsPerRun'     - number of generated datasets per one CMA-ES
+%                              run | positive integer scalar | default: 10
+%     'sampleMethod'         - generation sample method | string (see
+%                              below) | default: 'equidistant'
+%        'equidistant'   - deterministic with equal spacing
+%        'geometric'     - random sample with replacement, geometrical
+%                          weights
+%        'geometric_wor' - random sample without replacement, geometrical
+%                          weights
+%        'uniform'       - random sample with replacement, uniform weights
+%        'uniform_wor'   - random sample without replacement, uniform
+%                          weights
+%     'startEval'            - start processing result on generation where
+%                              this number of FE/D is achieved | positive
+%                              integer scalar | default: 1
+%     'uniqueGenerations'    - make multiple testcases per generation even
+%                              if there is more snapshots than generations
+%                              to test | boolean | default: false
+%
+% Output:
+%   dataset - #inst x #id cell-array of structures with the DTS-CMA-ES
+%             state variables as fields
+%
+% See Also:
+%   modelTestSets
 
   % Initialization
-
-  % DEBUG:
-  % exp_id = 'exp_doubleEC_21_log';
-  % nSnapshots = 10;
-  % fun = 1;
-  % dim = 2;
-  % id = 1;
-
-  if nargin < 1
-    help datasetFromInstances
-    return
+  if nargout > 0
+    dataset = {};
   end
-  exp_id = opts.inputExp_id;
+
+  if nargin < 5
+    if nargin < 4
+      if nargin < 3
+        if nargin < 2
+          if nargin < 1
+            help datasetFromInstances
+            return
+          end
+          fun = 1;
+        end
+        dim = 2;
+      end
+      inst = 1;
+    end
+    id = 1;
+  end
+
+  % parse settings
+  opts = settings2struct(varargin{:});
 
   % start processing result on generation where this number of FE/D is
   % achieved
@@ -37,22 +97,22 @@ function dataset = datasetFromInstances(opts, nSnapshots, fun, dim, inst, id, is
   %   weights
   %   uniform: random sample with replacement, uniform weights
   %   geometric: random sample with replacement, geometrical weights
-  %   geometric: random sample with replacement, geometrical weights
   %   geometric_wor: random sample without replacement, geometrical weights
   opts.sampleMethod = defopts(opts, 'sampleMethod', 'equidistant');
+  % path to experiment folder
+  opts.exppath = defoptsi(opts, 'exppath', fullfile('exp', 'experiments', exp_id));
 
-  if ~exist('isForModelPool', 'var')
-    isForModelPool = false;
-    nPreviousGenerations = 0;
-  end
-  if (~exist('loadModels', 'var') || ~islogical(loadModels))
-    loadModels = false;
-  end
+  isForModelPool = defopts(opts, 'isForModelPool', false);
+  nPreviousGenerations = defopts(opts, 'nPreviousGenerations', 0);
+  loadModels = defopts(opts, 'loadModels', false);
+  nSnapshots = defopts(opts, 'nSnapshotsPerRun', 10);
+
   % prepare output variable
   nInstances = length(inst);
   nIds = length(id);
   dataset = cell(nInstances, nIds);
 
+  % id (model settings) cycle
   for ii_id = 1:nIds
     id_no = id(ii_id);
 
