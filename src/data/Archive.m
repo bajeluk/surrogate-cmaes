@@ -34,6 +34,24 @@ classdef Archive < handle
         obj.gens = [obj.gens; generation(isNotYetSaved)];
       end
     end
+    
+    function obj = sortLast(obj, count)
+        [points, ~] = size(obj.y);
+        breakPoint = points - count;
+        toSort = obj.y(breakPoint + 1:points);
+        [sortedVales, sortedIdxs] = sort(toSort, 'descend');
+        
+        newX = obj.X(1:breakPoint, :);
+        newY = obj.y(1:breakPoint);
+        
+        for idx = sortedIdxs
+            newX = [newX; obj.X(breakPoint + idx, :)];
+            newY = [newY; obj.y(breakPoint + idx)];
+        end 
+        
+        obj.X = newX;
+        obj.y = newY;
+    end
 
     function obj = delete(obj, indices)
       % remove data at given indices

@@ -50,7 +50,7 @@ classdef HansenModel < Model
         
         function nData = getNTrainData(obj)
             % returns the required number of data for training the model
-            nData = 1;
+            nData = 3;
         end
         
         function obj = trainModel(obj, X, y, xMean, generation, population, cmaesVariables)
