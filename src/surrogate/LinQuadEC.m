@@ -37,6 +37,8 @@ classdef LinQuadEC < EvolutionControl & Observable
     preselectionPopRatio        % how many times larger population should be used for preselection
     validationGenerationPeriod  % the number of generations between "validation generations" + 1, validation generation is used when 'mod(g, validationGenerationPeriod) == 0'; see validationPopSize
     validationPopSize           % the minimal number of points to be orig-evaluated in validation generation
+    
+    individualToInject
   end
 
   methods
@@ -86,6 +88,8 @@ classdef LinQuadEC < EvolutionControl & Observable
           'err', NaN, ...
           'smoothedErr', NaN ...
           );
+      
+      obj.individualToInject = NaN
     end
 
     function [obj, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
@@ -108,6 +112,19 @@ classdef LinQuadEC < EvolutionControl & Observable
 
       % prepare the final population to be returned to CMA-ES
       obj.pop = Population(lambda, dim);
+      
+      if (~isnan(obj.individualToInject))
+          rescaling_factor = normrnd(0, 1, [1, dim]);
+          rescaling_factor = rescaling_factor .^ 2;
+          rescaling_factor = sum(rescaling_factor);
+          rescaling_factor = rescaling_factor .^ 0.5;
+          rescaling_factor = rescaling_factor / obj.mahalanobisNorm(obj.individualToInject);
+          newIndividual = obj.individualToInject * (rescaling_factor / obj.cmaesState.sigma);
+          newIndividualValid = xintobounds(newIndividual, sampleOpts.lbounds, sampleOpts.ubounds);
+          obj.pop = obj.pop.addPoints(newIndividual', NaN(1,1), newIndividualValid, NaN, 0, 0);
+          obj.individualToInject = NaN;
+      end
+      
 
       obj.newModel = ModelFactory.createModel(obj.surrogateOpts.modelType, obj.surrogateOpts.modelOpts, obj.cmaesState.xmean', obj.model);
 
@@ -162,9 +179,7 @@ classdef LinQuadEC < EvolutionControl & Observable
 
       % sample new population of lambda points out of which will be chosen
       % later in this generation
-      nLambdaRest = lambda - obj.nPresampledPoints;
-      maxevals = defopts(cmaesState, 'thisGenerationMaxevals', lambda);
-      maxevals = maxevals - obj.nPresampledPoints;
+      nLambdaRest = lambda - obj.pop.nPoints;
       [xExtend, xExtendValid, zExtend] = ...
           sampleCmaesNoFitness(obj.cmaesState.sigma, nLambdaRest, obj.cmaesState, sampleOpts);
       % add these points into Population without valid f-value (marked as notEvaluated)
@@ -224,6 +239,7 @@ classdef LinQuadEC < EvolutionControl & Observable
             k = lambda;
           end
       end
+      obj.individualToInject = obj.model.minimumX(obj.archive);
       
       if (currIndex > lambda)
         %All points were evaluated -> return orig evaluated solution
@@ -231,6 +247,7 @@ classdef LinQuadEC < EvolutionControl & Observable
                 = obj.finalizeGeneration(sampleOpts, varargin{:});
             return;
       else
+          % Model is good enough to evaluate whole population
           offset = min(obj.pop.getOriginalY) - min(modelPredictions);
           modelPredictions = modelPredictions + offset + 000001*abs(offset);
           obj.pop = obj.pop.updateYValue([], modelPredictions, 0, 0, true(1, lambda));
@@ -241,6 +258,13 @@ classdef LinQuadEC < EvolutionControl & Observable
           
       end
 
+    end
+    
+    function res = mahalanobisNorm(obj, x)
+        D = diag(obj.cmaesState.diagD);
+        B = obj.cmaesState.BD * inv(D);
+        res = sum(((B * x') ./ obj.cmaesState.diagD) .^2 ) .^ 0.5;
+        res = res / obj.cmaesState.sigma;
     end
     
     function err = calcKendallError(obj, k)

@@ -18,7 +18,7 @@ classdef HansenModel < Model
     
     modelTerms
     modelParams
-    powers
+    type
     
     trainLikelihood
   end
@@ -60,7 +60,7 @@ classdef HansenModel < Model
             end
             obj.trainLikelihood = 0.1;
             obj.trainGeneration = generation;
-            obj.modelTerms = createModelTerms(obj, X);
+            obj = createModelTerms(obj, X);
             
             Z = modelValues(obj, X);
             
@@ -68,29 +68,32 @@ classdef HansenModel < Model
             
         end
         
-        function [modelTerms] = createModelTerms(obj, X)
+        function [obj] = createModelTerms(obj, X)
             [points, ~] = size(X);
-            modelTerms = [];
+            obj.modelTerms = [];
+            obj.type = "linear";
             for i=1:obj.dim+1
                 vals = zeros(obj.dim + 1, 1);
                 vals(i)= 1;
-                modelTerms = [modelTerms vals];
+                obj.modelTerms = [obj.modelTerms vals];
             end
            
             if (points > (obj.dim * 2 + 1) * 1.1)
+                obj.type = "quad";
                 for i=2:obj.dim+1
                     vals = zeros(obj.dim + 1, 1);
                     vals(i) = 2;
-                    modelTerms = [modelTerms vals];
+                    obj.modelTerms = [obj.modelTerms vals];
                 end
             end
             if (points > ((obj.dim * 2 + 1) + ((obj.dim / 2) * (obj.dim - 1))) * 1.1)
+                obj.type = "full";
                 for i=2:obj.dim+1
                     for j=i+1:obj.dim+1
                         vals = zeros(obj.dim + 1, 1);
                         vals(i) = 1;
                         vals(j) = 1;
-                        modelTerms = [modelTerms vals];
+                        obj.modelTerms = [obj.modelTerms vals];
                     end
                 end
             end
@@ -116,6 +119,16 @@ classdef HansenModel < Model
             values = modelValues(obj, X);
             y = transpose(transpose(obj.modelParams) * transpose(values));
             sd2 = var(y);
+        end
+        
+        function [x] = minimumX(obj, archive)
+            if (obj.type == "linear")
+                [~, indexes] = sort(archive.y);
+                best = archive.X(indexes(1), :);
+                x = best - 2 * transpose(obj.modelParams(2:end));
+            else
+                
+            end
         end
     end
 end
