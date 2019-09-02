@@ -127,7 +127,20 @@ classdef HansenModel < Model
                 best = archive.X(indexes(1), :);
                 x = best - 2 * transpose(obj.modelParams(2:end));
             else
-                
+                k = 2 * obj.dim + 1;
+                hessian = zeros(obj.dim, obj.dim);
+                for i = [1:obj.dim]
+                    hessian(i, i) = obj.modelParams(i + obj.dim + 1);
+                    if (obj.type == "full")
+                        for j = [i+1: obj.dim]
+                            hessian(i, j) = obj.modelParams(k) / 2;
+                            hessian(j, i) = obj.modelParams(k) / 2;
+                            k = k + 1;
+                        end
+                    end
+                end
+                baseCoeff = obj.modelParams(2:obj.dim + 1);
+                x = (diag(pinv(hessian)) .* (baseCoeff / -2))';
             end
         end
     end
