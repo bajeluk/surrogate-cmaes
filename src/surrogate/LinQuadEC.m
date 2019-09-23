@@ -219,6 +219,9 @@ classdef LinQuadEC < EvolutionControl & Observable
           logicalIndexes(evalIndexes) = true;
           obj.pop = obj.pop.updateYValue(x, y, evalCount, phase, logicalIndexes);
           
+          %err = obj.calcKendallError(k);
+          %obj.newModel = obj.newModel.train([], [], obj.cmaesState, sampleOpts, obj.archive, obj.pop);
+          %obj.model = obj.newModel;
           err = obj.calcKendallError(k);
           if err >= 0.85
             break;
@@ -248,6 +251,7 @@ classdef LinQuadEC < EvolutionControl & Observable
             return;
       else
           % Model is good enough to evaluate whole population
+          modelPredictions = obj.newModel.modelPredict(obj.pop.x');
           offset = min(obj.pop.getOriginalY) - min(modelPredictions);
           modelPredictions = modelPredictions + offset + 000001*abs(offset);
           obj.pop = obj.pop.updateYValue([], modelPredictions, 0, 0, true(1, lambda));
@@ -270,11 +274,11 @@ classdef LinQuadEC < EvolutionControl & Observable
     function err = calcKendallError(obj, k)
         valuesToTestCnt = round(max(15, min(1.2 * k, 0.75 * obj.cmaesState.lambda)));
         [archiveSize, ~] = size(obj.archive.y);
-        valuesToTestCnt = min(archiveSize, valuesToTestCnt) - 1;
+        valuesToTestCnt = min(archiveSize, valuesToTestCnt);
         
-        X = obj.archive.X(archiveSize:-1:(archiveSize - valuesToTestCnt), :);
+        X = obj.archive.X(archiveSize:-1:(archiveSize - valuesToTestCnt + 1), :);
         modelPrediction = obj.newModel.predict(X);
-        y = obj.archive.y(archiveSize:-1:(archiveSize - valuesToTestCnt));
+        y = obj.archive.y(archiveSize:-1:(archiveSize - valuesToTestCnt + 1));
         err = corr(modelPrediction, y, 'type', 'Kendall');
     end
 
