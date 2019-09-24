@@ -1,10 +1,43 @@
 function paramIndexVector = getParamIndexVector(id, nValues)
-% get the indices which parameters should be used from each field
-% e.g. for  id = 23  and  nValues = [3 5 3], it follows:
-%      nValues = [3 5 2] -- |field1| = 3, |field2| = 5, |field3| = 2  (# of values)
-%      paramIV = [3 2 1] -- ID means the third value from the 'field1', the
-%                           second value from the 'field2', and the first value
-%                           from the 'field3'
+% GETPARAMINDEXVECTOR - get the indices which parameters should be used
+% from each field (e.g., of the experiment settings)
+%
+% paramIndexVector = getParamIndexVector(id, nValues)
+%
+% Input:
+%   id      - id of the parameter settings | positive integer
+%   nValues - number of values of individual fields | positive integer
+%             vector
+%
+% Output:
+%   paramIndexVector - indices of parameter values in particular fields |
+%                      positive integer vector
+%
+% Example:
+%
+%   Let's have the following settings:
+%
+%     opts.field1 = {'a', 'b', 'c'};
+%     opts.field2 = {'hi', 'hello', 'ciao', 'ahoy', 'tschus'};
+%     opts.field3 = { 1, 2};
+%
+%   To get the settings for id = 23, we have numbers of individual
+%   parameter values nValues = [3 5 2], then it follows:
+%
+%     nValues = [3 5 2] -- |field1| = 3, |field2| = 5, |field3| = 2
+%                          (# of values)
+%     paramIndexVector = [3 2 1] -- ID means the third value from the
+%                                   'field1', the second value from the
+%                                   'field2', and the first value from the
+%                                   'field3'
+%
+% See Also:
+%   getParamsFromIndex
+
+  if nargin < 1
+    help getParamIndexVector
+    return
+  end
 
   % bases of the different orders in the multi-base number, e.g.
   % nValues =   [3     3     1     1     2     3     1     1     5     2];

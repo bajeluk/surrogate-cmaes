@@ -1,5 +1,37 @@
 function [bbParams, sgParams, cmParams, nNonBbobValues, totalCombs] = getParamsFromIndex(id, bbAll, sgAll, cmAll)
-% GETPARAMSFROMINDEX Generates struct arrays with parameters accrd. to exper. ID#
+% GETPARAMSFROMINDEX Generates struct arrays with parameters according to 
+% experiment ID.
+% 
+% [bbParams, sgParams, cmParams, nNonBbobValues, totalCombs] ...
+%                            = getParamsFromIndex(id, bbAll, sgAll, cmAll)
+%
+% Input:
+%   id    - id of experimental parameter settings
+%   bbAll - all BBOB experiment settings | structure array with fields
+%           'name' and 'value'
+%   sgAll - all surrogate model experiment settings | structure array with
+%           fields 'name' and 'value'
+%   cmAll - all CMA-ES experiment settings | structure array with fields
+%           'name' and 'value'
+%
+% Output:
+%   bbParams       - BBOB parameters for input id | structure
+%   sgParams       - surrogate model parameters for input id | structure
+%   cmParams       - CMA-ES parameters for input id | structure
+%   nNonBbobValues - number of different parameter-values combinations 
+%                    except BBOB settings | positive integer
+%   totalCombs     - total number of possible parameter combinations |
+%                    positive integer
+%
+% See Also:
+%   getParamIndexVector, getScmaesJobInfo
+
+  if nargin < 1
+    help getParamsFromIndex
+    return
+  end
+
+  % get number of values for each parameter
   bbNValues = cell2mat(structMap(bbAll, @(x) length(x.values)));
   sgNValues = cell2mat(structMap(sgAll, @(x) length(x.values)));
   cmNValues = cell2mat(structMap(cmAll, @(x) length(x.values)));
@@ -7,7 +39,8 @@ function [bbParams, sgParams, cmParams, nNonBbobValues, totalCombs] = getParamsF
   nValues = [bbNValues sgNValues cmNValues];
   totalCombs = prod(nValues);
 
-  assert(id <= totalCombs && id > 0, 'getParamsFromIndex(): the specified index is greater than total # combinations.');
+  assert(id <= totalCombs, 'getParamsFromIndex(): The specified index is greater than total # combinations.');
+  assert(id > 0, 'getParamsFromIndex(): The specified index is smaller than one.');
 
   % Generate a vector with indices of the respective values. The 'nValues' vector
   % defines the number of values in respective fields, for example
