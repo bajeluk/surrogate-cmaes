@@ -15,12 +15,14 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
 %            | default: 2
 %   inst   - instance to load (1:5, ...) | positive integer scalar |
 %            default: 1
-%   id     - model settings id to load (1, 2, ...) | positive integer
-%            scalar | default: 1
+%   id     - job id to load (1, 2, ..., # of possible combinations) |
+%            positive integer scalar | default: 1
 %   opts   - pairs of property (string) and value or struct with properties
 %            as fields:
 %     'expPath'              - path to experiment data folder | string |
 %                              default: exp/experiments/exp_id
+%     'isForFeatures'        - dataset for features testing | boolean |
+%                              default: false
 %     'isForModelPool'       - dataset for ModelPool testing | boolean |
 %                              default: false
 %     'loadModels'           - load saved models for ModelPool | boolean |
@@ -31,6 +33,15 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
 %     'nPreviousGenerations' - number of previous generations to load for
 %                              ModelPool testing | integer scalar |
 %                              default: 0
+%     'nSampleArchives'      - number of generated archives per one CMA-ES
+%                              run for feature testing | positive integer
+%                              scalar | default: 10
+%     'nSmoothGenerations'   - number of extra generations for distribution
+%                              smoothing in feature testing (window radius)
+%                              | non-negative integer scalar | default: 0
+%                            - example: nSmoothGenerations = 2 => window
+%                              size = 2 (previous gens) + 1 (actual gen.) +
+%                              2 (following gens) = 5 gens
 %     'nSnapshotsPerRun'     - number of generated datasets per one CMA-ES
 %                              run | positive integer scalar | default: 10
 %     'sampleMethod'         - generation sample method | string (see
@@ -43,6 +54,10 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
 %        'uniform'       - random sample with replacement, uniform weights
 %        'uniform_wor'   - random sample without replacement, uniform
 %                          weights
+%     'smoothDistribution'   - floating window style of distribution
+%                              weighting for feature testing | string:
+%                              'average', 'exponential', 'gaussian',
+%                              'identical', 'linear' | default: 'gaussian'
 %     'startEval'            - start processing result on generation where
 %                              this number of FE/D is achieved | positive
 %                              integer scalar | default: 1
@@ -102,9 +117,18 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
   % path to experiment folder
   opts.exppath = defoptsi(opts, 'exppath', fullfile('exp', 'experiments', exp_id));
 
+  % model pool settings
   isForModelPool = defopts(opts, 'isForModelPool', false);
   nPreviousGenerations = defopts(opts, 'nPreviousGenerations', 0);
   loadModels = defopts(opts, 'loadModels', false);
+
+  % feature testing settings
+  isForFeatures = defopts(opts, 'isForFeatures', false);
+  nSmoothGenerations = defopts(opts, 'nSmoothGenerations', 0);
+  smoothDistribution = defopts(opts, 'smoothDistribution', 'gaussian');
+  nSampleArchives = defopts(opts, 'nSampleArchives', 10);
+
+  % number of generation snapshots
   nSnapshots = defopts(opts, 'nSnapshotsPerRun', 10);
 
   % prepare output variable
@@ -238,6 +262,18 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
         dataset{i_inst, ii_id}.pss      = cell(nSnapshots, nPreviousGenerations+1);
         dataset{i_inst, ii_id}.iruns    = zeros(nSnapshots, nPreviousGenerations+1);
         dataset{i_inst, ii_id}.cmaesStates = cell(nSnapshots, nPreviousGenerations+1);
+      elseif (isForFeatures)
+        dataset{i_inst, ii_id}.testSetX = cell(nSnapshots, nSampleArchives);
+        dataset{i_inst, ii_id}.testSetY = cell(nSnapshots, nSampleArchives);
+        dataset{i_inst, ii_id}.means    = cell(nSnapshots, nSampleArchives);
+        dataset{i_inst, ii_id}.sigmas   = cell(nSnapshots, nSampleArchives);
+        dataset{i_inst, ii_id}.BDs      = cell(nSnapshots, nSampleArchives);
+        dataset{i_inst, ii_id}.diagDs   = cell(nSnapshots, nSampleArchives);
+        dataset{i_inst, ii_id}.diagCs   = cell(nSnapshots, nSampleArchives);
+        dataset{i_inst, ii_id}.pcs      = cell(nSnapshots, nSampleArchives);
+        dataset{i_inst, ii_id}.pss      = cell(nSnapshots, nSampleArchives);
+        dataset{i_inst, ii_id}.iruns    = zeros(nSnapshots, nSampleArchives);
+        dataset{i_inst, ii_id}.cmaesStates = cell(nSnapshots, nSampleArchives);
       else
         dataset{i_inst, ii_id}.testSetX = cell(1, nSnapshots);
         dataset{i_inst, ii_id}.testSetY = cell(1, nSnapshots);
@@ -256,12 +292,14 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
 
       for sni = 1:nSnapshots        % sni stands for SNapshot Index
         for genShift = nPreviousGenerations:-1:0
+          % original generation number
           g = gens(sni);
           g = g-genShift;
           if (g < 1)
             continue;
           end
 
+          % CMA-ES state variables
           lambda = sum(cmo.generations == g);
 
           xmean = cmo.means(:,g);
@@ -280,6 +318,8 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
             'lambda', lambda, ...
             'dim', dim, ...
             'mu', floor(lambda/2), ...
+            'BD', BD, ...
+            'diagD', diagD, ...
             'countiter', g);
 
           sampleOpts = struct( ...
@@ -315,6 +355,19 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
             dataset{i_inst, ii_id}.pcs{sni, genShift+1}         = pc;
             dataset{i_inst, ii_id}.pss{sni, genShift+1}         = ps;
             dataset{i_inst, ii_id}.iruns(sni, genShift+1)       = irun;
+          elseif (isForFeatures)
+            for sai = 1:nSampleArchives % sai = Sample Archive Index
+              % Generate fresh CMA-ES' \lambda offsprings for each sample
+              [~, arxvalid, ~] = sampleCmaesNoFitness(sigma, lambda, cmaesState, sampleOpts);
+              dataset{i_inst, ii_id}.testSetX{sni, sai}    = arxvalid';
+              dataset{i_inst, ii_id}.testSetY{sni, sai}    = fgeneric(arxvalid)';
+            end
+            % means, sigmas, BDs, cmaesStates, sampleOpts, diagDs, and
+            % diagCs will be generated later during Archives generation
+            % process
+            dataset{i_inst, ii_id}.pcs(sni, :)         = {pc};
+            dataset{i_inst, ii_id}.pss(sni, :)         = {ps};
+            dataset{i_inst, ii_id}.iruns(sni, :)       = irun;
           else
             dataset{i_inst, ii_id}.testSetX{sni}  = arxvalid';
             dataset{i_inst, ii_id}.testSetY{sni}  = fgeneric(arxvalid)';
@@ -361,13 +414,53 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
         end % generationShift loop
       end  % snapshots loop
 
-      % create the Archive of with the original-evaluated points
-      archive = Archive(dim);
-      orig_id = logical(cmo.origEvaled(1:lastOrigEvaledIdMax));
-      X_orig = cmo.arxvalids(:,orig_id)';
-      y_orig = cmo.fvalues(orig_id)';
-      archive.save(X_orig, y_orig, cmo.generations(orig_id));
+      if (isForFeatures)
+        % create Archives with points sampled from smoothed CMA-ES
+        % distribution through a range of generations
+        archive = cell(1, nSampleArchives);
+        for sai = 1:nSampleArchives % sai = Sample Archive Index
+          archive{sai} = Archive(dim);
+        end
+        orig_id = logical(cmo.origEvaled(1:lastOrigEvaledIdMax));
+        generations = cmo.generations(orig_id);
+        % archive genenerating through distribution smoothing
+        for gi = 1:lastGeneration
+          % sample for all archives at once
+          [X_smooth, cmaesState, sampleOpts] = smoothedSampling(...
+            cmo, gi, nSampleArchives, smoothDistribution, nSmoothGenerations);
+          % evaluate points for all archives
+          y_smooth = fgeneric(X_smooth)';
+          % save points to individual archives
+          for sai = 1:nSampleArchives
+            saveId = (sai-1)*cmaesState.lambda + 1 : sai*cmaesState.lambda;
+            % save only the same number of original evaluated as in the
+            % original run
+            archive{sai}.save(X_smooth(:, saveId(1:sum(generations == gi)))', ...
+                              y_smooth(saveId(1:sum(generations == gi))), gi);
+          end
 
+          % save cmaesState if gi == snapshot generation
+          snapshotGen = (gi == gens);
+          if any(snapshotGen)
+            dataset{i_inst, ii_id}.means(snapshotGen, :)       = {cmaesState.xmean'};
+            dataset{i_inst, ii_id}.sigmas(snapshotGen, :)      = {cmaesState.sigma};
+            dataset{i_inst, ii_id}.BDs(snapshotGen, :)         = {cmaesState.BD};
+            dataset{i_inst, ii_id}.cmaesStates(snapshotGen, :) = {cmaesState};
+            dataset{i_inst, ii_id}.sampleOpts(snapshotGen, :)  = {sampleOpts};
+            dataset{i_inst, ii_id}.diagDs(snapshotGen, :)      = {cmaesState.diagD};
+            dataset{i_inst, ii_id}.diagCs(snapshotGen, :)      = {cmaesState.diagC};
+          end
+        end
+      else
+        % create the Archive with the original-evaluated points
+        archive = Archive(dim);
+        orig_id = logical(cmo.origEvaled(1:lastOrigEvaledIdMax));
+        X_orig = cmo.arxvalids(:,orig_id)';
+        y_orig = cmo.fvalues(orig_id)';
+        archive.save(X_orig, y_orig, cmo.generations(orig_id));
+      end
+
+      % save archive
       dataset{i_inst, ii_id}.archive     = archive;
       dataset{i_inst, ii_id}.generations = gens;
       dataset{i_inst, ii_id}.function  = fun;
@@ -379,4 +472,142 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
       fgeneric('finalize');
     end  % instances loop
   end % ids loop
+end
+
+function [arxvalid, cmaesState, sampleOpts] = smoothedSampling(cmo, gen, nPopulations, weightStyle, windowGens)
+% SMOOTHEDSAMPLING - generate archive points in the input space using
+% smoothing of the original CMA-ES distributions
+%
+% [arxvalid, cmaesState, sampleOpts] = ...
+%   smoothedSampling(cmo, gen, nPopulations, weightStyle, windowGens)
+%
+% Input:
+%   cmo          - cmaes out structure | structure
+%   gen          - actual generation | positive integer scalar
+%   nPopulations - number of populations to generate | positive integer
+%                  scalar
+%   weightStyle  - floating window style of distribution weighting |
+%                  'average', 'exponential', 'gaussian', 'identity',
+%                  'linear'
+%   windowGens   - number of generations added to window range |
+%                  non-negative integer scalar
+%
+% Output:
+%   arxvalid   - sampled populations from smoothed CMA-ES distribution |
+%                double matrix
+%   cmaesState - CMA-ES state variables | structure
+%   sampleOpts - sampling options | structure
+
+  [dim, nGens] = size(cmo.means);
+  % get weights
+  weight = getWeights(gen, nGens, weightStyle, windowGens);
+
+  % mean
+  xmean = weight*cmo.means';
+  % sigma
+  sigma = weight*cmo.sigmas';
+  % sigma*BD = \sum_{i=1}^{g_max} weight_i*sigma_i*BD_i
+  sBDcell = arrayfun(@(x) weight(x)*cmo.sigmas(x)*cmo.BDs{x}, ...
+              find(weight > 0), 'UniformOutput', false);
+  % sum weighted sBD matrices
+  BD = sum( cat(3, sBDcell{:}), 3) / sigma;
+  % diagonal
+  diagC = diag(BD*BD');
+
+  % the same with diagonal covariance
+  sdiagDcell = arrayfun(@(x) weight(x)*cmo.sigmas(x)*cmo.diagDs{x}, ...
+               find(weight > 0), 'UniformOutput', false);
+  diagD = sum( cat(3, sdiagDcell{:}), 3) / sigma;
+
+  % set the rest of state variables
+  lambda = sum(cmo.generations == gen);
+
+  cmaesState = struct( ...
+    'xmean', xmean', ...
+    'sigma', sigma, ...
+    'lambda', lambda, ...
+    'dim', numel(xmean), ...
+    'mu', floor(lambda/2), ...
+    'BD', BD, ...
+    'diagD', diagD, ...
+    'diagC', diagC, ...
+    'countiter', gen ...
+  );
+
+  sampleOpts = struct( ...
+    'noiseReevals', 0, ...
+    'isBoundActive', true, ...
+    'lbounds', -5 * ones(dim, 1), ...
+    'ubounds',  5 * ones(dim, 1), ...
+    'counteval', cmo.generationStarts(gen), ...
+    'flgEvalParallel', false, ...
+    'flgDiagonalOnly', false, ...
+    'noiseHandling', false, ...
+    'xintobounds', @xintobounds, ...
+    'origPopSize', lambda ...
+  );
+
+  % Generate fresh CMA-ES' offsprings
+  [~, arxvalid, ~] = sampleCmaesNoFitness(sigma, nPopulations*lambda, cmaesState, sampleOpts);
+end
+
+function weights = getWeights(gen, nGens, weightStyle, windowGens)
+% GETWEIGHTS - Generate weights for CMA-ES generation smoothing according
+% to weightStyle and windowGens.
+%
+% Input:
+%   gen         - current generation
+%   nGens       - overall number of generations in particular run
+%   weightStyle - style of weighting | 'average', 'exponential',
+%                 'gaussian', 'identity', 'linear'
+%
+%   windowGens  - number of generations added to window range:
+%                   0 - only original generation
+%                       [..., 0, g, 0, ...]
+%                   1 - one generation range
+%                       [..., 0, g-1, g, g+1, 0, ...]
+%                   2 - two generation range
+%                       [..., 0, g-2, g-1, g, g+1, g-2, 0, ...]
+%
+% Output:
+%   weights - weight vector
+
+  if nargin < 4
+    windowGens = 2;
+  end
+
+  weights = zeros(1, nGens);
+  switch weightStyle
+    case 'average'
+      weights(:) = 1;
+    case 'exponential'
+      windowBase = exp([1:windowGens+1, windowGens:-1:1]);
+    case 'gaussian'
+      % normal distribution
+      pd = makedist('Normal', 'mu', 0, 'sigma', 1);
+      windowBase = pdf(pd, -windowGens:windowGens);
+    case 'identity'
+      weights(gen) = 1;
+    case 'linear'
+      windowBase = [1:windowGens+1, windowGens:-1:1];
+    otherwise
+      warning('There is no weighting style ''%s''. Setting ''identity''', weightStyle)
+      weights(gen) = 1;
+  end
+
+  % window settings to weights
+  if any(strcmp(weightStyle, {'exponential', 'gaussian', 'linear'}))
+    % weight ids
+    lowId = max(1, gen-windowGens);
+    highId = min(nGens, gen+windowGens);
+    % window ids
+    winLowId = max(1, windowGens-gen+2);
+    winHighId = min(windowGens, nGens-gen) + windowGens + 1;
+    % add appropriate part of window
+    weights(lowId:highId) = windowBase(winLowId:winHighId);
+  end
+
+  % normalize to unit lenght
+  weights = weights/sum(weights);
+
 end
