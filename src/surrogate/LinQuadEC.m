@@ -220,8 +220,8 @@ classdef LinQuadEC < EvolutionControl & Observable
           obj.pop = obj.pop.updateYValue(x, y, evalCount, phase, logicalIndexes);
           
           %err = obj.calcKendallError(k);
-          %obj.newModel = obj.newModel.train([], [], obj.cmaesState, sampleOpts, obj.archive, obj.pop);
-          %obj.model = obj.newModel;
+          obj.newModel = obj.newModel.train([], [], obj.cmaesState, sampleOpts, obj.archive, obj.pop);
+          obj.model = obj.newModel;
           err = obj.calcKendallError(k);
           if err >= 0.85
             break;

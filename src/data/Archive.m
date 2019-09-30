@@ -261,7 +261,7 @@ classdef Archive < handle
       y = obj.y(indicesToReturn);
     end
 
-    function [X, y] = getTrainsetData(obj, trainsetType, trainsetSizeMax, xMean, trainRange, sigma, BD, population)
+    function [X, y] = getTrainsetData(obj, trainsetType, trainsetSizeMax, xMean, trainRange, sigma, BD, population, modelOptions)
 
       % if the trainRange is specified as quantile from Chi2,
       % convert the number to the metric value
@@ -288,7 +288,25 @@ classdef Archive < handle
           [X, y] = obj.getClosestDataFromPoints(trainsetSizeMax, population.x', sigma, BD, trainRange);
         case 'nearesttopopulation'
           [X, y] = obj.getClosestDataFromPopulation(trainsetSizeMax, population, trainRange, sigma, BD);
+        case 'latest'
+          [X, y] = obj.getLatestData(trainsetSizeMax);
+          if modelOptions.latestTruncateRatio > 0 && modelOptions.latestTruncateRatio < 1
+            [points, ~] = size(X);
+            points = ceil(points * modelOptions.latestTruncateRatio);
+            
+            [sortedValues, sortedIndexes] = sort(y);
+            X = X(sortedIndexes(1:points), :);
+            y = y(sortedIndexes(1:points));
+          end
+         
       end
+    end
+    
+    function [X, y] = getLatestData(obj, trainsetSizeMax)
+        [archiveSize, ~] = size(obj.y);
+        dataCnt = min(trainsetSizeMax, archiveSize);
+        X = obj.X(end-dataCnt+1:end, :);
+        y = obj.y(end-dataCnt+1:end);
     end
 
     function obj2 = duplicate(obj)
