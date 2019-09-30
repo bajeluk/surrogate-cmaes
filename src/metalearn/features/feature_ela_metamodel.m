@@ -27,6 +27,11 @@ function ft = feature_ela_metamodel(X, y, ~)
 %                                quadratic coefficients
 %   quad_w_interact_adj_r2     - adjusted R^2 of quadratic model with 
 %                                interactions
+%
+% Note:
+%   This feature uses Matlab built-in fitlm function, which ignores data
+%   containing NaN values. Therefore, feature results should be identical
+%   with the same dataset just ignoring NaN data points.
 
   if nargin < 2
     help feature_ela_metamodel

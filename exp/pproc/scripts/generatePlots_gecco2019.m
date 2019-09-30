@@ -20,8 +20,10 @@ actualFolder = pwd;
 articleFolder = fullfile(actualFolder(1:end - 1 - length('surrogate-cmaes')), 'latex_scmaes', 'gecco2019paper');
 plotResultsFolder = fullfile(articleFolder, 'images');
 tableFolder = fullfile(articleFolder, 'tex');
+experimentFolder = fullfile('exp', 'experiments', 'GECCO2019');
 [~, ~] = mkdir(plotResultsFolder);
 [~, ~] = mkdir(tableFolder);
+[~, ~] = mkdir(experimentFolder);
 
 % create tables from calculated features and save them
 
@@ -233,6 +235,8 @@ clear varMfts constId nanId constNumId nanNumId m
 
 % tolerance for linear dependency
 tol = eps; % eps;
+% precision for rounding results
+roundPrec = 10^9;
 
 mfts_only = mfts(:, 6:end);
 mfts_arr = table2array(mfts_only);
@@ -243,6 +247,9 @@ nanInfMftsId = isnan(mfts_arr) + 2*isinf(mfts_arr);
 % remaining data
 nanInfGroup = unique(nanInfDependent);
 mfId = [];
+
+% open dependency list
+FID = fopen(fullfile(experimentFolder, 'metafeature_dependency.txt'), 'w');
 for g = nanInfGroup'
   gid = g == nanInfDependent;
   % array consisting non-nan or inf rows of specific group
@@ -250,12 +257,21 @@ for g = nanInfGroup'
   % exclude equal metafeatures
   [~, gEqId] = intersect(subArray', subArray', 'rows');
   % normalize columns
-%   subArray = subArray./repmat(sum(subArray), size(subArray, 1), 1);
+  subArray = subArray./repmat(sum(subArray), size(subArray, 1), 1);
+  % round results
+  subArray = round(subArray*roundPrec)/roundPrec;
   % find linear independent columns of reduced group table
   [~, gDepId] = licols(subArray(:, gEqId), tol);
   gidNum = find(gid);
   % add independent metafeatures including NaNs and Infs
   mfId = [mfId; gidNum(gEqId(gDepId))];
+
+  % print group results
+  isIndep = ismember(gidNum, mfId);
+  for i = 1:sum(gid)
+    fprintf(FID, '%d %s\n', isIndep(i), mfts_only.Properties.VariableNames{gidNum(i)});
+  end
+  fprintf(FID, '\n');
 end
 % resulting table
 mfts_indep = [mfts(:, 1:5), mfts_only(:, sort(mfId))];
@@ -271,6 +287,9 @@ if nFeat < numel(mfts_only.Properties.VariableNames)
     fprintf('%s\n', mfts_dep{m})
   end
 end
+
+% close dependency file
+fclose(FID);
 
 clear tol mfts_only mfts_arr nanInfMftsId nanInfDependent nanInfGroup mfId ...
       g gid subArray gEqId gDepId gidNum nFeat mfts_dep m
