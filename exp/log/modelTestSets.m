@@ -1,24 +1,38 @@
-function ds = modelTestSets(exp_id, fun, dim, inst, opts)
+function ds = modelTestSets(exp_id, fun, dim, inst, varargin)
 % ds = modelTestSets(exp_id, fun, dim, inst, opts) creates/loads dataset
 % from experiment 'exp_id'.
 %
 % Input:
-%   exp_id  - experiment id where the CMA-ES logs are saved
-%   fun     - BBOB function numbers to load
-%   dim     - dimensions to load (2, 3, 5, 10, ...)
-%   inst    - instances to load (1:5, ...)
-%   opts    - struct with additional settings as fields:
-%     'datasetName'          - name of resulting dataset | 'DTS_005'
-%     'isForModelPool'       - dataset for ModelPool testing | false
-%     'loadModels'           - load saved models for ModelPool | false
+%   exp_id - experiment id where the CMA-ES logs are saved
+%   fun    - BBOB function numbers to load
+%   dim    - dimensions to load (2, 3, 5, 10, ...)
+%   inst   - instances to load (1:5, ...)
+%   opts   - pairs of property (string) and value or struct with properties
+%            as fields:
+%     'datasetName'          - name of resulting dataset | string |
+%                              default: 'DTS_005'
+%     'isForData'            - dataset for model testing on data (this or
+%                              'isForFeatures' has to be true) | boolean |
+%                              default: true
+%     'isForFeatures'        - dataset for features testing (this or
+%                              'isForData' has to be true) | boolean |
+%                              default: false
+%     'isForModelPool'       - dataset for ModelPool testing | boolean |
+%                              default: false
+%     'loadModels'           - load saved models for ModelPool | boolean |
+%                              default: false
 %     'maxEval'              - maximal number of evaluations times
-%                              dimension to load | 250
+%                              dimension to load | positive integer scalar
+%                              | default: 250
 %     'nPreviousGenerations' - number of previous generations to load for
-%                              ModelPool testing | 0
+%                              ModelPool testing | non-negative integer
+%                              scalar | default: 0
 %     'nSnapshotsPerRun'     - number of generated datasets per one CMA-ES
-%                              run | 10
-%     'outputDirname'        - name of dataset output directory |
-%                              'exp_modeltest_01'
+%                              run | positive integer scalar | default: 10
+%     'outputDirname'        - name of dataset output directory | string |
+%                              default: 'exp_modeltest_01'
+%     'rewriteResults'       - rewrite existing results | boolean |
+%                              default: false
 %
 % Output:
 %   ds - loaded data | #fun x #dim cell-array
@@ -26,16 +40,26 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
 % See Also:
 %   datasetFromInstances, testModels, testOneModel
 
-  if (~exist('opts', 'var'))
-    opts = struct(); end
-  if (~exist('exp_id', 'var'))
-    exp_id = 'exp_doubleEC_21_log'; end
-  if (~exist('fun', 'var'))
-    fun = 1; end
-  if (~exist('dim', 'var'))
-    dim = 2; end
-  if (~exist('inst', 'var'))
-    inst = 1; end
+  if nargout > 0
+    ds = {};
+  end
+
+  if nargin < 4
+    if nargin < 3
+      if nargin < 2
+        if nargin < 1
+          help modelTestSets
+          return
+        end
+        fun = 1;
+      end
+      dim = 2;
+    end
+    inst = 1;
+  end
+
+  % parse input
+  opts = settings2struct(varargin{:});
 
   opts.outputDirname = defopts(opts, 'outputDirname', 'exp_modeltest_01');
   opts.datasetName   = defopts(opts, 'datasetName', 'DTS_005');
@@ -48,6 +72,15 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
   opts.isForModelPool = defopts(opts, 'isForModelPool', false);
   opts.nPreviousGenerations = defopts(opts, 'nPreviousGenerations', 0);
   opts.loadModels     = defopts(opts, 'loadModels', false);
+  % output settings
+  opts.isForFeatures = defopts(opts, 'isForFeatures', false);
+  opts.isForData     = defopts(opts, 'isForData', true);
+  % if both settings are false throw error
+  assert(opts.isForFeatures || opts.isForData, ...
+    'scmaes:modelTestSets:invalidOutput', ...
+    'One of ''isForFeatures'' or ''isForData'' options must be set to true')
+  opts.rewrite_results = defopts(opts, 'rewrite_results', false) ||...
+                         defopts(opts, 'rewriteResults', false);
 
   % set random seed due to reproducibility of default dataset
   rng(opts.maxEval)
@@ -77,6 +110,12 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
     exp_inst_cell = { 1 };
     exp_inst = 1;
     exp_model_settings = 1;
+  end
+
+  if opts.isForFeatures
+    % create folder for metafeatures
+    mftsFolder = fullfile(opts.exppath_short, exp_id, 'sampled_metafeatures');
+    [~, ~] = mkdir(mftsFolder);
   end
 
   % TODO: make this configurable
@@ -169,7 +208,30 @@ function ds = modelTestSets(exp_id, fun, dim, inst, opts)
           % create #inst x #id dataset (cell-array of structures with
           % DTS-CMA-ES state variables as fields)
           ds_actual = datasetFromInstances(exp_id, fun(fi), dim(di), inst(instanceIndicesToProcess), id, opts);
-          ds(fi, di, instanceIndicesToProcess, exp_model_settings) = ds_actual;
+          % feature calculation
+          if opts.isForFeatures
+            % instance loop
+            for inst_data = instanceIndicesToProcess
+              % id loop
+              for id_data = 1:size(ds_actual, 2)
+                % calculate metafeatures of the dataset if not calculated earlier
+                % or rewrite results setting is on
+                opts.mfts_settings.fun = fun(fi);
+                opts.mfts_settings.dim = dim(di);
+                opts.mfts_settings.inst = inst(inst_data);
+                opts.mfts_settings.output = ...
+                  sprintf('%s%sdata_f%d_%dD_inst%d_id%d_fts.mat', ...
+                          mftsFolder, filesep, fun, dim, inst, id_data);
+                if (opts.rewrite_results || ~isfile(opts.mfts_settings.output))
+                  getDataMetaFeatures(ds_actual{inst_data, id_data}, opts.mfts_settings)
+                end
+              end
+            end
+          end
+          % data calculation
+          if opts.isForData
+            ds(fi, di, instanceIndicesToProcess, exp_model_settings) = ds_actual;
+          end
         end
       end  % instances loop end
     end  % function loop end

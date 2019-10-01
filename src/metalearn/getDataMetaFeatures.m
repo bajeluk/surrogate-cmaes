@@ -278,9 +278,14 @@ function res = getSingleDataMF(ds, opts)
   % get generations
   generations = ds.generations;
   nGen = numel(generations);
+  % get archive info
+  if ~iscell(ds.archive)
+    ds.archive = {ds.archive};
+  end
+  nArch = numel(ds.archive);
   
   % prepare result variable
-  res.ft(1:nGen) = struct();
+  res.ft(1:nGen, 1:nArch) = struct();
   res.values = [];
   
   useFeat = cell(1, nInput);
@@ -298,116 +303,132 @@ function res = getSingleDataMF(ds, opts)
     end
   end
   
-  % generation loop
-  for g = 1:nGen
-    fprintf('%s  Generation %d (%d/%d) %s\n', ...
-            req(40), generations(g), g, nGen, req(40))
-    % CMA-ES feature settings
-    if any(strcmp(opts.features, 'cmaes'))
-      opts.cmaes.cma_cov = ds.BDs{g}*ds.BDs{g}';
-      opts.cmaes.cma_evopath_c = ds.pcs{g};
-      opts.cmaes.cma_evopath_s = ds.pss{g};
-      opts.cmaes.cma_generation = generations(g);
-      opts.cmaes.cma_mean = ds.means{g};
-      % irun is the number of runs => #restarts = irun - 1
-      opts.cmaes.cma_restart = ds.iruns(g) - 1;
-      opts.cmaes.cma_step_size = ds.sigmas{g};
-    end
-    
-    % meta input set loop
-    for iSet = 1:nInput
-      mtInput = lower(opts.metaInput{iSet});
-      
-      % get correct input
-      switch mtInput
-        case 'archive'
-          X = ds.archive.X(ds.archive.gens < generations(g), :);
-          y = ds.archive.y(ds.archive.gens < generations(g), :);
-        case 'test'
-          X = ds.testSetX{g};
-          y = NaN(size(X, 1), 1);
-        case 'train'
-          dsTrain = createTrainDS(ds, generations, g);
-          [X, y] = getTrainData(dsTrain, g, opts.trainOpts);
-        case {'testtrain', 'traintest'}
-          dsTrain = createTrainDS(ds, generations, g);
-          [X, y] = getTrainData(dsTrain, g, opts.trainOpts);
-          X = [X; ds.testSetX{g}];
-          y = [y; NaN(size(ds.testSetX{g}, 1), 1)];
-        otherwise
-          error('%s is not correct input set name (see help getDataMetafeatures)', ...
-                mtInput)
+  % archive loop
+  for a = 1:nArch
+    % generation loop
+    for g = 1:nGen
+      fprintf('%s  Archive %d (%d/%d)  Generation %d (%d/%d) %s\n', ...
+              req(40), a, a, nArch, generations(g), g, nGen, req(40))
+      % CMA-ES feature settings
+      if any(strcmp(opts.features, 'cmaes'))
+        opts.cmaes.cma_cov = ds.BDs{g, a}*ds.BDs{g, a}';
+        opts.cmaes.cma_evopath_c = ds.pcs{g, a};
+        opts.cmaes.cma_evopath_s = ds.pss{g, a};
+        opts.cmaes.cma_generation = generations(g);
+        opts.cmaes.cma_mean = ds.means{g, a};
+        % irun is the number of runs => #restarts = irun - 1
+        opts.cmaes.cma_restart = ds.iruns(g, a) - 1;
+        opts.cmaes.cma_step_size = ds.sigmas{g, a};
       end
-      % transform input space data
-      if strcmpi(opts.transform{iSet}, 'cma') && ~isempty(X)
-        X = ( (ds.sigmas{g} * ds.BDs{g}) \ X')';
-      end
-      % transform output space data
-      if normalizeY
-        y = (y - nanmean(y)) / nanstd(y);
-      end
-      
-      % create metafeature options without additional settings
-      optsMF = safermfield(opts, {'dim', 'fun', 'inst', ...
-                              'metaInput', 'mixTrans', 'output', ...
-                              'rewrite', ...
-                              'transform', 'useFeat', 'warnings'...
-                             });
-      % omit selected features
-      optsMF.features = optsMF.features(useFeat{iSet});
-      
-      % suppress warnings
-      if ~opts.warnings
-        % empty cells in cell-mapping
-        warning('off', 'mfts:emptyCells')
-        % division by NaNs and zeros
-        warning('off', 'MATLAB:rankDeficientMatrix')
-        % division by NaN and zero matrices
-        warning('off', 'MATLAB:illConditionedMatrix')
-        % regression design matrix is rank deficient to within machine 
-        % precision in linear model
-        warning('off', 'stats:LinearModel:RankDefDesignMat')
-      end
-      
-      % calculate metafeatures
-      [res_fts, values{iSet}] = getMetaFeatures(X, y, optsMF);
-      
-      % result structure mixing
-      if opts.mixTrans
-        % check if input set was used before
-        if isfield(res.ft(g), mtInput)
-          res.ft(g).(mtInput) = catstruct(res.ft(g).(mtInput), res_fts);
-        else
-          res.ft(g).(mtInput) = res_fts;
+
+      % meta input set loop
+      for iSet = 1:nInput
+        mtInput = lower(opts.metaInput{iSet});
+
+        % get correct input
+        switch mtInput
+          case 'archive'
+            X = ds.archive{a}.X(ds.archive{a}.gens < generations(g), :);
+            y = ds.archive{a}.y(ds.archive{a}.gens < generations(g), :);
+          case 'test'
+            X = ds.testSetX{g, a};
+            y = NaN(size(X, 1), 1);
+          case 'train'
+            dsTrain = createTrainDS(ds, a, generations, g);
+            [X, y] = getTrainData(dsTrain, g, opts.trainOpts);
+          case {'testtrain', 'traintest'}
+            dsTrain = createTrainDS(ds, a, generations, g);
+            [X, y] = getTrainData(dsTrain, g, opts.trainOpts);
+            X = [X; ds.testSetX{g, a}];
+            y = [y; NaN(size(ds.testSetX{g, a}, 1), 1)];
+          otherwise
+            error('%s is not correct input set name (see help getDataMetafeatures)', ...
+                  mtInput)
         end
-      % create unique fieldnames
-      else
-        res.ft(g).([mtInput, '_', lower(opts.transform{iSet})]) = res_fts;
+        % transform input space data
+        if strcmpi(opts.transform{iSet}, 'cma') && ~isempty(X)
+          X = ( (ds.sigmas{g, a} * ds.BDs{g, a}) \ X')';
+        end
+        % transform output space data
+        if normalizeY
+          y = (y - nanmean(y)) / nanstd(y);
+        end
+
+        % create metafeature options without additional settings
+        optsMF = safermfield(opts, {'dim', 'fun', 'inst', ...
+                                'metaInput', 'mixTrans', 'output', ...
+                                'rewrite', ...
+                                'transform', 'useFeat', 'warnings'...
+                               });
+        % omit selected features
+        optsMF.features = optsMF.features(useFeat{iSet});
+
+        % suppress warnings
+        if ~opts.warnings
+          % empty cells in cell-mapping
+          warning('off', 'mfts:emptyCells')
+          % division by NaNs and zeros
+          warning('off', 'MATLAB:rankDeficientMatrix')
+          % division by NaN and zero matrices
+          warning('off', 'MATLAB:illConditionedMatrix')
+          % regression design matrix is rank deficient to within machine 
+          % precision in linear model
+          warning('off', 'stats:LinearModel:RankDefDesignMat')
+        end
+
+        % calculate metafeatures
+        [res_fts, values{iSet}] = getMetaFeatures(X, y, optsMF);
+
+        % result structure mixing
+        if opts.mixTrans
+          % check if input set was used before
+          if isfield(res.ft(g, a), mtInput)
+            res.ft(g, a).(mtInput) = catstruct(res.ft(g, a).(mtInput), res_fts);
+          else
+            res.ft(g, a).(mtInput) = res_fts;
+          end
+        % create unique fieldnames
+        else
+          res.ft(g, a).([mtInput, '_', lower(opts.transform{iSet})]) = res_fts;
+        end
+
+        % enable warnings
+        if ~opts.warnings
+          warning('on', 'mfts:emptyCells')
+          warning('on', 'MATLAB:rankDeficientMatrix')
+          warning('on', 'MATLAB:illConditionedMatrix')
+          warning('on', 'stats:LinearModel:RankDefDesignMat')
+        end
       end
-      
-      % enable warnings
-      if ~opts.warnings
-        warning('on', 'mfts:emptyCells')
-        warning('on', 'MATLAB:rankDeficientMatrix')
-        warning('on', 'MATLAB:illConditionedMatrix')
-        warning('on', 'stats:LinearModel:RankDefDesignMat')
-      end
+      res.values(:, g, a) = cell2mat(values');
+    % generation loop
     end
-    res.values(:, g) = cell2mat(values');
+  % archive loop
   end
-      
+
 end
 
-function ds = createTrainDS(ds, generations, g)
+function ds = createTrainDS(ds, a, generations, g)
 % create training ds
 
   % get training archive
-  trainArchive = Archive(ds.archive.dim, ds.archive.tolX);
-  trainArchive.X = ds.archive.X(ds.archive.gens < generations(g), :);
-  trainArchive.y = ds.archive.y(ds.archive.gens < generations(g), :);
-  trainArchive.gens = ds.archive.gens(ds.archive.gens < generations(g));
+  trainArchive = Archive(ds.archive{a}.dim, ds.archive{a}.tolX);
+  trainArchive.X = ds.archive{a}.X(ds.archive{a}.gens < generations(g), :);
+  trainArchive.y = ds.archive{a}.y(ds.archive{a}.gens < generations(g), :);
+  trainArchive.gens = ds.archive{a}.gens(ds.archive{a}.gens < generations(g));
   % create training dataset
   ds.archive = trainArchive;
+  ds.BDs = ds.BDs(:, a);
+  ds.cmaesStates = ds.cmaesStates(:, a);
+  ds.diagCs = ds.diagCs(:, a);
+  ds.diagDs = ds.diagDs(:, a);
+  ds.iruns = ds.iruns(:, a);
+  ds.means = ds.means(:, a);
+  ds.pcs = ds.pcs(:, a);
+  ds.pss = ds.pss(:, a);
+  ds.sigmas = ds.sigmas(:, a);
+  ds.testSetX = ds.testSetX(:, a);
+  ds.testSetY = ds.testSetY(:, a);
 end
 
 function [X, y] = getTrainData(ds, g, opts)

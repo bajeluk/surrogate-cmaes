@@ -52,7 +52,7 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
 %       data{f_data, d_data, i_data}, dataNSnapshots, opts);
 %
 % See Also:
-%   testModels, datasetFromInstance
+%   testModels, datasetFromInstances
 
   if (isempty(nSnapshots))
     nSnapshots = length(ds.testSetX);
