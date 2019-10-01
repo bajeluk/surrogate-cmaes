@@ -7,8 +7,8 @@ function genRndTestModelsSubset(filename, varargin)
 %
 % Input:
 %   filename - name of original dataset | string
-%   settings  - pairs of property (string) and value, or struct with 
-%               properties as fields:
+%   settings - pairs of property (string) and value, or struct with
+%              properties as fields:
 %     'NSets'      - number of subsets to select | integer
 %     'ResultName' - name of resulting file | string
 %     'VarRange'   - ranges of variables (ie. which values to incorporate);
@@ -54,18 +54,22 @@ function genRndTestModelsSubset(filename, varargin)
   
   % generate ids
   isRnd = cellfun(@(x) strcmp(x, 'rnd'), varState);
-  fullVec = varRange(~isRnd);
-  % combine full variables
-  fullId = combvec(fullVec{:})';
-  % how many times to use each fullId row?
-%   maxUsage = ceil(nSets/size(fullId, 1));
-  rowIdUsage = cvInd(nSets, size(fullId, 1));
+  % full variables
+  if ~all(isRnd)
+    fullVec = varRange(~isRnd);
+    % combine full variables
+    fullId = combvec(fullVec{:})';
+    % how many times to use each fullId row?
+    rowIdUsage = cvInd(nSets, size(fullId, 1));
+  end
   % create final ids and select datasets
   ds = cell(1, nSets);
   vals = NaN(nSets, 5);
   for n = 1:nSets
     % add full variables
-    vals(n, ~isRnd) = fullId(rowIdUsage(n), :);
+    if ~all(isRnd) 
+      vals(n, ~isRnd) = fullId(rowIdUsage(n), :);
+    end
     % random selection can be repeated if dataset does not exist
     selected = false;
     nSelect = 0;
@@ -93,7 +97,7 @@ function genRndTestModelsSubset(filename, varargin)
   dim = unique(vals(:, 2));
   inst = unique(vals(:, 3));
   modelSettings = unique(vals(:, 4));
-  generations = unique(vals(:, 5));
+  generationIds = unique(vals(:, 5));
   
   % save results
   save(resName, 'ds', 'fun', 'dim', 'inst', 'modelSettings', 'generationIds')
@@ -108,11 +112,11 @@ function res = selectGen(dataset, genId)
     actName = fnames{fn};
     if any(size(dataset.(actName)) > 1)
       % select appropriate generation according to its id
-      if iscell(dataset.(actName))
-        res.(actName) = dataset.(actName){genId};
-      else
+%       if iscell(dataset.(actName))
+%         res.(actName) = dataset.(actName){genId};
+%       else
         res.(actName) = dataset.(actName)(genId);
-      end
+%       end
     else
       % copy field as it is
       res.(actName) = dataset.(actName);
