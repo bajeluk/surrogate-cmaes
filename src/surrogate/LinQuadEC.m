@@ -168,14 +168,14 @@ classdef LinQuadEC < EvolutionControl & Observable
       end
 
      
-      obj.pop = Population(lambda, dim);   
+      obj.pop = Population(lambda, dim);  
       % sample new population of lambda points out of which will be chosen
       % later in this generation
       nLambdaRest = lambda - obj.pop.nPoints;
       [xExtend, xExtendValid, zExtend] = ...
           sampleCmaesNoFitness(obj.cmaesState.sigma, nLambdaRest, obj.cmaesState, sampleOpts, obj.individualToInject);
       % add these points into Population without valid f-value (marked as notEvaluated)
-      lphase = 4;
+      phase = 4;
       obj.pop = obj.pop.addPoints(xExtendValid, NaN(1,nLambdaRest), xExtend, zExtend, 0, phase);
 
       if (obj.modelAge == 0)
@@ -267,7 +267,7 @@ classdef LinQuadEC < EvolutionControl & Observable
       end
       
       
-      if (currIndex > lambda)
+      if (evaluated >= lambda)
         %All points were evaluated -> return orig evaluated solution
         [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
                 = obj.finalizeGeneration(sampleOpts, varargin{:});
@@ -277,7 +277,7 @@ classdef LinQuadEC < EvolutionControl & Observable
           modelPredictions = obj.newModel.modelPredict(obj.pop.x');
           offset = min(obj.pop.getOriginalY) - min(modelPredictions);
           modelPredictions = modelPredictions + offset + 000001*abs(offset);
-          obj.pop = obj.pop.updateYValue([], modelPredictions, 0, 0, true(1, lambda));
+          obj.pop = obj.pop.updateYValue([], modelPredictions, 0, phase, true(1, lambda));
           %obj.pop.origEvaled = false(1, lambda);
           [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
                 = obj.finalizeGeneration(sampleOpts, varargin{:});
@@ -405,8 +405,7 @@ classdef LinQuadEC < EvolutionControl & Observable
       % model-related statistics
       if (~isempty(obj.model) && obj.model.isTrained())
         % predict the population by the first model
-        yModel1 = obj.model.predict(obj.pop.x');
-
+        
         if (any(obj.pop.origEvaled))
           % calculate RMSE, Kendall's coeff. and ranking error
           % between the original fitness and the first model's values
@@ -414,11 +413,11 @@ classdef LinQuadEC < EvolutionControl & Observable
           
           
           %[obj.stats.rmseReeval, obj.stats.kendallReeval, obj.stats.rankErrReeval] ...
-          %    = obj.reevalStatistics(yModel1);
+          %    = obj.reevalStatistics();
 
           % get ranking error between the first and the second model
           % (if the second model is trained)
-          obj.stats.rankErr2Models = obj.retrainStatistics(yModel1);
+          % obj.stats.rankErr2Models = obj.retrainStatistics(yModel1);
         end
 
         % independent validation set statistics
@@ -543,26 +542,33 @@ classdef LinQuadEC < EvolutionControl & Observable
     end
 
 
-    function [rmse, kendall, rankErr] = reevalStatistics(obj, yModel1)
+    function [rmse, kendall, rankErr] = reevalStatistics(obj)
       % calculate RMSE and possibly Kendall's coeff. of the re-evaluated point(s)
       % (phase == 1)
       if (~any(obj.pop.origEvaled))
         rmse = NaN; kendall = NaN; rankErr = NaN;
         return;
       end
+      pointsEvaluated = sum(obj.pop.origEvaled);
+      pointsToReevaluate = obj.archive.X(end-pointsEvaluated+1:end, :);
+      yOriginal = obj.archive.y(end-pointsEvaluated+1:end);
+      yReevaled = obj.model.modelPredict(pointsToReevaluate);
+      
       % for RMSE and Kendall, get all original-evaled y's except presampled
-      isOriginalAfterPresample = obj.pop.origEvaled & obj.pop.phase ~= 0;
-      yOriginal = obj.pop.y(isOriginalAfterPresample);
-      lyReevaled = yModel1(isOriginalAfterPresample);
-      rmse = sqrt(sum((yReevaled' - yOriginal).^2))/length(yOriginal);
-      kendall = corr(yReevaled, yOriginal', 'type', 'Kendall');
+      %isOriginalAfterPresample = obj.pop.origEvaled & obj.pop.phase ~= 0;
+      %yOriginal = obj.pop.y(isOriginalAfterPresample);
+      %yReevaled = yModel1(isOriginalAfterPresample);
+      rmse = sqrt(sum((yReevaled - yOriginal).^2))/length(yOriginal);
+      kendall = corr(yReevaled, yOriginal, 'type', 'Kendall');
 
       % for RDE, get all (1) the population w/o presampled, and compare it
       % with (2) these points predicted by the first model
-      yModelMixed = yModel1;
-      yModelMixed(isOriginalAfterPresample) = yOriginal;
-      rankErr = errRankMu(yModel1(obj.pop.phase ~= 0), yModelMixed(obj.pop.phase ~= 0), ...
-          obj.cmaesState.mu);
+      %yModel1 = obj.model.modelPredict(obj.pop.X');
+      %yModelMixed = yModel1;
+      %yModelMixed(isOriginalAfterPresample) = yOriginal;
+      %rankErr = errRankMu(yModel1(obj.pop.phase ~= 0), yModelMixed(obj.pop.phase ~= 0), ...
+      %    obj.cmaesState.mu);
+      rankErr = NaN;
 
       % Debug:
       % fprintf('  model: %d pSmpls, reeval %d pts, RMSE= %.2e, Kendl= %.2f, rankErr= %.3f\n', ...
