@@ -414,13 +414,29 @@ function [Fval, Ftrue] = f203(x, DIM, ntrial)
     dataset = importdata('german_postal.txt');
     
     rng(ntrial);
-    R = rotx(randi(360));
-    dataset = (R*dataset')';
-    R = roty(randi(360));
-    dataset = (R*dataset')';
-    R = rotz(randi(360));
+    theta = randi(360);
+    
+    R = eye(3, 3);
+    R(2, 2) = cosd(theta);
+    R(2, 3) = -sind(theta);
+    R(3, 2) = sind(theta);
+    R(3, 3) = cosd(theta);
     dataset = (R*dataset')';
     
+    R = eye(3, 3);
+    R(1, 1) = cosd(theta);
+    R(3, 1) = -sind(theta);
+    R(1, 3) = sind(theta);
+    R(3, 3) = cosd(theta);
+    dataset = (R*dataset')';
+    
+    R = eye(3, 3);
+    R(1, 1) = cosd(theta);
+    R(1, 2) = -sind(theta);
+    R(2, 1) = sind(theta);
+    R(2, 2) = cosd(theta);
+    dataset = (R*dataset')';
+      
     
     minVal = min(min(dataset));
     maxVal = max(max(dataset));
