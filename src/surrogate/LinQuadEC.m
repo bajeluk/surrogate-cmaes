@@ -167,6 +167,8 @@ classdef LinQuadEC < EvolutionControl & Observable
         end
       end
 
+     
+      obj.pop = Population(lambda, dim);   
       % sample new population of lambda points out of which will be chosen
       % later in this generation
       nLambdaRest = lambda - obj.pop.nPoints;
@@ -198,26 +200,47 @@ classdef LinQuadEC < EvolutionControl & Observable
       obj.model = obj.newModel;
       
       
-      modelPredictions = obj.newModel.modelPredict(obj.pop.x');
-      [sortedModelPredictions, sortedModelPredictionsIndexes] = sort(modelPredictions);
+      %modelPredictions = obj.newModel.modelPredict(obj.pop.x');
+      %[sortedModelPredictions, sortedModelPredictionsIndexes] = sort(modelPredictions);
       k = floor(1 + lambda*0.02);
       currIndex = 1;
-      while(currIndex < lambda)
-          evalCount = k - (currIndex - 1);
-          
-          evalIndexes = sortedModelPredictionsIndexes(currIndex:currIndex + evalCount - 1);
-          %Sort evalIndexes so we can later updateYvalues in population
-          evalIndexes = sort(evalIndexes);
-          toEval = obj.pop.x(:, evalIndexes);
-          [y, arx, x, arz, obj.counteval] = ...
-            sampleCmaesOnlyFitness(toEval, toEval, toEval, obj.cmaesState.sigma, evalCount, ...
-            obj.counteval, obj.cmaesState, sampleOpts, 'Archive', obj.archive, varargin{:});
-          obj.archive.save(x', y', obj.cmaesState.countiter);
+      evaluated = 0;
+      while(evaluated < lambda)
+          [~, sortedModelPredictionsIndexes] = sort(obj.newModel.modelPredict(obj.pop.x'));
+          firstKIndexes = sortedModelPredictionsIndexes(1:k);
+          i = 1;
+          while evaluated < k
+              idxToEval = firstKIndexes(i);
+              i = i + 1;
+              if ~obj.pop.isEvaled(idxToEval)
+                  toEval = obj.pop.x(:, idxToEval);
+                  [y, arx, x, arz, obj.counteval] = ...
+                    sampleCmaesOnlyFitness(toEval, toEval, toEval, obj.cmaesState.sigma, 1, ...
+                    obj.counteval, obj.cmaesState, sampleOpts, 'Archive', obj.archive, varargin{:});
+                  obj.archive.save(x', y', obj.cmaesState.countiter);
+                  evaluated = evaluated + 1;
+                  
+                  logicalIndexes = false(1, lambda);
+                  logicalIndexes(idxToEval) = true;
+                  obj.pop = obj.pop.updateYValue(x, y, 1, phase, logicalIndexes);
+              end             
+          end
           obj.archive.sortLast(k);
           
-          logicalIndexes = false(1, lambda);
-          logicalIndexes(evalIndexes) = true;
-          obj.pop = obj.pop.updateYValue(x, y, evalCount, phase, logicalIndexes);
+          %evalCount = k - (currIndex - 1);
+          
+          %evalIndexes = sortedModelPredictionsIndexes(currIndex:currIndex + evalCount - 1);
+          
+          %toEval = obj.pop.x(:, evalIndexes);
+          %[y, arx, x, arz, obj.counteval] = ...
+          %  sampleCmaesOnlyFitness(toEval, toEval, toEval, obj.cmaesState.sigma, evalCount, ...
+          %  obj.counteval, obj.cmaesState, sampleOpts, 'Archive', obj.archive, varargin{:});
+          %obj.archive.save(x', y', obj.cmaesState.countiter);
+          %obj.archive.sortLast(k);
+          
+          %logicalIndexes = false(1, lambda);
+          %logicalIndexes(evalIndexes) = true;
+          %obj.pop = obj.pop.updateYValue(x, y, evalCount, phase, logicalIndexes);
           
           %err = obj.calcKendallError(k);
           obj.newModel = obj.newModel.train([], [], obj.cmaesState, sampleOpts, obj.archive, obj.pop);
@@ -226,7 +249,7 @@ classdef LinQuadEC < EvolutionControl & Observable
           if err >= 0.85
             break;
           end
-          currIndex = currIndex + evalCount;
+          %currIndex = currIndex + evalCount;
           k = ceil(k*1.5);
           if k > lambda
             k = lambda;
