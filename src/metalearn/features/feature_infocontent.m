@@ -86,7 +86,7 @@ function ft = feature_infocontent(X, y, settings)
   % initialize random number generator to gain identical feature values for
   % identical data
   rng_seed = rng;
-  rng(nData)
+  rng(nData, 'twister')
   
   nn_seed = defopts(settings, 'nn_seed', randi(nData));
   

@@ -58,7 +58,7 @@ function ft = feature_ela_levelset(X, y, settings)
   % initialize random number generator to gain the same CV partitions (and
   % identical feature values for identical data)
   rng_seed = rng;
-  rng(nData)
+  rng(nData, 'twister')
   % create instances for n-fold CV
   cp = cvpartition(nData, 'KFold', nFolds);
   % quantile tresholds
