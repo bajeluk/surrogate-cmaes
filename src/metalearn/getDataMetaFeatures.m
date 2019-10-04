@@ -48,6 +48,7 @@ function getDataMetaFeatures(folder, varargin)
 %                 - should have the same lenght as 'MetaInput' (one vector
 %                   for one input), 'true' can be used for calculation of
 %                   all metafeatures
+%     'UsePar'    - paralel feature computation | boolean | false
 %     'Warnings'  - show metafeature warnings during computation | boolean
 %                   | true
 %
@@ -89,6 +90,7 @@ function getDataMetaFeatures(folder, varargin)
   settings = defoptsiStr(settings, 'MetaInput', {'archive'}, 'metaInput');
   settings = defoptsiStr(settings, 'MixTrans', false, 'mixTrans');
   settings = defoptsiStr(settings, 'UseFeat', [], 'useFeat');
+  settings = defoptsiStr(settings, 'UsePar', false, 'usePar');
   settings = defoptsiStr(settings, 'Rewrite', false, 'rewrite');
   settings = defoptsiStr(settings, 'TrainOpts', struct(), 'trainOpts');
   settings = defoptsiStr(settings, 'TransData', {'none'}, 'transform');
@@ -268,9 +270,6 @@ end
 
 function res = getSingleDataMF(ds, opts)
 % calculate metafeatures in different generations
-  
-  % parse settings
-  normalizeY = defopts(opts.trainOpts, 'normalizeY', false);
 
   nFeat  = numel(opts.features);
   nInput = numel(opts.metaInput);
@@ -285,8 +284,9 @@ function res = getSingleDataMF(ds, opts)
   nArch = numel(ds.archive);
   
   % prepare result variable
-  res.ft(1:nGen, 1:nArch) = struct();
-  res.values = [];
+%   res.ft(1:nGen, 1:nArch) = struct();
+  ft = cell(nGen, nArch);
+  values = [];
   
   useFeat = cell(1, nInput);
   % feature settings for individual input sets
@@ -303,108 +303,143 @@ function res = getSingleDataMF(ds, opts)
     end
   end
   
-  % archive loop
-  for a = 1:nArch
-    % generation loop
-    for g = 1:nGen
+  % paralel computation
+  if opts.usePar
+    vals = cell(nGen, nArch);
+    parfor iag = 1:nGen*nArch
+      [g, a] = ind2sub([nGen, nArch], iag);
+      [ft{iag}, vals{iag}] = oneMftsGeneration(ds, opts, g, a, generations, useFeat);
       fprintf('%s  Archive %d (%d/%d)  Generation %d (%d/%d) %s\n', ...
-              req(40), a, a, nArch, generations(g), g, nGen, req(40))
-      % CMA-ES feature settings
-      if any(strcmp(opts.features, 'cmaes'))
-        opts.cmaes.cma_cov = ds.BDs{g, a}*ds.BDs{g, a}';
-        opts.cmaes.cma_evopath_c = ds.pcs{g, a};
-        opts.cmaes.cma_evopath_s = ds.pss{g, a};
-        opts.cmaes.cma_generation = generations(g);
-        opts.cmaes.cma_mean = ds.means{g, a};
-        % irun is the number of runs => #restarts = irun - 1
-        opts.cmaes.cma_restart = ds.iruns(g, a) - 1;
-        opts.cmaes.cma_step_size = ds.sigmas{g, a};
-      end
-
-      % meta input set loop
-      for iSet = 1:nInput
-        mtInput = lower(opts.metaInput{iSet});
-
-        % get correct input
-        switch mtInput
-          case 'archive'
-            X = ds.archive{a}.X(ds.archive{a}.gens < generations(g), :);
-            y = ds.archive{a}.y(ds.archive{a}.gens < generations(g), :);
-          case 'test'
-            X = ds.testSetX{g, a};
-            y = NaN(size(X, 1), 1);
-          case 'train'
-            dsTrain = createTrainDS(ds, a, generations, g);
-            [X, y] = getTrainData(dsTrain, g, opts.trainOpts);
-          case {'testtrain', 'traintest'}
-            dsTrain = createTrainDS(ds, a, generations, g);
-            [X, y] = getTrainData(dsTrain, g, opts.trainOpts);
-            X = [X; ds.testSetX{g, a}];
-            y = [y; NaN(size(ds.testSetX{g, a}, 1), 1)];
-          otherwise
-            error('%s is not correct input set name (see help getDataMetafeatures)', ...
-                  mtInput)
-        end
-        % transform input space data
-        if strcmpi(opts.transform{iSet}, 'cma') && ~isempty(X)
-          X = ( (ds.sigmas{g, a} * ds.BDs{g, a}) \ X')';
-        end
-        % transform output space data
-        if normalizeY
-          y = (y - nanmean(y)) / nanstd(y);
-        end
-
-        % create metafeature options without additional settings
-        optsMF = safermfield(opts, {'dim', 'fun', 'inst', ...
-                                'metaInput', 'mixTrans', 'output', ...
-                                'rewrite', ...
-                                'transform', 'useFeat', 'warnings'...
-                               });
-        % omit selected features
-        optsMF.features = optsMF.features(useFeat{iSet});
-
-        % suppress warnings
-        if ~opts.warnings
-          % empty cells in cell-mapping
-          warning('off', 'mfts:emptyCells')
-          % division by NaNs and zeros
-          warning('off', 'MATLAB:rankDeficientMatrix')
-          % division by NaN and zero matrices
-          warning('off', 'MATLAB:illConditionedMatrix')
-          % regression design matrix is rank deficient to within machine 
-          % precision in linear model
-          warning('off', 'stats:LinearModel:RankDefDesignMat')
-        end
-
-        % calculate metafeatures
-        [res_fts, values{iSet}] = getMetaFeatures(X, y, optsMF);
-
-        % result structure mixing
-        if opts.mixTrans
-          % check if input set was used before
-          if isfield(res.ft(g, a), mtInput)
-            res.ft(g, a).(mtInput) = catstruct(res.ft(g, a).(mtInput), res_fts);
-          else
-            res.ft(g, a).(mtInput) = res_fts;
-          end
-        % create unique fieldnames
-        else
-          res.ft(g, a).([mtInput, '_', lower(opts.transform{iSet})]) = res_fts;
-        end
-
-        % enable warnings
-        if ~opts.warnings
-          warning('on', 'mfts:emptyCells')
-          warning('on', 'MATLAB:rankDeficientMatrix')
-          warning('on', 'MATLAB:illConditionedMatrix')
-          warning('on', 'stats:LinearModel:RankDefDesignMat')
-        end
-      end
-      res.values(:, g, a) = cell2mat(values');
-    % generation loop
+        req(40), a, a, nArch, generations(g), g, nGen, req(40))
     end
-  % archive loop
+    values = cell2mat(reshape(vals, [1, nGen, nArch]));
+  % sequential computation
+  else
+    % archive loop
+    for a = 1:nArch
+      % generation loop
+      for g = 1:nGen
+        fprintf('%s  Archive %d (%d/%d)  Generation %d (%d/%d) %s\n', ...
+                req(40), a, a, nArch, generations(g), g, nGen, req(40))
+        [ft{g, a}, values(:, g, a)] = oneMftsGeneration(ds, opts, g, a, generations, useFeat);
+      % generation loop
+      end
+    % archive loop
+    end
   end
+
+  % output structure
+  res.ft = reshape([ft{:}], nGen, nArch);
+  res.values = values;
+
+end
+
+function [ft, values] = oneMftsGeneration(ds, opts, g, a, generations, useFeat)
+% one generation of metafeature calculation
+
+  % parse settings
+  normalizeY = defopts(opts.trainOpts, 'normalizeY', false);
+
+  nInput = numel(opts.metaInput);
+
+  % initialize resulting variables
+  ft = struct();
+  values = cell(1, nInput);
+
+  % CMA-ES feature settings
+  if any(strcmp(opts.features, 'cmaes'))
+    opts.cmaes.cma_cov = ds.BDs{g, a}*ds.BDs{g, a}';
+    opts.cmaes.cma_evopath_c = ds.pcs{g, a};
+    opts.cmaes.cma_evopath_s = ds.pss{g, a};
+    opts.cmaes.cma_generation = generations(g);
+    opts.cmaes.cma_mean = ds.means{g, a};
+    % irun is the number of runs => #restarts = irun - 1
+    opts.cmaes.cma_restart = ds.iruns(g, a) - 1;
+    opts.cmaes.cma_step_size = ds.sigmas{g, a};
+  end
+
+  % meta input set loop
+  for iSet = 1:nInput
+    mtInput = lower(opts.metaInput{iSet});
+
+    % get correct input
+    switch mtInput
+      case 'archive'
+        X = ds.archive{a}.X(ds.archive{a}.gens < generations(g), :);
+        y = ds.archive{a}.y(ds.archive{a}.gens < generations(g), :);
+      case 'test'
+        X = ds.testSetX{g, a};
+        y = NaN(size(X, 1), 1);
+      case 'train'
+        dsTrain = createTrainDS(ds, a, generations, g);
+        [X, y] = getTrainData(dsTrain, g, opts.trainOpts);
+      case {'testtrain', 'traintest'}
+        dsTrain = createTrainDS(ds, a, generations, g);
+        [X, y] = getTrainData(dsTrain, g, opts.trainOpts);
+        X = [X; ds.testSetX{g, a}];
+        y = [y; NaN(size(ds.testSetX{g, a}, 1), 1)];
+      otherwise
+        error('%s is not correct input set name (see help getDataMetafeatures)', ...
+              mtInput)
+    end
+    % transform input space data
+    if strcmpi(opts.transform{iSet}, 'cma') && ~isempty(X)
+      X = ( (ds.sigmas{g, a} * ds.BDs{g, a}) \ X')';
+    end
+    % transform output space data
+    if normalizeY
+      y = (y - nanmean(y)) / nanstd(y);
+    end
+
+    % create metafeature options without additional settings
+    optsMF = safermfield(opts, {'dim', 'fun', 'inst', ...
+                            'metaInput', 'mixTrans', 'output', ...
+                            'rewrite', ...
+                            'transform', 'useFeat', 'usePar', 'warnings'...
+                           });
+    % omit selected features
+    optsMF.features = optsMF.features(useFeat{iSet});
+
+    % suppress warnings
+    if ~opts.warnings
+      % empty cells in cell-mapping
+      warning('off', 'mfts:emptyCells')
+      % division by NaNs and zeros
+      warning('off', 'MATLAB:rankDeficientMatrix')
+      % division by NaN and zero matrices
+      warning('off', 'MATLAB:illConditionedMatrix')
+      % regression design matrix is rank deficient to within machine
+      % precision in linear model
+      warning('off', 'stats:LinearModel:RankDefDesignMat')
+    end
+
+    % calculate metafeatures
+    [res_fts, values{iSet}] = getMetaFeatures(X, y, optsMF);
+
+    % result structure mixing
+    if opts.mixTrans
+      % check if input set was used before
+      if isfield(ft, mtInput)
+        ft.(mtInput) = catstruct(ft.(mtInput), res_fts);
+      else
+        ft.(mtInput) = res_fts;
+      end
+    % create unique fieldnames
+    else
+      ft([mtInput, '_', lower(opts.transform{iSet})]) = res_fts;
+    end
+
+    % enable warnings
+    if ~opts.warnings
+      warning('on', 'mfts:emptyCells')
+      warning('on', 'MATLAB:rankDeficientMatrix')
+      warning('on', 'MATLAB:illConditionedMatrix')
+      warning('on', 'stats:LinearModel:RankDefDesignMat')
+    end
+  end
+
+  % return values as double
+  values = cell2mat(values');
 
 end
 

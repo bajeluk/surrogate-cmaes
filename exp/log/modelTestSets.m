@@ -24,6 +24,9 @@ function ds = modelTestSets(exp_id, fun, dim, inst, varargin)
 %     'maxEval'              - maximal number of evaluations times
 %                              dimension to load | positive integer scalar
 %                              | default: 250
+%     'mftsSettings'         - settings for feature calculation, see
+%                              getDataMetaFeatures ('isForFeatures' has to
+%                              be true) | structure | default: struct()
 %     'nPreviousGenerations' - number of previous generations to load for
 %                              ModelPool testing | non-negative integer
 %                              scalar | default: 0
@@ -38,7 +41,7 @@ function ds = modelTestSets(exp_id, fun, dim, inst, varargin)
 %   ds - loaded data | #fun x #dim cell-array
 %
 % See Also:
-%   datasetFromInstances, testModels, testOneModel
+%   datasetFromInstances, testModels, testOneModel, getDataMetaFeatures
 
   if nargout > 0
     ds = {};
@@ -81,6 +84,11 @@ function ds = modelTestSets(exp_id, fun, dim, inst, varargin)
     'One of ''isForFeatures'' or ''isForData'' options must be set to true')
   opts.rewrite_results = defopts(opts, 'rewrite_results', false) ||...
                          defopts(opts, 'rewriteResults', false);
+  if isfield(opts, 'mftsSettings')
+    opts.mfts_settings = defopts(opts, 'mftsSettings', struct());
+  else
+    opts.mfts_settings = defopts(opts, 'mfts_settings', struct());
+  end
 
   % set random seed due to reproducibility of default dataset
   rng(opts.maxEval)
@@ -221,7 +229,8 @@ function ds = modelTestSets(exp_id, fun, dim, inst, varargin)
                 opts.mfts_settings.inst = inst(inst_data);
                 opts.mfts_settings.output = ...
                   sprintf('%s%sdata_f%d_%dD_inst%d_id%d_fts.mat', ...
-                          mftsFolder, filesep, fun, dim, inst, id_data);
+                          mftsFolder, filesep, fun(fi), dim(di), ...
+                          inst(inst_data), id_data);
                 if (opts.rewrite_results || ~isfile(opts.mfts_settings.output))
                   getDataMetaFeatures(ds_actual{inst_data, id_data}, opts.mfts_settings)
                 end
