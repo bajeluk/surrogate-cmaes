@@ -92,6 +92,14 @@ function getDataMetaFeatures(folder, varargin)
   settings = defoptsiStr(settings, 'UseFeat', [], 'useFeat');
   settings = defoptsiStr(settings, 'UsePar', false, 'usePar');
   settings = defoptsiStr(settings, 'Rewrite', false, 'rewrite');
+  settings = defoptsiStr(settings, 'StatsOnly', false, 'statsOnly');
+  settings = defoptsiStr(settings, 'Statistics', {}, 'statistics');
+  if settings.statsOnly && isempty(settings.statistics)
+    settings.statistics = {'mean'};
+  end
+  if ~iscell(settings.statistics)
+    settings.statistics = {settings.statistics};
+  end
   settings = defoptsiStr(settings, 'TrainOpts', struct(), 'trainOpts');
   settings = defoptsiStr(settings, 'TransData', {'none'}, 'transform');
   if ~iscell(settings.transform)
@@ -115,8 +123,22 @@ function getDataMetaFeatures(folder, varargin)
     outputFile = defoptsi(settings, 'Output', fileString);
     if settings.rewrite || ~isfile(outputFile) 
       res = getSingleDataMF(folder, settings);
+      saveVars = {'fun', 'dim', 'inst'};
+      % feature statistics
+      if ~isempty(settings.statistics)
+        stats = getDataStats(res, settings.statistics);
+        statsNames = fieldnames(stats);
+        for st = 1:numel(statsNames)
+          eval([statsNames{st}, ' = stats.(statsNames{st});'])
+        end
+        saveVars(end+1:end+numel(statsNames)) = statsNames;
+      end
+      % save only statistics
+      if ~settings.statsOnly
+        saveVars{end+1} = 'res';
+      end
       % save results
-      save(outputFile, 'res', 'fun', 'dim', 'inst')
+      save(outputFile, saveVars{:})
     end
     return
   end
@@ -246,8 +268,18 @@ function getRegularDataMetaFeatures(folder, settings)
                  (isempty(res{fId, dId, imId, mId}) || settings.rewrite)
                 % metafeature calculation for different generations
                 res{fId, dId, imId, mId} = getSingleDataMF(data.ds{fId, dId, imId, mId}, settings);
+                saveVars = {'fun', 'dim', 'inst'};
+                % feature statistics
+                if ~isempty(settings.statistics)
+                  stats{fId, dId, imId, mId} = getDataStats(res{fId, dId, imId, mId}, settings.statistics);
+                  saveVars{end+1} = 'stats';
+                end
+                % save only statistics
+                if ~settings.statsOnly
+                  saveVars{end+1} = 'res';
+                end
                 % save results
-                save(outputFile, 'res', 'fun', 'dim', 'inst')
+                save(outputFile, saveVars{:})
               % skip calculation due to missing data
               elseif isempty(data.ds{fId, dId, imId, mId})
                 fprintf('Data is missing in %s\n', datalist{dat})
@@ -645,4 +677,74 @@ function val = checkCalcVal(dataVal, settingsVal, valName)
       settingsVal(~ismember(settingsVal, val)))
   end
   
+end
+
+function stats = getDataStats(res, statistics)
+% calculate statistics on resulting features
+  for s = 1:numel(statistics)
+    switch statistics{s}
+      case 'mean'
+        stats.means = nanmean(res.values, 3);
+      case 'var'
+        stats.vars = nanvar(res.values, 0, 3);
+      case 'hist'
+        [stats.histVals, stats.histEdges, stats.nans, ...
+          stats.infplus, stats.infminus] = myhist(res.values);
+    end
+  end
+end
+
+function [histVals, histEdges, nans, infplus, infminus] = myhist(X)
+% simplified histogram
+
+  maxBins = 20;
+  [nFt, nGen, nArch] = size(X);
+
+  % variable type selection
+  if nArch < 2^8
+    varType = @uint8;
+  elseif nArch < 2^16
+    varType = @uint16;
+  else
+    varType = @uint64;
+  end
+
+  % initialize
+  histVals = varType(zeros(nFt, nGen, maxBins));
+  histEdges = zeros(nFt, nGen, 2);
+  nans = varType(zeros(nFt, nGen));
+  infplus = varType(zeros(nFt, nGen));
+  infminus = varType(zeros(nFt, nGen));
+
+  for ft = 1:nFt
+    for g = 1:nGen
+      X_arch = X(ft, g, :);
+      % number of NaN
+      nans(ft, g)     = varType(sum(isnan(X_arch)));
+      % number of +Inf
+      infplus(ft, g)  = varType(sum(isinf(X_arch) & X_arch > 0));
+      % number of -Inf
+      infminus(ft, g) = varType(sum(isinf(X_arch) & X_arch < 0));
+      % histogram
+      [N, edges] = histcounts(X_arch);
+      % check maximal size
+      if numel(N) < maxBins
+        histVals(ft, g, 1:numel(N)) = N;
+      else
+        [histVals(ft, g, :), edges] = histcounts(X_arch, maxBins);
+      end
+      % check one value case
+      if numel(N) == 1 && N > 1 && all(X_arch(1) == X_arch)
+        histEdges(ft, g, 1) = X_arch(1);
+        histEdges(ft, g, 2) = NaN;
+      else
+        histEdges(ft, g, 1) = edges(1);
+        histEdges(ft, g, 2) = edges(end);
+      end
+    end
+  end
+
+  % reduce histVals size
+  allZeroId = find( sum(sum(histVals, 1), 2) == 0, 1, 'first');
+  histVals = histVals(:, :, 1:allZeroId-1);
 end
