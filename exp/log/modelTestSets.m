@@ -122,7 +122,7 @@ function ds = modelTestSets(exp_id, fun, dim, inst, varargin)
 
   if opts.isForFeatures
     % create folder for metafeatures
-    mftsFolder = fullfile(opts.exppath_short, exp_id, 'sampled_metafeatures');
+    mftsFolder = fullfile(outputDir, 'sampled_metafeatures');
     [~, ~] = mkdir(mftsFolder);
   end
 
