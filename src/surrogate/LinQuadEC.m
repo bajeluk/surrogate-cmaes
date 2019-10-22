@@ -46,7 +46,6 @@ classdef LinQuadEC < EvolutionControl & Observable
     function obj = LinQuadEC(surrogateOpts, varargin)
     % constructor
       obj@Observable();
-      obj.model = [];
       obj.pop = [];
       obj.counteval = 0;
       obj.surrogateOpts = surrogateOpts;
@@ -129,7 +128,7 @@ classdef LinQuadEC < EvolutionControl & Observable
       end
 
       % if a new model is used, find appropriate training set and train it:
-      if (obj.modelAge == 0)
+      if (isempty(obj.model))
 
         minTrainSize = obj.newModel.getNTrainData();
 
@@ -168,23 +167,28 @@ classdef LinQuadEC < EvolutionControl & Observable
       end
 
      
-      obj.pop = Population(lambda, dim);  
       % sample new population of lambda points out of which will be chosen
       % later in this generation
       nLambdaRest = lambda - obj.pop.nPoints;
       [xExtend, xExtendValid, zExtend] = ...
           sampleCmaesNoFitness(obj.cmaesState.sigma, nLambdaRest, obj.cmaesState, sampleOpts, obj.individualToInject);
+      
+      evaluated = obj.pop.nPoints;
+      k = evaluated;
+      
+      
       % add these points into Population without valid f-value (marked as notEvaluated)
       phase = 4;
       obj.pop = obj.pop.addPoints(xExtendValid, NaN(1,nLambdaRest), xExtend, zExtend, 0, phase);
 
-      if (obj.modelAge == 0)
+      if (isempty(obj.model))
         % (first) model training
         X_tr = [xTrain; obj.pop.getOriginalX()'];
         y_tr = [yTrain; obj.pop.getOriginalY()'];
         obj.newModel = obj.newModel.train(X_tr, y_tr, obj.cmaesState, sampleOpts, obj.archive, obj.pop);
         if (obj.newModel.isTrained())
           obj = obj.updateModelArchive(obj.newModel, obj.modelAge);
+          obj.model = obj.newModel;
         else
           [obj, ok] = obj.tryOldModel();
           if (~ok)
@@ -194,19 +198,18 @@ classdef LinQuadEC < EvolutionControl & Observable
             return;
           end
         end
-
       end  % if (obj.modelAge == 0)
-
-      obj.model = obj.newModel;
       
       
       %modelPredictions = obj.newModel.modelPredict(obj.pop.x');
       %[sortedModelPredictions, sortedModelPredictionsIndexes] = sort(modelPredictions);
-      k = floor(1 + lambda*0.02);
-      currIndex = 1;
-      evaluated = 0;
+      
+      if (k == 0) 
+        k = floor(1 + lambda*0.02);
+      end
+
       while(evaluated < lambda)
-          [~, sortedModelPredictionsIndexes] = sort(obj.newModel.modelPredict(obj.pop.x'));
+          [sortedModelPredictions, sortedModelPredictionsIndexes] = sort(obj.model.predict(obj.pop.x'));
           firstKIndexes = sortedModelPredictionsIndexes(1:k);
           i = 1;
           while evaluated < k
@@ -227,28 +230,16 @@ classdef LinQuadEC < EvolutionControl & Observable
           end
           obj.archive.sortLast(k);
           
-          %evalCount = k - (currIndex - 1);
-          
-          %evalIndexes = sortedModelPredictionsIndexes(currIndex:currIndex + evalCount - 1);
-          
-          %toEval = obj.pop.x(:, evalIndexes);
-          %[y, arx, x, arz, obj.counteval] = ...
-          %  sampleCmaesOnlyFitness(toEval, toEval, toEval, obj.cmaesState.sigma, evalCount, ...
-          %  obj.counteval, obj.cmaesState, sampleOpts, 'Archive', obj.archive, varargin{:});
-          %obj.archive.save(x', y', obj.cmaesState.countiter);
-          %obj.archive.sortLast(k);
-          
-          %logicalIndexes = false(1, lambda);
-          %logicalIndexes(evalIndexes) = true;
-          %obj.pop = obj.pop.updateYValue(x, y, evalCount, phase, logicalIndexes);
-          
-          %err = obj.calcKendallError(k);
           obj.newModel = obj.newModel.train([], [], obj.cmaesState, sampleOpts, obj.archive, obj.pop);
-          obj.model = obj.newModel;
-          err = obj.calcKendallError(k);
-          if err >= 0.85
-            break;
+          
+          if obj.newModel.isTrained()
+            obj.model = obj.newModel;
+            err = obj.calcKendallError(k);
+            if err >= 0.85
+                break;
+            end
           end
+          
           %currIndex = currIndex + evalCount;
           k = ceil(k*1.5);
           if k > lambda
@@ -274,13 +265,13 @@ classdef LinQuadEC < EvolutionControl & Observable
             return;
       else
           % Model is good enough to evaluate whole population
-          modelPredictions = obj.newModel.modelPredict(obj.pop.x');
+          modelPredictions = obj.model.predict(obj.pop.x');
           offset = min(obj.pop.getOriginalY) - min(modelPredictions);
-          modelPredictions = modelPredictions + offset + 000001*abs(offset);
+          modelPredictions = modelPredictions + offset + 0.000001*abs(offset);
           obj.pop = obj.pop.updateYValue([], modelPredictions, 0, phase, true(1, lambda));
           %obj.pop.origEvaled = false(1, lambda);
           [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
-                = obj.finalizeGeneration(sampleOpts, varargin{:});
+                 = obj.finalizeGeneration(sampleOpts, varargin{:});
           return;
           
       end
@@ -300,9 +291,13 @@ classdef LinQuadEC < EvolutionControl & Observable
         valuesToTestCnt = min(archiveSize, valuesToTestCnt);
         
         X = obj.archive.X(archiveSize:-1:(archiveSize - valuesToTestCnt + 1), :);
-        modelPrediction = obj.newModel.predict(X);
+        modelPrediction = obj.model.predict(X);
         y = obj.archive.y(archiveSize:-1:(archiveSize - valuesToTestCnt + 1));
-        err = corr(modelPrediction, y, 'type', 'Kendall');
+        try
+            err = corr(modelPrediction, y, 'type', 'Kendall');
+        catch
+            display(err);
+        end
     end
 
 
@@ -552,7 +547,7 @@ classdef LinQuadEC < EvolutionControl & Observable
       pointsEvaluated = sum(obj.pop.origEvaled);
       pointsToReevaluate = obj.archive.X(end-pointsEvaluated+1:end, :);
       yOriginal = obj.archive.y(end-pointsEvaluated+1:end);
-      yReevaled = obj.model.modelPredict(pointsToReevaluate);
+      yReevaled = obj.model.predict(pointsToReevaluate);
       
       % for RMSE and Kendall, get all original-evaled y's except presampled
       %isOriginalAfterPresample = obj.pop.origEvaled & obj.pop.phase ~= 0;
