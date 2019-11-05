@@ -49,7 +49,7 @@ function ft = feature_ela_distribution(~, y, settings)
       ft.skewness = real(skewness(y, 0));
     case 3
       % skewness according to R-package e1071 v1.6-8 skewness type 3
-      ft.skewness = ((n-1)/n)^(3/2) * real(skewness(y, 1));
+      ft.skewness = real( ((n-1)/n)^(3/2) * skewness(y, 1) );
     otherwise
       error('Wrong skewness_type')
   end
