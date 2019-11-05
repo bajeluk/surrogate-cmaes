@@ -136,10 +136,14 @@ function ds = modelTestSets(exp_id, fun, dim, inst, varargin)
   % TODO: should also be user-specified and restricted to dataset
   modelSettings = restricToDataset(modelSettings, exp_model_settings, 'Model settings');
 
-  IDsPerInstance = ...
-    (prod(arrayfun(@(s) length(s.values), exp_par.bbParamDef)) / (length(exp_fun)*length(exp_dim))) * ...
-    prod(arrayfun(@(s) length(s.values), exp_par.cmParamDef)) * ...
-    prod(arrayfun(@(s) length(s.values), exp_par.sgParamDef));
+  if isfile(opts.paramsMatFile)
+    IDsPerInstance = ...
+      (prod(arrayfun(@(s) length(s.values), exp_par.bbParamDef)) / (length(exp_fun)*length(exp_dim))) * ...
+       prod(arrayfun(@(s) length(s.values), exp_par.cmParamDef)) * ...
+       prod(arrayfun(@(s) length(s.values), exp_par.sgParamDef));
+  else
+    IDsPerInstance = 1;
+  end
 
   assert(~isempty(inst), 'There are no instances to process. Exitting.');
 
@@ -153,9 +157,21 @@ function ds = modelTestSets(exp_id, fun, dim, inst, varargin)
   if (exist(opts.datasetFile, 'file'))
     fprintf('The dataset file "%s" already existed.\n   Copying to "%s.bak".\n', opts.datasetFile, opts.datasetFile);
     copyfile(opts.datasetFile, [opts.datasetFile '.bak']);
-    f_ds = load(opts.datasetFile);
-    if (isfield(f_ds, 'ds') && ~isempty(f_ds.ds))
+    % try loading dataset file
+    loadIter = 1;
+    loaded = false;
+    while ~loaded && loadIter < 101
+      try
+        f_ds = load(opts.datasetFile);
+        loaded = true;
+      catch
+        loadIter = loadIter + 1;
+      end
+    end
+    if loaded && (isfield(f_ds, 'ds') && ~isempty(f_ds.ds))
       is_ds_loaded = true;
+    else
+      f_ds = struct('ds', {{}}, 'fun', {[]}, 'dim', {[]}, 'inst', {[]}, 'modelSettings', {[]}, 'maxEval', {opts.maxEval});
     end
   else
     f_ds = struct('ds', {{}}, 'fun', {[]}, 'dim', {[]}, 'inst', {[]}, 'modelSettings', {[]}, 'maxEval', {opts.maxEval});

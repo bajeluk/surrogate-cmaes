@@ -8,6 +8,7 @@
 
 FNAME = metacentrum_task_matlab
 MODEL = metacentrum_testmodels
+SETS = metacentrum_modeltestsets
 METALEARN = metacentrum_metalearn
 DESTDIR = exp
 
@@ -21,6 +22,9 @@ OUT = $(DESTDIR)/$(FNAME)
 SRC_MODEL = exp/$(MODEL).m
 OUT_MODEL = $(DESTDIR)/$(MODEL)
 
+SRC_SETS = exp/$(SETS).m
+OUT_SETS = $(DESTDIR)/$(SETS)
+
 SRC_METALEARN = exp/$(METALEARN).m
 OUT_METALEARN = $(DESTDIR)/$(METALEARN)
 
@@ -32,11 +36,17 @@ $(OUT_MODEL): 	$(SRC_MODEL) $(OTHERS) exp/experiments/exp_*.m
 	$(MATLAB_COMPILER) -m $(MC_FLAGS) $(MC_INCLUDE) -o $(MODEL) $<
 	mv $(MODEL) $(DESTDIR)
 
+$(OUT_SETS): $(SRC_SETS) $(OTHERS) exp/experiments/exp_*.m
+	$(MATLAB_COMPILER) -m $(MC_FLAGS) $(MC_INCLUDE) -o $(SETS) $<
+	mv $(SETS) $(DESTDIR)
+
 $(OUT_METALEARN):  $(SRC_METALEARN) $(OTHERS) exp/experiments/exp_metaLearn*.m
 	$(MATLAB_COMPILER) -m $(MC_FLAGS) $(MC_INCLUDE) -o $(METALEARN) $<
 	mv $(METALEARN) $(DESTDIR)
 
 model:	$(OUT_MODEL)
+
+sets:   $(OUT_SETS)
 
 metalearn: $(OUT_METALEARN)
 
