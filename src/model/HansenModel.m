@@ -28,6 +28,8 @@ classdef HansenModel < Model
             % constructor
             assert(size(xMean,1) == 1, 'HansenModel (constructor): xMean is not a row-vector.');
             obj.options = modelOptions;
+            
+            obj.options.maxScalingFactor = defopts(obj.options, 'maxScalingFactor', 1);
       
             % computed values
             obj.useShift  = defopts(obj.options, 'useShift', false);
@@ -66,6 +68,7 @@ classdef HansenModel < Model
             
             [points, ~] = size(y);
             weights = linspace(obj.options.maxScalingFactor, 1, points);
+           
             scaledY = weights' .* y;
             
             scaledZ = Z .* weights';
