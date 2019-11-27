@@ -335,14 +335,17 @@ function res = getSingleDataMF(ds, opts)
     end
   end
   
+  % result name
+  [~, resFname, ~] = fileparts(opts.output);
+  
   % paralel computation
   if opts.usePar
     vals = cell(nGen, nArch);
     parfor iag = 1:nGen*nArch
       [g, a] = ind2sub([nGen, nArch], iag);
       [ft{iag}, vals{iag}] = oneMftsGeneration(ds, opts, g, a, generations, useFeat);
-      fprintf('%s  Archive %d (%d/%d)  Generation %d (%d/%d) %s\n', ...
-        req(40), a, a, nArch, generations(g), g, nGen, req(40))
+      fprintf('%s: Archive %d (%d/%d)  Generation %d (%d/%d) %s\n', ...
+        resFname, a, a, nArch, generations(g), g, nGen, req(10))
     end
     values = cell2mat(reshape(vals, [1, nGen, nArch]));
   % sequential computation

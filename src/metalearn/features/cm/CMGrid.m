@@ -110,9 +110,15 @@ classdef CMGrid
           blockUB(d, 1:obj.blocks(d)-1) = blockSize';
           blockUB(isnan(blockUB)) = obj.ub(d);
         end
-        % for each point find containing cells 
+        % for each point find containing cells
         for i = 1:nData
-          pointCellId(i, d) = find(X(i, d) <= blockUB(d, 1:obj.blocks(d)), 1, 'first');
+          pcId = find(X(i, d) <= blockUB(d, 1:obj.blocks(d)), 1, 'first');
+          % no id found -> use last block due to computation imprecision
+          if isempty(pcId)
+            pointCellId(i, d) = obj.blocks(d);
+          else
+            pointCellId(i, d) = pcId;
+          end
         end
       end
       

@@ -462,7 +462,26 @@ function testBasic(testCase)
   % test empty input
   X = [];
   y = [];
-  feature_basic(X, y);
+  ft = feature_basic(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, ~isempty(ft.(featFields{m})))
+  end
+
+  % test NaN input
+  X = rand(30, dim);
+  y = NaN(30, 1);
+  ft = feature_basic(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, ~isempty(ft.(featFields{m})))
+  end
+
+  % test small data differences
+  X = eps*rand(30, dim);
+  y = eps*rand(30, 1);
+  ft = feature_basic(X, y);
+  for m = 1:numel(featFields)
+    verifyTrue(testCase, ~isempty(ft.(featFields{m})))
+  end
 end
 
 function testCMA(testCase)
