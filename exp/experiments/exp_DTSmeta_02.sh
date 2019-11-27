@@ -52,25 +52,76 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 #INST="[11 12 13 14 15]"
 #IDS="[1 2 3 4 5 6 8 9]" # 7 is ADD kernel
 
-ID=1
+DIMS=(2 3 5 10 20)
+FUNCS=`seq 1 24`
+INSTS=(11 12 13 14 15)
 
-for DIM in 2 3 5 10 20; do
-  case $DIM in
-    [235])
-      QUEUE="336:00:00"
-      ;;
-    10)
-      QUEUE="336:00:00"
-      ;;
-    *)
-      QUEUE="720:00:00"
-      ;;
-  esac
+IDS="$*"
 
-  for FUNC in `seq 1 3`; do
-   for IN in `seq 11 15`; do
-      INST="[${IN}]"
-      subtask
-   #done
-  #done
-done
+# no IDS as input -> run default: all settings
+if [ -z "${IDS}" ]; then
+
+  ID=1
+
+  for DIM in ${DIMS[@]}; do
+    case $DIM in
+      [235])
+        QUEUE="336:00:00"
+        ;;
+      10)
+        QUEUE="336:00:00"
+        ;;
+      *)
+        QUEUE="720:00:00"
+        ;;
+    esac
+
+    for FUNC in ${FUNCS[@]}; do
+      for IN in ${INSTS[@]}; do
+        INST="[${IN}]"
+        # echo subtask ID=$ID DIM=$DIM FUNC=$FUNC INST=$INST QUEUE=$QUEUE
+        subtask 
+      done
+    done
+  done
+
+# IDS given as input
+else
+
+  for ID in ${IDS[@]}; do
+  
+    # dimension
+    if [ $[$ID%120] -eq 0 ]; then
+      DIM=${DIMS[ $[$ID/120 - 1] ]}
+    else
+      DIM=${DIMS[ $[$ID/120] ]}
+    fi
+    # function
+    if [ $[$ID%120%5] -eq 0 ]; then
+      FUNC=$[$ID%120/5]
+    else
+      FUNC=$[$ID%120/5 + 1]
+    fi
+    # instance number
+    INST="[${INSTS[ $[$ID%5 - 1] ]}]"
+
+    # queue according to dimension
+    case $DIM in
+      [235])
+        QUEUE="336:00:00"
+        ;;
+      10)
+        QUEUE="336:00:00"
+        ;;
+      *)
+        QUEUE="720:00:00"
+        ;;
+    esac
+
+    # submit task
+    echo subtask ID=$ID:  DIM=$DIM FUNC=$FUNC INST=$INST QUEUE=$QUEUE
+    subtask
+
+  done
+
+fi
