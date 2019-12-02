@@ -53,7 +53,7 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 #IDS="[1 2 3 4 5 6 8 9]" # 7 is ADD kernel
 
 DIMS=(2 3 5 10 20)
-FUNCS=`seq 1 24`
+FUNCS=({1..24})
 INSTS=(11 12 13 14 15)
 
 IDS="$*"
@@ -98,9 +98,9 @@ else
     fi
     # function
     if [ $[$ID%120%5] -eq 0 ]; then
-      FUNC=$[$ID%120/5]
+      FUNC=${FUNCS[ $[$ID%120/5 - 1] ]}
     else
-      FUNC=$[$ID%120/5 + 1]
+      FUNC=${FUNCS[ $[$ID%120/5] ]}
     fi
     # instance number
     INST="[${INSTS[ $[$ID%5 - 1] ]}]"
