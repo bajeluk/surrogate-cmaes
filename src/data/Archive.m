@@ -38,6 +38,9 @@ classdef Archive < handle
     function obj = sortLast(obj, count)
         [points, ~] = size(obj.y);
         breakPoint = points - count;
+        if breakPoint < 0
+            breakPoint = 0;
+        end
         toSort = obj.y(breakPoint + 1:points);
         [sortedVales, sortedIdxs] = sort(toSort, 'descend');
         
