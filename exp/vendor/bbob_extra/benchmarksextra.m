@@ -203,6 +203,8 @@ function [Fval, Ftrue] = f201(x, DIM, ntrial)
     minVal = min(min(dataset));
     maxVal = max(max(dataset));
     switch DIM
+        case 4
+            Fopt = 6.81370600000e+02;
         case 8
             Fopt = 152.347951760358;
         case 12
@@ -314,6 +316,8 @@ function [Fval, Ftrue] = f202(x, DIM, ntrial)
     
     %Known bests
     switch DIM
+        case 2
+            Fopt = 2.44373866667e+05;
         case 4
             Fopt = 89337.832142857;
         case 6
@@ -442,6 +446,8 @@ function [Fval, Ftrue] = f203(x, DIM, ntrial)
     maxVal = max(max(dataset));
     
     switch DIM
+        case 3
+            Fopt = 2.18591041483e+12;
         case 6
             Fopt = 6.025472220938822e+11;
         case 9
