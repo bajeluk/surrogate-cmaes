@@ -2,7 +2,7 @@ function [] = plot_help()
     handles = benchmarksextra('handles');
     testFn = handles(6);
     testFn = cell2mat(testFn);
-    testFn('init', [], 1);
+    testFn('init', [], 4);
     func = @(x, y) testFn([x; y]);
     
     res = [];

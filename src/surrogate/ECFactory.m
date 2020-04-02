@@ -16,6 +16,8 @@ classdef ECFactory
           obj = NoneEC(surrogateOpts);
         case 'linquad'
           obj = LinQuadEC(surrogateOpts);
+        case 'lmm'
+          obj = LmmEC(surrogateOpts);
         otherwise
           warning(['ECFactory.createEC: ', surrogateOpts.evoControl, ' -- no such evolution control available']);
           obj = [];
