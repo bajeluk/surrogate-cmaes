@@ -107,8 +107,17 @@ function reportFile = generateReport(expFolder, varargin)
       tdatSplit = strfind(tdatFiles, '_');
       BBfunc{f} = arrayfun(@(x) str2double(tdatFiles{x}(1, tdatSplit{x}(end-1)+2:tdatSplit{x}(end)-1)), ...
         1:length(tdatSplit)); % function numbers
+      if isnan(BBfunc{f})
+        BBfunc{f} = arrayfun(@(x) str2double(tdatFiles{x}(1, tdatSplit{x}(end-2)+2:tdatSplit{x}(end-1)-1)), ...
+        1:length(tdatSplit)); % function numbers
+      
+      end
       dims{f} = arrayfun(@(x) str2double(tdatFiles{x}(1, tdatSplit{x}(end)+4:end-5)), ...
         1:length(tdatSplit)); % dimension numbers
+      if isnan(dims{f})
+        dims{f} = arrayfun(@(x) str2double(tdatFiles{x}(1, tdatSplit{x}(end-1)+4:tdatSplit{x}(end)-1)), ...
+        1:length(tdatSplit)); % dimension numbers
+      end
     end
   end
   if isempty(paramDimensions)

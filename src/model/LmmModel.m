@@ -42,14 +42,13 @@ classdef LmmModel < Model
             obj.predictionType = defopts(modelOptions, 'predictionType', 'fValues');
             obj.transformCoordinates = defopts(modelOptions, 'transformCoordinates', false);
             
-            obj.modelTerms = buildcompletemodel(2, obj.dim);
             %Turn off warnings
             warning('off','MATLAB:rankDeficientMatrix')
         end
         
         function nData = getNTrainData(obj)
             % returns the required number of data for training the model)
-            nData = obj.dim*(obj.dim+3)/2 + 2;
+            nData = obj.dim*(obj.dim+3)/2 + 3;
         end
         
         function obj = trainModel(obj, X, y, xMean, generation, archive)
@@ -65,12 +64,14 @@ classdef LmmModel < Model
             % really be trained
             [pointsInArchive, ~] = size(archive.X);
             obj.archive = archive;
-            obj.M = calculateM(obj, obj.stateVariables);
-            obj.knn = ceil(min(2*getNTrainData(obj)-2, sqrt(pointsInArchive * (getNTrainData(obj) - 1 ))));
+            obj.knn = ceil(min(2*(getNTrainData(obj)-2), sqrt(pointsInArchive * (getNTrainData(obj) - 2))));
           
         end
 
         function [y, sd2] = modelPredict(obj, X)
+            %sigma^2*D.^2,B,options.kernel,knn
+            
+            obj.M = calculateM(obj, obj.stateVariables);
             [points, dim] = size(X);
             y = [];
             for i = 1:points
@@ -136,34 +137,61 @@ classdef LmmModel < Model
         function prediction = predictQueryPoint(obj, x, y, zValues, distances)
             W = [];
             for i = 1:obj.knn
-                W = [W; sqrt(kernel(obj, (distances(i) / distances(obj.knn))))];
+                W = [W; kernel(obj, (distances(i) / distances(obj.knn)))];
             end
             W = diag(W);
             
             [points, ~] = size(x);
-            [terms, dim] = size(obj.modelTerms);
-            Z = zeros(points, terms);
-            for i = 1:terms
-                for j = 1:dim
-                    exponent = obj.modelTerms(i, j);
-                    if exponent > 0
-                        res = zValues(j, :).^exponent;
-                        Z(:, i) = Z(:, i) + transpose(res);
-                    end
-                end
-            end
-            Z(:, terms) = 1;
+            dim = obj.dim;
             
-            Beta = (W*Z)\(W*y);
-            prediction = Beta(terms);
+            zValues = zValues';
+            Ztilda = ones(points, dim*(dim+3)/2+1);
+            jj=1;
+            Ztilda(:, jj:jj+dim-1) = zValues.^2;
+            jj = jj + dim;
+
+            for j=2:dim
+                Ztilda(:, jj:jj+j-2) = repmat(2 * zValues(:, j), 1, j-1) .* zValues(:, 1:j-1);
+                jj = jj + j - 1;
+            end
+    
+            Ztilda(:, jj:jj+dim-1) = zValues;
+            jj = jj + dim;
+
+   
+
+            
+            
+            
+            
+            %Z2 = ones(points, terms);
+            %Z2(:, 1:dim) = zValues'.^2;
+            %i = dim+1;
+            %for j=2:dim
+            %    Z2(:, i) = zValues(j, :) .* 2 .* zValues(j-1, :);
+            %    i = i + 1;
+            %end
+            %Z2(:, i:i+dim-1) = zValues';
+
+            wz = sqrt(diag(W)) .* Ztilda;
+            wy = sqrt(diag(W)) .* y;
+            
+            Beta = wz \ wy;
+            %Beta = (W*Z)\(W*y);
+            prediction = Beta(dim*(dim+3)/2+1);
         end
         
         function M = calculateM(obj, cmaesVariables)
             D = diag(cmaesVariables.diagD);
-            B = cmaesVariables.BD * inv(D);
-            Dpow = D^(-1/2);
-            Btrans = transpose(B);
-            M = (1 / cmaesVariables.sigma) * Dpow * Btrans;
+            B = cmaesVariables.BD / D;
+            
+            
+            
+            M = diag(1./sqrt(diag(obj.stateVariables.sigma^2*D.^2)))*B'; %'
+            
+            %Dpow = D^(-1/2);
+            %Btrans = transpose(B);
+            %M = (1 / cmaesVariables.sigma) * Dpow * Btrans;
         end
     end
 end

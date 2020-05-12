@@ -220,7 +220,7 @@ classdef LmmEC < EvolutionControl & Observable
           toEvaluate = toEvaluate + obj.nB;
           [obj, evaluated] = obj.evaluateAndTrainNewModel(toEvaluate, evaluated, sampleOpts, varargin, lambda, phase);
           [afterSortedModelPredictions, afterSortedModelPredictionsIndexes] = sort(obj.model.predict(obj.pop.x'));
-          modelError = sum(abs(beforeSortedModelPredictionsIndexes - afterSortedModelPredictionsIndexes));
+          modelError = sum(abs(beforeSortedModelPredictionsIndexes(1:floor(lambda/2)) - afterSortedModelPredictionsIndexes(1:floor(lambda/2))));
           
           beforeSortedModelPredictionsIndexes = afterSortedModelPredictionsIndexes;
           

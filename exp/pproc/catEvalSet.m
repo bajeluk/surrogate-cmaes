@@ -18,7 +18,7 @@ function [evals, settings, results] = catEvalSet(folders, funcSet, maxFE)
 % See Also:
 %   catEvalSet, dataReady, bbobDataReady
   
-  evals = {};
+  bobbevals = {};
   settings = {};
   if nargin < 3
     if nargin < 2

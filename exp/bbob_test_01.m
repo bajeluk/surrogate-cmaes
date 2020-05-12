@@ -48,6 +48,7 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
   t0 = clock;
   % Initialize random number generator
   exp_settings.seed = myeval(defopts(bbParams, 'seed', 'floor(sum(100 * clock()))'));
+  rng('default');
   rng(exp_settings.seed);
 
   instances = bbParams.instances;

@@ -82,7 +82,13 @@ function data = bbobDataReady(datapath, funcSet, maxFE)
       % extract function and dimension number
       datSplit = strsplit(rowSplit{1}, '_');
       f = str2double(datSplit{end-1}(2:end));
+      if isnan(f)
+        f = str2double(datSplit{end-2}(2:end));
+      end
       d = str2double(datSplit{end}(4:end-4));
+      if isnan(d)
+        d = str2double(datSplit{end-1}(4:end));
+      end
       % numbers of instances
       instanceNum = cellfun(@(x) str2double(x(1 : strfind(x, ':')-1)), rowSplit(2:end));
       if exist(datFile, 'file') && any(funcSet.BBfunc == f) && any(funcSet.dims == d)

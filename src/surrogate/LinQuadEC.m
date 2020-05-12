@@ -180,6 +180,7 @@ classdef LinQuadEC < EvolutionControl & Observable
       % add these points into Population without valid f-value (marked as notEvaluated)
       phase = 4;
       obj.pop = obj.pop.addPoints(xExtendValid, NaN(1,nLambdaRest), xExtend, zExtend, 0, phase);
+      %obj.pop.x = obj.transform(obj.pop.arx);
 
       if (isempty(obj.model))
         % (first) model training
@@ -207,7 +208,8 @@ classdef LinQuadEC < EvolutionControl & Observable
       if (k == 0) 
         k = floor(1 + lambda*0.02);
       end
-
+      kUntrimmed = k;
+      
       while(evaluated < lambda)
           [sortedModelPredictions, sortedModelPredictionsIndexes] = sort(obj.model.predict(obj.pop.x'));
           firstKIndexes = sortedModelPredictionsIndexes(1:k);
@@ -217,18 +219,21 @@ classdef LinQuadEC < EvolutionControl & Observable
               i = i + 1;
               if ~obj.pop.isEvaled(idxToEval)
                   toEval = obj.pop.x(:, idxToEval);
+                  toEvalArx = obj.pop.arx(:, idxToEval);
+                  toEvalArz = obj.pop.arz(:, idxToEval);
                   [y, arx, x, arz, obj.counteval] = ...
-                    sampleCmaesOnlyFitness(toEval, toEval, toEval, obj.cmaesState.sigma, 1, ...
+                    sampleCmaesOnlyFitness(toEvalArx, toEval, toEvalArz, obj.cmaesState.sigma, 1, ...
                     obj.counteval, obj.cmaesState, sampleOpts, 'Archive', obj.archive, varargin{:});
+                  
                   obj.archive.save(x', y', obj.cmaesState.countiter);
                   evaluated = evaluated + 1;
                   
                   logicalIndexes = false(1, lambda);
                   logicalIndexes(idxToEval) = true;
-                  obj.pop = obj.pop.updateYValue(x, y, 1, phase, logicalIndexes);
+                  obj.pop = obj.pop.updateYValue(toEval, y, 1, phase, logicalIndexes);
               end             
           end
-          obj.archive.sortLast(k);
+          obj.archive.sortLast(kUntrimmed);
           
           obj.newModel = obj.newModel.train([], [], obj.cmaesState, sampleOpts, obj.archive, obj.pop);
           
@@ -242,6 +247,7 @@ classdef LinQuadEC < EvolutionControl & Observable
           
           %currIndex = currIndex + evalCount;
           k = ceil(k*1.5);
+          kUntrimmed = k;
           if k > lambda
             k = lambda;
           end
@@ -249,12 +255,8 @@ classdef LinQuadEC < EvolutionControl & Observable
       
       if obj.useInject
         modelMinimum = obj.model.minimumX(obj.archive);
-        rescaling_factor = normrnd(0, 1, [1, dim]);
-        rescaling_factor = rescaling_factor .^ 2;
-        rescaling_factor = sum(rescaling_factor);
-        rescaling_factor = rescaling_factor .^ 0.5;
-        rescaling_factor = rescaling_factor / obj.mahalanobisNorm(modelMinimum);
-        obj.individualToInject = modelMinimum * (rescaling_factor / obj.cmaesState.sigma);
+        obj.individualToInject = modelMinimum;
+        
       end
       
       
@@ -281,8 +283,36 @@ classdef LinQuadEC < EvolutionControl & Observable
     function res = mahalanobisNorm(obj, x)
         D = diag(obj.cmaesState.diagD);
         B = obj.cmaesState.BD * inv(D);
-        res = sum(((B * x') ./ obj.cmaesState.diagD) .^2 ) .^ 0.5;
+        res = sum(((B' * x') ./ obj.cmaesState.diagD) .^2 ) .^ 0.5;
         res = res / obj.cmaesState.sigma;
+    end
+    
+    function [transformed] = transform(obj, x)
+        transformed = arrayfun(@(p) transformSingle(obj, p), x);
+    end
+    
+    function x = transformSingle(obj, x)
+        lb = -5;
+        ub = 5;
+        al = 0.3;
+        au = 0.3;
+        if (x < lb - 2 * al - (ub -lb) / 2.0 || (x > ub + 2 * au + (ub - lb) / 2.0))
+            r = 2 * (ub - lb + al + au);
+            s = lb - 2 * al - (ub - lb) / 2.0;
+            x = x - (r * ((x - s) / r));
+        end
+        if (x > ub + au)
+            x = x - (2 * (x - ub - au));
+        end
+        if (x < lb - al)
+            x = x + (2 * (lb - al - x));
+        end
+        if (x < lb + al)
+            x = lb + (x - (lb - al))^2 / 4 / al;
+        end
+        if (x > ub - au)
+            x = ub - (x - (ub + au))^2 / 4 / au;
+        end
     end
     
     function err = calcKendallError(obj, k)

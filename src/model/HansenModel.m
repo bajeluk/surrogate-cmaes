@@ -116,7 +116,10 @@ classdef HansenModel < Model
                 for j=1:cols
                     for k=1:rows
                         if obj.modelTerms(k, j) ~= 0
-                            x(i, j) = x(i, j) + X(i, k).^obj.modelTerms(k, j);
+                            if (x(i, j)) == 0
+                                x(i, j) = 1;
+                            end
+                            x(i, j) = x(i, j) * X(i, k).^obj.modelTerms(k, j);
                         end
                     end
                 end
@@ -131,11 +134,9 @@ classdef HansenModel < Model
         
         function [x] = minimumX(obj, archive)
             if (obj.type == "linear")
-                [~, indexes] = sort(archive.y);
-                best = archive.X(indexes(1), :);
-                x = best - 2 * transpose(obj.modelParams(2:end));
+                x = archive.X(end, :) - 2 * transpose(obj.modelParams(2:end));
             else
-                k = 2 * obj.dim + 1;
+                k = 2 * obj.dim + 2;
                 hessian = zeros(obj.dim, obj.dim);
                 for i = [1:obj.dim]
                     hessian(i, i) = obj.modelParams(i + obj.dim + 1);
@@ -148,7 +149,7 @@ classdef HansenModel < Model
                     end
                 end
                 baseCoeff = obj.modelParams(2:obj.dim + 1);
-                x = (diag(pinv(hessian)) .* (baseCoeff / -2))';
+                x = (pinv(hessian) * (baseCoeff / -2))';
             end
         end
     end

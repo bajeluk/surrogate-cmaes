@@ -295,7 +295,18 @@ classdef Archive < handle
           [X, y] = obj.getLatestData(trainsetSizeMax);
           if modelOptions.latestTruncateRatio > 0 && modelOptions.latestTruncateRatio < 1
             [points, ~] = size(X);
-            points = ceil(points * modelOptions.latestTruncateRatio);
+            
+            currComplexity = obj.dim + 1;
+            if points * modelOptions.latestTruncateRatio >= (2*obj.dim + 1) * 1.1
+                currComplexity = (2*obj.dim + 1);
+            elseif points * modelOptions.latestTruncateRatio >= (ceil(obj.dim * (obj.dim + 3) / 2) + 1) * 1.1
+                currComplexity = (ceil(obj.dim * (obj.dim + 3) / 2) + 1);
+            end
+            
+            n = floor(max(currComplexity + 2, modelOptions.latestTruncateRatio * (points + 1)));
+            points = min(points, n);
+            
+            %points = ceil((points + 1) * modelOptions.latestTruncateRatio);
             
             [sortedValues, sortedIndexes] = sort(y);
             X = X(sortedIndexes(1:points), :);
