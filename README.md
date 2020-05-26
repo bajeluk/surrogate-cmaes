@@ -221,6 +221,39 @@ During the second part of the `metacentrum_master_template.sh` run, the script `
 
 **Warning**. Especially **setting the environment variable `$MCR_CACHE_ROOT`** is essential to be set into the particular computing node's local drive (`$SCRATCHDIR` in Metacentrum) -- it is done in the `exp/bash_settings.sh` script. Otherwise, **extraordinary overuse** of the **shared NFS filesystem** will practically disallow all the particular Metacentrum storage from being used!!!
 
+### Experiment results ###
+
+The results of the computed experiment are stored in the `exp/experiments/[exp_id]` folder in the form of MAT-files. The name of particular MAT-file consists of the information about the experiment, function, dimension, and `task_id` of the results inside: `[exp_id]_results_[function]_[dimension]D_[task_id].mat`. The MAT-file itself can contain the following variables:
+
+- **bbParams** is a structure containing information necessary for BBOB/COCO framework (similar to **bbobParams** mentioned above).
+- **cmaes_out** is a cell-array of structures with CMA-ES parameters of individual runs as fields. The length of cell-array is equal to the number of calculated instances. The output fields are as follows (D-dimension, G-number of all generations, P-number of all evaluated points)
+    - **arstopflag** is CMA-ES arstopflag (cell).
+    - **arxvalids** are coordinates of all (original and model) evaluated points (DxP double).
+    - **BDs** are CMA-ES BD matrices for each generation (1xG cell-array of double).
+    - **countevals** are numbers of all already evaluated point using the original function for each generation (1xG integer).
+    - **diagCs** are CMA-ES C matrices for each generation (1xG cell-array of double).
+    - **diagDs** are CMA-ES D matrices for each generation (1xG cell-array of double).
+    - **evals** is the over all number of evaluations of the original fitness function (integer).
+    - **fvalues** are function values of all (original and model) evaluated points (1xP double).
+    - **generations** contains generation number for each point (1xP integer).
+    - **generationStarts** are ids of first points in **arxvalids** field of the current generation (1xG integer).
+    - **iruns** are numbers of the indepent starts (number of restarts + 1) performed from the beginning of the run (1xG integer).
+    - **lambda_hist** are all unique population sizes from the run (integer).
+    - **means** are CMA-ES mean values for each generation (DxG double).
+    - **origEvaled** are markers if the point was evaluated using the original fitness function or not (1xP boolean).
+    - **pcs** are CMA-ES c-evolution path vectors for each generation (1xG cell-array of double).
+    - **pss** are CMA-ES sigma-evolution path vectors for each generation (1xG cell-array of double).
+    - **sigmas** are CMA-ES sigma values for each generation (1xG double).
+    - **stopflag** is CMA-ES stopflag (cell).
+- **cmaesParams** are CMA-ES parameters from the experiment definition - see above (structure).
+- **exp_id** experiment identifier (string).
+- **exp_results** are overall results for individual instances (structure).
+- **exp_settings** experiment settings (structure).
+- **surrogateParams** are parameters of the surrogate model from the experiment definition - see above (structure).
+- **y_evals** contains original fitness values (and few other statistics) for (original-) evaluated points for each instance (cell-array of double).
+
+Variables comprised in the resulting file may differ according to the experiment settings. See the source code for further details.
+
 ### Experiment post-processing ###
 
 The results of the computed experiment can be reported using Matlab function `generateReport`
