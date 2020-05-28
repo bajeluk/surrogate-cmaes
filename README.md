@@ -53,7 +53,7 @@ The following settings *have to be* defined -- recommended values for BBOB/COCO 
 - **exp_description** -- short description of the experiment (string)
 - **bbobParams**
     - **dimensions** -- list of dimensions of input space which should be tested { `2,3,5,10,20` } (integer, integer...)
-    - **functions** -- list of BBOB function numbers to be tested { `cell2num(1:24)` } (integer, integer...)
+    - **functions** -- list of BBOB function numbers to be tested { `num2cell(1:24)` } (integer, integer...)
     - **opt_function** -- handle to a BBOB wrapper for the optimizer { `@opt_s_cmaes` } (function handle)
     - **instances** -- vector of instances to be tested; for BBOB final results, use the default value { `[1:5 41:50]` } (integer vector)
     - **maxfunevals** -- maximal number of (original) function evaluations -- string to be `eval`-ed in `surrogateManager()`; particularly, the `dim` parameter can be used { `'250 * dim'` } (string)
