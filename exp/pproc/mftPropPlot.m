@@ -1,7 +1,7 @@
-function mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
+function figHan = mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
 % mftPropPlot - plot metafeature property
 %
-% mftPropPlot(value, nans, inf_plus, inf_mins, settings)
+% handle = mftPropPlot(value, nans, inf_plus, inf_mins, settings)
 %
 % Input:
 %   value    - metafeature property values | double vector nObservations X
@@ -11,8 +11,18 @@ function mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
 %   inf_mins - number of -Inf values | integer vector
 %   settings - pairs of property (string) and value, or struct with 
 %              properties as fields:
-%     'MftName'   - metafeature name | string
-%     'ValueName' - name of property value | string
+%     'MftName'    - metafeature name | string
+%     'SymLegend'  - symbolic legend | boolean
+%     'ValueName'  - name of property value | string
+%     'XValues'    - values on x axis | double vector
+%     'XValuesDec' - amount of numbers to show in x-axis description |
+%                    positive integer
+%
+% Output:
+%   figHan - handle of the resulting figure | handle
+%
+% See Also:
+%   metafeaturePlot
 
   if nargin < 4
     if nargin < 3
@@ -47,10 +57,12 @@ function mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
   dimensions = defoptsi(settings, 'Dimensions', []);
   dimTypes  = defoptsi(settings, 'DimTypes', []);
   mftName = defoptsi(settings, 'MftName', 'metafeature');
+  symLegend = defoptsi(settings, 'SymLegend', true);
   defValueNames = compose('value%d', 1:nLines);
   valueNames = defoptsi(settings, 'ValueName', defValueNames);
   valueStyle = defoptsi(settings, 'ValueStyle', repmat({'-'}, 1, nLines));
   xValues = defoptsi(settings, 'XValues', plotVec);
+  xValuesDec = defoptsi(settings, 'XValuesDec', []);
   xlabelName = defoptsi(settings, 'XLabelName', 'quantile');
   
   nDims = numel(dimTypes);
@@ -79,13 +91,22 @@ function mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
     nanInfAxisId = 2;
   end
   
+  % legend symbols
+  if symLegend
+    nanSymbol = '\bullet';
+    infSymbol = '\infty';
+  else
+    nanSymbol = 'NaN';
+    infSymbol = 'Inf';
+  end
+  
   % create plot
-  figure()
+  figHan = figure();
   title(mftName)
   hax = gca;
   
   % line handle
-  h = [];
+  handle = [];
   % legend list
   legList = {};
   legListNI = {};
@@ -139,7 +160,7 @@ function mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
   hax.YAxis(valueAxisId).Color = valueColor;
   % plot individual lines
   for l = 1:nLines
-    h(end+1) = plot(plotVec, value(plotVec, l), ...
+    handle(end+1) = plot(plotVec, value(plotVec, l), ...
                 'Color', valueColor, ...
                 'LineStyle', valueStyle{l});
     legList(end+1) = valueNames(l);
@@ -148,10 +169,12 @@ function mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
   hax.YAxis(valueAxisId).Limits = [max(hax.YAxis(valueAxisId).Limits(1), 0), ...
                                    min(hax.YAxis(valueAxisId).Limits(2), 1)];
   hax.XAxis.Limits = [0, max(plotVec)];
+  hax.XAxis.TickLabels = [{num2tex(min(xValues), xValuesDec)}, ...
+                           arrayfun(@(x) num2tex(x, xValuesDec), xValues(hax.XAxis.TickValues(2:end)), 'UniformOutput', 0)];
   
   % title and axis labels
   xlabel(xlabelName)
-  ylabel('Feature value')
+  ylabel('Feature statistic')
   
   % plot NaN and Inf values
   if plotNan || plotInfP || plotInfM
@@ -168,33 +191,33 @@ function mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
     
     % plot NaNs
     if plotNan
-      legListNI(end+1) = {'0.5 NaN'};
-      h(end+1) = area(plotVec, nans, 'LineWidth', 1, ...
+      legListNI(end+1) = {['0.5 ', nanSymbol]};
+      handle(end+1) = area(plotVec, nans, 'LineWidth', 1, ...
                                       'FaceAlpha', 0.2, ...
                                       'FaceColor', nanColor, ...
                                       'EdgeColor', nanColor ...
                      );
-      yLabelList{end+1} = 'NaN';
+      yLabelList{end+1} = nanSymbol;
       hax.YAxis(nanInfAxisId).Color = nanColor;
     end
     % plot Infs
     if plotInfP
-      legListNI(end+1) = {'0.5 Inf'};
-      h(end+1) = area(plotVec, inf_plus, 'LineWidth', 1, ...
+      legListNI(end+1) = {['0.5 ', infSymbol]};
+      handle(end+1) = area(plotVec, inf_plus, 'LineWidth', 1, ...
                                          'FaceColor', infColor, ...
                                          'EdgeColor', infColor, ...
                                          'FaceAlpha', 0.2);
     end
     % plot -Infs
     if plotInfM
-      legListNI(end+1) = {'0.5 -Inf'};
-      h(end+1) = area(plotVec, inf_mins, 'LineWidth', 1, ...
+      legListNI(end+1) = {['0.5 -', infSymbol]};
+      handle(end+1) = area(plotVec, inf_mins, 'LineWidth', 1, ...
                                          'FaceColor', infColor, ...
                                          'EdgeColor', infColor, ...
                                          'FaceAlpha', 0.2);
     end
     if plotInfP || plotInfM
-      yLabelList{end+1} = 'Inf';
+      yLabelList{end+1} = infSymbol;
       hax.YAxis(nanInfAxisId).Color = infColor;
     end
     
@@ -206,7 +229,7 @@ function mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
   end
   
   % show legend
-  legend(h, [legList, legListNI])
+  legend(handle, [legList, legListNI])
   
   hold off
 
