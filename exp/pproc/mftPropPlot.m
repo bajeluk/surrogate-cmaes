@@ -11,7 +11,10 @@ function figHan = mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
 %   inf_mins - number of -Inf values | integer vector
 %   settings - pairs of property (string) and value, or struct with 
 %              properties as fields:
+%     'InfLabel'   - label to show in legend for Inf values | string
 %     'MftName'    - metafeature name | string
+%     'NanLabel'   - label to show in legend for NaN values | string
+%     'StatLabel'  - label of the y-axis for statistics | string
 %     'SymLegend'  - symbolic legend | boolean
 %     'ValueName'  - name of property value | string
 %     'XValues'    - values on x axis | double vector
@@ -57,6 +60,9 @@ function figHan = mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
   dimensions = defoptsi(settings, 'Dimensions', []);
   dimTypes  = defoptsi(settings, 'DimTypes', []);
   mftName = defoptsi(settings, 'MftName', 'metafeature');
+  infLabel = defoptsi(settings, 'InfLabel', '0.5 Inf');
+  nanLabel = defoptsi(settings, 'NanLabel', '0.5 NaN');
+  statLabel = defoptsi(settings, 'StatLabel', 'Feature statistic');
   symLegend = defoptsi(settings, 'SymLegend', true);
   defValueNames = compose('value%d', 1:nLines);
   valueNames = defoptsi(settings, 'ValueName', defValueNames);
@@ -102,7 +108,7 @@ function figHan = mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
   
   % create plot
   figHan = figure();
-  title(mftName)
+  title(mftName, 'Interpreter', 'latex')
   hax = gca;
   
   % line handle
@@ -174,7 +180,7 @@ function figHan = mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
   
   % title and axis labels
   xlabel(xlabelName)
-  ylabel('Feature statistic')
+  ylabel(statLabel)
   
   % plot NaN and Inf values
   if plotNan || plotInfP || plotInfM
@@ -191,7 +197,7 @@ function figHan = mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
     
     % plot NaNs
     if plotNan
-      legListNI(end+1) = {['0.5 ', nanSymbol]};
+      legListNI(end+1) = {nanLabel};
       handle(end+1) = area(plotVec, nans, 'LineWidth', 1, ...
                                       'FaceAlpha', 0.2, ...
                                       'FaceColor', nanColor, ...
@@ -202,7 +208,7 @@ function figHan = mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
     end
     % plot Infs
     if plotInfP
-      legListNI(end+1) = {['0.5 ', infSymbol]};
+      legListNI(end+1) = {infLabel};
       handle(end+1) = area(plotVec, inf_plus, 'LineWidth', 1, ...
                                          'FaceColor', infColor, ...
                                          'EdgeColor', infColor, ...
@@ -210,7 +216,7 @@ function figHan = mftPropPlot(value, nans, inf_plus, inf_mins, varargin)
     end
     % plot -Infs
     if plotInfM
-      legListNI(end+1) = {['0.5 -', infSymbol]};
+      legListNI(end+1) = {['-', infLabel]};
       handle(end+1) = area(plotVec, inf_mins, 'LineWidth', 1, ...
                                          'FaceColor', infColor, ...
                                          'EdgeColor', infColor, ...
