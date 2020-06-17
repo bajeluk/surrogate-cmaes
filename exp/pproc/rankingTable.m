@@ -141,13 +141,14 @@ function printTableTex(FID, table, dims, evaluations, datanames, nFunc, targetVa
   datanames = sameLength(datanames);
   % find max sums of ranks
   maxTableRanks = max(table);
+  minTableRanks = min(table);
   % data rows
   for dat = 1:numOfData
     printString = '';
     % columns
     for col = 1:nColumns
       sumRank = table(dat, col);
-      if sumRank == maxTableRanks(col)
+      if sumRank == minTableRanks(col)
         % print best data in bold
         printString = [printString, ' & ', '\textbf{', num2str(sumRank), '}'];
       else

@@ -123,6 +123,7 @@ function handle = relativeFValuesPlot(data, varargin)
   defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
   plotSet.lineSpec = defopts(settings, 'LineSpec', defaultLine);
   plotSet.drawQuantiles = defopts(settings, 'Quantiles', false(1, numOfData));
+  plotSet.TitleString = defopts(settings, 'TitleString', '');
   if length(plotSet.lineSpec) ~= numOfData && any(emptyData)
     plotSet.lineSpec = plotSet.lineSpec(~emptyData);
   end
@@ -267,7 +268,12 @@ function handle = relativePlot(data_stats, settings)
 
         % count f-values ratio
         nData = settings.maxEval;
-        actualData = NaN(nData, numel(nonEmptyId));
+        
+        if (any(settings.drawQuantiles))
+            actualData = NaN(nData, numel(nonEmptyId)*3);
+        else
+            actualData = NaN(nData, numel(nonEmptyId));
+        end
         % gather actual (function, dimension) non-empty data and fill the
         % missing values to maxEvals with the best achieved result
         for dat = 1:numel(nonEmptyId)
@@ -276,7 +282,11 @@ function handle = relativePlot(data_stats, settings)
           if numel(ds_act) < nData
             actualData(:, dat) = [ds_act; ds_act(end)*ones(nData - numel(ds_act), 1)];
           else
-            actualData(:, dat) = ds_act(1:nData);
+              if (any(settings.drawQuantiles))
+                  actualData(:, ((dat-1)*3)+1:((dat-1)*3)+3) = ds_act(1:nData, :);
+              else
+                  actualData(:, dat) = ds_act(1:nData);
+              end
           end
         end
         % logarithmic scaling
@@ -511,7 +521,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     thisYMax = -Inf;
     for dat = nRelativeData:-1:1
       if (notEmptyData(dat) && (~any(settings.drawQuantiles) ...
-          || (dat <= (nRelativeData/3)) || settings.drawQuantiles(mod(dat-1,nRelativeData/3)+1)))
+          || (dat <= (nRelativeData/3)) || settings.drawQuantiles(mod(dat-1,ceil(nRelativeData/3))+1)))
         h(dat) = plot(evaldim, relativeData{dat}{fId, dId}(evaldim), ...
           lineSpec{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :));
         thisY = relativeData{dat}{fId, dId}(evaldim(:));
@@ -583,19 +593,21 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
   end
 
   % make title
-  titleString = '';
-  if ~aggFuns
-    titleString = ['f', num2str(BBfunc(fId))];
-    if funcNames
-      titleString = [titleString, ' ', bbobFunctionName(BBfunc(fId))];
-    end
-  end
-  if ~aggDims
-    titleString = [titleString, ' ', num2str(dims(dId)),'-D'];
+  titleString = defopts(settings, 'TitleString', '');
+  if isempty(titleString)
+      if ~aggFuns
+          titleString = ['f', num2str(BBfunc(fId))];
+          if funcNames
+              titleString = [titleString, ' ', bbobFunctionName(BBfunc(fId))];
+          end
+      end
+      if ~aggDims
+          titleString = [titleString, ' ', num2str(dims(dId)),'-D'];
+      end
   end
   title(titleString)
   if (~omitXLabel)
-    xlabel('Number of evaluations / D');
+    xlabel('Počet ohodnocení/ n');
   end
   if (~omitYLabel)
     ylabel('\Delta_f^{log}');
