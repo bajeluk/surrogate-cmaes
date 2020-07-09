@@ -1,3 +1,11 @@
+% Script containing settings of 9 GP models performance testing on
+% generation samples from DTS-CMA-ES runs stored in file DTS_meta_005.mat.
+% GP models differ in covariance function settings (LIN, QUAD, SE, MATERN5,
+% RQ, NN, ADD, SE + QUAD, GIBBS).
+% Metafeatures from the following classes are also calculated:
+% 'basic', 'cmaes', 'dispersion', 'ela_distribution', 'ela_levelset',
+% 'ela_metamodel', 'infocontent', 'nearest_better'.
+
 modelOptions.predictionType = 'poi';
 modelOptions.trainAlgorithm = 'fmincon';
 modelOptions.normalizeY = 1;

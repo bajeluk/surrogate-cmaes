@@ -1,9 +1,8 @@
-%% ECML 2020 article plots
+%% Surrogate model selection plots
 % Script for analysing GP covariance function dependence on data sampled 
 % from DTS-CMA-ES run over the noiseless part of the BBOB framework.
 % Script also creates graphs and tables.
-% 
-% Created for ECML 2020 journal track article.
+%
 
 %% 
 
