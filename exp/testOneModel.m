@@ -73,8 +73,8 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
   models2 = cell(1, nSnapshots);
   y_models2 = cell(1, nSnapshots);
   % prepare model outputs
+  modelOutputs = cell(1, nSnapshots);
   if opts.testModelOutput
-    modelOutputs = cell(1, nSnapshots);
     if ~iscell(modelOpts.predictionType)
       modelOpts.predictionType = {modelOpts.predictionType};
     end
