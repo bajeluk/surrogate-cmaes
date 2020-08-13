@@ -154,6 +154,9 @@ classdef RandomForestModel < WeakModel
     
     function nFeatures = getNFeaturesToSample(obj, dim)
     % get n features to sample
+      
+      % number of features is gained through evaluation of expression in
+      % rf_nFeaturesToSample property
       if ischar(obj.rf_nFeaturesToSample)
         try
           % the following expression can contain dim value e.g.
@@ -164,8 +167,14 @@ classdef RandomForestModel < WeakModel
           warning('rf_nFeaturesToSample could not be evaluated due to the following error: %s', err.message)
           nFeatures = dim;
         end
-      else
+      % number of features is numerical
+      elseif isnumeric(obj.rf_nFeaturesToSample)
         nFeatures = obj.rf_nFeaturesToSample;
+      % wrong number of features format
+      else
+        warning(['Result of rf_nFeaturesToSample evaluation is not numeric. '...
+                 'Setting number of features equal to dimension(%d)'], dim)
+        nFeatures = dim;
       end
     end
     
