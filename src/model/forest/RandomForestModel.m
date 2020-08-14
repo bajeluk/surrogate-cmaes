@@ -164,17 +164,16 @@ classdef RandomForestModel < WeakModel
           nFeatures = eval(obj.rf_nFeaturesToSample);
           assert(isnumeric(nFeatures), 'Result of eval function is not numerical.')
         catch err
-          warning('rf_nFeaturesToSample could not be evaluated due to the following error: %s', err.message)
-          nFeatures = dim;
+          error('scmaes:RandomForestModel:nFeatureEvalFail', ...
+            'rf_nFeaturesToSample could not be evaluated due to the following error: %s', err.message)
         end
       % number of features is numerical
       elseif isnumeric(obj.rf_nFeaturesToSample)
         nFeatures = obj.rf_nFeaturesToSample;
       % wrong number of features format
       else
-        warning(['Result of rf_nFeaturesToSample evaluation is not numeric. '...
-                 'Setting number of features equal to dimension(%d)'], dim)
-        nFeatures = dim;
+        error('scmaes:RandomForestModel:nFeatureFormatFail', ...
+          'Result of rf_nFeaturesToSample evaluation is not numeric.')
       end
     end
     
