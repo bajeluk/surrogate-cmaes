@@ -326,13 +326,37 @@ function [stats, models, y_models, varargout] = testOneModel(modelType, modelOpt
 end
 
 function dataset = mergeNewPoints(dataset, model, newPointsX, newPointsY, tolX)
+  % Merge new points with the old points in the dataset taking into account
+  % minimal coordinate difference 'tolX' (i.e., do not add identical, or
+  % almost identical point to dataset).
+
+  % no points to merge
+  if isempty(newPointsX)
+    return
+  end
+  % check numbers of new X and Y values
+  assert(size(newPointsX, 1) == length(newPointsY), ...
+         'scmaes:test1model:mergePointsUneq', ...
+         'The number of X and Y values to merge with dataset does not match')
+
+  % transform new points to sigma*BD space
   XT = ( (model.trainSigma * model.trainBD) \ newPointsX')';
 
-  for i = 1:size(newPointsX, 1)
-    d = bsxfun(@minus, dataset.X, XT(i,:));
-    if (~all(min(abs(d), [], 1) <= tolX))
-      dataset.X = [dataset.X; XT(i, :)];
-      dataset.y = [dataset.y; newPointsY(i)];
+  % no points in dataset -> add new points directly
+  if isempty(dataset.X)
+    dataset.X = XT;
+    dataset.y = newPointsY;
+  % some points in dataset -> add new points according to distances
+  else
+    for i = 1:size(newPointsX, 1)
+      % calculate distances between new and dataset points in all
+      % coordinates
+      d = bsxfun(@minus, dataset.X, XT(i,:));
+      % add new points distant further then tolerance
+      if (~all(min(abs(d), [], 1) <= tolX))
+        dataset.X = [dataset.X; XT(i, :)];
+        dataset.y = [dataset.y; newPointsY(i)];
+      end
     end
   end
 end
