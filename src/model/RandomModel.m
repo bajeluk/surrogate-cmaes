@@ -23,7 +23,7 @@ classdef RandomModel < Model
 
   methods
     function obj = RandomModel(modelOptions, xMean)
-      % constructor
+      % RandomModel constructor
       assert(size(xMean,1) == 1, 'RandomModel (constructor): xMean is not a row-vector.');
       
       obj.options   = modelOptions;
@@ -36,7 +36,10 @@ classdef RandomModel < Model
       obj.dimReduction = 1; % random model do not use dim reduction
       % distribution of y-values
       obj.distribution = defopts(obj.options, 'distribution', 'uniform');
-      obj.yRange = defopts(obj.options, 'yRange', 'bbob');
+      obj.yRange = defopts(obj.options, 'yRange', 'dataset');
+      % create empty dataset
+      obj.dataset.X = [];
+      obj.dataset.y = [];
 
       % BBOB function ID
       % this has to called in opt_s_cmaes due to the speed optimization
@@ -78,9 +81,14 @@ classdef RandomModel < Model
       XWithShift = X - repmat(obj.shiftMean, nPoints, 1);
       % get points on range calculation
       if strcmp(obj.yRange, 'bbob')
+        % evaluate points on BBOB function
         yr = (feval(obj.bbob_func, XWithShift'))';
-      else
+      elseif ~isempty(obj.dataset.y)
+        % use dataset points
         yr = obj.dataset.y;
+      else
+        % total random
+        yr = [0, 1];
       end
       % choose appropriate distribution
       switch obj.distribution

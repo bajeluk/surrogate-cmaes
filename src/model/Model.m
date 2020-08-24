@@ -298,6 +298,42 @@ classdef (Abstract) Model
     % X and y are ignored and new values for X, y are retrieved from archive
     % according to the model settings
 
+      if nargin < 7
+        if nargin < 6
+          if nargin < 5
+            if nargin < 4
+              if nargin < 3
+                error('scmaes:model:nEnoughData', ...
+                  'Cannot train model without input data [X, y]')
+              end
+              % according to CMA-ES default settings
+              stateVariables = struct();
+              stateVariables.xmean = mean(X)';
+              stateVariables.sigma = 1;
+              stateVariables.lambda = 4 + floor(3*log(obj.dim));
+              stateVariables.BD = eye(obj.dim);
+              stateVariables.diagD = ones(1, obj.dim);
+              stateVariables.countiter = 1;
+            end
+            % according to CMA-ES default settings
+            sampleOpts.noiseReevals = 0;
+            sampleOpts.lbounds = -Inf;
+            sampleOpts.ubounds = Inf;
+            sampleOpts.isBoundActive = any(sampleOpts.lbounds > -Inf) || any(sampleOpts.ubounds < Inf);
+            sampleOpts.counteval = 1;
+            sampleOpts.flgEvalParallel = false;
+            sampleOpts.flgDiagonalOnly = false;
+            sampleOpts.noiseHandling = 0;
+            sampleOpts.xintobounds = @xintobounds;
+          end
+          % empty archive should be sufficient
+          archive = Archive(obj.dim);
+        end
+        % empty population should be sufficient
+        population = Population(stateVariables.lambda, obj.dim);
+      end
+
+      % set state variables
       xMean = stateVariables.xmean';
       generation = stateVariables.countiter;
       sigma = stateVariables.sigma;
@@ -325,7 +361,7 @@ classdef (Abstract) Model
       if (isempty(X))
         XtransfReduce = [];
         if (~isfield(dataset, 'X') || isempty(obj.dataset.X))
-          warning('Model.train() - empty trainset.');
+          warning('scmaes:model:emptytrainset', 'Model.train() - empty trainset.');
         end
       else
         % transform input variables using Mahalanobis distance
