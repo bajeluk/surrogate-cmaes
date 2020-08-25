@@ -20,6 +20,7 @@ function HELP {
   echo "  ${REV}-e${NORM}  --Tasks that are not completed, running, exiting, or queued according to qstat, but have stdout or temporary result file."
   echo "  ${REV}-n${NORM}  --List not completed, running, queued, exiting, or errored tasks."
   echo "  ${REV}-g${NORM}  --List tasks in groups according to states."
+  echo "  ${REC}-m${NORM}  --Model testing experiment."
   echo -e "  ${REV}-h${NORM}  --Displays this help message. No further functions are performed."\\n
   echo -e "Example: ${BOLD}$SCRIPT -cr exp_CMA-ES_01 {100..200}${NORM}"\\n
   exit 1
@@ -48,13 +49,15 @@ RUNNING=0
 QUEUED=0
 NOSTATE=0
 ERRORED=0
+# model testing
+MODEL=0
 # json and results usage
 USE_JSON=0
 USE_RESULTS=0
 # show groups
 SHOW_GROUPS=0
 
-while getopts "ecrqngh:" FLAG; do
+while getopts "ecrqngmh:" FLAG; do
   case $FLAG in
     c)  #set option "c"
       COMPLETED=1
@@ -81,6 +84,9 @@ while getopts "ecrqngh:" FLAG; do
     g) #show groups
       SHOW_GROUPS=1
       ;;
+    m)  #set option "m" - model experiment
+      MODEL=1
+      ;; 
     h)  #show help
       HELP
       ;;
@@ -114,8 +120,8 @@ CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 cd $CWD/experiments/$EXPID
 
-# no IDS as input -> load from allids.txt
-if [ -z "${IDS}" ]; then
+# no IDS as input & non-model experiment-> load from allids.txt
+if [ -z "${IDS}" ] && [ $MODEL -eq 0 ]; then
   if [ -f allids.txt ]; then
     IDS=$(cat allids.txt)
   else
@@ -126,8 +132,14 @@ fi
 
 # list full and temporary results
 if [ $USE_RESULTS -eq 1 ]; then
-  # stderr of ls is supressed: 2> /dev/null
-  ls -1 ${EXPID}_results_*[0-9].mat ${EXPID}_tmp_*[0-9].mat 1> $TMPFILE 2> /dev/null
+  # non-model experiment
+  if [ $MODEL -eq 0 ]; then
+    # stderr of ls is supressed: 2> /dev/null
+    ls -1 ${EXPID}_results_*[0-9].mat ${EXPID}_tmp_*[0-9].mat 1> $TMPFILE 2> /dev/null
+  # model experiment
+  else
+    ls -1 ../../../${EXPID}__*[0-9].o* 1> $TMPFILE 2> /dev/null
+  fi
 fi
 
 # list qstat for running, queued, and error states
@@ -166,8 +178,11 @@ if [ $SHOW_GROUPS -eq 0 ]; then
 
     # completed
     if [ $COMPLETED -eq 1 ]; then
+      # algorithm experiment
       RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
-      if grep -q "$RES_FILE" $TMPFILE; then
+      # model experiment
+      OUT_FILE=`grep "${EXPID}__${i}.o" $TMPFILE | sort -n | tail -1`
+      if grep -q "$RES_FILE" $TMPFILE || ( [ -n "$OUT_FILE" ] && grep -q "==== FINISHED ====" "$OUT_FILE" ); then
         echo -n "$i "
         continue;
       fi
@@ -191,15 +206,24 @@ if [ $SHOW_GROUPS -eq 0 ]; then
 
     # errored and no state
     if [ $ERRORED -eq 1 ] || [ $NOSTATE -eq 1 ]; then
+      # algorithm experiment
       RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
       TMP_RES_FILE="${EXPID}_tmp_[0-9D_]*_${i}.mat"
+      # model experiment
+      OUT_FILE=`grep "${EXPID}__${i}.o" $TMPFILE | sort -n | tail -1`
       echo $Q_LIST | grep -q "\"${i}\"" || echo $R_LIST | grep -q "\"${i}\"" || echo $E_LIST | grep -q "\"${i}\""
-      if [ $? -eq 0 ] || grep -q "$RES_FILE" $TMPFILE; then
+      if [ $? -eq 0 ] || grep -q "$RES_FILE" $TMPFILE || ( [ -n "$OUT_FILE" ] && grep -q "==== FINISHED ====" "$OUT_FILE" ); then
         # job running, queued, exiting, or completed -> skip
         continue;
       fi
 
-      OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
+      # out file
+      if [ $MODEL -eq 0 ]; then
+        OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
+      else
+        # for model testing we already know out file
+        OUTS=$OUT_FILE
+      fi
 
       if [ -n "$OUTS" ] ||  grep -q "$TMP_RES_FILE" $TMPFILE; then
         # output or tmp file is present => errored 
@@ -229,8 +253,11 @@ else
   if [ $COMPLETED -eq 1 ]; then
     echo "Completed:"
     for i in $IDS; do
+      # algorithm experiment
       RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
-      if grep -q "$RES_FILE" $TMPFILE; then
+      # model experiment
+      OUT_FILE=`grep "${EXPID}__${i}.o" $TMPFILE | sort -n | tail -1`
+      if grep -q "$RES_FILE" $TMPFILE || ( [ -n "$OUT_FILE" ] && grep -q "==== FINISHED ====" "$OUT_FILE" ); then
         echo -n "$i "
       fi
     done
@@ -263,15 +290,24 @@ else
   if [ $ERRORED -eq 1 ]; then
     echo "Errored out:"
     for i in $IDS; do
+      # algorithm experiment
       RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
       TMP_RES_FILE="${EXPID}_tmp_[0-9D_]*_${i}.mat"
+      # model experiment
+      OUT_FILE=`grep "${EXPID}__${i}.o" $TMPFILE | sort -n | tail -1`
       echo $Q_LIST | grep -q "\"${i}\"" || echo $R_LIST | grep -q "\"${i}\"" || echo $E_LIST | grep -q "\"${i}\""
-      if [ $? -eq 0 ] || grep -q "$RES_FILE" $TMPFILE; then
+      if [ $? -eq 0 ] || grep -q "$RES_FILE" $TMPFILE || ( [ -n "$OUT_FILE" ] && grep -q "==== FINISHED ====" "$OUT_FILE" ); then
         # job running, queued, exiting, or completed -> skip
         continue;
       fi
 
-      OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
+      # out file
+      if [ $MODEL -eq 0 ]; then
+        OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
+      else
+        # for model testing we already know out file
+        OUTS=$OUT_FILE
+      fi
       if [ -n "$OUTS" ] ||  grep -q "$TMP_RES_FILE" $TMPFILE; then
         # output or tmp file is present => errored 
         echo -n "${i} ";
@@ -284,15 +320,24 @@ else
   if [ $NOSTATE -eq 1 ]; then
     echo "No status:"
     for i in $IDS; do
+      # algorithm experiment
       RES_FILE="${EXPID}_results_[0-9D_]*_${i}.mat"
       TMP_RES_FILE="${EXPID}_tmp_[0-9D_]*_${i}.mat"
+      # model experiment
+      OUT_FILE=`grep "${EXPID}__${i}.o" $TMPFILE | sort -n | tail -1`
       echo $Q_LIST | grep -q "\"${i}\"" || echo $R_LIST | grep -q "\"${i}\"" || echo $E_LIST | grep -q "\"${i}\""
-      if [ $? -eq 0 ] || grep -q "$RES_FILE" $TMPFILE; then
+      if [ $? -eq 0 ] || grep -q "$RES_FILE" $TMPFILE || ( [ -n "$OUT_FILE" ] && grep -q "==== FINISHED ====" "$OUT_FILE" ); then
         # job running, queued, or completed -> skip
         continue;
       fi
 
-      OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
+      # out file
+      if [ $MODEL -eq 0 ]; then
+        OUTS=`find ${CWD}/.. -maxdepth 1 -name "${EXPID}__${i}.o*"`
+      else
+        # for model testing we already know out file
+        OUTS=$OUT_FILE
+      fi
       if [ -z "$OUTS" ] && ! grep -q "$TMP_RES_FILE" $TMPFILE; then
         # output nor tmp file is present => no state
         echo -n "${i} ";
