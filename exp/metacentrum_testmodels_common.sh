@@ -1,12 +1,12 @@
 # exp/metacentrum_testmodels_common.sh
 #
-# support script for GP model testing experiment submitter
+# Support script for surrogate model testing experiment submitter.
 #
 # Usage: to be called in experiment submitter via
 #
 # . ../metacentrum_testmodels_common.sh
 #
-# see also:
+# See also:
 #   exp/experiments/exp_testmodels_example.sh
 #   exp/metacentrum_master_template.sh
 
@@ -75,12 +75,25 @@ subtask() {
     JOBNAME_SUFFIX=""
   fi
 
+  # check experiment folder
+  if [ ! -d "$EXPPATH_SHORT/${EXPID}" ]; then
+    mkdir "$EXPPATH_SHORT/${EXPID}"
+  fi
+  # check status folder
+  EXP_STATUS_FOLDER="$EXPPATH_SHORT/${EXPID}/status" 
+  if [ ! -d "$EXP_STATUS_FOLDER" ]; then
+    mkdir "$EXP_STATUS_FOLDER"
+  fi
+
+  # start submittion
   if [ "$useMCR" = 1 ]; then
     echo "MCR binary submit: ID=$ID : DIM=$DIM : FUNC=$FUNC : INST=$INST : IDS=$IDS : OPTS=$OPTS : DATASET=$DATASET"
+    # create status file
+    echo "[ S | $(date "+%Y-%m-%d %H:%M:%S") ] MCR binary submit: ID=$ID : DIM=$DIM : FUNC=$FUNC : INST=$INST : IDS=$IDS : OPTS=$OPTS : DATASET=$DATASET : QUEUE=$QUEUE" >> "$EXP_STATUS_FOLDER/${EXPID}__${ID}"
     if [ "$DRY_RUN" = 0 ]; then
-      qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,IDS,OPTS,EXPID,EXPPATH_SHORT,DATASET $EXPPATH_SHORT/../modelTesting_binary_metajob.sh
+      qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,IDS,OPTS,EXPID,EXPPATH_SHORT,DATASET,ID $EXPPATH_SHORT/../modelTesting_binary_metajob.sh
     else
-      echo qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,IDS,OPTS,EXPID,EXPPATH_SHORT,DATASET $EXPPATH_SHORT/../modelTesting_binary_metajob.sh
+      echo qsub -N "${EXPID}__${ID}${JOBNAME_SUFFIX}" -l "walltime=$QUEUE" -v FUNC,DIM,INST,IDS,OPTS,EXPID,EXPPATH_SHORT,DATASET,ID $EXPPATH_SHORT/../modelTesting_binary_metajob.sh
     fi
 
   else

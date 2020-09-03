@@ -53,12 +53,16 @@ cp "$DATASET" "$SCRATCHDIR"
 DATASET=$SCRATCHDIR/`basename "$DATASET"`
 
 echo "====================="
-echo -n "Current dir:    "; pwd
-echo -n "Current node:   "; cat "$PBS_NODEFILE"
-echo    '$HOME =         ' $HOME
+echo -n "Current dir:       "; pwd
+echo -n "Current node:      "; cat "$PBS_NODEFILE"
+echo    '$HOME =           ' $HOME
 echo    '$MCR_CACHE_ROOT = ' $MCR_CACHE_ROOT
-echo    '$DATASET =      ' $DATASET
+echo    '$DATASET =        ' $DATASET
 echo "====================="
+
+EXPPATH=$EXPPATH_SHORT/$EXPID
+# note to status file
+echo "[ R | $(date "+%Y-%m-%d %H:%M:%S") ] Running" $MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" $ID >> "$EXPPATH/status/${EXPID}__${ID}"
 
 ######### CALL #########
 #
@@ -71,10 +75,10 @@ $MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" "$FUNC" "$DIM" "$INST" "$IDS" "$OP
 ########################
 
 if [ $? -eq 0 ]; then
-  echo `date "+%Y-%m-%d %H:%M:%S"` "  **$EXPID**  ==== FINISHED ===="
+  echo "[ F | `date "+%Y-%m-%d %H:%M:%S"` ]   **$EXPID**  ==== FINISHED ====" | tee --append "$EXPPATH/status/${EXPID}__${ID}"
   rm -rf $SCRATCHDIR/*
   exit 0
 else
-  echo `date "+%Y-%m-%d %H:%M:%S"` "  **$EXPID**  ==== ENDED WITH ERROR! ===="
+  echo "[ E | `date "+%Y-%m-%d %H:%M:%S"` ]   **$EXPID**  ==== ENDED WITH ERROR! ====" | tee --append "$EXPPATH/status/${EXPID}__${ID}"
   exit 1
 fi
