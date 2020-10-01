@@ -54,7 +54,7 @@ USE_RESULTS=0
 # show groups
 SHOW_GROUPS=0
 
-while getopts "ecrqngmh:" FLAG; do
+while getopts "ecrqngh:" FLAG; do
   case $FLAG in
     c)  #set option "c"
       COMPLETED=1
@@ -144,9 +144,11 @@ if [ $USE_JSON -eq 1 ] && [ -n $QSTAT_OUT ]; then
   QSTAT_OUT=`tempfile`.json
   # export qstat to json file
   # IMPORTANT: qstat checking of specific PBS server may cause troubles because metacentrum can automatically change server
-  qstat -f -F json @elixir-pbs.elixir-czech.cz > $QSTAT_OUT
+  qstat -f -F json @elixir-pbs.elixir-czech.cz @meta-pbs.metacentrum.cz > $QSTAT_OUT
   # remove non-printable characters (Ctrl+A - Ctrl+Z)
   sed -i 's/[\x01-\x1A]//g' $QSTAT_OUT
+  # remove lines with extra quotes (e.g., extra commands COMMAND="...)
+  sed -i '/="/d' $QSTAT_OUT
 
   # prepare lists
   if [ $RUNNING -eq 1 ] || [ $ERRORED -eq 1 ] || [ $NOSTATE -eq 1 ]; then
