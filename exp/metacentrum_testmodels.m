@@ -1,8 +1,48 @@
 function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_str, ids_str, opts_str, dataset)
-% exp_GPtest_01 model testing experiment -- Matlab part to be MCR-compiled
+% metacentrum_testmodels Metacentrum version of testModels testing fitting
+%   power of models on DTS dataset. (Matlab part to be MCR-compiled)
+%   Function is called by modelTesting_binary_metajob.sh on a single
+%   machine. Therefore, all input variables are strings.
 %
-% Usage:
-%   metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_str, opts_str, dataset)
+% status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str,
+%            inst_str, ids_str, opts_str, dataset)
+%
+% Input:
+%   exp_id        - unique experiment identifier (directory with this name
+%                   located in 'exppath_short' is expected to hold the
+%                   'dataset and the results will be placed there, too). If
+%                   {exp_id}.m exists it is evaluated to get experiment
+%                   settings. | string
+%   exppath_short - location of folder with experiments | string | default:
+%                   'exp/experiments'
+%   func_str      - BBOB functions from 'dataset' to run given as text |
+%                   string | default: '1:24'
+%   dim_str       - dimensions from 'dataset' to run given as text | string
+%                   | default: '[2, 5, 10]'
+%   inst_str      - instances from 'dataset' to run given as text | string
+%                   | default: '[1:5, 41:50]'
+%   ids_str       - data ids from 'dataset' to run given as text | string
+%                   | default: '1'
+%   opts_str      - additional settings replacing {exp_id}.m settings to
+%                   run given as text | string | default: 'struct()'
+%   dataset       - path to dataset to run | string | default: 'DTS_005'
+%
+% Output:
+%   status - status variable, zero if metacentrum_testmodels finished with
+%            no errors | integer
+%
+% See Also:
+%   testModels
+%   shell scripts: modelTesting_binary_metajob.sh,
+%                  metacentrum_testmodels_common.sh
+
+  % check input
+  if nargin < 2
+    if nargin < 1
+      error('scmaes:metaTestModels:noexpid', 'There was no experiment id given.')
+    end
+    exppath_short = 'exp/experiments';
+  end
 
   % Input parameter settings
   %
