@@ -47,10 +47,10 @@ function coef = corrSchweizer(x, varargin)
     % remove 'type' value
     varargin(typeId) = [];
   end
-  % calculate Pearson correlation coefficient
-  pearsonCoef = corr(x, varargin{:}, 'type', 'Pearson');
+  % calculate Spearman correlation coefficient
+  spearmanCoef = corr(x, varargin{:}, 'type', 'Spearman');
   % calculate Schweizer-Wolff correlation coefficient
-  coef = 6/pi*asin(abs(pearsonCoef)/2);
+  coef = 6/pi*asin(abs(spearmanCoef)/2);
   % replace diagonal by exact ones
   coef(logical(eye(size(coef)))) = 1;
 
