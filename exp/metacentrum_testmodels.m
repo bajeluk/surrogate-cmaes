@@ -185,11 +185,19 @@ function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_st
 end
 
 function out = parseCmdParam(name, value, defaultValue)
+% parseCmdParam Evaluate command parameters or set defaults if they are
+%   empty.
+
   if (isempty(value))
     out = defaultValue;
-  elseif (ischar(value))
-    out = myeval(value);
   else
-    error('%s has to be string for eval()-uation', name);
+    try
+      out = myeval(value);
+    catch err
+      error('scmaes:metaTestModels:eval', ...
+        '%s could not be eval()-uated due to the following error: %s', ...
+        name, err.message)
+    end
   end
+
 end
