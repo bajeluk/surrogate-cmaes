@@ -38,6 +38,10 @@ function coef = corrSchweizer(x, varargin)
 %          Dependence for Random Variables. Ann. Statist. 9 (1981), no. 4,
 %          879--885.
 
+  if nargin < 1 || isempty(x)
+    error('scmaes:corrSchweizer:TooFewInputs', 'Requires a data matrix X.');
+  end
+
   % find 'type' in varargin
   typeId = cellfun(@(x) strcmp('type', x), varargin);
   % remove 'type' from varargin
@@ -51,7 +55,9 @@ function coef = corrSchweizer(x, varargin)
   spearmanCoef = corr(x, varargin{:}, 'type', 'Spearman');
   % calculate Schweizer-Wolff correlation coefficient
   coef = 6/pi*asin(abs(spearmanCoef)/2);
-  % replace diagonal by exact ones
-  coef(logical(eye(size(coef)))) = 1;
+  % replace diagonal by exact ones in case of one matrix input
+  if isempty(varargin) || (numel(varargin) > 0 && ~isnumeric(varargin{1}))
+    coef(logical(eye(size(coef)))) = 1;
+  end
 
 end
