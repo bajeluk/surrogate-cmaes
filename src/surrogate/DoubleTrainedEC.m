@@ -482,20 +482,20 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         end
 
         % independent validation set statistics
-        [obj.stats.rmseValid, obj.stats.kendallValid, obj.stats.rankErrValid, lastModel] ...
+        [obj.stats.rmseValid, obj.stats.kendallValid, obj.stats.rankErrValid] ...
             = obj.validationStatistics(sampleOpts);
 
         % shift the f-values:
         %   if the model predictions are better than the best original value
-        %   in the model's dataset, shift ALL (!) function values
+        %   in the Archive, shift ALL (!) function values
         %   Note: - all values have to be shifted in order to preserve predicted
         %           ordering of values
         %         - small constant is added because of the rounding errors
         %           when numbers of different orders of magnitude are summed
         fminModel = obj.pop.getMinModeled;
         if (~isempty(fminModel))
-          fminDataset = min(lastModel.getDataset_y());
-          diff = max(fminDataset - fminModel, 0);
+          fminArchive = min(obj.archive.y);
+          diff = max(fminArchive - fminModel, 0);
           obj.pop = obj.pop.shiftY(1.000001*diff);
           fitness_raw = obj.pop.y;
         end
