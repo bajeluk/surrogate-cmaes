@@ -622,9 +622,9 @@ function [Fval, Ftrue] = f6(x, DIM, ntrial)
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
     rotation = computeRotation(rseed+1e6, DIM); 
     scales = sqrt(condition).^linspace(0, 1, DIM)'; 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = vpa(diag(scales) * computeRotation(rseed, DIM));
     % decouple scaling from function definition
-    linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
+    linearTF = double(rotation * linearTF); % or computeRotation(rseed+1e3, DIM)
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -1238,9 +1238,9 @@ function [Fval, Ftrue] = f13(x, DIM, ntrial)
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
     rotation = computeRotation(rseed+1e6, DIM); 
     scales = sqrt(condition).^linspace(0, 1, DIM)'; 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = vpa(diag(scales) * computeRotation(rseed, DIM));
     % decouple scaling from function definition
-    linearTF = rotation * linearTF; 
+    linearTF = double(rotation * linearTF);
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -1411,9 +1411,9 @@ function [Fval, Ftrue] = f15(x, DIM, ntrial)
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
     rotation = computeRotation(rseed+1e6, DIM); 
     scales = sqrt(condition).^linspace(0, 1, DIM)'; 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = vpa(diag(scales) * computeRotation(rseed, DIM));
     % decouple scaling from function definition
-    linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
+    linearTF = double(rotation * linearTF); % or computeRotation(rseed+1e3, DIM)
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -1503,9 +1503,9 @@ function [Fval, Ftrue] = f16(x, DIM, ntrial)
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
     rotation = computeRotation(rseed+1e6, DIM); 
     scales = (1/sqrt(condition)).^linspace(0, 1, DIM)';  % CAVE 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = vpa(diag(scales) * computeRotation(rseed, DIM));
     % decouple scaling from function definition
-    linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
+    linearTF = double(rotation * linearTF); % or computeRotation(rseed+1e3, DIM)
     K = [0:11]; % number of summands, 20 in CEC2005, 10/12 saves 30% of time
     aK = 0.5.^K;
     bK = 3.^K;
@@ -2011,10 +2011,11 @@ function [Fval, Ftrue] = f21(x, DIM, ntrial)
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
     lastSize.POPSI = POPSI; 
     lastSize.DIM = DIM; 
-    Xlocal = rotation * reshape(10*unif(DIM*nhighpeaks, rseed)-5, ...
-                                DIM, nhighpeaks); 
+    Xlocal = rotation * vpa(reshape(10*unif(DIM*nhighpeaks, rseed)-5, ...
+                                DIM, nhighpeaks));
     % global optimum not too close to boundary
     Xlocal(:,1) =1* 0.8 * Xlocal(:,1); 
+    Xlocal = double(Xlocal);
     Xopt = rotation' * Xlocal(:,1);
   end
 
@@ -2131,10 +2132,11 @@ function [Fval, Ftrue] = f22(x, DIM, ntrial)
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
     lastSize.POPSI = POPSI; 
     lastSize.DIM = DIM; 
-    Xlocal = rotation * reshape(9.8*unif(DIM*nhighpeaks, rseed)-4.9, ...
-                                DIM, nhighpeaks); 
+    Xlocal = rotation * vpa(reshape(9.8*unif(DIM*nhighpeaks, rseed)-4.9, ...
+                                DIM, nhighpeaks));
     % global optimum not too close to boundary
     Xlocal(:,1) =1* 0.8 * Xlocal(:,1); 
+    Xlocal = double(Xlocal);
     Xopt = rotation' * Xlocal(:,1);
   end
 
@@ -2232,9 +2234,9 @@ function [Fval, Ftrue] = f23(x, DIM, ntrial)
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
     rotation = computeRotation(rseed+1e6, DIM); 
     scales = (99.1234/5)^0 * sqrt(condition).^linspace(0, 1, DIM)'; 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = vpa(diag(scales) * computeRotation(rseed, DIM));
     % decouple scaling from function definition
-    linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
+    linearTF = double(rotation * linearTF); % or computeRotation(rseed+1e3, DIM)
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -2340,9 +2342,9 @@ function [Fval, Ftrue] = f24(x, DIM, ntrial)
     Xopt = 0.5 * mu1 * sign(gauss(DIM, rseed))' .* ones(DIM, 1); 
     rotation = computeRotation(rseed+1e6, DIM); 
     scales = sqrt(condition).^linspace(0, 1, DIM)'; 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = vpa(diag(scales) * computeRotation(rseed, DIM));
     % decouple scaling from function definition
-    linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
+    linearTF = double(rotation * linearTF); % or computeRotation(rseed+1e3, DIM)
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -2402,13 +2404,14 @@ end
 
 function B = computeRotation(seed, DIM)
 % computes an orthogonal basis
-  B = reshape(gauss(DIM*DIM,seed), DIM, DIM);
+  B = vpa(reshape(gauss(DIM*DIM,seed), DIM, DIM));
   for i = 1:DIM
     for j = 1:i-1
       B(:,i) = B(:,i) - B(:,i)'*B(:,j) * B(:,j);
     end
     B(:,i) = B(:,i) / sqrt(sum(B(:,i).^2));
   end
+  B = double(B);
 end
 
 function g = monotoneTFosc(f)
