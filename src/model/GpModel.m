@@ -46,7 +46,7 @@ classdef GpModel < Model
   methods (Access = public)
     function obj = GpModel(modelOptions, xMean)
       % constructor
-      assert(size(xMean,1) == 1, 'GpModel (constructor): xMean is not a row-vector.');
+      assert(size(xMean,1) == 1, 'GpModel(constructor): xMean is not a row-vector.');
 
       % modelOpts structure
       if (isempty(modelOptions))
@@ -67,7 +67,7 @@ classdef GpModel < Model
 
       if (strcmpi(obj.options.trainAlgorithm, 'fmincon') ...
           && ~license('checkout', 'optimization_toolbox'))
-        fprintf('GpModel: Optimization Toolbox license not available. Switching to minimize().\n');
+        fprintf('GpModel(constructor): Optimization Toolbox license not available. Switching to minimize().\n');
         obj.options.trainAlgorithm = 'minimize';
       end
 
@@ -118,7 +118,8 @@ classdef GpModel < Model
       end
 
       covFcn = defopts(obj.options, 'covFcn',  '{@covMaterniso, 5}');
-      fprintf('Covariance function: %s\n', covFcn);
+      % DEBUG OUTPUT:
+      % fprintf('GpModel(constructor): Covariance function: %s\n', covFcn);
 
       if (exist(covFcn) == 2)
         % string with name of an m-file function
@@ -237,7 +238,7 @@ classdef GpModel < Model
       %       the test ordinal regression capabilities
       global modelTrainNErrors;
 
-      assert(size(xMean,1) == 1, '  GpModel.train(): xMean is not a row-vector.');
+      assert(size(xMean,1) == 1, 'GpModel.train(): xMean is not a row-vector.');
       obj.trainMean = xMean;
       if (~isempty(X) && ~isempty(y))
         obj.dataset.X = X;
@@ -248,7 +249,7 @@ classdef GpModel < Model
       % (at least for CMA-ES hyperparameter optimization)
       if (~obj.options.normalizeY ...
           && (isequal(obj.meanFcn, @meanZero) || (max(obj.dataset.y) - min(obj.dataset.y)) > 1e4))
-        fprintf(2, 'Y-Normalization is switched ON for @meanZero covariance function of large Y-scale.\n');
+        fprintf(2, 'GpModel.train(): Y-Normalization is switched ON for @meanZero covariance function of large Y-scale.\n');
         obj.options.normalizeY = true;
       end
       if (obj.options.normalizeY)
@@ -335,7 +336,8 @@ classdef GpModel < Model
         end
         invalid_idx = find(isnan(fvals));
 
-        fprintf('Invalid hyp starting points: %s\n', num2str(isnan(fvals)'));
+        % DEBUG OUTPUT:
+        % fprintf('GpModel.train(): Invalid hyp starting points: %s\n', num2str(isnan(fvals)'));
 
         if any(isnan(fvals))
           % try to replace invalid starting points with points chosen
@@ -368,21 +370,23 @@ classdef GpModel < Model
               j = j + 1;
             end
           end
-          fprintf('%d / %d invalid starting points replaced.\n', c, length(invalid_idx));
+          fprintf('GpModel.train(): %d / %d invalid starting points replaced.\n', c, length(invalid_idx));
         end
 
-%         fprintf('Linear hyp: \n');
-%         disp(linear_hyp);
+        % DEBUG OUTPUT:
+        % fprintf('GpModel.train(): Linear hyp: \n');
+        % disp(linear_hyp);
 
         trainErrs = false(obj.nRestarts);
         for i = 1:obj.nRestarts
-          fprintf('%d / %d optimization trial\n', i, obj.nRestarts);
+          % DEBUG OUTPUT:
+          % fprintf('GpModel.train(): %d / %d optimization trial\n', i, obj.nRestarts);
 
           if (strcmpi(alg, 'fmincon'))
             [obj, opt, lik, trainErr] = obj.trainFmincon(linear_hyp(i, :), obj.getDataset_X(), yTrain, lb, ub, f);
 
             if (trainErr)
-              fprintf('Trying CMA-ES...\n');
+              fprintf('GpModel.train(): Trying CMA-ES...\n');
               alg = 'cmaes';
             end
           end
@@ -400,19 +404,19 @@ classdef GpModel < Model
             obj.trainLikelihood = lik;
           elseif (trainErr)
             % DEBUG OUTPUT:
-            fprintf('Optimization trial failed.\n');
+            % fprintf('GpModel.train(): Optimization trial failed.\n');
           end
 
         end % multistart loop
 
         % DEBUG OUTPUT:
-        fprintf('.. model-training likelihood = %f\n', obj.trainLikelihood);
+        % fprintf('GpModel.train(): .. model-training likelihood = %f\n', obj.trainLikelihood);
         % disp(obj.hyp);
 
         if (all(trainErrs))
           % DEBUG OUTPUT:
           obj.trainGeneration = -1;
-          fprintf(2, '.. model is not successfully trained, likelihood = %f\n', obj.trainLikelihood);
+          % fprintf(2, 'GpModel.train(): .. model is not successfully trained, likelihood = %f\n', obj.trainLikelihood);
         end
       else
         error('GpModel.train(): train algorithm "%s" is not known.\n', alg);
@@ -470,13 +474,13 @@ classdef GpModel < Model
       try
         [hyp_, fval, iters] = minimize(obj.hyp, @gp, -100, obj.infFcn, obj.meanFcn, obj.covFcn, obj.likFcn, X, y);
       catch
-        fprintf(2, 'minimize() failed.\n');
+        fprintf(2, 'GpModel.trainMinimize(): Rasmussen''s minimize() failed.\n');
         warning('on');
         obj.nErrors = modelTrainNErrors;
         return;
       end
       % DEBUG OUTPUT:
-      % fprintf('  ... minimize() %f --> %f in %d iterations.\n', fval(1), fval(end), iters);
+      % fprintf('GpModel.trainMinimize(): minimize() %f --> %f in %d iterations.\n', fval(1), fval(end), iters);
       warning('on');
 
       obj.nErrors = modelTrainNErrors;
@@ -500,11 +504,12 @@ classdef GpModel < Model
       end
       if isnan(initial)
         % the initial point is not valid
-        fprintf('  GpModel.train(): fmincon -- initial point is not valid.\n');
+        fprintf('GpModel.trainFmincon(): Initial point is not valid.\n');
         trainErr = true;
       else
         % training itself
-        fprintf('Model training (fmincon), init fval = %.2f\n', initial);
+        % DEBUG OUTPUT:
+        % fprintf('GpModel.trainFmincon(): Initial fval = %.2f\n', initial);
         try
           modelTrainNErrors = 0;
           [opt, fval] = fmincon(f, linear_hyp', [], [], [], [], lb, ub, [], fminconOpts);
@@ -517,7 +522,7 @@ classdef GpModel < Model
           end
         catch err
           obj.nErrors = modelTrainNErrors;
-          fprintf(2, '  GpModel.train() ERROR: fmincon() ended with an exception: %s\n', err.message);
+          fprintf(2, 'GpModel.trainFmincon(): fmincon() ended with an exception: %s\n', err.message);
           trainErr = true;
         end
       end
@@ -547,7 +552,7 @@ classdef GpModel < Model
         try
           [opt, fval] = s_cmaes(f, linear_hyp', sigma, cmaesopt);
         catch err
-          fprintf(2, 'GpModel.train() ERROR: CMA-ES ended with an exception: %s\n', err.message);
+          fprintf(2, 'GpModel.trainCmaes(): CMA-ES ended with an exception: %s\n', err.message);
           trainErr = true;
           obj.nErrors = modelTrainNErrors;
           return;
@@ -566,7 +571,7 @@ classdef GpModel < Model
         modelTrainNErrors = 0;
         [opt, fval] = s_cmaes(f, linear_hyp', sigma, cmaesopt);
       catch err
-        fprintf(2, 'GpModel.train() ERROR: CMA-ES ended with an exception: %s\n', err.message);
+        fprintf(2, 'GpModel.trainCmaes(): CMA-ES ended with an exception: %s\n', err.message);
         trainErr = true;
         obj.nErrors = modelTrainNErrors;
         return;
@@ -674,7 +679,7 @@ function [c, ceq] = nonlincons(x)
   % checks if the values x(1:(end-4)) are within 2.5 off median
   MAX_DIFF = 2.5;
   ceq = [];
-  assert(size(x,2) == 1, 'Argument for nonlincons is not a vector');
+  assert(size(x,2) == 1, 'GpModel.nonlincons(): Argument for nonlincons is not a vector');
   c = zeros(size(x));
   % test only for covariance parameters
   % TODO: are there always 4 more parameters?!
