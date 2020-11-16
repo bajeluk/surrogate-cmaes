@@ -841,9 +841,14 @@ while isempty(stopflag)
     'fitfun_handle', fitfun_handle, ...
     'countiter', countiter + 1);
   
-  % if the starting point was evaluated, save its value
+  % if the starting point was evaluated, save its value and add to logging
   if (countiter == 0 && myevalbool(opts.EvalInitialX))
     cmaesState.fxstart = fitness.hist(1);
+    % state-variables logging
+    out.generations(1, end+1) = iGeneration;
+    out.arxvalids(:, end+1) = xmean;
+    out.fvalues(1, end+1) = fitness.hist(1);
+    out.origEvaled(:, end+1) = true;
   end
   
   if (~exist('surrogateOpts','var'))
