@@ -234,7 +234,8 @@ The results of the computed experiment are stored in the `exp/experiments/[exp_i
     - **diagCs** are CMA-ES C matrices for each generation (1xG cell-array of double).
     - **diagDs** are CMA-ES D matrices for each generation (1xG cell-array of double).
     - **evals** is the over all number of evaluations of the original fitness function (integer).
-    - **fvalues** are function values of all (original and model) evaluated points (1xP double).
+    - **fvalues** are function values of all (original and model) evaluated points returned to the CMA-ES (1xP double). Values are shifted if the model predicted values are lower than so far minimal original value due to premature converegence reasons.
+    - **fvaluesOrig** are original fitness function values of all (original and model) evaluated points (1xP double).
     - **generations** contains generation number for each point (1xP integer).
     - **generationStarts** are ids of first points in **arxvalids** field of the current generation (1xG integer).
     - **iruns** are numbers of the indepent starts (number of restarts + 1) performed from the beginning of the run (1xG integer).
