@@ -9,7 +9,7 @@
 % load data
 
 % checkout file containing all loaded data
-tmpFName = fullfile('/tmp', 'ecml2020_data.mat');
+tmpFName = fullfile('/tmp', 'smsp_data.mat');
 if isfile(tmpFName)
   load(tmpFName);
 else
@@ -18,10 +18,10 @@ else
 
 % folders for results
 actualFolder = pwd;
-articleFolder = fullfile(actualFolder(1:end - 1 - length('surrogate-cmaes')), 'latex_scmaes', 'ecml2020paper');
+articleFolder = fullfile(actualFolder(1:end - 1 - length('surrogate-cmaes')), 'latex_scmaes', 'ecml2021journal'); %'smsppaper');
 plotResultsFolder = fullfile(articleFolder, 'images');
 tableFolder = fullfile(articleFolder, 'tex');
-experimentFolder = fullfile('exp', 'experiments', 'ECML2020');
+experimentFolder = fullfile('exp', 'experiments', 'exp_smsp');
 [~, ~] = mkdir(plotResultsFolder);
 [~, ~] = mkdir(tableFolder);
 [~, ~] = mkdir(experimentFolder);
@@ -39,6 +39,13 @@ exp_meta_inf = fullfile(exp_output, 'exp_DTSmeta_02_inf.mat');
 exp_meta_output = fullfile(exp_output, 'exp_DTSmeta_02_res.mat');
 exp_meta_quantile = fullfile(exp_output, 'exp_DTSmeta_02_quantile.mat');
 printScriptMess = false;
+
+% resulting files
+exp_smsp_dimension_test = fullfile(experimentFolder, 'exp_smsp_dimension_test.mat');
+exp_smsp_corr_test = fullfile(experimentFolder, 'exp_smsp_corr_test.mat');
+exp_smsp_corr_cluster = fullfile(experimentFolder, 'exp_smsp_corr_cluster.mat');
+
+exp_smsp_corr_dim_table = fullfile(tableFolder, 'corr_dim.tex');
 
 % file list
 fileList = searchFile('exp/experiments/exp_DTSmeta_02/dataset/sampled_metafeatures', '*.mat*');
@@ -591,6 +598,8 @@ clear actualFolder articleFolder fl ft i infBound logscale norm_val S act_ft_min
 
 %%
 
+% prepare vars and means for observation and density point of view
+
 if isfile(exp_meta_output)
   load(exp_meta_output)
 else
@@ -695,11 +704,290 @@ clear d o q
 clear means medians vars nans inf_plus inf_mins
 
 %%
+
+% save temporary variables for further usage
 if (~exist(tmpFName, 'file'))
   save(tmpFName);
 end
 
 end
+
+%% Test dependency of feature median on dimension
+% Rejecting independence of medians on dimension is equivalent to rejecting
+% equality of medians for any pair of dimensions using Bonferroni
+% correction on the number of possible pairs.
+
+if isfile(exp_meta_output)
+  load(exp_meta_output)
+else
+  error('File %s is missing!', exp_meta_output)
+end
+
+alpha = 0.05;
+
+medtest_meds_p = zeros(nMfts, nchoosek(numel(dims), 2));
+friedman_meds_p_bh = medtest_meds_p;
+for m = 1:size(vars, 1)
+  act_meds = medians(m, :);
+  j = 0;
+  for d = 1:numel(dims)
+    for d2 = d+1 : numel(dims)
+      % increase counter
+      j = j+1;
+%       median test on all non-nan median values of a pair of dimensions
+%       medtest_meds_p(m, j) = mediantest(act_meds(~isnan(act_meds) & dims(d) == dimensions), ...
+%                                         act_meds(~isnan(act_meds) & dims(d2) == dimensions));
+    end
+  end
+
+  % display independent features on the level alpha/number of pairs
+  % (Bonferroni)
+  if all(medtest_meds_p(m, :) > alpha/nchoosek(numel(dims), 2))
+    fprintf('Not rejecting independence of medians on dimension for %s on (alpha = %0.3f) using Bonferroni correction\n', mfts_names{m}, alpha)
+  end
+
+  % Friedman's test
+  mat_meds = [];
+  for d = 1:numel(dims)
+    mat_meds = [mat_meds, act_meds(dims(d) == dimensions)'];
+  end
+  % remove NaN's
+  mat_meds(any(isnan(mat_meds), 2), :) = [];
+  % Friedman's test on statistical significance of pairwise differences of
+  % dimension medians
+  [friedman_meds_p(m), ~, stats_meds{m}] = friedman(mat_meds, 1, 'off');
+%   fprintf('%48s Friedman: %f\n', mfts_names{m}, friedman_meds_p(m))
+  multcomp_meds{m} = multcompare(stats_meds{m});
+  % p-values using Bonferroni-Holm correction on the alpha level
+  friedman_meds_p_bh(m, :) = bonfHolm(multcomp_meds{m}(:, end), alpha);
+
+end
+
+% save testing results
+save(exp_smsp_dimension_test, ...
+  'alpha', 'dims', 'medtest_meds_p', ...
+  'friedman_meds_p', 'stats_meds', 'multcomp_meds', 'friedman_meds_p_bh')
+
+% clear large variables saved in exp_meta_output
+% clear means medians vars nans inf_plus inf_mins
+
+clear alpha d m mat_meds
+
+%% Feature dimensional influence clustering
+% Split metafeatures to groups according to the rejected pairs of
+% dimensions
+
+if isfile(exp_smsp_dimension_test)
+  load(exp_smsp_dimension_test)
+else
+  error('File %s is missing!', exp_smsp_dimension_test)
+end
+
+% find unique combinations of rejected hypothesis
+[friedman_uniq_combs, ~, friedman_uniq_combs_id] = unique(friedman_meds_p_bh > alpha, 'rows');
+
+% add results to already existing ones
+save(exp_smsp_dimension_test, 'friedman_uniq_combs', 'friedman_uniq_combs_id', '-append')
+
+%% Feature correlation analysis
+% Schweizer-Wolff correlation between each pair of available features used
+% to calculation of distances between features
+
+if isfile(exp_meta_output)
+  load(exp_meta_output)
+else
+  error('File %s is missing!', exp_meta_output)
+end
+
+medians_minmax = medians;
+% replace NaN's with max or min values, where NaN was placed due to Inf
+% value
+for m = 1:nMfts
+  medians_minmax(m, inf_mins(m, :) > 49) = ft_min_ninf(m);
+  medians_minmax(m, inf_plus(m, :) > 49) = ft_max_ninf(m);
+end
+
+% calculate Schweizer-Wolff correlations excluding NaN values pairwise
+% med_corr = corrSchweizer(medians_minmax', 'rows', 'pairwise');
+[med_sim, med_corr, med_2reals, med_2nans] = ...
+  nancorr(medians_minmax', 'rows', 'pairwise', 'type', 'Schweizer');
+
+% create dendrogram from similarity distance (1 - sim) => 0
+med_link = linkage(squareform(1 - med_sim));
+% plot dendrogram with red line marking 0.2 distance threshold
+h_dendr = figure();
+med_dendr = dendrogram(med_link, 0);
+hold on
+line([0, nMfts+1], [0.25, 0.25], 'Color', 'r')
+hold off
+
+% save testing results
+save(exp_smsp_corr_test, 'medians_minmax', ...
+                         'med_corr', 'med_2reals', 'med_2nans', 'med_sim', ...
+                         'med_link', 'h_dendr')
+
+% clear large variables saved in exp_meta_output
+% clear means medians vars nans inf_plus inf_mins
+
+clear m
+
+%% Feature correlation clustering
+% Cluster features using k-medoids and results from hierarchical clustering
+
+if isfile(exp_smsp_corr_test)
+  load(exp_smsp_corr_test)
+else
+  error('File %s is missing!', exp_smsp_corr_test)
+end
+
+% set number of clusters
+k = 60;
+% set Schweizer-Wolf distance
+corrSWdist = @(x,y) 1-corrSchweizer(x', y', 'rows', 'pairwise');
+% set Schweizer-Wolf distance taking NaNs into account
+corrNanSWdist = @(x,y) 1-nancorr(x', y', 'rows', 'pairwise', 'type', 'Schweizer');
+
+% clustering to 60 clusters using k-medoids with wasnan (line 217) set to
+% false, i.e. NaNs will be removed pairwise
+[corrClusterId_pair, ~, ~, ~, corrMedoidId_pair] = kmedoids2(medians_minmax, k, 'Distance', corrSWdist);
+
+% remove NaN columns
+nanCols = any(isnan(medians_minmax), 1);
+% clustering to 60 clusters using k-medoids without columns containing at
+% least one NaN
+[corrClusterId_all, ~, ~, ~, corrMedoidId_all] = kmedoids(medians_minmax(:, ~nanCols), k, 'Distance', corrSWdist);
+
+% clustering to 60 clusters using k-medoids with wasnan (line 217) set to
+% false, i.e. NaNs will be taken into account pairwise
+[corrClusterId_nanpair, ~, ~, ~, corrMedoidId_nanpair] = kmedoids2(medians_minmax, k, 'Distance', corrNanSWdist);
+
+% count loss of data in 'all' k-medoids strategy
+dataLoss_all = sum(nanCols)/numel(nanCols);
+% count loss of data in 'pairwise' k-medoids strategy
+dataLoss_pair = sum(sort(sum(isnan(medians_minmax), 2))'.*(0:(nMfts-1))) / nchoosek(nMfts,2) / numel(nanCols);
+
+save(exp_smsp_corr_cluster, 'k', 'corrSWdist', 'corrNanSWdist', ...
+                            'corrClusterId_pair', 'corrMedoidId_pair', ...
+                            'corrClusterId_all', 'corrMedoidId_all', ...
+                            'corrClusterId_nanpair', 'corrMedoidId_nanpair', ...
+                            'dataLoss_all', 'dataLoss_pair')
+
+clear S nanCols
+
+%% Feature correlation clustering analysis
+% Analyse results of feature clustering
+
+if isfile(exp_smsp_corr_cluster)
+  load(exp_smsp_corr_cluster)
+else
+  error('File %s is missing!', exp_smsp_corr_cluster)
+end
+
+if isfile(exp_smsp_dimension_test)
+  load(exp_smsp_dimension_test)
+else
+  error('File %s is missing!', exp_smsp_dimension_test)
+end
+
+% dimension test results
+dimCombs = nchoosek(dims, 2);
+dimCombsStr = arrayfun(@(x) ...
+                sprintf('(%d, %d)', dimCombs(x, 1), dimCombs(x, 2)), ...
+                1:size(dimCombs, 1), 'uni', false);
+dimCombsAccepted = arrayfun(@(x) ...
+  strjoin(dimCombsStr(friedman_uniq_combs(friedman_uniq_combs_id(x), :)), ','), ...
+  1:nMfts, 'uni', false)';
+
+% sort metafeatures to clusters
+[~, sortClId] = sort(corrClusterId_nanpair);
+
+% is medoid id
+isMed = ismember((1:nMfts)', corrMedoidId_nanpair);
+
+% table mfts notation
+mftsSplit = cellfun(@(x) strsplit(x, '_'), mfts_names, 'Uni', false);
+for m = 1:nMfts
+  if any(strcmp(mftsSplit{m}{1}, {'archive', 'traintest', 'train'}))
+    switch mftsSplit{m}{1}
+      case 'archive'
+        setColumn{m} = '\archive';
+      case 'train'
+        setColumn{m} = '\trainset';
+      case 'traintest'
+        setColumn{m} = '\trainpredset';
+    end
+    % remove set notation
+    mftsSplit{m}(1) = [];
+  end
+  if any(strcmp(mftsSplit{m}{1}, ...
+      {'cmaes', 'dispersion', 'ela', 'infocontent', 'nearest'}))
+     switch mftsSplit{m}{1}
+       case 'cmaes'
+         classColumn{m} = '\featCMA';
+       case 'dispersion'
+         classColumn{m} = '\featDisp';
+       case 'ela'
+         switch mftsSplit{m}{2}
+           case 'distribution'
+             classColumn{m} = '\featyDis';
+           case 'levelset'
+             classColumn{m} = '\featLevel';
+           case 'metamodel'
+             classColumn{m} = '\featMM';
+         end
+         % remove ela set notation
+         mftsSplit{m}(1) = [];
+       case 'infocontent'
+         classColumn{m} = '\featInfo';
+       case 'nearest'
+         classColumn{m} = '\featNBC';
+         % remove 'nearest' part of set notation
+         mftsSplit{m}(1) = [];
+     end
+    % remove set notation
+    mftsSplit{m}(1) = [];
+  end
+  % unite the rest
+  mftsSplit{m} = strjoin(mftsSplit{m}, '\\_');
+end
+tableMftsNotation = cellfun(...
+  @(x, y, z) sprintf('$\\tableFeat{\\texttt{%s}}{%s}{%s}$', x, y, z), ...
+  mftsSplit, setColumn, classColumn, 'Uni', false);
+
+% table with correlation clustering ids
+corrClusterTable = table(dimCombsAccepted(sortClId), ...
+                         'RowNames', tableMftsNotation(sortClId), ...
+                         'VariableNames', {'dimPairs'});
+
+% print table to tex
+lt = LatexTable(corrClusterTable);
+lt.opts.tableColumnAlignment = num2cell('ll');
+[~, lt.opts.midLines] = unique(corrClusterId_nanpair(sortClId));
+lt.opts.tableCaption = [...
+  'Feature properties. ', ...
+  'Features are grouped to 60 clusters according to k-medoid clustering ', ...
+  'using Schweizer-Wolf correlation distance. ', ...
+  'Medoid representatives are marked as gray lines. ', ...
+  'The dimPairs column shows the pairs of feature dimensions not rejecting the indpendence of median feature values, ', ...
+  '\ie where the Friedman post-hoc test on median values with the Bonferroni-Holm correction ', ...
+  'at the family-wise level 0.05 was not rejected.'...
+  ];
+lt.opts.tableLabel = 'featProp';
+lt.opts.booktabs = 1;
+% add gray background to medoid features
+lt.colorizeRowsInGray(isMed(sortClId));
+lt.toFile(exp_smsp_corr_dim_table);
+
+% show tables with cluster differences
+% diffIds = false(size(corrClusterId_all));
+% for c = 1:k
+%   if (range(corrClusterId_all(corrClusterId_pair==c)) > 0)
+%     diffIds = diffIds | corrClusterId_pair==c;
+%     corrClusterTable(corrClusterId_pair==c, :)
+%   end
+% end
+
+clear c
 
 %% Feature means and variances
 % The following graphs show dependencies of feature means and variances on
