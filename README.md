@@ -231,8 +231,8 @@ The results of the computed experiment are stored in the `exp/experiments/[exp_i
     - **arxvalids** are coordinates of all (original and model) evaluated points (DxP double).
     - **BDs** are CMA-ES BD matrices for each generation (1xG cell-array of double).
     - **countevals** are numbers of all already evaluated point using the original function for each generation (1xG integer).
-    - **diagCs** are CMA-ES C matrices for each generation (1xG cell-array of double).
-    - **diagDs** are CMA-ES D matrices for each generation (1xG cell-array of double).
+    - **diagCs** are CMA-ES C matrix diagonals for each generation (1xG cell-array of double).
+    - **diagDs** are CMA-ES D matrix diagonals for each generation (1xG cell-array of double).
     - **evals** is the over all number of evaluations of the original fitness function (integer).
     - **fvalues** are function values of all (original and model) evaluated points returned to the CMA-ES (1xP double). Values are shifted if the model predicted values are lower than so far minimal original value due to premature converegence reasons.
     - **fvaluesOrig** are original fitness function values of all (original and model) evaluated points (1xP double).
@@ -251,7 +251,16 @@ The results of the computed experiment are stored in the `exp/experiments/[exp_i
 - **exp_results** are overall results for individual instances (structure).
 - **exp_settings** experiment settings (structure).
 - **surrogateParams** are parameters of the surrogate model from the experiment definition - see above (structure).
-- **y_evals** contains original fitness values (and few other statistics) for (original-) evaluated points for each instance (cell-array of double).
+- **y_evals** contains basic statistics per generation for each instance (cell-array of Gx9 double). Columns of statistic matrix are in the following order: 
+  - best original fitness value so far,
+  - number of points evaluated using original fitness,
+  - RMSE of the last surrogate model on the validation set,
+  - Kendall tau rank of the last surrogate model on the validation set,
+  - CMA-ES sigma value,
+  - max(diag(D))/min(diag(D)),
+  - min(sigma*sqrt(diag(C))),
+  - max(sigma*sqrt(diag(C))),
+  - RDE between prediction of the first and last model.
 
 Variables comprised in the resulting file may differ according to the experiment settings. See the source code for further details.
 
