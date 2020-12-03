@@ -17,6 +17,7 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
 %            default: 1
 %   id     - job id to load (1, 2, ..., # of possible combinations) |
 %            positive integer scalar | default: 1
+
 %   opts   - pairs of property (string) and value or struct with properties
 %            as fields:
 %     'expPath'              - path to experiment data folder | string |
@@ -456,7 +457,11 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
         archive = Archive(dim);
         orig_id = logical(cmo.origEvaled(1:lastOrigEvaledIdMax));
         X_orig = cmo.arxvalids(:,orig_id)';
-        y_orig = cmo.fvalues(orig_id)';
+        if isfield(cmo, 'fvaluesOrig')
+          y_orig = cmo.fvaluesOrig(orig_id)';
+        else
+          y_orig = fgeneric(cmo.arxvalids);
+        end
         archive.save(X_orig, y_orig, cmo.generations(orig_id));
       end
 
