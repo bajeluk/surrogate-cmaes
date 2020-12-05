@@ -34,6 +34,8 @@ classdef ModelFactory
           obj = RegModel(modelOptions, xMean);
         case 'lmm'
           obj = LmmModel(modelOptions, xMean);
+        case 'hansen'
+          obj = HansenModel(modelOptions, xMean);
         case 'modelpool'
           % use the supplied 'oldModel' if exists
           if (nargin > 3 && ~isempty(oldModel) && isa(oldModel, 'ModelPool'))

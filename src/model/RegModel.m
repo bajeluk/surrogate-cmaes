@@ -55,10 +55,10 @@ classdef RegModel < Model
                 obj.dataset.X = X;
                 obj.dataset.y = y;
             end
-            obj.trainLikelihood = 0.1;
-      
-            obj.polyModel = polyfitn(X, y, obj.modelterms);
+            obj.trainLikelihood = 0.99;
             obj.trainGeneration = generation;
+
+            obj.polyModel = polyfitn(X, y, obj.modelterms);
         end
 
         function [y, sd2] = modelPredict(obj, X)
