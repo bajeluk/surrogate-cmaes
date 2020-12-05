@@ -279,7 +279,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           end
           nToReeval = min(remainingOrigEvals, max(1, round(nToReevalPerIteration)));
           isToReeval = obj.choosePointsForReevaluation(obj.pop, lastModel, nToReeval);
-          assert(nToReeval == sum(isToReeval), 'Not all points aimed for reevaluation has been reevaluated');
+          assert(nToReeval <= sum(isToReeval), 'Not all points aimed for reevaluation has been reevaluated');
+          % if model failed, nToReeval has probably changed
+          nToReeval = sum(isToReeval);
 
           % original-evaluate the chosen point(s)
           xToReeval = obj.pop.x(:, isToReeval);
@@ -486,20 +488,20 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         end
 
         % independent validation set statistics
-        [obj.stats.rmseValid, obj.stats.kendallValid, obj.stats.rankErrValid, lastModel] ...
+        [obj.stats.rmseValid, obj.stats.kendallValid, obj.stats.rankErrValid] ...
             = obj.validationStatistics(sampleOpts);
 
         % shift the f-values:
         %   if the model predictions are better than the best original value
-        %   in the model's dataset, shift ALL (!) function values
+        %   in the Archive, shift ALL (!) function values
         %   Note: - all values have to be shifted in order to preserve predicted
         %           ordering of values
         %         - small constant is added because of the rounding errors
         %           when numbers of different orders of magnitude are summed
         fminModel = obj.pop.getMinModeled;
         if (~isempty(fminModel))
-          fminDataset = min(lastModel.getDataset_y());
-          diff = max(fminDataset - fminModel, 0);
+          fminArchive = min(obj.archive.y);
+          diff = max(fminArchive - fminModel, 0);
           obj.pop = obj.pop.shiftY(1.000001*diff);
           fitness_raw = obj.pop.y;
         end
@@ -577,17 +579,18 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
           ok = false;
         end
         if (ok)
-          mu = ceil(obj.cmaesState.mu * (size(notOrigEvaledX ,2) / obj.cmaesState.lambda));
-          [pointID, errs] = expectedRankDiff(thisModel, notOrigEvaledX, mu);
-          if (~ sum(errs >= eps) > (size(notOrigEvaledX,2)/2))
-            warning('exptectedRankDiff() returned more than lambda/2 points with zero expected rankDiff error. Using "sd2" criterion.');
+          modelOutput = thisModel.getModelOutput(notOrigEvaledX');
+          if (~ (sum(modelOutput >= eps) > (size(notOrigEvaledX, 2)/2)) )
+            warning('expectedRankDiff() returned more than half of points with zero or NaN expected rankDiff error. Using "sd2" criterion.');
             ok = false;
           end
         end
         if (~ok)
-          [~, sd2] = thisModel.predict(notOrigEvaledX');
-          [~, pointID] = sort(sd2, 'descend');
+          % predict sd2
+          [~, modelOutput] = thisModel.predict(notOrigEvaledX');
         end
+        % higher criterion values are better (expectedrank, sd2)
+        [~, pointID] = sort(modelOutput, 'descend');
         % Debug:
         % y_r = ranking(y_m);
         % fprintf('  Expected permutation of sorted f-values: %s\n', num2str(y_r(pointID)'));
@@ -598,9 +601,15 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         [~, pointID] = sort(modelOutput, 'ascend');
       end
 
-      notOrigEvaledID = find(~pop.origEvaled);
       reevalID = false(1, pop.lambda);
-      reevalID(notOrigEvaledID(pointID(1:nPoints))) = true;
+      notOrigEvaledID = find(~pop.origEvaled);
+      if pointID
+        reevalID(notOrigEvaledID(pointID(1:nPoints))) = true;
+      else
+        % model inference failed, re-evaluate the remaining points not
+        % evaluated using the original fitness
+        reevalID(notOrigEvaledID) = true;
+      end
       %
       % Check the value of origRatio
       assert(obj.origRatioUpdater.getLastRatio() >= 0 && obj.origRatioUpdater.getLastRatio() <= 1, 'origRatio out of bounds [0,1]');
@@ -610,7 +619,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     function [rmse, kendall, rankErr] = reevalStatistics(obj, yModel1)
       % calculate RMSE and possibly Kendall's coeff. of the re-evaluated point(s)
       % (phase == 1)
-      if (~any(obj.pop.origEvaled))
+      if (~any(obj.pop.origEvaled)) || isempty(yModel1)
         rmse = NaN; kendall = NaN; rankErr = NaN;
         return;
       end
@@ -661,7 +670,8 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     function rankErr = retrainStatistics(obj, yModel1)
     % get ranking error between the first and the second model
     % (if the second model is trained)
-      if (~isempty(obj.retrainedModel) && obj.retrainedModel.isTrained())
+      if (~isempty(obj.retrainedModel) && obj.retrainedModel.isTrained()) ...
+          && ~isempty(yModel1)
         yModel2 = obj.retrainedModel.predict(obj.pop.x');
         rankErr = errRankMu(yModel1(obj.pop.phase ~= 0), yModel2(obj.pop.phase ~= 0), ...
             obj.cmaesState.mu);

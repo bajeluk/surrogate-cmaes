@@ -80,7 +80,15 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
 
       y_evals = exp_results.y_evals;
 
-      save([resultsFile '.mat'], 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams', 'bbParams', 'cmaes_out');
+      % saving results
+      varToSave = struct('exp_id', {exp_id}, 'exp_settings', {exp_settings}, ...
+                         'exp_results', {exp_results}, 'y_evals', {y_evals}, ...
+                         'surrogateParams', {surrogateParams}, 'cmaesParams', {cmaesParams}, ...
+                         'bbParams', {bbParams}, 'cmaes_out', {cmaes_out});
+      savedRes = saveBBOB([resultsFile '.mat'], varToSave);
+      assert(savedRes, ['Unable to save results to %s.',... 
+                        'Run task again for few seconds, results are probably saved in temporary result file.'], ...
+                        resultsFile);
 
       % ===== PURE CMAES RESULTS =====
       if (bbParams.runPureCMAES)
@@ -98,7 +106,13 @@ function bbob_test_01(id, exp_id, exppath_short, varargin)
           % test if the results still doesn't exist, if no, save them :)
           if (~ exist(cmaesResultsFile, 'file'))
             y_evals = exp_cmaes_results.y_evals;
-            save(cmaesResultsFile, 'exp_id', 'exp_settings', 'exp_cmaes_results', 'y_evals', 'surrogateParams', 'cmaesParams');
+            varToSave = struct('exp_id', {exp_id}, 'exp_settings', {exp_settings}, ...
+                         'exp_cmaes_results', {exp_cmaes_results}, 'y_evals', {y_evals}, ...
+                         'surrogateParams', {surrogateParams}, 'cmaesParams', {cmaesParams});
+            savedCMA = saveBBOB(cmaesResultsFile, varToSave);
+            if ~savedCMA
+              warning('CMA results not saved to %s.', cmaesResultFile, 10)
+            end
           end
         end
 
@@ -198,11 +212,14 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
   if (~isPureCmaes && exp_settings.resume && ~isempty(localDatapath) ...
       && exist([localDatapath filesep expFileID], 'dir') ...
       && exist(tmpFile, 'file'))
-    [nCompletedInstances, y_evals, exp_results, cmaes_out] = loadInterruptedInstances(tmpFile);
-    system(['cp -pR ' localDatapath '/' expFileID ' ' datapathRoot]);
-    % copy also not-finished logs of this experiment ID
-    % TODO: test this!
-    system(['cp -pR ' localDatapath '/' exp_settings.exp_id '_log_' expFileID '.dat ' datapathRoot]);
+    [nCompletedInstances, y_evals, exp_res, cmaes_out] = loadInterruptedInstances(tmpFile);
+    if nCompletedInstances > 0
+      exp_results = exp_res;
+      system(['cp -pR ' localDatapath '/' expFileID ' ' datapathRoot]);
+      % copy also not-finished logs of this experiment ID
+      % TODO: test this!
+      system(['cp -pR ' localDatapath '/' exp_settings.exp_id '_log_' expFileID '.dat ' datapathRoot]);
+    end
   else
     nCompletedInstances = 0;
   end
@@ -278,9 +295,21 @@ function [exp_results, tmpFile, cmaes_out] = runTestsForAllInstances(opt_functio
 
     fgeneric('finalize');
     exp_id = exp_settings.exp_id;
+    % save already calculated instances to a temporary file
     if (~isPureCmaes)
       exp_results.rngState = rng();
-      save(tmpFile, 'exp_id', 'exp_settings', 'exp_results', 'y_evals', 'surrogateParams', 'cmaesParams', 'bbParams', 'cmaes_out');
+      % saving results
+      varToSave = struct('exp_id', {exp_id}, 'exp_settings', {exp_settings}, ...
+                         'exp_results', {exp_results}, 'y_evals', {y_evals}, ...
+                         'surrogateParams', {surrogateParams}, 'cmaesParams', {cmaesParams}, ...
+                         'bbParams', {bbParams}, 'cmaes_out', {cmaes_out});
+      savedTmp = saveBBOB(tmpFile, varToSave);
+      % continue without saving
+      if ~savedTmp
+        warning(['Temporary results not saved in %s!', ...
+                 'Unexpected end of run will cause loss of already calculated instances'], ...
+                 tmpFile)
+      end
     end
 
     % copy the output to the final storage (if OUTPUTDIR and EXPPATH differs)
@@ -314,9 +343,70 @@ function printSettings(fid, exp_settings, exp_results, surrogateParams, cmaesPar
 end
 
 function [nCompletedInstances, y_evals, exp_results, cmaes_out] = loadInterruptedInstances(tmpFile)
+% Load finished instances from previous experiment runs
+
+  % initialize
+  nCompletedInstances = 0;
+  y_evals = {};
+  exp_results = struct();
+  cmaes_out = {};
+
   fprintf('Resuming previously interrupted experiment run...\n');
   fprintf('Loading results from:  %s\n', tmpFile);
-  load(tmpFile);
-  nCompletedInstances = size(y_evals, 1);
-  fprintf('Completed instances (%d):  %s\n', nCompletedInstances, num2str(exp_settings.instances(1:nCompletedInstances)));
+  % load file
+  try
+    load(tmpFile, 'y_evals', 'exp_results', 'exp_settings', 'cmaes_out');
+    nCompletedInstances = size(y_evals, 1);
+    fprintf('Completed instances (%d):  %s\n', nCompletedInstances, ...
+      num2str(exp_settings.instances(1:nCompletedInstances)));
+  % loading error
+  catch err
+    fprintf(2, '%s\n', err.getReport);
+    fprintf('No results loaded from the previous experiment. Starting from the beginning.\n')
+  end
+end
+
+function [state, err] = saveBBOB(filename, variables, maxTrials)
+% Save bbob results
+%
+% Input:
+%   filename  - name of resulting file
+%   variables - structure of variables to be saved
+%   maxTrials - maximum number of saving trials
+%
+% Output:
+%   state - state of saving | boolean
+%   err   - cell-array of errors caught in individual trials
+
+  % initialize
+  if nargin < 3
+    maxTrials = 100;
+  end
+  err = {};
+
+  % check variables
+  assert(isstruct(variables), 'Variables must be a structure')
+
+  % saving loop
+  notSaved = true;
+  nSavingTrials = 0;
+  while notSaved && nSavingTrials < maxTrials
+    % try saving
+    try
+      save(filename, '-struct', 'variables');
+      notSaved = false;
+    % problem with saving, retry in automatically prolonged intervals
+    catch actualErr
+      nSavingTrials = nSavingTrials + 1;
+      err{nSavingTrials} = actualErr;
+      warning('Problem while saving %s. Retry saving no. %d', ...
+              filename, nSavingTrials)
+      % 5 minutes of saving at maximum
+      pause(3/50*nSavingTrials)
+    end
+  end
+
+  % return resulting state
+  state = ~notSaved;
+
 end

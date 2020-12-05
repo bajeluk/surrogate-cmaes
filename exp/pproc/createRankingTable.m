@@ -140,12 +140,14 @@ function [rankTable, ranks, values] = createRankingTable(data, varargin)
       end
       
       % asociate ranks to data in specified evaluation numbers
-      for e = 1:nEvals
-%         thisData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}(actualEvals(e)), notEmptyData, 'UniformOutput', false));
-        thisData = actualData(actualEvals(e), :);
-        thisData = max(thisData, targetValue * ones(size(thisData)));
-        ranks{f,d}(e, notEmptyData) = chosenRank(thisData);
-        values{f,d}(e, notEmptyData) = thisData;
+      if ~isempty(actualData)
+        for e = 1:nEvals
+          % thisData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}(actualEvals(e)), notEmptyData, 'UniformOutput', false));
+          thisData = actualData(actualEvals(e), :);
+          thisData = max(thisData, targetValue * ones(size(thisData)));
+          ranks{f,d}(e, notEmptyData) = chosenRank(thisData);
+          values{f,d}(e, notEmptyData) = thisData;
+        end
       end
     end
   end

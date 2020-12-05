@@ -179,7 +179,7 @@ function [Fval, Ftrue] = f1(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
@@ -259,7 +259,7 @@ function [Fval, Ftrue] = f2(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
@@ -341,7 +341,7 @@ function [Fval, Ftrue] = f3(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
@@ -432,7 +432,7 @@ function [Fval, Ftrue] = f4(x, DIM, ntrial)
     rseed = rrseed; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
@@ -525,7 +525,7 @@ function [Fval, Ftrue] = f5(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
@@ -614,17 +614,17 @@ function [Fval, Ftrue] = f6(x, DIM, ntrial)
     rseed = rrseed; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100));
+    Fopt = double(1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    rotation = double(computeRotation(rseed+1e6, DIM));
     scales = sqrt(condition).^linspace(0, 1, DIM)'; 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = diag(scales) * computeRotation(rseed, DIM);
     % decouple scaling from function definition
-    linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
+    linearTF = double(rotation * linearTF); % or computeRotation(rseed+1e3, DIM)
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -707,15 +707,15 @@ function [Fval, Ftrue] = f7(x, DIM, ntrial)
     rseed = rrseed; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    rotation = double(computeRotation(rseed+1e6, DIM));
     scales = condition.^linspace(0, 1, DIM)'; 
-    linearTF = diag(sqrt(condition/10).^linspace(0, 1, DIM)) * computeRotation(rseed, DIM); 
+    linearTF = double(diag(sqrt(condition/10).^linspace(0, 1, DIM)) * computeRotation(rseed, DIM));
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -800,7 +800,7 @@ function [Fval, Ftrue] = f8(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
@@ -885,14 +885,14 @@ function [Fval, Ftrue] = f9(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
-    Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
+    % Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation
     scale = max(1, sqrt(DIM) / 8.); 
-    linearTF = scale * computeRotation(rseed, DIM); 
+    linearTF = double(scale * computeRotation(rseed, DIM));
     Xopt = linearTF' * 0.5*ones(DIM,1) / scale^2;
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
@@ -969,13 +969,13 @@ function [Fval, Ftrue] = f10(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    rotation = double(computeRotation(rseed+1e6, DIM));
     scales = condition.^linspace(0, 1, DIM)'; 
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
@@ -1056,13 +1056,13 @@ function [Fval, Ftrue] = f11(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    rotation = double(computeRotation(rseed+1e6, DIM));
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -1141,13 +1141,13 @@ function [Fval, Ftrue] = f12(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     Xopt =1* computeXopt(rseed+1e6, DIM); % function ID is seed for rotation 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    rotation = double(computeRotation(rseed+1e6, DIM));
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -1230,17 +1230,17 @@ function [Fval, Ftrue] = f13(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    rotation = double(computeRotation(rseed+1e6, DIM));
     scales = sqrt(condition).^linspace(0, 1, DIM)'; 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = diag(scales) * computeRotation(rseed, DIM);
     % decouple scaling from function definition
-    linearTF = rotation * linearTF; 
+    linearTF = double(rotation * linearTF);
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -1317,13 +1317,13 @@ function [Fval, Ftrue] = f14(x, DIM, ntrial)%
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    rotation = double(computeRotation(rseed+1e6, DIM));
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -1403,17 +1403,17 @@ function [Fval, Ftrue] = f15(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
+    Fopt = double(1* min(1000, max(-1000, (round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100))));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    rotation = double(computeRotation(rseed+1e6, DIM));
     scales = sqrt(condition).^linspace(0, 1, DIM)'; 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = diag(scales) * computeRotation(rseed, DIM);
     % decouple scaling from function definition
-    linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
+    linearTF = double(rotation * linearTF); % or computeRotation(rseed+1e3, DIM)
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -1495,17 +1495,17 @@ function [Fval, Ftrue] = f16(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100));
+    Fopt = double(1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    rotation = double(computeRotation(rseed+1e6, DIM));
     scales = (1/sqrt(condition)).^linspace(0, 1, DIM)';  % CAVE 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = diag(scales) * computeRotation(rseed, DIM);
     % decouple scaling from function definition
-    linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
+    linearTF = double(rotation * linearTF); % or computeRotation(rseed+1e3, DIM)
     K = [0:11]; % number of summands, 20 in CEC2005, 10/12 saves 30% of time
     aK = 0.5.^K;
     bK = 3.^K;
@@ -1600,15 +1600,15 @@ function [Fval, Ftrue] = f17(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100));
+    Fopt = double(1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    rotation = double(computeRotation(rseed+1e6, DIM));
     scales = sqrt(condition).^linspace(0, 1, DIM)'; 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = double(diag(scales) * computeRotation(rseed, DIM));
     % decouple scaling from function definition
     % linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
   end
@@ -1703,15 +1703,15 @@ function [Fval, Ftrue] = f18(x, DIM, ntrial)
     rseed = rrseed; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100));
+    Fopt = double(1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    rotation = double(computeRotation(rseed+1e6, DIM));
     scales = sqrt(condition).^linspace(0, 1, DIM)'; 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = double(diag(scales) * computeRotation(rseed, DIM));
     % decouple scaling from function definition
     % linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
   end
@@ -1803,13 +1803,13 @@ function [Fval, Ftrue] = f19(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100));
+    Fopt = double(1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     scale = max(1, sqrt(DIM) / 8.); 
-    linearTF = scale * computeRotation(rseed, DIM); 
+    linearTF = double(scale * computeRotation(rseed, DIM));
     Xopt = linearTF' * 0.5*ones(DIM,1) / scale^2;
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
@@ -1891,12 +1891,12 @@ function [Fval, Ftrue] = f20(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100));
+    Fopt = double(1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
-    Xopt = 0.5 * sign(unif(DIM,rseed)'-0.5) * 4.2096874633;
+    Xopt = double(0.5 * sign(unif(DIM,rseed)'-0.5) * 4.2096874633);
     scales = sqrt(condition).^linspace(0, 1, DIM)'; 
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
@@ -1988,12 +1988,12 @@ function [Fval, Ftrue] = f21(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100));
+    Fopt = double(1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
-    rotation = computeRotation(rseed, DIM); 
+    rotation = double(computeRotation(rseed, DIM));
     % compute scaling for each optimum
     arrCondition = maxcondition.^linspace(0,1,nhighpeaks-1);
     [ignore, idx] = sort(unif(nhighpeaks-1, rseed));  % random permutation
@@ -2012,9 +2012,10 @@ function [Fval, Ftrue] = f21(x, DIM, ntrial)
     lastSize.POPSI = POPSI; 
     lastSize.DIM = DIM; 
     Xlocal = rotation * reshape(10*unif(DIM*nhighpeaks, rseed)-5, ...
-                                DIM, nhighpeaks); 
+                                DIM, nhighpeaks);
     % global optimum not too close to boundary
     Xlocal(:,1) =1* 0.8 * Xlocal(:,1); 
+    Xlocal = double(Xlocal);
     Xopt = rotation' * Xlocal(:,1);
   end
 
@@ -2108,12 +2109,12 @@ function [Fval, Ftrue] = f22(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100));
+    Fopt = double(1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
-    rotation = computeRotation(rseed, DIM); 
+    rotation = double(computeRotation(rseed, DIM));
     % compute scaling for each optimum
     arrCondition = maxcondition.^linspace(0,1,nhighpeaks-1);
     [ignore, idx] = sort(unif(nhighpeaks-1, rseed));  % random permutation
@@ -2132,9 +2133,10 @@ function [Fval, Ftrue] = f22(x, DIM, ntrial)
     lastSize.POPSI = POPSI; 
     lastSize.DIM = DIM; 
     Xlocal = rotation * reshape(9.8*unif(DIM*nhighpeaks, rseed)-4.9, ...
-                                DIM, nhighpeaks); 
+                                DIM, nhighpeaks);
     % global optimum not too close to boundary
     Xlocal(:,1) =1* 0.8 * Xlocal(:,1); 
+    Xlocal = double(Xlocal);
     Xopt = rotation' * Xlocal(:,1);
   end
 
@@ -2224,17 +2226,17 @@ function [Fval, Ftrue] = f23(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100));
+    Fopt = double(1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    rotation = double(computeRotation(rseed+1e6, DIM));
     scales = (99.1234/5)^0 * sqrt(condition).^linspace(0, 1, DIM)'; 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = diag(scales) * computeRotation(rseed, DIM);
     % decouple scaling from function definition
-    linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
+    linearTF = double(rotation * linearTF); % or computeRotation(rseed+1e3, DIM)
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -2331,18 +2333,18 @@ function [Fval, Ftrue] = f24(x, DIM, ntrial)
     rseed = funcID; 
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100));
+    Fopt = double(1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   mu1 = 2.5;  % optimum shift
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
-    Xopt = 0.5 * mu1 * sign(gauss(DIM, rseed))' .* ones(DIM, 1); 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    Xopt = double(0.5 * mu1 * sign(gauss(DIM, rseed))' .* ones(DIM, 1));
+    rotation = double(computeRotation(rseed+1e6, DIM));
     scales = sqrt(condition).^linspace(0, 1, DIM)'; 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = diag(scales) * computeRotation(rseed, DIM);
     % decouple scaling from function definition
-    linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
+    linearTF = double(rotation * linearTF); % or computeRotation(rseed+1e3, DIM)
   end
   % DIM- and POPSI-dependent initializations of DIMxPOPSI matrices
   if isempty(lastSize) || lastSize.DIM ~= DIM || lastSize.POPSI ~= POPSI
@@ -2394,15 +2396,25 @@ end % function
 %%%%%%%%%%%%%%%%%%%% Helper functions %%%%%%%%%%%%%%%%%%%%
 
 function x_opt = computeXopt(seed, DIM)
+% x_opt = computeXopt(seed, DIM)
+%   compute optimum location
+% Output:
+%   x_opt - optimum location | double vector
+
    % rounded by for digits, but never to zero
-   x_opt = 8 * floor(1e4*unif(DIM,seed)')/1e4 - 4;
+   x_opt = 8 * floor(double(1e4*unif(DIM,seed)'))/1e4 - 4;
    idx = (x_opt == 0);
    x_opt(idx) = -1e-5;
 end
 
 function B = computeRotation(seed, DIM)
-% computes an orthogonal basis
-  B = reshape(gauss(DIM*DIM,seed), DIM, DIM);
+% B = computeRotation(seed, DIM)
+%   computes an orthogonal basis using given seed and dimension
+%
+% Output:
+%   B - ortogonal basis | symbolic matrix
+
+  B = vpa(reshape(double(gauss(DIM*DIM,seed)), DIM, DIM));
   for i = 1:DIM
     for j = 1:i-1
       B(:,i) = B(:,i) - B(:,i)'*B(:,j) * B(:,j);
@@ -2426,9 +2438,13 @@ end
 
 %---------- pseudo random number generator ------------
 function g = gauss(N, seed)
-% gauss(N, seed)
+% g = gauss(N, seed)
 % samples N standard normally distributed numbers
 % being the same for a given seed
+%
+% Output:
+%   g - normally distributed numbers | symbolic vector
+
   r = unif(2*N, seed); % in principle we need only half
   g = sqrt(-2*log(r(1:N))) .* cos(2*pi*r(N+1:2*N));
   if any(g == 0)
@@ -2437,8 +2453,11 @@ function g = gauss(N, seed)
 end
 
 function r = unif(N, inseed)
-% unif(N, seed)
+% r = unif(N, seed)
 %    generates N uniform numbers with starting seed
+%
+% Output:
+%   r - uniform numbers | symbolic vector
 
   % initialization
   inseed = abs(inseed);
@@ -2459,7 +2478,7 @@ function r = unif(N, inseed)
   aktrand = rgrand(1);
 
   % sample numbers
-  r = zeros(1,N); % makes the function ten times faster(!)
+  r = sym(zeros(1,N)); % makes the function ten times faster(!)
   for i = 1:N
     tmp = floor(aktseed/127773);
     aktseed = 16807 * (aktseed - tmp * 127773) - 2836 * tmp;
@@ -2688,15 +2707,15 @@ function [Fval, Ftrue] = template(x, DIM, ntrial)
     rseed = rrseed;  % like for ntrial==0
   end
   if isempty(Fopt)
-    Fopt =1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100));
+    Fopt = double(1* min(1000, max(-1000, round(100*100*gauss(1,rseed)/gauss(1,rseed+1))/100)));
   end 
   Fadd = Fopt;  % value to be added on the "raw" function value
   % DIM-dependent initialization
   if isempty(lastSize) || lastSize.DIM ~= DIM  
     Xopt =1* computeXopt(rseed, DIM); % function ID is seed for rotation 
-    rotation = computeRotation(rseed+1e6, DIM); 
+    rotation = double(computeRotation(rseed+1e6, DIM));
     scales = sqrt(condition).^linspace(0, 1, DIM)'; 
-    linearTF = diag(scales) * computeRotation(rseed, DIM); 
+    linearTF = double(diag(scales) * computeRotation(rseed, DIM));
     % decouple scaling from function definition
     % linearTF = rotation * linearTF; % or computeRotation(rseed+1e3, DIM)
   end

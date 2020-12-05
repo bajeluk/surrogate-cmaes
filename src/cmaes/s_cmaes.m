@@ -382,6 +382,7 @@ iGeneration = 0;
 out.generationStarts = [];
 out.arxvalids = [];
 out.fvalues = [];
+out.fvaluesOrig = [];
 out.generations = [];
 out.BDs = {};
 out.sigmas = [];
@@ -836,9 +837,15 @@ while isempty(stopflag)
     'fitfun_handle', fitfun_handle, ...
     'countiter', countiter + 1);
   
-  % if the starting point was evaluated, save its value
+  % if the starting point was evaluated, save its value and add to logging
   if (countiter == 0 && myevalbool(opts.EvalInitialX))
     cmaesState.fxstart = fitness.hist(1);
+    % state-variables logging
+    out.generations(1, end+1) = iGeneration;
+    out.arxvalids(:, end+1) = xmean;
+    out.fvalues(1, end+1) = fitness.hist(1);
+    out.fvaluesOrig(1, end+1) = fitness.hist(1);
+    out.origEvaled(:, end+1) = true;
   end
   
   if (~exist('surrogateOpts','var'))
@@ -862,7 +869,11 @@ while isempty(stopflag)
   iGeneration = iGeneration + 1;
   out.generationStarts(end+1) = length(out.generations) + 1;
   out.arxvalids(:,end+(1:popsize)) = arxvalid;
+  % f-values returned to CMA-ES using model and original function and
+  % shifting in case of model values lower than minimum so far
   out.fvalues(1,end+(1:popsize)) = fitness.raw;
+  % original f-values
+  out.fvaluesOrig(1, end+(1:popsize)) = feval(fitfun, arxvalid, varargin{:});
   out.generations(1,end+(1:popsize)) = iGeneration;
   out.BDs{1,end+1} = BD;
   out.sigmas(end+1) = sigma;
