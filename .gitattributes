@@ -1,0 +1,7 @@
+exp/vendor/bbob_extra/f206/earthelevation.txt filter=lfs diff=lfs merge=lfs -text
+exp/vendor/bbob_extra/f201/german_postal.txt filter=lfs diff=lfs merge=lfs -text
+exp/vendor/bbob_extra/f201/iris.txt filter=lfs diff=lfs merge=lfs -text
+exp/vendor/bbob_extra/f201/ruspini.txt filter=lfs diff=lfs merge=lfs -text
+exp/vendor/bbob_extra/f204/* filter=lfs diff=lfs merge=lfs -text
+exp/vendor/bbob_extra/f205/* filter=lfs diff=lfs merge=lfs -text
+exp/vendor/bbob_extra/f206/* filter=lfs diff=lfs merge=lfs -text
