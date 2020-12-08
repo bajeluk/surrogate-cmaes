@@ -38,8 +38,12 @@ classdef IndividualEC < EvolutionControl & Observable
       end
       
       minTrainSize = obj.model.getNTrainData();
+      if isfield(surrogateOpts.modelOpts, 'trainsetSizeMax')
+        nArchivePoints = myeval(surrogateOpts.modelOpts.trainsetSizeMax);
+      else
+        nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
+      end
 
-      nArchivePoints = myeval(surrogateOpts.modelOpts.trainsetSizeMax);
       [xTrain, yTrain] = archive.getDataNearPoint(nArchivePoints, ...
           xmean', surrogateOpts.evoControlTrainRange, sigma, BD);
       

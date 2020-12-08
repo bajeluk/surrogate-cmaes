@@ -1,12 +1,15 @@
-function [data, settings, exp_results] = dataReady(datapath, funcSet)
+function [data, settings, exp_results] = dataReady(datapath, funcSet, maxFE)
 % Prepares data for further processing.
-% [data, settings] = dataReady(datapath, funcSet) returns cell array 'data'
-% of size functions x dimensions x settings and appropriate 'settings'.
+% 
+% [data, settings] = dataReady(datapath, funcSet, maxFE) returns cell array
+% 'data' of size functions x dimensions x settings and appropriate 
+% 'settings'.
 %
 % Input:
 %   datapath - path to data | string
 %   funcSet  - structure with fields 'BBfunc' (numbers of BBOB functions) 
 %              and 'dims' (numbers of dimensions) | structure
+%   maxFE    - maximal number of function evaluations | integer
 %
 % Output:
 %   data     - aggregated data of size functions x dimensions x settings 
@@ -15,7 +18,24 @@ function [data, settings, exp_results] = dataReady(datapath, funcSet)
 %              contain mat-files with results | structure
 %
 % See Also:
-%   bbobDataReady, catEvalSet
+%   bbobDataReady, catEvalSet, divSmooth
+
+  if nargin < 3
+    if nargin < 2
+      if nargin < 1
+        if nargout > 0
+          data = [];
+          settings = {};
+          exp_results = [];
+        end
+        help dataReady
+        return
+      end
+      funcSet.BBfunc = 1:24;
+      funcSet.dims = 2;
+    end
+    maxFE = 250;
+  end
 
   BBfunc = funcSet.BBfunc;
   dims = funcSet.dims;
@@ -50,7 +70,7 @@ function [data, settings, exp_results] = dataReady(datapath, funcSet)
   exp_results = cell(nFunc, nDim);
   exp_results(:, :) = {{}};
   if isempty(datalist)
-    data = bbobDataReady(datapath, funcSet);
+    data = bbobDataReady(datapath, funcSet, maxFE);
     return
   end
   
@@ -117,7 +137,7 @@ function [data, settings, exp_results] = dataReady(datapath, funcSet)
     data{nFunc, nDim, length(settings)} = [];
   end
     
-  data = divSmooth(data, funcSet);
+  data = divSmooth(data, funcSet, maxFE);
   
 end
 

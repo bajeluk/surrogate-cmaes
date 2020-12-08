@@ -1,3 +1,4 @@
+
 exp_id = 'exp_doubleEC_27';
 exp_description = 'DTS-CMA-ES with PoI criterion, best dataset-generation types from offline model testing and ANOVA assessment, in [2,3,5,10,20]D, Surrogate CMA-ES, fixed DTS 0.05 (merged code), DTIterations={1}, PreSampleSize=0.75, 2pop, GP kernel by \sigma^2 C (ell = 1)';
 

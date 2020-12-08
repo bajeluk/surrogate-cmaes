@@ -34,6 +34,27 @@ classdef Archive < handle
         obj.gens = [obj.gens; generation(isNotYetSaved)];
       end
     end
+    
+    function obj = sortLast(obj, count)
+        [points, ~] = size(obj.y);
+        breakPoint = points - count;
+        if breakPoint < 0
+            breakPoint = 0;
+        end
+        toSort = obj.y(breakPoint + 1:points);
+        [sortedVales, sortedIdxs] = sort(toSort, 'descend');
+        
+        newX = obj.X(1:breakPoint, :);
+        newY = obj.y(1:breakPoint);
+        
+        for idx = sortedIdxs
+            newX = [newX; obj.X(breakPoint + idx, :)];
+            newY = [newY; obj.y(breakPoint + idx)];
+        end 
+        
+        obj.X = newX;
+        obj.y = newY;
+    end
 
     function obj = delete(obj, indices)
       % remove data at given indices
@@ -43,6 +64,16 @@ classdef Archive < handle
     end
 
     function [inArx, indices] = isInArchive(obj, X)
+      % return whether points are already in the Archive
+      %
+      % Input:
+      %   X - points to check | double matrix
+      %
+      % Output:
+      %   inArx   - true for points comprised in the Archive, false
+      %             otherwise | logical vector
+      %   indices - ids of points in the Archive (zero for points not
+      %             comprised in the Archive) | integer vector
       inArx = false(size(X,1), 1);
       indices = zeros(size(X,1), 1);
       if (~isempty(obj.X))
@@ -243,7 +274,49 @@ classdef Archive < handle
       y = obj.y(indicesToReturn);
     end
 
-    function [X, y] = getTrainsetData(obj, trainsetType, trainsetSizeMax, xMean, trainRange, sigma, BD, population)
+    function [X, y] = getTrainsetData(obj, trainsetType, trainsetSizeMax, xMean, trainRange, sigma, BD, population, modelOptions)
+      % getTrainsetData Get data for model training according to chosen
+      %   training set selection method in 'trainsetType'.
+      %
+      % [X, y] = getTrainsetData(obj, trainsetType, trainsetSizeMax, ...
+      %   xMean, trainRange, sigma, BD, population, modelOptions)
+      %
+      % Input:
+      %   trainsetType - method for training set selection | string:
+      %     'allpoints'           - get all data in range
+      %     'clustering'          - clustering the points in the input
+      %                             space into 'trainsetSizeMax' clusters
+      %                             and taking the points nearest to
+      %                             clusters’ centroids (e.g., in (Bajer et
+      %                             al., 2015))
+      %     'nearest'             - selecting the union of the k nearest
+      %                             neighbors of every point  for which the
+      %                             fitness should be predicted (e.g., in
+      %                             (Kern et al., 2006)), where k is
+      %                             maximal such that the total number of
+      %                             selected points does not exceed
+      %                             'trainsetSizeMax'
+      %     'nearesttopopulation' - selecting 'trainsetSizeMax' points
+      %                             which are closest to any point in the
+      %                             current population
+      %     'latest'              - taking up to 'trainsetSizeMax' most
+      %                             recently evaluated points (e.g., in
+      %                             (Ulmer et al., 2003) or (Loshchilov et
+      %                             al., 2013))
+      %   trainsetSizeMax - maximum number of points in a training set |
+      %                     positive integer scalar
+      %   xMean           - CMA-ES mean | double vector
+      %   trainRange      - maximum radius of the training set | double
+      %                     vector
+      %   sigma           - CMA-ES sigma | double scalar
+      %   BD              - CMA-ES BD matrix | double matrix
+      %   population      - current CMA-ES population | population object
+      %   modelOptions    - surrogate model settings (necessary only for
+      %                     'trainsetType' set to 'latest') | structure
+      %
+      % Output:
+      %   X - input space values of selected points | double matrix
+      %   y - output space values of selected points | double vector
 
       % if the trainRange is specified as quantile from Chi2,
       % convert the number to the metric value
@@ -265,15 +338,57 @@ classdef Archive < handle
             %remove elements from the beginning
           end
         case 'clustering'
+          % clustering the points in the input space into 'trainsetSizeMax'
+          % clusters and taking the points nearest to clusters’ centroids
+          % (e.g., in (Bajer et al., 2015))
           [X, y] = obj.getDataNearPoint(trainsetSizeMax, xMean, trainRange, sigma, BD);
         case 'nearest'
+          % selecting the union of the k nearest neighbors of every point
+          % for which the fitness should be predicted (e.g., in (Kern et
+          % al., 2006)), where k is maximal such that the total number of
+          % selected points does not exceed 'trainsetSizeMax'
           [X, y] = obj.getClosestDataFromPoints(trainsetSizeMax, population.x', sigma, BD, trainRange);
         case 'nearesttopopulation'
+          % selecting 'trainsetSizeMax' points which are closest to any
+          % point in the current population
           [X, y] = obj.getClosestDataFromPopulation(trainsetSizeMax, population, trainRange, sigma, BD);
+        case 'latest'
+          % taking up to 'trainsetSizeMax' most recently evaluated points
+          % (e.g., in (Ulmer et al., 2003) or (Loshchilov et al., 2013))
+          [X, y] = obj.getLatestData(trainsetSizeMax);
+          if modelOptions.latestTruncateRatio > 0 && modelOptions.latestTruncateRatio < 1
+            [points, ~] = size(X);
+            
+            currComplexity = obj.dim + 1;
+            if points * modelOptions.latestTruncateRatio >= (2*obj.dim + 1) * 1.1
+                currComplexity = (2*obj.dim + 1);
+            elseif points * modelOptions.latestTruncateRatio >= (ceil(obj.dim * (obj.dim + 3) / 2) + 1) * 1.1
+                currComplexity = (ceil(obj.dim * (obj.dim + 3) / 2) + 1);
+            end
+            
+            n = floor(max(currComplexity + 2, modelOptions.latestTruncateRatio * (points + 1)));
+            points = min(points, n);
+            
+            %points = ceil((points + 1) * modelOptions.latestTruncateRatio);
+            
+            [~, sortedIndexes] = sort(y);
+            X = X(sortedIndexes(1:points), :);
+            y = y(sortedIndexes(1:points));
+          end
+         
       end
+    end
+    
+    function [X, y] = getLatestData(obj, trainsetSizeMax)
+      % get up to 'trainsetSizeMax' most recently evaluated points
+        [archiveSize, ~] = size(obj.y);
+        dataCnt = min(trainsetSizeMax, archiveSize);
+        X = obj.X(end-dataCnt+1:end, :);
+        y = obj.y(end-dataCnt+1:end);
     end
 
     function obj2 = duplicate(obj)
+      % duplicate Archive object
       obj2 = Archive(obj.dim);
       obj2.X = obj.X;
       obj2.y = obj.y;
@@ -281,6 +396,7 @@ classdef Archive < handle
     end
 
     function obj = restrictToGenerations(obj, toGens)
+      % restrict archive data to generations specified in 'toGens'
       id_gens = ismember(obj.gens, toGens);
       obj.X = obj.X(id_gens, :);
       obj.y = obj.y(id_gens, :);

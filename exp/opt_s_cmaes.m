@@ -46,7 +46,9 @@ if (nargin >= 9)  iinstance = varargin{4};
   % Info about tested function is for debugging purposes
   bbob_handlesF = benchmarks('handles');
   noisyHandles = benchmarksnoisy('handles');
+  extraHandles = benchmarksextra('handles');
   bbob_handlesF(100+(1:length(noisyHandles))) = noisyHandles;
+  bbob_handlesF(200+(1:length(extraHandles))) = extraHandles;
   sgParams.modelOpts.bbob_func = bbob_handlesF{bbParams.functions(1)};
   sgParams.expFileID = [num2str(bbParams.functions(1)) '_' num2str(dim) 'D_' num2str(id)];
   sgParams.instance  = iinstance;

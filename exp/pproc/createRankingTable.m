@@ -20,6 +20,7 @@ function [rankTable, ranks, values] = createRankingTable(data, varargin)
 %                       @median)
 %     'TableDims'   - dimensions chosen to count
 %     'TableFuns'   - functions chosen to count
+%     'Target'      - target value to reach
 %
 % Output:
 %   table  - table of rankings
@@ -101,6 +102,7 @@ function [rankTable, ranks, values] = createRankingTable(data, varargin)
   nDims = length(dimIds);
   nEvals = length(evaluations);
   ranks = cell(nFunc, nDims);
+  values = cell(nFunc, nDims);
   
   % return ranks in specific evaluations
   for f = 1:nFunc
@@ -110,7 +112,18 @@ function [rankTable, ranks, values] = createRankingTable(data, varargin)
       values{f,d} = NaN(nEvals, numOfData);
       % find not empty data
       notEmptyData = inverseIndex(arrayfun(@(x) ~isempty(data_stats{x}{f,d}), 1:numOfData));
-      actualData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}, notEmptyData, 'UniformOutput', false));
+      % find maximum of evaluations or return the greatest user-defined 
+      % number of evaluations
+      maxEvals = max([evaluations(end), arrayfun(@(x) numel(data_stats{x}{f, d}), notEmptyData)]);
+      actualData = [];
+      % gather actual (function, dimension) non-empty data and fill the
+      % missing values to maxEvals with the best achieved result
+      for dat = 1:numel(notEmptyData)
+        neDat = notEmptyData(dat);
+        ds_act = data_stats{neDat}{f, d};
+        actualData(1:maxEvals, dat) = [ds_act; ds_act(end)*ones(maxEvals - numel(ds_act), 1)];
+      end
+%       actualData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}, notEmptyData, 'UniformOutput', false));
       % return ranks in specific evaluations
       if strcmp(tableMode, 'evaluations')
         if all(evaluations <= 1)
@@ -125,12 +138,16 @@ function [rankTable, ranks, values] = createRankingTable(data, varargin)
         minEval = min([size(actualData, 1), size(actualData, 1) - sum(actualData < targetValue) + 1]);
         actualEvals = ceil(evaluations*minEval);
       end
-
-      for e = 1:nEvals
-        thisData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}(actualEvals(e)), notEmptyData, 'UniformOutput', false));
-        thisData = max(thisData, targetValue * ones(size(thisData)));
-        ranks{f,d}(e, notEmptyData) = chosenRank(thisData);
-        values{f,d}(e, notEmptyData) = thisData;
+      
+      % asociate ranks to data in specified evaluation numbers
+      if ~isempty(actualData)
+        for e = 1:nEvals
+          % thisData = cell2mat(arrayfun(@(x) data_stats{x}{f,d}(actualEvals(e)), notEmptyData, 'UniformOutput', false));
+          thisData = actualData(actualEvals(e), :);
+          thisData = max(thisData, targetValue * ones(size(thisData)));
+          ranks{f,d}(e, notEmptyData) = chosenRank(thisData);
+          values{f,d}(e, notEmptyData) = thisData;
+        end
       end
     end
   end

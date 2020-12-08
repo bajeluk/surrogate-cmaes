@@ -37,7 +37,12 @@ classdef ModelAssistedEC < IndividualEC
         return;
       end
 
-      nArchivePoints = myeval(surrogateOpts.modelOpts.trainsetSizeMax);
+      if isfield(surrogateOpts.modelOpts, 'trainsetSizeMax')
+        nArchivePoints = myeval(surrogateOpts.modelOpts.trainsetSizeMax);
+      else
+        nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
+      end
+
       [xTrain, yTrain] = ModelAssistedEC.getRecentData(archive, nArchivePoints);
 
       if (size(xTrain, 1) < nArchivePoints)

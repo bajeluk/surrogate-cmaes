@@ -8,24 +8,27 @@ function reportFile = generateReport(expFolder, varargin)
 %   settings  - pairs of property (string) and value, or struct with 
 %               properties as fields:
 %
+%     'AlgNames'       - cell array of names of algorithms | {}
 %     'Description'    - description of the report | string
+%     'Dimensions'     - generate output only for this dimensions | []
+%     'Functions'      - generate output only for this functions | []
 %     'LegendOption'   - legend option of plots from relativeFValues,
 %                        recommended settings for generateReport are:
 %                          'out'     - legend is in one separate figure
 %                          'manyout' - legend is in multiple separated
 %                                      figures
+%     'MaxEvals'       - maximal number of function evaluations | integer
 %     'OmitEmptyPlots' - omit plots with no data available | boolean
 %     'Publish'        - resulting format of published report similar to 
 %                        function publish (see help publish) | string
 %                      - to disable publishing set option to 'off' 
 %                        (default)
-%     'Dimensions'     - generate output only for this dimensions | []
-%     'Functions'      - generate output only for this functions | []
 %     'QuantilePlots'  - whether use quantile plots for showing algorithms
 %                        differencies | false
-%     'AlgNames'       - cell array of names of algorithms | {}
 %     'RemoveAlgs'     - remove these algorithms from report, defined by
-%                        their indices in a row vector| []
+%                        their indices in a row vector | []
+%     'ScaleY08'       - scale the y-axis of plots to [-8, 0] | true
+%     'Target'         - target value to reach | 1e-8
 %
 % Output:
 %   reportFile - name of m-file containing report | string
@@ -55,6 +58,9 @@ function reportFile = generateReport(expFolder, varargin)
   quantilePlots = defopts(reportSettings, 'QuantilePlots', false);
   algNames = defopts(reportSettings, 'AlgNames', {});
   removeAlgs = defopts(reportSettings, 'RemoveAlgs', []);
+  maxFE = defopts(reportSettings, 'MaxEvals', 250);
+  targetValue = defopts(reportSettings, 'Target', 1e-8);
+  scaleY08 = defopts(reportSettings, 'ScaleY08', true);
 
   if ~iscell(expFolder)
     expFolder = {expFolder};
@@ -75,7 +81,7 @@ function reportFile = generateReport(expFolder, varargin)
   BBfunc   = cell(nFolders, 1);
   dims     = cell(nFolders, 1);
   % evaluations and quantiles to show
-  showEval     = [25, 50, 100, 200];
+  showEval     = ceil([1/10, 1/5, 2/5, 4/5]*maxFE);
   showQuantile = [0.25, 0.5, 0.75];
   % load data
   for f = 1 : nFolders
@@ -101,8 +107,17 @@ function reportFile = generateReport(expFolder, varargin)
       tdatSplit = strfind(tdatFiles, '_');
       BBfunc{f} = arrayfun(@(x) str2double(tdatFiles{x}(1, tdatSplit{x}(end-1)+2:tdatSplit{x}(end)-1)), ...
         1:length(tdatSplit)); % function numbers
+      if isnan(BBfunc{f})
+        BBfunc{f} = arrayfun(@(x) str2double(tdatFiles{x}(1, tdatSplit{x}(end-2)+2:tdatSplit{x}(end-1)-1)), ...
+        1:length(tdatSplit)); % function numbers
+      
+      end
       dims{f} = arrayfun(@(x) str2double(tdatFiles{x}(1, tdatSplit{x}(end)+4:end-5)), ...
         1:length(tdatSplit)); % dimension numbers
+      if isnan(dims{f})
+        dims{f} = arrayfun(@(x) str2double(tdatFiles{x}(1, tdatSplit{x}(end-1)+4:tdatSplit{x}(end)-1)), ...
+        1:length(tdatSplit)); % dimension numbers
+      end
     end
   end
   if isempty(paramDimensions)
@@ -193,7 +208,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%% loading results\n');
   fprintf(FID, 'funcSet.BBfunc = %s;\n', printStructure(BBfunc, FID, 'Format', 'value'));
   fprintf(FID, 'funcSet.dims = %s;\n', printStructure(dims, FID, 'Format', 'value'));
-  fprintf(FID, '[expData, expSettings] = catEvalSet(expFolder, funcSet);\n');
+  fprintf(FID, 'maxFE = %d;\n', maxFE);
+  fprintf(FID, '[expData, expSettings] = catEvalSet(expFolder, funcSet, maxFE);\n');
   if ~isempty(removeAlgs)
     fprintf(FID, 'expData(:,:,[%s]) = [];\n', num2str(removeAlgs));
     fprintf(FID, 'expSettings([%s]) = [];\n', num2str(removeAlgs));
@@ -219,6 +235,10 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, 'showEval = %s;\n', printStructure(showEval, FID, 'Format', 'value'));
   fprintf(FID, '%% quantile settings\n');
   fprintf(FID, 'showQuantile = %s;\n', printStructure(showQuantile, FID, 'Format', 'value'));
+  fprintf(FID, '%% target settings\n');
+  fprintf(FID, 'targetValue = %d;\n', targetValue);
+  fprintf(FID, '%% y-axis scaling settings\n');
+  fprintf(FID, 'scaleY08 = %d;\n', scaleY08);
   fprintf(FID, '\n');
   fprintf(FID, '%% load algorithms for comparison\n');
   fprintf(FID, '[algData, algNames, algColors] = loadCompAlg(fullfile(''exp'', ''pproc'', ''compAlgMat.mat''), funcSet);\n');
@@ -273,7 +293,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                                  ''DataFuns'', funcSet.BBfunc, ...\n');
   fprintf(FID, '                                  ''DataNames'', expAlgNames, ...\n');
   fprintf(FID, '                                  ''Evaluations'', showEval, ...\n');
-  fprintf(FID, '                                  ''Ranking'', ''tolerant'');\n');
+  fprintf(FID, '                                  ''Ranking'', ''tolerant'', ...\n');
+  fprintf(FID, '                                  ''Target'', targetValue);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%%%%\n');
   fprintf(FID, '%%\n');
@@ -283,7 +304,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
   fprintf(FID, '%% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
   fprintf(FID, '%% Ties of the 1st ranks are counted for all respective algorithms. \n');
-  fprintf(FID, '%% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
+  fprintf(FID, '%% The ties often occure when $\\Delta f_T = %s$ is reached.\n', num2tex(targetValue));
   fprintf(FID, '\n');
   % sum of ranks table
   fprintf(FID, 'sumRankTable = rankingTable(expData, ''Format'', ''figure'', ...\n');
@@ -292,7 +313,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                                     ''DataNames'', expAlgNames, ...\n');
   fprintf(FID, '                                     ''Evaluations'', showEval, ...\n');
   fprintf(FID, '                                     ''Rank'', ''sum'', ...\n');
-  fprintf(FID, '                                     ''Ranking'', ''median'');\n');
+  fprintf(FID, '                                     ''Ranking'', ''median'', ...\n');
+  fprintf(FID, '                                     ''Target'', targetValue);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%%%%\n');
   fprintf(FID, '%%\n');
@@ -302,7 +324,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
   fprintf(FID, '%% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
   fprintf(FID, '%% Ties of ranks are replaced by median tied rank for all respective algorithms. \n');
-  fprintf(FID, '%% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
+  fprintf(FID, '%% The ties often occure when $\\Delta f_T = %s$ is reached.\n', num2tex(targetValue));
   fprintf(FID, '%% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
   fprintf(FID, '%% The sums of ranks are multiplied by factor 10 to show all equalities of ranks.\n');
   fprintf(FID, '\n');
@@ -310,7 +332,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, 'efeTab = efeTable(expData, ''DataDims'', funcSet.dims, ...\n');
   fprintf(FID, '                           ''DataFuns'', funcSet.BBfunc, ...\n');
   fprintf(FID, '                           ''DataNames'', expAlgNames, ...\n');
-  fprintf(FID, '                           ''Quantiles'', showQuantile);\n');
+  fprintf(FID, '                           ''Quantiles'', showQuantile, ...\n');
+  fprintf(FID, '                           ''Target'', targetValue);\n');
   fprintf(FID, '\n');
   fprintf(FID, '%%%%\n');
   fprintf(FID, '%%\n');
@@ -327,8 +350,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%% \\textrm{FE/D}_\\textrm{max} \\cdot (1 + \\frac{1}{9}\\log \\frac{f_{\\textrm{min}}}{\\Delta f_T})\\,,$$\n');
   fprintf(FID, '%%\n');
   fprintf(FID, '%% where $f_{\\textrm{min}}$ is the best reached function value, $\\Delta f_T\n');
-  fprintf(FID, '%% = 10^{-8}$ is target value, $\\textrm{FE/D}$ are function evaluations\n');
-  fprintf(FID, '%% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = 250$.\n');
+  fprintf(FID, '%% = %s$ is target value, $\\textrm{FE/D}$ are function evaluations\n', num2tex(targetValue));
+  fprintf(FID, '%% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = %d$.\n', maxFE);
   fprintf(FID, '%% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
   fprintf(FID, '%%\n');
   % relativeFValuesPlots
@@ -341,10 +364,13 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                            ''DataDims'', funcSet.dims, ...\n');
   fprintf(FID, '                            ''DataFuns'', funcSet.BBfunc, ...\n');
   fprintf(FID, '                            ''PlotFuns'', f, ...\n');
+  fprintf(FID, '                            ''MinValue'', targetValue, ...\n');
+  fprintf(FID, '                            ''MaxEval'', maxFE, ...\n');
   fprintf(FID, '                            ''AggregateDims'', false, ...\n');
   fprintf(FID, '                            ''AggregateFuns'', false, ...\n');
   fprintf(FID, '                            ''DataNames'', expAlgNames, ...\n');
   fprintf(FID, '                            ''Colors'', expCol, ...\n');
+  fprintf(FID, '                            ''ScaleY08'', scaleY08, ...\n');
   fprintf(FID, '                            ''FunctionNames'', true, ...\n');
   fprintf(FID, '                            ''LegendOption'', ''%s'', ...\n', legendOption);
   fprintf(FID, '                            ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
@@ -364,6 +390,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  datanames = [expAlgNames, algNames];\n');
   fprintf(FID, '  colors = [expCol; algColors];\n');
   fprintf(FID, '  \n');
+  fprintf(FID, '  %%%%\n');
+  fprintf(FID, '  \n');
   fprintf(FID, '  close all\n');
   % first rank table
   fprintf(FID, '  rankTable = rankingTable(data, ''Format'', ''figure'', ...\n');
@@ -371,7 +399,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                                 ''DataFuns'', funcSet.BBfunc, ...\n');
   fprintf(FID, '                                 ''DataNames'', datanames, ...\n');
   fprintf(FID, '                                 ''Evaluations'', showEval, ...\n');
-  fprintf(FID, '                                 ''Ranking'', ''tolerant'');\n');
+  fprintf(FID, '                                 ''Ranking'', ''tolerant'', ...\n');
+  fprintf(FID, '                                 ''Target'', targetValue);\n');
   fprintf(FID, '  \n');
   fprintf(FID, '  %%%%\n');
   fprintf(FID, '  %%\n');
@@ -381,7 +410,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  %% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
   fprintf(FID, '  %% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
   fprintf(FID, '  %% Ties of the 1st ranks are counted for all respective algorithms. \n');
-  fprintf(FID, '  %% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
+  fprintf(FID, '  %% The ties often occure when $\\Delta f_T = %s$ is reached.\n', num2tex(targetValue));
   fprintf(FID, '  \n');
   % sum of ranks table
   fprintf(FID, '  sumRankTable = rankingTable(data, ''Format'', ''figure'', ...\n');
@@ -390,7 +419,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                                    ''DataNames'', datanames, ...\n');
   fprintf(FID, '                                    ''Evaluations'', showEval,...\n');
   fprintf(FID, '                                    ''Rank'', ''sum'', ...\n');
-  fprintf(FID, '                                    ''Ranking'', ''median'');\n');
+  fprintf(FID, '                                    ''Ranking'', ''median'', ...\n');
+  fprintf(FID, '                                    ''Target'', targetValue);\n');
   fprintf(FID, '  \n');
   fprintf(FID, '  %%%%\n');
   fprintf(FID, '  %%\n');
@@ -400,7 +430,7 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  %% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
   fprintf(FID, '  %% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
   fprintf(FID, '  %% Ties of ranks are replaced by median tied rank for all respective algorithms. \n');
-  fprintf(FID, '  %% The ties often occure when $\\Delta f_T = 10^{-8}$ is reached.\n');
+  fprintf(FID, '  %% The ties often occure when $\\Delta f_T = %s$ is reached.\n', num2tex(targetValue));
   fprintf(FID, '  %% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
   fprintf(FID, '  %% The sums of ranks are multiplied by factor 10 to show all equalities of ranks.\n');
   fprintf(FID, '  \n');
@@ -408,7 +438,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  efeTab = efeTable(data, ''DataDims'', funcSet.dims, ...\n');
   fprintf(FID, '                          ''DataFuns'', funcSet.BBfunc, ...\n');
   fprintf(FID, '                          ''DataNames'', datanames, ...\n');
-  fprintf(FID, '                          ''Quantiles'', showQuantile);\n');
+  fprintf(FID, '                          ''Quantiles'', showQuantile, ...\n');
+  fprintf(FID, '                          ''Target'', targetValue);\n');
   fprintf(FID, '  \n');
   fprintf(FID, '  %%%%\n');
   fprintf(FID, '  %%\n');
@@ -425,8 +456,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  %% \\textrm{FE/D}_\\textrm{max} \\cdot (1 + \\frac{1}{9}\\log \\frac{f_{\\textrm{min}}}{\\Delta f_T})\\,,$$\n');
   fprintf(FID, '  %%\n');
   fprintf(FID, '  %% where $f_{\\textrm{min}}$ is the best reached function value, $\\Delta f_T\n');
-  fprintf(FID, '  %% = 10^{-8}$ is target value, $\\textrm{FE/D}$ are function evaluations\n');
-  fprintf(FID, '  %% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = 250$.\n');
+  fprintf(FID, '  %% = %s$ is target value, $\\textrm{FE/D}$ are function evaluations\n', num2tex(targetValue));
+  fprintf(FID, '  %% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = %d$.\n', maxFE);
   fprintf(FID, '  %% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
   fprintf(FID, '  %%\n');
   % relativeFValuesPlots
@@ -439,10 +470,13 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '                              ''DataDims'', funcSet.dims, ...\n');
   fprintf(FID, '                              ''DataFuns'', funcSet.BBfunc, ...\n');
   fprintf(FID, '                              ''PlotFuns'', f, ...\n');
+  fprintf(FID, '                              ''MinValue'', targetValue, ...\n');
+  fprintf(FID, '                              ''MaxEval'', maxFE, ...\n');
   fprintf(FID, '                              ''AggregateDims'', false, ...\n');
   fprintf(FID, '                              ''AggregateFuns'', false, ...\n');
   fprintf(FID, '                              ''DataNames'', datanames, ...\n');
   fprintf(FID, '                              ''Colors'', colors, ...\n');
+  fprintf(FID, '                              ''ScaleY08'', scaleY08, ...\n');
   fprintf(FID, '                              ''FunctionNames'', true, ...\n');
   fprintf(FID, '                              ''LegendOption'', ''%s'', ...\n', legendOption);
   fprintf(FID, '                              ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
@@ -456,6 +490,8 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '  han = relativeFValuesPlot(data, ...\n');
   fprintf(FID, '                          ''DataDims'', funcSet.dims, ...\n');
   fprintf(FID, '                          ''DataFuns'', funcSet.BBfunc, ...\n');
+  fprintf(FID, '                          ''minValue'', targetValue, ...\n');
+  fprintf(FID, '                          ''MaxEval'', maxFE, ...\n');
   fprintf(FID, '                          ''AggregateDims'', false, ...\n');
   fprintf(FID, '                          ''AggregateFuns'', true, ...\n');
   fprintf(FID, '                          ''DataNames'', datanames, ...\n');

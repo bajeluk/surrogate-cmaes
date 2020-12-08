@@ -50,7 +50,7 @@ classdef GenerationEC < EvolutionControl & Observable
       
       sampleSigma = surrogateOpts.evoControlSampleRange * sigma;
       
-      obj.model = ModelFactory.createModel(surrogateOpts.modelType, surrogateOpts.modelOpts, xmean');
+      obj.model = e.createModel(surrogateOpts.modelType, surrogateOpts.modelOpts, xmean');
 
       if (obj.evaluateOriginal)
         %
@@ -185,7 +185,11 @@ classdef GenerationEC < EvolutionControl & Observable
       isTrained = false;
 
       trainSigma = surrogateOpts.evoControlTrainRange * cmaesState.sigma;
-      nArchivePoints = myeval(surrogateOpts.modelOpts.trainsetSizeMax);
+      if isfield(surrogateOpts.modelOpts, 'trainsetSizeMax')
+        nArchivePoints = myeval(surrogateOpts.modelOpts.trainsetSizeMax);
+      else
+        nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
+      end
 
       nRequired = obj.model.getNTrainData();
       [X, y] = archive.getDataNearPoint(nArchivePoints, cmaesState.xmean', ...

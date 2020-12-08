@@ -70,7 +70,12 @@ classdef MultiTrainedEC < EvolutionControl
       origEvaled = false(1,lambda);
 
       % get the training data from 'archive'
-      nArchivePoints = myeval(surrogateOpts.modelOpts.trainsetSizeMax);
+      if isfield(surrogateOpts.modelOpts, 'trainsetSizeMax')
+        nArchivePoints = myeval(surrogateOpts.modelOpts.trainsetSizeMax);
+      else
+        nArchivePoints = myeval(surrogateOpts.evoControlTrainNArchivePoints);
+      end
+
       minTrainSize = obj.model.getNTrainData();
       [xTrain, yTrain] = archive.getClosestDataFromPoints(nArchivePoints, xPopValid', sigma, BD);
       if (size(yTrain, 1) < minTrainSize)

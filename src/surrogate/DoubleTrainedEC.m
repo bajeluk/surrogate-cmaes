@@ -153,7 +153,12 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
 
         minTrainSize = obj.newModel.getNTrainData();
 
-        nArchivePoints = myeval(obj.surrogateOpts.modelOpts.trainsetSizeMax);
+        if isfield(obj.surrogateOpts.modelOpts, 'trainsetSizeMax')
+          nArchivePoints = myeval(obj.surrogateOpts.modelOpts.trainsetSizeMax);
+        else
+          nArchivePoints = myeval(obj.surrogateOpts.evoControlTrainNArchivePoints);
+        end
+
         % Choose data from Archive -- the points from this 'getDataNearPoint() 
         % are used only iff modelOpts.trainsetType == 'parameters', otherwise the points
         % are selected later in Model.train() -> ... -> Archive.getTrainsetData()
@@ -709,7 +714,7 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
         return;
       end
 
-      N_VALIDATION_CYCLES = 10;
+      N_VALIDATION_CYCLES = 1;
       kendall = NaN(1, N_VALIDATION_CYCLES);
       rmse = NaN(1, N_VALIDATION_CYCLES);
       errRank = NaN(1, N_VALIDATION_CYCLES);

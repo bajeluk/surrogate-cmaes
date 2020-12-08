@@ -1,28 +1,32 @@
-function data = bbobDataReady(datapath, funcSet)
-% data = bbobDataReady(datapath, funcSet) prepares BBOB data for further 
-% processing. Returns cell array 'data' functions x dimensions.
+function data = bbobDataReady(datapath, funcSet, maxFE)
+% data = bbobDataReady(datapath, funcSet, maxFE) prepares BBOB data for 
+% further processing. Returns cell array 'data' functions x dimensions.
 %
 % Input:
 %   datapath - path to data | string
 %   funcSet  - structure with fields 'BBfunc' (numbers of BBOB functions) 
 %              and 'dims' (numbers of dimensions) | structure
+%   maxFE    - maximal number of function evaluations | integer
 %
 % Output:
 %   data     - aggregated data of size functions x dimensions | cell array
 %
 % See Also:
-%   dataReady
+%   dataReady, divSmooth
 
-  if nargin < 2
-    if nargin < 1
-      if nargout > 0
-        data = {};
+  if nargin < 3
+    if nargin < 2
+      if nargin < 1
+        if nargout > 0
+          data = {};
+        end
+        help bbobDataReady
+        return
       end
-      help bbobDataReady
-      return
+      funcSet.BBfunc = 1:24;
+      funcSet.dims = 2;
     end
-    funcSet.BBfunc = 1:24;
-    funcSet.dims = 2;
+    maxFE = 250;
   end
   
   if ~iscell(datapath)
@@ -78,7 +82,13 @@ function data = bbobDataReady(datapath, funcSet)
       % extract function and dimension number
       datSplit = strsplit(rowSplit{1}, '_');
       f = str2double(datSplit{end-1}(2:end));
+      if isnan(f)
+        f = str2double(datSplit{end-2}(2:end));
+      end
       d = str2double(datSplit{end}(4:end-4));
+      if isnan(d)
+        d = str2double(datSplit{end-1}(4:end));
+      end
       % numbers of instances
       instanceNum = cellfun(@(x) str2double(x(1 : strfind(x, ':')-1)), rowSplit(2:end));
       if exist(datFile, 'file') && any(funcSet.BBfunc == f) && any(funcSet.dims == d)
@@ -98,6 +108,6 @@ function data = bbobDataReady(datapath, funcSet)
   end
     
   % smooth data
-  data = divSmooth(data, funcSet);
+  data = divSmooth(data, funcSet, maxFE);
   
 end

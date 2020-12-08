@@ -385,7 +385,7 @@ classdef (Abstract) Model
           XtransfReduce=XTransf;
         end
 
-        obj = trainModel(obj, XtransfReduce, y, xMean, generation);
+        obj = trainModel(obj, XtransfReduce, y, xMean, generation, archive);
       end
 
       if (obj.isTrained())
@@ -442,7 +442,8 @@ classdef (Abstract) Model
       dim = obj.dim;
       [X,y] = archive.getTrainsetData(obj.options.trainsetType,...
           myeval(obj.options.trainsetSizeMax), xMean, obj.options.trainRange,...
-          sigma, BD, population);
+          sigma, BD, population, obj.options);
+      
     end
   end
 end

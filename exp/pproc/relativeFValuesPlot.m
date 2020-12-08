@@ -130,6 +130,7 @@ function handle = relativeFValuesPlot(data, varargin)
   defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
   plotSet.lineSpec = defopts(settings, 'LineSpec', defaultLine);
   plotSet.drawQuantiles = defopts(settings, 'Quantiles', false(1, numOfData));
+  plotSet.TitleString = defopts(settings, 'TitleString', '');
   if length(plotSet.lineSpec) ~= numOfData && any(emptyData)
     plotSet.lineSpec = plotSet.lineSpec(~emptyData);
   end
@@ -275,11 +276,31 @@ function handle = relativePlot(data_stats, settings)
           settings.drawQuantiles = false(1, numOfData);
         end
         nonEmptyId = find(isNotEmptyData);
-        nUsefulData = length(nonEmptyId);
 
         % count f-values ratio
-        actualData = cell2mat(arrayfun(@(D) data_stats{nonEmptyId(D)}{f,d}, 1:nUsefulData, 'UniformOutput', false));
-        nData = min(settings.maxEval, size(actualData, 1));
+        nData = settings.maxEval;
+        
+        if (any(settings.drawQuantiles))
+            actualData = NaN(nData, numel(nonEmptyId)*3);
+        else
+            actualData = NaN(nData, numel(nonEmptyId));
+        end
+        % gather actual (function, dimension) non-empty data and fill the
+        % missing values to maxEvals with the best achieved result
+        for dat = 1:numel(nonEmptyId)
+          neDat = nonEmptyId(dat);
+          ds_act = data_stats{neDat}{f, d};
+          if numel(ds_act) < nData
+            actualData(:, dat) = [ds_act; ds_act(end)*ones(nData - numel(ds_act), 1)];
+          else
+              if (any(settings.drawQuantiles))
+                  actualData(:, ((dat-1)*3)+1:((dat-1)*3)+3) = ds_act(1:nData, :);
+              else
+                  actualData(:, dat) = ds_act(1:nData);
+              end
+          end
+        end
+        % logarithmic scaling
         actualData = log10( actualData(1:nData, :) );
         actualMin = min(min(actualData));
         actualMax = max(max(actualData));
@@ -512,7 +533,7 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
     thisYMax = -Inf;
     for dat = nRelativeData:-1:1
       if (notEmptyData(dat) && (~any(settings.drawQuantiles) ...
-          || (dat <= (nRelativeData/3)) || settings.drawQuantiles(mod(dat-1,nRelativeData/3)+1)))
+          || (dat <= (nRelativeData/3)) || settings.drawQuantiles(mod(dat-1,ceil(nRelativeData/3))+1)))
         h(dat) = plot(evaldim, relativeData{dat}{fId, dId}(evaldim), ...
           lineSpec{dat}, 'LineWidth', medianLineWidth(dat), 'Color', colors(dat, :));
         thisY = relativeData{dat}{fId, dId}(evaldim(:));

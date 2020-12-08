@@ -1,4 +1,4 @@
-function [evals, settings, results] = catEvalSet(folders, funcSet)
+function [evals, settings, results] = catEvalSet(folders, funcSet, maxFE)
 % Finds unique settings and prepares its data for further processing.
 % [evals, settings] = catEvalSet(folders, funcSet) returns cell array 
 % 'data' of size functions x dimensions x unique settings and appropriate 
@@ -8,6 +8,7 @@ function [evals, settings, results] = catEvalSet(folders, funcSet)
 %   folders - path to data | string or cell-array of strings
 %   funcSet - structure with fields 'BBfunc' (numbers of BBOB functions) 
 %             and 'dims' (numbers of dimensions) | structure
+%   maxFE   - maximal number of function evaluations | integer
 %
 % Output:
 %   evals    - aggregated data of size functions x dimensions x settings 
@@ -15,13 +16,16 @@ function [evals, settings, results] = catEvalSet(folders, funcSet)
 %   settings - appropriate settings to 'data' | structure
 %
 % See Also:
-%   catEvalSet
+%   catEvalSet, dataReady, bbobDataReady
   
-  evals = {};
+  bobbevals = {};
   settings = {};
-  if nargin < 2
-    help catEvalSet
-    return
+  if nargin < 3
+    if nargin < 2
+      help catEvalSet
+      return
+    end
+    maxFE = 250;
   end
   % cell checking
   if ~iscell(folders)
@@ -36,7 +40,7 @@ function [evals, settings, results] = catEvalSet(folders, funcSet)
 
   % load data from all folders
   for s = 1:length(folders)
-    [exp_evals{s}, settings{s}, exp_results1{s}] = dataReady(folders{s}, funcSet);
+    [exp_evals{s}, settings{s}, exp_results1{s}] = dataReady(folders{s}, funcSet, maxFE);
   end
   
   % not empty settings

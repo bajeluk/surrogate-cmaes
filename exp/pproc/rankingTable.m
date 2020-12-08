@@ -21,6 +21,7 @@ function [rankTable, ranks] = rankingTable(data, varargin)
 %     'Statistic'   - statistic of data | string or handle (@mean, @median)
 %     'TableDims'   - dimensions chosen to count
 %     'TableFuns'   - functions chosen to count
+%     'Target'      - target value to reach
 %
 % Output:
 %   rankTable - table of rankings
@@ -47,6 +48,7 @@ function [rankTable, ranks] = rankingTable(data, varargin)
   dims    = defopts(settings, 'TableDims', funcSet.dims);
   BBfunc  = defopts(settings, 'TableFuns', funcSet.BBfunc);
   tableRank = defopts(settings, 'Rank', 1);
+  targetValue = defopts(settings, 'Target', 1e-8);
   evaluations = defopts(settings, 'Evaluations', [20 40 80]);
   defResultFolder = fullfile('exp', 'pproc', 'tex');
   resultFile = defopts(settings, 'ResultFile', fullfile(defResultFolder, 'rankTable.tex'));
@@ -103,7 +105,7 @@ function [rankTable, ranks] = rankingTable(data, varargin)
         mkdir(resultFolder)
       end
       FID = fopen(resultFile, 'w');
-      printTableTex(FID, rankTable, dims, evaluations, datanames, length(BBfunc))
+      printTableTex(FID, rankTable, dims, evaluations, datanames, length(BBfunc), targetValue)
       fclose(FID);
 
       fprintf('Table written to %s\n', resultFile);
@@ -111,7 +113,7 @@ function [rankTable, ranks] = rankingTable(data, varargin)
 
 end
 
-function printTableTex(FID, table, dims, evaluations, datanames, nFunc)
+function printTableTex(FID, table, dims, evaluations, datanames, nFunc, targetValue)
 % Prints table to file FID
 
   [numOfData, nColumns] = size(table);
@@ -139,13 +141,14 @@ function printTableTex(FID, table, dims, evaluations, datanames, nFunc)
   datanames = sameLength(datanames);
   % find max sums of ranks
   maxTableRanks = max(table);
+  minTableRanks = min(table);
   % data rows
   for dat = 1:numOfData
     printString = '';
     % columns
     for col = 1:nColumns
       sumRank = table(dat, col);
-      if sumRank == maxTableRanks(col)
+      if sumRank == minTableRanks(col)
         % print best data in bold
         printString = [printString, ' & ', '\textbf{', num2str(sumRank), '}'];
       else
@@ -165,8 +168,8 @@ function printTableTex(FID, table, dims, evaluations, datanames, nFunc)
   fprintf(FID, ['\\caption{Counts of the 1st ranks from %d benchmark functions according to the lowest achieved ', ...
                 '$\\Delta_f^\\text{med}$ for different FE/D = \\{%s\\} and dimensions D = \\{%s\\}. ', ...
                 'Ties of the 1st ranks are counted for all respective algorithms. ', ...
-                'The ties often occure when $\\Delta f_T = 10^{-8}$ is reached (mostly on f1 and f5).}\n'], ...
-                nFunc, evalString, dimString);
+                'The ties often occure when $\\Delta f_T = %s$ is reached (mostly on f1 and f5).}\n'], ...
+                nFunc, evalString, dimString, num2tex(targetValue));
                
   fprintf(FID, '\\label{tab:fed}\n');
   fprintf(FID, '\\end{table}\n');

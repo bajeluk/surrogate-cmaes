@@ -32,3 +32,4 @@ exp_*.e[0-9][0-9][0-9]*
 autom4te.cache
 exp/vendor/jq-1.6/config
 exp/vendor/jq-1.6/modules/oniguruma/*
+exp/vendor/bbob_extra/f207/layouts/*
