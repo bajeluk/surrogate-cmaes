@@ -1,6 +1,6 @@
 %Original experiment: exp_doubleEC_26_1model
 exp_id = 'marek_newfunc204_doubleEC_gp_fvalues';
-exp_description = 'DTS-CMA-ES with fvalues criterion, 1 model for all dimensions: best dataset-generation type from offline model testing and ANOVA assessment, in [2,3,5,10,20]D, Surrogate CMA-ES, fixed DTS 0.05 (merged code), DTIterations={1}, PreSampleSize=0.75, 2pop';
+exp_description = 'DTS-CMA-ES with fvalues criterion, f204 in [4, 10, 13, 16, 19]D, Surrogate CMA-ES, adaptive default DTS 0.05 (merged code), DTIterations={1}, PreSampleSize=0.75, 2pop';
 
 % BBOB/COCO framework settings
 
@@ -43,7 +43,7 @@ modelParams = { ...
   'normalizeY',         { true }, ...
   'trainsetType'        { 'nearest' }, ...
   'trainRange',         { 4 }, ...
-  'trainsetSizeMax'     { '20*dim' }, ...l
+  'trainsetSizeMax'     { '20*dim' }, ...
 };
 
 

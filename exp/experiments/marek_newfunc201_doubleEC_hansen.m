@@ -1,6 +1,6 @@
 %Original experiment: exp_doubleEC_26_1model
 exp_id = 'marek_newfunc201_doubleEC_hansen';
-exp_description = 'DTS-CMA-ES with fvalues criterion and hansen model, 1 model for all dimensions: best dataset-generation type from offline model testing and ANOVA assessment, in [2,3,5,10,20]D, Surrogate CMA-ES, fixed DTS 0.05 (merged code), DTIterations={1}, PreSampleSize=0.75, 2pop';
+exp_description = 'DTS-CMA-ES with fvalues criterion and hansen model, f201 in [4, 8, 12, 16, 20]D, adaptive default DTS 0.05 (merged code), DTIterations={1}, PreSampleSize=0.75, 2pop';
 
 % BBOB/COCO framework settings
 
