@@ -25,6 +25,11 @@ doc/*/*.pdf
 tags
 ownUtil/
 doc/gecco2015workshop/ppdata/
+test/local/
 exp_*.o[0-9][0-9][0-9]*
 exp_*.e[0-9][0-9][0-9]*
+*/Makefile.in
+autom4te.cache
+exp/vendor/jq-1.6/config
+exp/vendor/jq-1.6/modules/oniguruma/*
 exp/vendor/bbob_extra/f207/layouts/*
