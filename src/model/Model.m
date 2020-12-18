@@ -413,7 +413,13 @@ classdef (Abstract) Model
           XtransfReduce=XTransf;
         end
 
-        obj = trainModel(obj, XtransfReduce, y, xMean, generation, archive);
+        % train specific model
+        try
+          obj = trainModel(obj, XtransfReduce, y, xMean, generation, archive);
+        catch err
+          fprintf(2, 'Model.train(): Training failed with the following error:\n%s\n', getReport(err));
+          obj.trainGeneration = -1;
+        end
       end
 
       if (obj.isTrained())
