@@ -251,7 +251,12 @@ classdef LmmEC < EvolutionControl & Observable
     end
     
     function [obj, evaluated]= evaluateAndTrainNewModel(obj, toEvaluate, evaluated, sampleOpts, varargin, lambda, phase)
-        [sortedModelPredictions, sortedModelPredictionsIndexes] = sort(obj.model.predict(obj.pop.x'));
+    % select the most promising points, evaluated them and train new model
+    % using them
+
+      % get ordering of population given by model
+      [~, sortedModelPredictionsIndexes] = obj.model.getSortedModelOutput(obj.pop.x');
+
         toEvaluate = min(lambda, toEvaluate);
         firstKIndexes = sortedModelPredictionsIndexes(1:toEvaluate);
         i = 1;
