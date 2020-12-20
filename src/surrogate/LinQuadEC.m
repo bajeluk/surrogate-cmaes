@@ -1,8 +1,6 @@
 classdef LinQuadEC < EvolutionControl & Observable
 %
 % TODO:
-% [ ] remove updaterParams and use DTAdaptive_* parameters instead
-% [ ] rename 'restrictedParam' to 'origRatio'
 % [ ] when preselection, remove not the first points, but be a bit more clever (e.g. the worst predicted points...?)
 %
   properties
@@ -38,8 +36,8 @@ classdef LinQuadEC < EvolutionControl & Observable
     validationGenerationPeriod  % the number of generations between "validation generations" + 1, validation generation is used when 'mod(g, validationGenerationPeriod) == 0'; see validationPopSize
     validationPopSize           % the minimal number of points to be orig-evaluated in validation generation
     
-    individualToInject
-    useInject
+    individualToInject          % point to be injected into the CMA-ES population
+    useInject                   % indicator whether to use point injectation into the population
   end
 
   methods
@@ -91,7 +89,7 @@ classdef LinQuadEC < EvolutionControl & Observable
           'smoothedErr', NaN ...
           );
       
-      obj.individualToInject = NaN
+      obj.individualToInject = NaN;
     end
 
     function [obj, fitness_raw, arx, arxvalid, arz, counteval, lambda, archive, surrogateStats, origEvaled] = runGeneration(obj, cmaesState, surrogateOpts, sampleOpts, archive, counteval, varargin)
@@ -201,17 +199,15 @@ classdef LinQuadEC < EvolutionControl & Observable
         end
       end  % if (obj.modelAge == 0)
       
-      
-      %modelPredictions = obj.newModel.modelPredict(obj.pop.x');
-      %[sortedModelPredictions, sortedModelPredictionsIndexes] = sort(modelPredictions);
-      
       if (k == 0) 
         k = floor(1 + lambda*0.02);
       end
       kUntrimmed = k;
       
       while(evaluated < lambda)
-          [sortedModelPredictions, sortedModelPredictionsIndexes] = sort(obj.model.predict(obj.pop.x'));
+        % get ordering of population given by model
+        [~, sortedModelPredictionsIndexes] = obj.model.getSortedModelOutput(obj.pop.x');
+
           firstKIndexes = sortedModelPredictionsIndexes(1:k);
           i = 1;
           while evaluated < k
@@ -509,63 +505,6 @@ classdef LinQuadEC < EvolutionControl & Observable
 
       assert(~any(isnan(yNew)), 'Assertion failed: fillPopWithOrigFitness is about to return some NaN''s');
     end
-
-    function reevalID = choosePointsForReevaluation(obj, pop, thisModel, nPoints)
-    % choose 'nPoints' points with the highest value of the criterion for
-    % original reevaluation
-    %
-    % returns:
-    %   reevalID  --  bool vector of points from xExtend to reevaluate
-    %
-    % TODO:
-    % [ ] consider feeding all the population into expectedRankDiff()
-      notOrigEvaledX = pop.getNotOrigEvaledX();
-
-      if any(strcmpi(thisModel.predictionType, {'sd2', 'poi', 'ei'}))
-        % higher criterion is better (sd2, poi, ei)
-        modelOutput = thisModel.getModelOutput(notOrigEvaledX');
-        [~, pointID] = sort(modelOutput, 'descend');
-
-      elseif (strcmpi(thisModel.predictionType, 'expectedrank'))
-        ok = true;
-        if (isempty(thisModel) || ~thisModel.isTrained())
-          warning('No valid model for calculating expectedRankDiff(). Using "sd2" criterion.');
-          ok = false;
-        end
-        if (size(notOrigEvaledX, 2) < obj.minPointsForExpectedRank)
-          fprintf(2, 'expectedRankDiff(): #pop=%d < %d: using sd2 criterion\n', size(notOrigEvaledX, 2), obj.minPointsForExpectedRank);
-          ok = false;
-        end
-        if (ok)
-          mu = ceil(obj.cmaesState.mu * (size(notOrigEvaledX ,2) / obj.cmaesState.lambda));
-          [pointID, errs] = expectedRankDiff(thisModel, notOrigEvaledX, mu);
-          if (~ sum(errs >= eps) > (size(notOrigEvaledX,2)/2))
-            warning('exptectedRankDiff() returned more than lambda/2 points with zero expected rankDiff error. Using "sd2" criterion.');
-            ok = false;
-          end
-        end
-        if (~ok)
-          [~, sd2] = thisModel.predict(notOrigEvaledX');
-          [~, pointID] = sort(sd2, 'descend');
-        end
-        % Debug:
-        % y_r = ranking(y_m);
-        % fprintf('  Expected permutation of sorted f-values: %s\n', num2str(y_r(pointID)'));
-
-      else
-        % lower criterion is better (fvalues, lcb, fpoi, fei)
-        modelOutput = thisModel.getModelOutput(notOrigEvaledX');
-        [~, pointID] = sort(modelOutput, 'ascend');
-      end
-
-      notOrigEvaledID = find(~pop.origEvaled);
-      reevalID = false(1, pop.lambda);
-      reevalID(notOrigEvaledID(pointID(1:nPoints))) = true;
-      %
-      % Check the value of origRatio
-      assert(obj.origRatioUpdater.getLastRatio() >= 0 && obj.origRatioUpdater.getLastRatio() <= 1, 'origRatio out of bounds [0,1]');
-    end
-
 
     function [rmse, kendall, rankErr] = reevalStatistics(obj)
       % calculate RMSE and possibly Kendall's coeff. of the re-evaluated point(s)
