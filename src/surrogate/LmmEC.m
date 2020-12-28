@@ -173,10 +173,8 @@ classdef LmmEC < EvolutionControl & Observable
       nLambdaRest = lambda - obj.pop.nPoints;
       [xExtend, xExtendValid, zExtend] = ...
           sampleCmaesNoFitness(obj.cmaesState.sigma, nLambdaRest, obj.cmaesState, sampleOpts);
-      
+      % save number of already evaluated points in population
       evaluated = obj.pop.nPoints;
-      k = evaluated;
-      
       
       % add these points into Population without valid f-value (marked as notEvaluated)
       phase = 4;
@@ -201,37 +199,41 @@ classdef LmmEC < EvolutionControl & Observable
         end
       end  % if (obj.modelAge == 0)
       
+      %%%%%%%%%%%%%%%%%%%% MAIN lmm EC SECTION start %%%%%%%%%%%%%%%%%%%%
       
-      %modelPredictions = obj.newModel.modelPredict(obj.pop.x');
-      %[sortedModelPredictions, sortedModelPredictionsIndexes] = sort(modelPredictions);
-      
-      if (k == 0) 
-        k = floor(1 + lambda*0.02);
-      end
-      
-      [obj, evaluated] = obj.evaluateAndTrainNewModel(obj.nInit, evaluated, sampleOpts, varargin, lambda, phase); 
-      
-      [beforeSortedModelPredictions, beforeSortedModelPredictionsIndexes] = sort(obj.model.predict(obj.pop.x'));
+      % evaluate nInit points and train a new model
+      [obj, evaluated] = obj.evaluateAndTrainNewModel(obj.nInit, evaluated, sampleOpts, lambda, phase, varargin{:});
+      % get ranking of new model prediction
+      [~, sortedModelPredictionsIndexes] = sort(obj.model.predict(obj.pop.x'));
       i = 0;
       modelError = Inf;
       toEvaluate = obj.nInit;
-      while(evaluated < lambda && modelError > obj.qualityThreshhold)
-          i = i + 1;
-          toEvaluate = toEvaluate + obj.nB;
-          [obj, evaluated] = obj.evaluateAndTrainNewModel(toEvaluate, evaluated, sampleOpts, varargin, lambda, phase);
-          [afterSortedModelPredictions, afterSortedModelPredictionsIndexes] = sort(obj.model.predict(obj.pop.x'));
-          modelError = sum(abs(beforeSortedModelPredictionsIndexes(1:floor(lambda/2)) - afterSortedModelPredictionsIndexes(1:floor(lambda/2))));
-          
-          beforeSortedModelPredictionsIndexes = afterSortedModelPredictionsIndexes;
-          
+      % evaluate more batches of nB points until model does not change
+      % anymore
+      while (evaluated < lambda && modelError > obj.qualityThreshhold)
+        i = i + 1;
+        toEvaluate = toEvaluate + obj.nB;
+        % evaluate batch of nB points and train a new model
+        [obj, evaluated] = obj.evaluateAndTrainNewModel(toEvaluate, evaluated, sampleOpts, lambda, phase, varargin{:});
+        % get ranking of new model prediction
+        [~, newSortedModelPredictionsIndexes] = sort(obj.model.predict(obj.pop.x'));
+        % update model error between old and new ranking
+        modelError = sum(abs(sortedModelPredictionsIndexes(1:obj.cmaesState.mu) ...
+                        - newSortedModelPredictionsIndexes(1:obj.cmaesState.mu)));
+        % update last ranking
+        sortedModelPredictionsIndexes = newSortedModelPredictionsIndexes;
       end
       
+      % change nInit according to the number of additional evaluation
+      % cycles
       if (i > 2)
           obj.nInit = min(lambda, obj.nInit + obj.nB);
       elseif (i < 2)
           obj.nInit = max(0, obj.nInit - obj.nB);
       end
       
+      %%%%%%%%%%%%%%%%%%%%% MAIN lmm EC SECTION end %%%%%%%%%%%%%%%%%%%%%
+
       if (evaluated >= lambda)
         %All points were evaluated -> return orig evaluated solution
         [obj, fitness_raw, arx, arxvalid, arz, counteval, surrogateStats, origEvaled] ...
@@ -250,37 +252,53 @@ classdef LmmEC < EvolutionControl & Observable
       end
     end
     
-    function [obj, evaluated]= evaluateAndTrainNewModel(obj, toEvaluate, evaluated, sampleOpts, varargin, lambda, phase)
+    function [obj, evaluated]= evaluateAndTrainNewModel(obj, toEvaluate, evaluated, sampleOpts, lambda, phase, varargin)
     % select the most promising points, evaluated them and train new model
     % using them
+
+      % return when no points to evaluate
+      if toEvaluate < 1
+        return
+      end
 
       % get ordering of population given by model
       [~, sortedModelPredictionsIndexes] = obj.model.getSortedModelOutput(obj.pop.x');
 
-        toEvaluate = min(lambda, toEvaluate);
-        firstKIndexes = sortedModelPredictionsIndexes(1:toEvaluate);
-        i = 1;
-        while evaluated < toEvaluate
-            idxToEval = firstKIndexes(i);
-            i = i + 1;
-            if ~obj.pop.isEvaled(idxToEval)
-                toEval = obj.pop.x(:, idxToEval);
-                [y, arx, x, arz, obj.counteval] = ...
-                    sampleCmaesOnlyFitness(toEval, toEval, toEval, obj.cmaesState.sigma, 1, ...
-                    obj.counteval, obj.cmaesState, sampleOpts, 'Archive', obj.archive, varargin{:});
-                obj.archive.save(x', y', obj.cmaesState.countiter);
-                evaluated = evaluated + 1;
+      toEvaluate = min(lambda, toEvaluate);
+      firstKIndexes = sortedModelPredictionsIndexes(1:toEvaluate);
+      i = 1;
+      % evaluate points one by one
+      while evaluated < toEvaluate
+        idxToEval = firstKIndexes(i);
+        i = i + 1;
+        % if point was not evaluated yet
+        if ~obj.pop.isEvaled(idxToEval)
+          % evaluate point
+          [y, arx, x, arz, obj.counteval] = ...
+            sampleCmaesOnlyFitness(...
+              obj.pop.arx(:, idxToEval), obj.pop.x(:, idxToEval), obj.pop.arz(:, idxToEval), ...
+              obj.cmaesState.sigma, 1, ...
+              obj.counteval, obj.cmaesState, sampleOpts, 'Archive', obj.archive, varargin{:});
+          % save evaluated point to the archive
+          obj.archive.save(x', y', obj.cmaesState.countiter);
+          % increment number of evaluated points
+          evaluated = evaluated + 1;
                 
-                logicalIndexes = false(1, lambda);
-                logicalIndexes(idxToEval) = true;
-                obj.pop = obj.pop.updateYValue(x, y, 1, phase, logicalIndexes);
-            end
+          % update fitness value of the evaluated point in the current
+          % population
+          logicalIndexes = false(1, lambda);
+          logicalIndexes(idxToEval) = true;
+          obj.pop = obj.pop.updateYValue(x, y, 1, phase, logicalIndexes);
         end
-        obj.newModel = obj.newModel.train([], [], obj.cmaesState, sampleOpts, obj.archive, obj.pop);
+      end
+      % retrain the model considering newly-evaluated point
+      % TODO: should be dependent on training set selection method
+      obj.newModel = obj.newModel.train([], [], obj.cmaesState, sampleOpts, obj.archive, obj.pop);
         
-        if obj.newModel.isTrained()
-            obj.model = obj.newModel;
-        end
+      % replace the old model by a new one
+      if obj.newModel.isTrained()
+        obj.model = obj.newModel;
+      end
     end
     
     function res = mahalanobisNorm(obj, x)
