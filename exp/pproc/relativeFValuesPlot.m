@@ -708,6 +708,9 @@ end
 function name = bbobFunctionName(fId)
 % returns name of function fId
   switch fId
+
+    %%% noiseless functions
+
     % separable functions
     case 1
       name = 'Sphere';
@@ -765,8 +768,75 @@ function name = bbobFunctionName(fId)
       name = 'Katsuura';
     case 24
       name = 'Lunacek bi-Rastrigin';
-      
-    % TODO: noisy functions
+
+    %%% noisy functions
+
+    % functions with moderate noise
+    case 101
+      name = 'Sphere w/ moderate gaussian noise';
+    case 102
+      name = 'Sphere w/ moderate uniform noise';
+    case 103
+      name = 'Sphere w/ moderate seldom cauchy noise';
+    case 104
+      name = 'Rosenbrock w/ moderate gaussian noise';
+    case 105
+      name = 'Rosenbrock w/ moderate uniform noise';
+    case 106
+      name = 'Rosenbrock w/ moderate seldom cauchy noise';
+
+    % functions with severe noise
+    case 107
+      name = 'Sphere w/ gaussian noise';
+    case 108
+      name = 'Sphere w/ uniform noise';
+    case 109
+      name = 'Sphere w/ seldom cauchy noise';
+    case 110
+      name = 'Rosenbrock w/ gaussian noise';
+    case 111
+      name = 'Rosenbrock w/ uniform noise';
+    case 112
+      name = 'Rosenbrock w/ seldom cauchy noise';
+    case 113
+      name = 'Step ellipsoid w/ gaussian noise';
+    case 114
+      name = 'Step ellipsoid w/ uniform noise';
+    case 115
+      name = 'Step ellipsoid w/ seldom cauchy noise';
+    case 116
+      name = 'Ellipsoid w/ gaussian noise';
+    case 117
+      name = 'Ellipsoid w/ uniform noise';
+    case 118
+      name = 'Ellipsoid w/ seldom cauchy noise';
+    case 119
+      name = 'Different Powers w/ gaussian noise';
+    case 120
+      name = 'Different Powers w/ uniform noise';
+    case 121
+      name = 'Different Powers w/ seldom cauchy noise';
+
+    % highly multi-modal functions with severe noise
+    case 122
+      name = 'Schaffer''s F7 w/ gaussian noise';
+    case 123
+      name = 'Schaffer''s F7 w/ uniform noise';
+    case 124
+      name = 'Schaffer''s F7 w/ seldom cauchy noise';
+    case 125
+      name = 'Composite Griewank-Rosen. w/ gaussian noise';
+    case 126
+      name = 'Composite Griewank-Rosen. w/ uniform noise';
+    case 127
+      name = 'Composite Griewank-Rosen. w/ seldom cauchy noise';
+    case 128
+      name = 'Gallagher''s G. P. 101-me w/ gaussian noise';
+    case 129
+      name = 'Gallagher''s G. P. 101-me w/ uniform noise';
+    case 130
+      name = 'Gallagher''s G. P. 101-me w/ seldom cauchy noise';
+
     % other functions
     otherwise
       name = '';
