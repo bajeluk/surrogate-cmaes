@@ -20,8 +20,8 @@ function handle = reverseDistributionPlot(data, varargin)
   numOfData = length(data);
   datanames = defopts(settings, 'DataNames', ...
     arrayfun(@(x) ['ALG', num2str(x)], 1:numOfData, 'UniformOutput', false));
-  defaultDims = [2, 3, 5, 10, 20, 40];
-  funcSet.dims   = defopts(settings, 'DataDims', defaultDims(1:size(data{1}, 2)));
+  defaultDims = [2, 3, 5*2.^(0:size(data{1}, 2)-3)];
+  funcSet.dims   = defopts(settings, 'DataDims', defaultDims);
   funcSet.BBfunc = defopts(settings, 'DataFuns', 1:size(data{1}, 1));
   dims    = defopts(settings, 'PlotDims', funcSet.dims);
   BBfunc  = defopts(settings, 'PlotFuns', funcSet.BBfunc);

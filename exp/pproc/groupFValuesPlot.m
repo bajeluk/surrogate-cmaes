@@ -81,8 +81,8 @@ function handle = groupFValuesPlot(data, varargin)
   end
   
   % parse settings
-  defaultDims = [2, 3, 5, 10, 20, 40];
-  dims = defopts(settings, 'DataDims', defaultDims(1:size(data{1}, 2)));
+  defaultDims = [2, 3, 5*2.^(0:size(data{1}, 2)-3)];
+  dims = defopts(settings, 'DataDims', defaultDims);
   plotDims = defopts(settings, 'PlotDims', dims);
   
   if length(data{1}) == 24
