@@ -25,6 +25,9 @@ function reportFile = generateReport(expFolder, varargin)
 %                        (default)
 %     'QuantilePlots'  - whether use quantile plots for showing algorithms
 %                        differencies | false
+%     'RefAlgs'        - reference algorithms for comparison | cell-array
+%                        of the following names: {'cmaes', 'scmaes',
+%                        'dtscmaes', 'sacmes', 'lmmcmaes', 'smac'} | ''
 %     'RemoveAlgs'     - remove these algorithms from report, defined by
 %                        their indices in a row vector | []
 %     'ScaleY08'       - scale the y-axis of plots to [-8, 0] | true
@@ -59,12 +62,19 @@ function reportFile = generateReport(expFolder, varargin)
   algNames = defopts(reportSettings, 'AlgNames', {});
   removeAlgs = defopts(reportSettings, 'RemoveAlgs', []);
   maxFE = defopts(reportSettings, 'MaxEvals', 250);
+  refAlgs = defopts(reportSettings, 'RefAlgs', '');
   targetValue = defopts(reportSettings, 'Target', 1e-8);
   scaleY08 = defopts(reportSettings, 'ScaleY08', true);
 
+  % put variables into cell when necessary
   if ~iscell(expFolder)
     expFolder = {expFolder};
   end
+  if ~iscell(refAlgs)
+    refAlgs = {refAlgs};
+  end
+  % check if plot reference algorithms
+  plotRefAlgs = any(~cellfun(@isempty, refAlgs));
   
   isFolder = cellfun(@isdir, expFolder);
   assert(any(isFolder), 'generateReport:err:nofolder', 'No input is a folder')
@@ -163,9 +173,12 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%% Report compares the dependences of minimal function\n');
   fprintf(FID, '%% values on the number of function values of different algorithm settings\n');
   fprintf(FID, '%% tested in experiments %s.\n', strjoin(expName, ', '));
-  fprintf(FID, '%% Moreover, algorithm settings are compared\n');
-  fprintf(FID, '%% to important algorithms in continuous black-box optimization field \n');
-  fprintf(FID, '%% (CMA-ES, BIPOP-s*ACM-ES, SMAC, S-CMA-ES, lmm-CMA-ES and DTS-CMA-ES).\n');
+  if plotRefAlgs
+    fprintf(FID, '%% Moreover, algorithm settings are compared\n');
+    fprintf(FID, '%% to important algorithms in continuous black-box optimization field \n');
+    fprintf(FID, '%% (selected from \n');
+    fprintf(FID, '%% CMA-ES, BIPOP-s*ACM-ES, SMAC, S-CMA-ES, lmm-CMA-ES, and DTS-CMA-ES).\n');
+  end
   fprintf(FID, '%% \n');
   if any(cellfun(@(x) isfield(x, 'exp_description'), settings))
     for f = 1:nFolders
@@ -240,9 +253,14 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '%% y-axis scaling settings\n');
   fprintf(FID, 'scaleY08 = %d;\n', scaleY08);
   fprintf(FID, '\n');
-  fprintf(FID, '%% load algorithms for comparison\n');
-  fprintf(FID, '[algData, algNames, algColors] = loadCompAlg(fullfile(''exp'', ''pproc'', ''compAlgMat.mat''), funcSet);\n');
-  fprintf(FID, '\n');
+  % reference algorithms loading
+  if any(~cellfun(@isempty, refAlgs))
+    fprintf(FID, '%% algorithms for comparison\n');
+    fprintf(FID, 'refAlgs = %s;\n', printStructure(refAlgs, FID, 'Format', 'value'));
+    fprintf(FID, '%% load algorithms for comparison\n');
+    fprintf(FID, '[algData, algNames, algColors] = loadCompAlg(fullfile(''exp'', ''pproc'', ''compAlgMat.mat''), funcSet, refAlgs);\n');
+    fprintf(FID, '\n');
+  end
   
   % experiment settings
   fprintf(FID, '%%%% Experiment settings\n');
@@ -383,128 +401,130 @@ function reportFile = generateReport(expFolder, varargin)
   fprintf(FID, '\n');
 
   % all algorithms comparison
-  fprintf(FID, '%%%% All algorithms comparison\n');
-  fprintf(FID, '\n');
-  fprintf(FID, 'if ~isempty(algData)\n');
-  fprintf(FID, '  data = [expData, algData];\n');
-  fprintf(FID, '  datanames = [expAlgNames, algNames];\n');
-  fprintf(FID, '  colors = [expCol; algColors];\n');
-  fprintf(FID, '  \n');
-  fprintf(FID, '  %%%%\n');
-  fprintf(FID, '  \n');
-  fprintf(FID, '  close all\n');
-  % first rank table
-  fprintf(FID, '  rankTable = rankingTable(data, ''Format'', ''figure'', ...\n');
-  fprintf(FID, '                                 ''DataDims'', funcSet.dims, ...\n');
-  fprintf(FID, '                                 ''DataFuns'', funcSet.BBfunc, ...\n');
-  fprintf(FID, '                                 ''DataNames'', datanames, ...\n');
-  fprintf(FID, '                                 ''Evaluations'', showEval, ...\n');
-  fprintf(FID, '                                 ''Ranking'', ''tolerant'', ...\n');
-  fprintf(FID, '                                 ''Target'', targetValue);\n');
-  fprintf(FID, '  \n');
-  fprintf(FID, '  %%%%\n');
-  fprintf(FID, '  %%\n');
-  fprintf(FID, '  %% *Table 4:* Counts of the 1st ranks of all compared algorithms \n');
-  fprintf(FID, '  %% from %d benchmark functions \n', length(BBfunc));
-  fprintf(FID, '  %% according to the lowest achieved ${\\Delta_f}^\\textrm{med}$ for different \n');
-  fprintf(FID, '  %% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
-  fprintf(FID, '  %% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
-  fprintf(FID, '  %% Ties of the 1st ranks are counted for all respective algorithms. \n');
-  fprintf(FID, '  %% The ties often occure when $\\Delta f_T = %s$ is reached.\n', num2tex(targetValue));
-  fprintf(FID, '  \n');
-  % sum of ranks table
-  fprintf(FID, '  sumRankTable = rankingTable(data, ''Format'', ''figure'', ...\n');
-  fprintf(FID, '                                    ''DataDims'', funcSet.dims, ...\n');
-  fprintf(FID, '                                    ''DataFuns'', funcSet.BBfunc, ...\n');
-  fprintf(FID, '                                    ''DataNames'', datanames, ...\n');
-  fprintf(FID, '                                    ''Evaluations'', showEval,...\n');
-  fprintf(FID, '                                    ''Rank'', ''sum'', ...\n');
-  fprintf(FID, '                                    ''Ranking'', ''median'', ...\n');
-  fprintf(FID, '                                    ''Target'', targetValue);\n');
-  fprintf(FID, '  \n');
-  fprintf(FID, '  %%%%\n');
-  fprintf(FID, '  %%\n');
-  fprintf(FID, '  %% *Table 5:* Sums of ranks of all compared algorithms \n');
-  fprintf(FID, '  %% from %d benchmark functions \n', length(BBfunc));
-  fprintf(FID, '  %% according to the lowest achieved ${\\Delta_f}^\\textrm{med}$ for different \n');
-  fprintf(FID, '  %% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
-  fprintf(FID, '  %% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
-  fprintf(FID, '  %% Ties of ranks are replaced by median tied rank for all respective algorithms. \n');
-  fprintf(FID, '  %% The ties often occure when $\\Delta f_T = %s$ is reached.\n', num2tex(targetValue));
-  fprintf(FID, '  %% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
-  fprintf(FID, '  %% The sums of ranks are multiplied by factor 10 to show all equalities of ranks.\n');
-  fprintf(FID, '  \n');
-  % EFE table
-  fprintf(FID, '  efeTab = efeTable(data, ''DataDims'', funcSet.dims, ...\n');
-  fprintf(FID, '                          ''DataFuns'', funcSet.BBfunc, ...\n');
-  fprintf(FID, '                          ''DataNames'', datanames, ...\n');
-  fprintf(FID, '                          ''Quantiles'', showQuantile, ...\n');
-  fprintf(FID, '                          ''Target'', targetValue);\n');
-  fprintf(FID, '  \n');
-  fprintf(FID, '  %%%%\n');
-  fprintf(FID, '  %%\n');
-  fprintf(FID, '  %% *Table 6:* Sums of ranks of the expected number of function evaluations ($\\textrm{EFE}$)\n');
-  fprintf(FID, '  %% of all compared algorithms from %d benchmark functions \n', length(BBfunc));
-  fprintf(FID, '  %% for different quantiles q = %s \n', printStructure(showQuantile, FID, 'Format', 'value'));
-  fprintf(FID, '  %% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
-  fprintf(FID, '  %%\n');
-  fprintf(FID, '  %% $\\textrm{EFE}$ is calculated as follows:\n');
-  fprintf(FID, '  %%\n');
-  fprintf(FID, '  %% $$1)\\ f_{\\textrm{min}} < \\Delta f_T \\qquad \\textrm{EFE} = \\#\\textrm{FE/D}\\,,$$\n');
-  fprintf(FID, '  %%\n');
-  fprintf(FID, '  %% $$2)\\ f_{\\textrm{min}} \\geq \\Delta f_T \\qquad \\textrm{EFE} = \n');
-  fprintf(FID, '  %% \\textrm{FE/D}_\\textrm{max} \\cdot (1 + \\frac{1}{9}\\log \\frac{f_{\\textrm{min}}}{\\Delta f_T})\\,,$$\n');
-  fprintf(FID, '  %%\n');
-  fprintf(FID, '  %% where $f_{\\textrm{min}}$ is the best reached function value, $\\Delta f_T\n');
-  fprintf(FID, '  %% = %s$ is target value, $\\textrm{FE/D}$ are function evaluations\n', num2tex(targetValue));
-  fprintf(FID, '  %% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = %d$.\n', maxFE);
-  fprintf(FID, '  %% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
-  fprintf(FID, '  %%\n');
-  % relativeFValuesPlots
-  fprintf(FID, '  for f = funcSet.BBfunc\n');
-  fprintf(FID, '    %%%% \n');
-  fprintf(FID, '    close all\n');
-  fprintf(FID, '    \n');
-  fprintf(FID, '    fprintf(''Function %%d\\n'', f)\n');
-  fprintf(FID, '    han = relativeFValuesPlot(data, ...\n');
-  fprintf(FID, '                              ''DataDims'', funcSet.dims, ...\n');
-  fprintf(FID, '                              ''DataFuns'', funcSet.BBfunc, ...\n');
-  fprintf(FID, '                              ''PlotFuns'', f, ...\n');
-  fprintf(FID, '                              ''MinValue'', targetValue, ...\n');
-  fprintf(FID, '                              ''MaxEval'', maxFE, ...\n');
-  fprintf(FID, '                              ''AggregateDims'', false, ...\n');
-  fprintf(FID, '                              ''AggregateFuns'', false, ...\n');
-  fprintf(FID, '                              ''DataNames'', datanames, ...\n');
-  fprintf(FID, '                              ''Colors'', colors, ...\n');
-  fprintf(FID, '                              ''ScaleY08'', scaleY08, ...\n');
-  fprintf(FID, '                              ''FunctionNames'', true, ...\n');
-  fprintf(FID, '                              ''LegendOption'', ''%s'', ...\n', legendOption);
-  fprintf(FID, '                              ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
-  fprintf(FID, '                              ''Statistic'', @median);\n');
-  fprintf(FID, '  end\n');
-  fprintf(FID, '  \n');
-  % summary graphs
-  fprintf(FID, '  %%%% Summary graphs\n');
-  fprintf(FID, '  %% Summary graphs are averaged through all functions for individual algorithms in separate dimensionalities.\n');
-  fprintf(FID, '  close all\n');
-  fprintf(FID, '  han = relativeFValuesPlot(data, ...\n');
-  fprintf(FID, '                          ''DataDims'', funcSet.dims, ...\n');
-  fprintf(FID, '                          ''DataFuns'', funcSet.BBfunc, ...\n');
-  fprintf(FID, '                          ''minValue'', targetValue, ...\n');
-  fprintf(FID, '                          ''MaxEval'', maxFE, ...\n');
-  fprintf(FID, '                          ''AggregateDims'', false, ...\n');
-  fprintf(FID, '                          ''AggregateFuns'', true, ...\n');
-  fprintf(FID, '                          ''DataNames'', datanames, ...\n');
-  fprintf(FID, '                          ''Colors'', colors, ...\n');
-  fprintf(FID, '                          ''FunctionNames'', true, ...\n');
-  fprintf(FID, '                          ''LegendOption'', ''%s'', ...\n', legendOption);
-  fprintf(FID, '                          ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
-  fprintf(FID, '                          ''Statistic'', @median);\n');
-  fprintf(FID, 'else\n');
-  fprintf(FID, '  warning(''Could not load %%s.\\n');
-  fprintf(FID, 'For the latest version download http://artax.karlin.mff.cuni.cz/~bajel3am/scmaes/compAlgMat.mat\\n');
-  fprintf(FID, 'Omitting comparison of all algorithms.'', algMat);\n');
-  fprintf(FID, 'end\n');
+  if any(~cellfun(@isempty, refAlgs))
+    fprintf(FID, '%%%% All algorithms comparison\n');
+    fprintf(FID, '\n');
+    fprintf(FID, 'if ~isempty(algData)\n');
+    fprintf(FID, '  data = [expData, algData];\n');
+    fprintf(FID, '  datanames = [expAlgNames, algNames];\n');
+    fprintf(FID, '  colors = [expCol; algColors];\n');
+    fprintf(FID, '  \n');
+    fprintf(FID, '  %%%%\n');
+    fprintf(FID, '  \n');
+    fprintf(FID, '  close all\n');
+    % first rank table
+    fprintf(FID, '  rankTable = rankingTable(data, ''Format'', ''figure'', ...\n');
+    fprintf(FID, '                                 ''DataDims'', funcSet.dims, ...\n');
+    fprintf(FID, '                                 ''DataFuns'', funcSet.BBfunc, ...\n');
+    fprintf(FID, '                                 ''DataNames'', datanames, ...\n');
+    fprintf(FID, '                                 ''Evaluations'', showEval, ...\n');
+    fprintf(FID, '                                 ''Ranking'', ''tolerant'', ...\n');
+    fprintf(FID, '                                 ''Target'', targetValue);\n');
+    fprintf(FID, '  \n');
+    fprintf(FID, '  %%%%\n');
+    fprintf(FID, '  %%\n');
+    fprintf(FID, '  %% *Table 4:* Counts of the 1st ranks of all compared algorithms \n');
+    fprintf(FID, '  %% from %d benchmark functions \n', length(BBfunc));
+    fprintf(FID, '  %% according to the lowest achieved ${\\Delta_f}^\\textrm{med}$ for different \n');
+    fprintf(FID, '  %% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
+    fprintf(FID, '  %% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
+    fprintf(FID, '  %% Ties of the 1st ranks are counted for all respective algorithms. \n');
+    fprintf(FID, '  %% The ties often occure when $\\Delta f_T = %s$ is reached.\n', num2tex(targetValue));
+    fprintf(FID, '  \n');
+    % sum of ranks table
+    fprintf(FID, '  sumRankTable = rankingTable(data, ''Format'', ''figure'', ...\n');
+    fprintf(FID, '                                    ''DataDims'', funcSet.dims, ...\n');
+    fprintf(FID, '                                    ''DataFuns'', funcSet.BBfunc, ...\n');
+    fprintf(FID, '                                    ''DataNames'', datanames, ...\n');
+    fprintf(FID, '                                    ''Evaluations'', showEval,...\n');
+    fprintf(FID, '                                    ''Rank'', ''sum'', ...\n');
+    fprintf(FID, '                                    ''Ranking'', ''median'', ...\n');
+    fprintf(FID, '                                    ''Target'', targetValue);\n');
+    fprintf(FID, '  \n');
+    fprintf(FID, '  %%%%\n');
+    fprintf(FID, '  %%\n');
+    fprintf(FID, '  %% *Table 5:* Sums of ranks of all compared algorithms \n');
+    fprintf(FID, '  %% from %d benchmark functions \n', length(BBfunc));
+    fprintf(FID, '  %% according to the lowest achieved ${\\Delta_f}^\\textrm{med}$ for different \n');
+    fprintf(FID, '  %% FE/D = %s \n', printStructure(showEval, FID, 'Format', 'value'));
+    fprintf(FID, '  %% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
+    fprintf(FID, '  %% Ties of ranks are replaced by median tied rank for all respective algorithms. \n');
+    fprintf(FID, '  %% The ties often occure when $\\Delta f_T = %s$ is reached.\n', num2tex(targetValue));
+    fprintf(FID, '  %% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
+    fprintf(FID, '  %% The sums of ranks are multiplied by factor 10 to show all equalities of ranks.\n');
+    fprintf(FID, '  \n');
+    % EFE table
+    fprintf(FID, '  efeTab = efeTable(data, ''DataDims'', funcSet.dims, ...\n');
+    fprintf(FID, '                          ''DataFuns'', funcSet.BBfunc, ...\n');
+    fprintf(FID, '                          ''DataNames'', datanames, ...\n');
+    fprintf(FID, '                          ''Quantiles'', showQuantile, ...\n');
+    fprintf(FID, '                          ''Target'', targetValue);\n');
+    fprintf(FID, '  \n');
+    fprintf(FID, '  %%%%\n');
+    fprintf(FID, '  %%\n');
+    fprintf(FID, '  %% *Table 6:* Sums of ranks of the expected number of function evaluations ($\\textrm{EFE}$)\n');
+    fprintf(FID, '  %% of all compared algorithms from %d benchmark functions \n', length(BBfunc));
+    fprintf(FID, '  %% for different quantiles q = %s \n', printStructure(showQuantile, FID, 'Format', 'value'));
+    fprintf(FID, '  %% and dimensions D = %s.\n', printStructure(dims, FID, 'Format', 'value'));
+    fprintf(FID, '  %%\n');
+    fprintf(FID, '  %% $\\textrm{EFE}$ is calculated as follows:\n');
+    fprintf(FID, '  %%\n');
+    fprintf(FID, '  %% $$1)\\ f_{\\textrm{min}} < \\Delta f_T \\qquad \\textrm{EFE} = \\#\\textrm{FE/D}\\,,$$\n');
+    fprintf(FID, '  %%\n');
+    fprintf(FID, '  %% $$2)\\ f_{\\textrm{min}} \\geq \\Delta f_T \\qquad \\textrm{EFE} = \n');
+    fprintf(FID, '  %% \\textrm{FE/D}_\\textrm{max} \\cdot (1 + \\frac{1}{9}\\log \\frac{f_{\\textrm{min}}}{\\Delta f_T})\\,,$$\n');
+    fprintf(FID, '  %%\n');
+    fprintf(FID, '  %% where $f_{\\textrm{min}}$ is the best reached function value, $\\Delta f_T\n');
+    fprintf(FID, '  %% = %s$ is target value, $\\textrm{FE/D}$ are function evaluations\n', num2tex(targetValue));
+    fprintf(FID, '  %% divided by dimension, and $\\textrm{FE/D}_\\textrm{max} = %d$.\n', maxFE);
+    fprintf(FID, '  %% Missing data ranks are substituted by the average rank (# algorithms + 1)/2.\n');
+    fprintf(FID, '  %%\n');
+    % relativeFValuesPlots
+    fprintf(FID, '  for f = funcSet.BBfunc\n');
+    fprintf(FID, '    %%%% \n');
+    fprintf(FID, '    close all\n');
+    fprintf(FID, '    \n');
+    fprintf(FID, '    fprintf(''Function %%d\\n'', f)\n');
+    fprintf(FID, '    han = relativeFValuesPlot(data, ...\n');
+    fprintf(FID, '                              ''DataDims'', funcSet.dims, ...\n');
+    fprintf(FID, '                              ''DataFuns'', funcSet.BBfunc, ...\n');
+    fprintf(FID, '                              ''PlotFuns'', f, ...\n');
+    fprintf(FID, '                              ''MinValue'', targetValue, ...\n');
+    fprintf(FID, '                              ''MaxEval'', maxFE, ...\n');
+    fprintf(FID, '                              ''AggregateDims'', false, ...\n');
+    fprintf(FID, '                              ''AggregateFuns'', false, ...\n');
+    fprintf(FID, '                              ''DataNames'', datanames, ...\n');
+    fprintf(FID, '                              ''Colors'', colors, ...\n');
+    fprintf(FID, '                              ''ScaleY08'', scaleY08, ...\n');
+    fprintf(FID, '                              ''FunctionNames'', true, ...\n');
+    fprintf(FID, '                              ''LegendOption'', ''%s'', ...\n', legendOption);
+    fprintf(FID, '                              ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
+    fprintf(FID, '                              ''Statistic'', @median);\n');
+    fprintf(FID, '  end\n');
+    fprintf(FID, '  \n');
+    % summary graphs
+    fprintf(FID, '  %%%% Summary graphs\n');
+    fprintf(FID, '  %% Summary graphs are averaged through all functions for individual algorithms in separate dimensionalities.\n');
+    fprintf(FID, '  close all\n');
+    fprintf(FID, '  han = relativeFValuesPlot(data, ...\n');
+    fprintf(FID, '                          ''DataDims'', funcSet.dims, ...\n');
+    fprintf(FID, '                          ''DataFuns'', funcSet.BBfunc, ...\n');
+    fprintf(FID, '                          ''minValue'', targetValue, ...\n');
+    fprintf(FID, '                          ''MaxEval'', maxFE, ...\n');
+    fprintf(FID, '                          ''AggregateDims'', false, ...\n');
+    fprintf(FID, '                          ''AggregateFuns'', true, ...\n');
+    fprintf(FID, '                          ''DataNames'', datanames, ...\n');
+    fprintf(FID, '                          ''Colors'', colors, ...\n');
+    fprintf(FID, '                          ''FunctionNames'', true, ...\n');
+    fprintf(FID, '                          ''LegendOption'', ''%s'', ...\n', legendOption);
+    fprintf(FID, '                          ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
+    fprintf(FID, '                          ''Statistic'', @median);\n');
+    fprintf(FID, 'else\n');
+    fprintf(FID, '  warning(''Could not load %%s.\\n');
+    fprintf(FID, 'For the latest version download http://artax.karlin.mff.cuni.cz/~bajel3am/scmaes/compAlgMat.mat\\n');
+    fprintf(FID, 'Omitting comparison of all algorithms.'', algMat);\n');
+    fprintf(FID, 'end\n');
+  end
   
   % finalize
   fprintf(FID, '\n');
