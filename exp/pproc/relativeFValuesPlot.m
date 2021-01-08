@@ -102,6 +102,27 @@ function handle = relativeFValuesPlot(data, varargin)
   funcSet.BBfunc = defopts(settings, 'DataFuns', 1:size(data{1}, 1));
   plotSet.dims    = defopts(settings, 'PlotDims', funcSet.dims);
   plotSet.BBfunc  = defopts(settings, 'PlotFuns', funcSet.BBfunc);
+  % check required dimension presence in data
+  dimInData = ismember(plotSet.dims, funcSet.dims);
+  if ~all(dimInData)
+    warning('Dimensions %s are not present in the data', num2str(plotSet.dims(~dimInData)))
+    if all(~dimInData)
+      return
+    else
+      plotSet.dims = plotSet.dims(dimInData);
+    end
+  end
+  % check required function presence in the data
+  funInData = ismember(plotSet.BBfunc, funcSet.BBfunc);
+  if ~all(funInData)
+    warning('Functions %s are not present in the data', num2str(plotSet.BBfunc(~funInData)))
+    if all(~funInData)
+      return
+    else
+      plotSet.BBfunc = plotSet.BBfunc(funInData);
+    end
+  end
+  % aggregation settings
   plotSet.aggDims = defopts(settings, 'AggregateDims', false);
   plotSet.aggFuns = defopts(settings, 'AggregateFuns', false);
   % color settings
@@ -176,13 +197,11 @@ function handle = relativeFValuesPlot(data, varargin)
   dimIds = dimInvIds(plotSet.dims);
   funcInvIds = inverseIndex(funcSet.BBfunc);
   funcIds = funcInvIds(plotSet.BBfunc);
-
-  if ~all(dimIds)
-    fprintf('Wrong dimesion request!\n')
-  end
-  if ~all(funcIds)
-    fprintf('Wrong function request!\n')
-  end
+  % check function and dimension IDs
+  assert(all(dimIds), 'scmaes:relativeFValuesPlot:wrngDimSet', ...
+    'Wrong dimesion request')
+  assert(all(funcIds), 'scmaes:relativeFValuesPlot:wrngFunSet', ...
+    'Wrong dimesion request')
 
   % count means
   data_stats = cellfun(@(D) gainStatistic(D, dimIds, funcIds, ...
@@ -305,6 +324,8 @@ function handle = relativePlot(data_stats, settings)
         actualMin = min(min(actualData));
         actualMax = max(max(actualData));
 
+        % adjust some settings and data variables in case of 'quantile'
+        % plotting
         if (any(settings.drawQuantiles))
           nonEmptyId = [nonEmptyId, numOfData+nonEmptyId, 2*numOfData+nonEmptyId];
           actualData = actualData(:,[1:3:end, 2:3:end, 3:3:end]);
@@ -328,6 +349,11 @@ function handle = relativePlot(data_stats, settings)
     end
   end
   
+  % ensure the correct number of relative data for quantile
+  if (any(settings.drawQuantiles)) && numel(relativeData) < 3*numOfData
+    relativeData{3*numOfData} = [];
+  end
+
   % aggregate accross dimensions
   if settings.aggDims
     nDimsToPlot = 1;

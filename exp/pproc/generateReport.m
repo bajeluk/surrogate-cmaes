@@ -502,23 +502,6 @@ function reportFile = generateReport(expFolder, varargin)
     fprintf(FID, '                              ''Statistic'', @median);\n');
     fprintf(FID, '  end\n');
     fprintf(FID, '  \n');
-    % summary graphs
-    fprintf(FID, '  %%%% Summary graphs\n');
-    fprintf(FID, '  %% Summary graphs are averaged through all functions for individual algorithms in separate dimensionalities.\n');
-    fprintf(FID, '  close all\n');
-    fprintf(FID, '  han = relativeFValuesPlot(data, ...\n');
-    fprintf(FID, '                          ''DataDims'', funcSet.dims, ...\n');
-    fprintf(FID, '                          ''DataFuns'', funcSet.BBfunc, ...\n');
-    fprintf(FID, '                          ''minValue'', targetValue, ...\n');
-    fprintf(FID, '                          ''MaxEval'', maxFE, ...\n');
-    fprintf(FID, '                          ''AggregateDims'', false, ...\n');
-    fprintf(FID, '                          ''AggregateFuns'', true, ...\n');
-    fprintf(FID, '                          ''DataNames'', datanames, ...\n');
-    fprintf(FID, '                          ''Colors'', colors, ...\n');
-    fprintf(FID, '                          ''FunctionNames'', true, ...\n');
-    fprintf(FID, '                          ''LegendOption'', ''%s'', ...\n', legendOption);
-    fprintf(FID, '                          ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
-    fprintf(FID, '                          ''Statistic'', @median);\n');
     fprintf(FID, 'else\n');
     fprintf(FID, '  warning(''Could not load %%s.\\n');
     fprintf(FID, 'For the latest version download http://artax.karlin.mff.cuni.cz/~bajel3am/scmaes/compAlgMat.mat\\n');
@@ -526,6 +509,35 @@ function reportFile = generateReport(expFolder, varargin)
     fprintf(FID, 'end\n');
   end
   
+  % summary graphs
+  fprintf(FID, '%%%% Summary graphs\n');
+  fprintf(FID, '%% Summary graphs are averaged through all functions for individual algorithms in separate dimensionalities.\n');
+  fprintf(FID, 'close all\n');
+  % select names of data variables to print
+  if any(~cellfun(@isempty, refAlgs))
+    dataVarToPrt = {'data', 'datanames', 'colors'};
+  else
+    dataVarToPrt = {'expData', 'expAlgNames', 'expCol'};
+  end
+  fprintf(FID, 'for D = funcSet.dims\n');
+  fprintf(FID, '  %%%% \n');
+  fprintf(FID, '  close all\n');
+  fprintf(FID, '  han = groupFValuesPlot(%s, ...\n', dataVarToPrt{1});
+  fprintf(FID, '                        ''DataDims'', funcSet.dims, ...\n');
+  fprintf(FID, '                        ''PlotDims'', D, ...\n');
+  fprintf(FID, '                        ''DataFuns'', funcSet.BBfunc, ...\n');
+  fprintf(FID, '                        ''minValue'', targetValue, ...\n');
+  fprintf(FID, '                        ''MaxEval'', maxFE, ...\n');
+  fprintf(FID, '                        ''AggregateDims'', false, ...\n');
+  fprintf(FID, '                        ''AggregateFuns'', true, ...\n');
+  fprintf(FID, '                        ''DataNames'', %s, ...\n', dataVarToPrt{2});
+  fprintf(FID, '                        ''Colors'', %s, ...\n', dataVarToPrt{3});
+  fprintf(FID, '                        ''FunctionNames'', true, ...\n');
+  fprintf(FID, '                        ''LegendOption'', ''%s'', ...\n', legendOption);
+  fprintf(FID, '                        ''OmitEmpty'', %d, ...\n', omitEmptyPlots);
+  fprintf(FID, '                        ''Statistic'', @median);\n');
+  fprintf(FID, 'end\n');
+
   % finalize
   fprintf(FID, '\n');
   fprintf(FID, '%%%%\n');

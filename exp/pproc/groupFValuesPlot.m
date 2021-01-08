@@ -81,25 +81,31 @@ function handle = groupFValuesPlot(data, varargin)
   end
   
   % parse settings
-  defaultDims = [2, 3, 5*2.^(0:size(data{1}, 2)-3)];
-  dims = defopts(settings, 'DataDims', defaultDims);
+  [nInputFuns, nInputDims] = size(data{1});
+  defaultDims = [2, 3, 5*2.^(0:nInputDims-3)];
+  dims = defopts(settings, 'DataDims', defaultDims(1:nInputDims));
+  defaultFuns = [1:24, 101:130, 200 + (1:nInputFuns-54)];
+  funs = defopts(settings, 'DataFuns', defaultFuns(1:nInputFuns));
   plotDims = defopts(settings, 'PlotDims', dims);
+  settings.LegendOption = defopts(settings, 'LegendOption', 'show');
   
-  if length(data{1}) == 24
-    fcnGroups = {1:5, 6:9, 10:14, 15:19, 20:24, 1:24};
-    groupNames = {'separable fcns (f1-5)', ...
-                  'moderate fcns (f6-9)', ...
-                  'ill-conditioned fcns (f10-14)', ...
-                  'multi-modal fcns (f15-19)', ...
-                  'weakly structured multi-modal fcns (f20-24)', ...
-                  'all functions (f1-24)'};
-  else
-    fcnGroups = {101:106, 107:121, 122:130, 101:130};
-    groupNames = {'fcns with moderate noise (f101-106)', ...
+  % default function groups
+  fcnGroups = {1:5, 6:9, 10:14, 15:19, 20:24, 1:24, ... noiseless
+               101:106, 107:121, 122:130, 101:130};   % noisy
+  groupNames = {'separable fcns (f1-5)', ... noiseless
+                'moderate fcns (f6-9)', ...
+                'ill-conditioned fcns (f10-14)', ...
+                'multi-modal fcns (f15-19)', ...
+                'weakly structured multi-modal fcns (f20-24)', ...
+                'all noiseless functions (f1-24)', ...
+                'fcns with moderate noise (f101-106)', ... noisy
                 'fcns with severe noise (f107-121)', ...
                 'highly multi-modal fcns with severe noise (f122-130)', ...
-                'all functions (f101-130)'};
-  end
+                'all noisy functions (f101-130)'};
+  % create groups according to functions to plot
+  groupId = cellfun(@(x) any(ismember(x, funs)), fcnGroups);
+  fcnGroups = fcnGroups(groupId);
+  groupNames = groupNames(groupId);
   
   % settings for all figures
   settings.AggregateFuns = true;
@@ -112,8 +118,18 @@ function handle = groupFValuesPlot(data, varargin)
       % settings for individual function group
       settings.PlotFuns = fcnGroups{fg};
       settings.TitleString = [groupNames{fg}, ' ', num2str(plotDims(d)), 'D'];
-      % separable functions
+      % remove legendOption if using 'out' option
+      removeOutOption = (strcmp(settings.LegendOption, 'out') && fg < numel(fcnGroups));
+      if removeOutOption
+        settings.LegendOption = 'hide';
+      end
+      % plot group
       hdl = relativeFValuesPlot(data, settings);
+      % return legendOption if using 'out' option
+      if removeOutOption
+        settings.LegendOption = 'out';
+      end
+      % TODO: why not "handle(end+1 : end+numel(hdl)) = hdl;" ???
       if length(hdl) == 2
         handle(end+1:end+2) = hdl;
       else
