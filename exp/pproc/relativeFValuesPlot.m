@@ -8,6 +8,8 @@ function handle = relativeFValuesPlot(data, varargin)
 %   settings - pairs of property (string) and value or struct with 
 %              properties as fields:
 %
+%     'AddDimToTitle' - add dimension string to title (does not show when
+%                       'AggregateDims' is true) | boolean | default: true
 %     'AggregateDims' - aggregate dimensions in plots | boolean
 %     'AggregateFuns' - aggregate functions in plots | boolean
 %     'Colors'        - vector Nx3 of (RGB) colors of individual 
@@ -146,6 +148,7 @@ function handle = relativeFValuesPlot(data, varargin)
   plotSet.plotGrid = defopts(settings, 'PlotGrid', []);
   plotSet.scaleY08 = defopts(settings, 'ScaleY08', true);
   plotSet.titleString = defopts(settings, 'TitleString', '');
+  plotSet.addDimToTitle = defopts(settings, 'AddDimToTitle', true);
   plotSet.figInterpreter = defopts(settings, 'Interpreter', 'latex');
   % plot-line settings
   defaultLine = arrayfun(@(x) '-', 1:numOfData, 'UniformOutput', false);
@@ -647,9 +650,10 @@ function notEmptyData = onePlot(relativeData, fId, dId, ...
         titleString = [titleString, ' ', bbobFunctionName(BBfunc(fId))];
       end
     end
-    if ~aggDims
-      titleString = [titleString, ' ', num2str(dims(dId)),'D'];
-    end
+  end
+  % add dimension string if not aggregating dimensions
+  if settings.addDimToTitle && ~aggDims
+    titleString = [titleString, ' ', num2str(dims(dId)),'D'];
   end
   % make
   title(['\textbf{', titleString,'}'], 'Interpreter', figInterpreter)
@@ -863,6 +867,21 @@ function name = bbobFunctionName(fId)
     case 130
       name = 'Gallagher''s G. P. 101-me w/ seldom cauchy noise';
 
+    % extra functions
+    case 201
+      name = 'Iris clustering problem';
+    case 202
+      name = 'Ruspini clustering problem';
+    case 203
+      name = 'German cities clustering problem';
+    case 204
+      name = 'Multi-layer perceptron training';
+    case 205
+      name = 'Sammon mapping';
+    case 206
+      name = 'Planet Earth landscape';
+    case 207
+      name = 'Buoy placement simulation';
     % other functions
     otherwise
       name = '';

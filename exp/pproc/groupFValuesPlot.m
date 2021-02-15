@@ -82,10 +82,18 @@ function handle = groupFValuesPlot(data, varargin)
   
   % parse settings
   [nInputFuns, nInputDims] = size(data{1});
+  numOfData = numel(data);
   defaultDims = [2, 3, 5*2.^(0:nInputDims-3)];
   dims = defopts(settings, 'DataDims', defaultDims(1:nInputDims));
   defaultFuns = [1:24, 101:130, 200 + (1:nInputFuns-54)];
-  funs = defopts(settings, 'DataFuns', defaultFuns(1:nInputFuns));
+  funs = defopts(settings, 'PlotFuns', defaultFuns(1:nInputFuns));
+  % name settings
+  datanames = defopts(settings, 'DataNames', ...
+    arrayfun(@(x) ['ALG', num2str(x)], 1:numOfData, 'UniformOutput', false));
+  if length(datanames) ~= numOfData && any(emptyData)
+    datanames = datanames(~emptyData);
+  end
+  figInterpreter = defopts(settings, 'Interpreter', 'latex');
   plotDims = defopts(settings, 'PlotDims', dims);
   settings.LegendOption = defopts(settings, 'LegendOption', 'show');
   
@@ -117,7 +125,12 @@ function handle = groupFValuesPlot(data, varargin)
     for fg = 1:numel(fcnGroups)
       % settings for individual function group
       settings.PlotFuns = fcnGroups{fg};
-      settings.TitleString = [groupNames{fg}, ' ', num2str(plotDims(d)), 'D'];
+      settings.TitleString = groupNames{fg};
+      % remove legendOption if using 'split' option
+      removeSplitOption = strcmp(settings.LegendOption, 'split');
+      if removeSplitOption
+        settings.LegendOption = 'hide';
+      end
       % remove legendOption if using 'out' option
       removeOutOption = (strcmp(settings.LegendOption, 'out') && fg < numel(fcnGroups));
       if removeOutOption
@@ -125,6 +138,25 @@ function handle = groupFValuesPlot(data, varargin)
       end
       % plot group
       hdl = relativeFValuesPlot(data, settings);
+      % add legend if 'split' option was selected
+      if removeSplitOption
+        % first plot
+        splitEndId = ceil(numOfData/2);
+        if isempty(handle)
+          % identify marker handles in figure/axes
+          legId = find(arrayfun(@(x) ...
+            ~strcmp(get(hdl{1}.Children.Children(x), 'Marker'), 'none'), ...
+            1:numel(hdl{1}.Children.Children)));
+          % first half of names to legend
+          legend(hdl{1}.Children.Children(legId(1:splitEndId)), datanames(1:splitEndId), ...
+                 'Interpreter', figInterpreter)
+        elseif numel(handle) == 1
+          % second half of names to legend
+          legend(hdl{1}.Children.Children(legId(splitEndId+1:end)), datanames(splitEndId+1:end), ...
+                 'Interpreter', figInterpreter)
+        end
+        settings.LegendOption = 'split';
+      end
       % return legendOption if using 'out' option
       if removeOutOption
         settings.LegendOption = 'out';
