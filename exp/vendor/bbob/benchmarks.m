@@ -108,9 +108,9 @@ function [res, res2] = benchmarks(x, strfun, DIM)
       try  % exist does not work under Octave
         eval(['f' num2str(i) '([1; 2]);']);
         res{i} = str2func(['f' num2str(i)]); % eval(['@f' num2str(i)]);
-      catch
+      catch err
         if i <= Nfcts 
-          disp(sprintf('execution of function %d produces an error', i));
+          fprintf('Execution of function %d produces an error: %s\n', i, err.message);
         end
       end
     end
@@ -2412,9 +2412,17 @@ function B = computeRotation(seed, DIM)
 %   computes an orthogonal basis using given seed and dimension
 %
 % Output:
-%   B - ortogonal basis | symbolic matrix
+%   B - ortogonal basis | symbolic or double matrix
 
-  B = vpa(reshape(double(gauss(DIM*DIM,seed)), DIM, DIM));
+  if ( exist('vpa', 'file') == 2 )
+    % file existence used because some functions from Symbolic toolbox
+    % are supported under the Compiler unlike 'vpa' function, thus
+    % license('checkout', 'symbolic_toolbox') returns true even when
+    % 'vpa' is not available
+    B = vpa( reshape(double(gauss(DIM*DIM, seed)), DIM, DIM) );
+  else
+    B = reshape(double(gauss(DIM*DIM, seed)), DIM, DIM);
+  end
   for i = 1:DIM
     for j = 1:i-1
       B(:,i) = B(:,i) - B(:,i)'*B(:,j) * B(:,j);
@@ -2457,7 +2465,7 @@ function r = unif(N, inseed)
 %    generates N uniform numbers with starting seed
 %
 % Output:
-%   r - uniform numbers | symbolic vector
+%   r - uniform numbers | symbolic or double vector
 
   % initialization
   inseed = abs(inseed);
@@ -2478,7 +2486,15 @@ function r = unif(N, inseed)
   aktrand = rgrand(1);
 
   % sample numbers
-  r = sym(zeros(1,N)); % makes the function ten times faster(!)
+  if ( exist('sym', 'file') == 2 )
+    % file existence used because some functions from Symbolic toolbox
+    % are supported under the Compiler unlike 'sym' function, thus
+    % license('checkout', 'symbolic_toolbox') returns true even when
+    % 'sym' is not available
+    r = sym(zeros(1, N)); % makes the function ten times faster(!)
+  else
+    r = zeros(1, N); % makes the function ten times faster(!)
+  end
   for i = 1:N
     tmp = floor(aktseed/127773);
     aktseed = 16807 * (aktseed - tmp * 127773) - 2836 * tmp;
