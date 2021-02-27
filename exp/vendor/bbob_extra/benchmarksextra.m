@@ -37,20 +37,22 @@
 %%%-------------------------------------------------------------%%%
 function [res, res2] = benchmarksextra(x, strfun, DIM) 
 %
-  Nfcts = 2;
+  Nfcts = 7;
   baseNum = 200;
+  % feasible dimensions for individual functions
+  baseDims = [4, 2, 3, 4, 2, 2, 2];
 
   % return valid function IDs (ie numbers)
   if nargin < 1 || ( ...
       ischar(x) && (strcmpi(x, 'FunctionIndices') || strcmpi(x, 'extraFunctionIndices')))
     res = [];
-    for i = baseNum + 1:100
+    for i = baseNum + (1:100)
       try  % exist does not work under Octave
-        eval(['f' num2str(i) '([1; 2]);']);
+        eval(['f' num2str(i) '(ones(baseDims(i-baseNum), 1));']);
         res(end+1) = i;
-      catch
+      catch err
         if i < baseNum + Nfcts
-          disp(sprintf('execution of function %d produces an error', i));
+          fprintf('Execution of function %d produces an error: %s\n', i, err.message);
         end
       end
     end 
@@ -149,7 +151,11 @@ function [Fval, Ftrue] = f201(x, DIM, ntrial)
     lastSize = [];  % clear other previous settings
     rseed = rrseed + 1e4 * ntrial; 
     
-    dataset = importdata('iris.txt');
+    dataname = 'iris.txt';
+    dataset = importdata(dataname);
+    assert(isnumeric(dataset), ...
+           'scmaes:benchmarksextra:f201:InvalidDataset', ...
+           'Loaded dataset %s is not numeric. Check the source of the data.', dataname)
     
     rng(ntrial);
     theta = randi(360);
@@ -303,7 +309,11 @@ function [Fval, Ftrue] = f202(x, DIM, ntrial)
     lastSize = [];  % clear other previous settings
     rseed = rrseed + 1e4 * ntrial; 
     
-    dataset = importdata('ruspini.txt');
+    dataname = 'ruspini.txt';
+    dataset = importdata(dataname);
+    assert(isnumeric(dataset), ...
+           'scmaes:benchmarksextra:f202:InvalidDataset', ...
+           'Loaded dataset %s is not numeric. Check the source of the data.', dataname)
     
     %Rotate 
     rng(ntrial);
@@ -415,7 +425,11 @@ function [Fval, Ftrue] = f203(x, DIM, ntrial)
     lastSize = [];  % clear other previous settings
     rseed = rrseed + 1e4 * ntrial; 
     
-    dataset = importdata('german_postal.txt');
+    dataname = 'german_postal.txt';
+    dataset = importdata(dataname);
+    assert(isnumeric(dataset), ...
+           'scmaes:benchmarksextra:f203:InvalidDataset', ...
+           'Loaded dataset %s is not numeric. Check the source of the data.', dataname)
     
     rng(ntrial);
     theta = randi(360);
@@ -538,7 +552,7 @@ function [Fval, Ftrue] = f204(x, DIM, ntrial)
   x = normalize_arr(x, -100, 100);
   [DIM, POPSI] = size(x);  % dimension, pop-size (number of solution vectors)
   if mod ((DIM - 1), 3) ~= 0 
-    error('Dimension must be according to 3k + 1');
+    error('Dimension must be 3k + 1, where k is a natural number.');
   end
   
   %----- INITIALIZATION -----
@@ -631,10 +645,14 @@ function [Fval, Ftrue] = f205(x, DIM, ntrial)
     lastSize = [];  % clear other previous settings
     rseed = rrseed + 1e4 * ntrial;
     if (ntrial < 250)
-        data = importdata('virus3.txt');
+      dataname = 'virus3.txt';
     else
-        data = importdata('samp05.txt');
+      dataname = 'samp05.txt';
     end
+    data = importdata(dataname);
+    assert(isnumeric(dataset), ...
+           'scmaes:benchmarksextra:f205:InvalidDataset', ...
+           'Loaded dataset %s is not numeric. Check the source of the data.', dataname)
     s = rng;
     rng(ntrial);
     dataset = datasample(data, DIM / 2, 'Replace', false);  
@@ -717,10 +735,18 @@ function [Fval, Ftrue] = f206(x, DIM, ntrial)
     lastSize = [];  % clear other previous settings
     rseed = rrseed + 1e4 * ntrial; 
     if ntrial == 1
-        dataset = importdata('earthelevation.txt');
+      dataname = 'earthelevation.txt';
+      dataset = importdata(dataname);
+      assert(isnumeric(dataset), ...
+         'scmaes:benchmarksextra:f206:InvalidDataset', ...
+         'Loaded dataset %s is not numeric. Check the source of the data.', dataname)
     else
-        data = load('detailed_evelation.mat');
-        dataset = imresize(data.data, 1 / (ntrial - 1));
+      dataname = 'detailed_evelation.mat';
+      assert(isfile(dataname), ...
+         'scmaes:benchmarksextra:f206:InvalidDataname', ...
+         'Dataset %s is a file. Check the source of the data.', dataname)
+      data = load(dataname);
+      dataset = imresize(data.data, 1 / (ntrial - 1));
     end
     Fopt = max(max(dataset));    
   elseif isempty(rseed)
@@ -787,6 +813,7 @@ function [Fval, Ftrue] = f207(x, DIM, ntrial)
   funcID = 207;
   rrseed = 1; 
   aXopt = 0; % actual optimum in input space
+  baseInstance = 1111;
   
   %----- CHECK INPUT -----
   if ischar(x) % return Fopt Xopt or linearTF on string argument
@@ -810,6 +837,12 @@ function [Fval, Ftrue] = f207(x, DIM, ntrial)
   if nargin > 2     % set seed depending on trial index
     Fopt = [];      % clear previous settings for Fopt
     lastSize = [];  % clear other previous settings
+    if ntrial < baseInstance
+      warning('scmaes:benchmarksextra:f207:invalidInst', ...
+              'There is no instance settings %d. Setting up instance %d.', ...
+              ntrial, baseInstance)
+      ntrial = baseInstance;
+    end
     tmp = ntrial;
     w_index = mod(tmp, 10);
     tmp = tmp - w_index;
@@ -897,30 +930,30 @@ function normalized = normalize_arr(array, x, y)
 end
 
 function res = f204Data(ntrial)
-    x = importdata('x.txt');
-    switch ntrial
-        case 1
-            res = [x x.^2];
-        case 2
-            res = [x sin(x)];
-        case 3
-            res = [x abs(x)];
-        case 4
-            res = [x sinh(x)];
-        case 5
-            res = [x cos(x)];
-        case 6
-            res = [x tan(x)];
-        case 7
-            res = [x cosh(x)];
-        case 8
-            res = [x tanh(x)];
-        case 9
-            res = [x cot(x)];
-        case 10
-            res = [x coth(x)];
-    end
-            
+% res = f204Data(ntrial) generates data for f204 function according to
+% 'ntrial'
+
+  % functions for data creation
+  baseFuns = {@(x) x.^2, @sin, @abs, @sinh, @cos, ...
+              @tan, @cosh, @tanh, @cot, @coth};
+  baseInstance = 1;
+  maxInstance = numel(baseFuns);
+
+  % get input x data
+  dataname = 'x.txt';
+  x = importdata(dataname);
+  assert(isnumeric(x), ...
+         'scmaes:benchmarksextra:f204Data:InvalidDataset', ...
+         'Loaded dataset %s is not numeric. Check the source of the data.', dataname)
+  if ntrial > maxInstance
+    warning('scmaes:benchmarksextra:f204Data:invalidInst', ...
+            'Instance settings %d is not in interval [%d, %d]. Setting up instance %d.', ...
+            ntrial, baseInstance, maxInstance, baseInstance)
+    ntrial = baseInstance;
+  end
+  % generate data using selected base function
+  res = [x, baseFuns{ntrial}(x)];
+
 end
 
 % qqq
