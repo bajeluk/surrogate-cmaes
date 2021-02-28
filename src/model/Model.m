@@ -292,6 +292,70 @@ classdef (Abstract) Model
 
     end
 
+    function [sortedOutput, sortedId, sortedY] = getSortedModelOutput(obj, X, varargin)
+      % Returns the sorted predicted output. Sorting is ascend when the
+      % lower criterion is better (fvalues, lcb, fpoi, fei) and descend
+      % when the higher criterion is better (sd2, poi, ei, expectedrank).
+      %
+      % Input:
+      %   X        - input points | double matrix
+      %   settings - additional settings for specific prediction | pairs of
+      %              property and value:
+      %     'minPointsForExpectedRank' - minimal number of point for
+      %                                  expected RDE | integer scalar
+      %
+      % Output:
+      %   sortedOutput - sorted predicted output ~ modelOutput(sortedId) |
+      %                  double vector
+      %   sortedId     - sorted input ids | integer vector
+      %   sortedY      - sorted predicted function values ~ y(sortedId) |
+      %                  double vector
+
+      % parse input
+      settings = settings2struct(varargin);
+      minPointsForExpectedRank = defopts(settings, 'minPointsForExpectedRank', 4);
+
+      if any(strcmpi(obj.predictionType, {'sd2', 'poi', 'ei'}))
+        % higher criterion is better (sd2, poi, ei)
+        [modelOutput, y] = obj.getModelOutput(X);
+        [~, sortedId] = sort(modelOutput, 'descend');
+
+      elseif (strcmpi(obj.predictionType, 'expectedrank'))
+        ok = true;
+        if (~obj.isTrained())
+          warning('No valid model for calculating expectedRankDiff(). Using "sd2" criterion.');
+          ok = false;
+        end
+        if (size(X, 1) < minPointsForExpectedRank)
+          fprintf(2, 'expectedRankDiff(): #pop=%d < %d: using sd2 criterion\n', size(X, 1), minPointsForExpectedRank);
+          ok = false;
+        end
+        if (ok)
+          [modelOutput, y] = obj.getModelOutput(X);
+          if (~ (sum(modelOutput >= eps) > (size(X, 1)/2)) )
+            warning('expectedRankDiff() returned more than half of points with zero or NaN expected rankDiff error. Using "sd2" criterion.');
+            ok = false;
+          end
+        end
+        if (~ok)
+          % predict sd2
+          [y, modelOutput] = obj.predict(X);
+        end
+        % higher criterion values are better (expectedrank, sd2)
+        [~, sortedId] = sort(modelOutput, 'descend');
+
+      else
+        % lower criterion is better (fvalues, lcb, fpoi, fei)
+        [modelOutput, y] = obj.getModelOutput(X);
+        [~, sortedId] = sort(modelOutput, 'ascend');
+      end
+
+      % sort output values
+      sortedOutput = modelOutput(sortedId);
+      sortedY = y(sortedId);
+
+    end
+
     function obj = train(obj, X, y, stateVariables, sampleOpts, archive, population)
     % train the model based on the data (X,y)
     % if archive is passed and trainsetType is not 'parameters',
@@ -385,7 +449,13 @@ classdef (Abstract) Model
           XtransfReduce=XTransf;
         end
 
-        obj = trainModel(obj, XtransfReduce, y, xMean, generation, archive);
+        % train specific model
+        try
+          obj = trainModel(obj, XtransfReduce, y, xMean, generation, archive);
+        catch err
+          fprintf(2, 'Model.train(): Training failed with the following error:\n%s\n', getReport(err));
+          obj.trainGeneration = -1;
+        end
       end
 
       if (obj.isTrained())

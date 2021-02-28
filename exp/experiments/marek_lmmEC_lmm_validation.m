@@ -1,6 +1,6 @@
 %Original experiment: exp_doubleEC_26_1model
 exp_id = 'marek_lmmEC_lmm_validation';
-exp_description = 'DTS-CMA-ES with PoI criterion, 1 model for all dimensions: best dataset-generation type from offline model testing and ANOVA assessment, in [2,3,5,10,20]D, Surrogate CMA-ES, fixed DTS 0.05 (merged code), DTIterations={1}, PreSampleSize=0.75, 2pop';
+exp_description = 'lmm-CMA-ES original, in [2,3,5,10,20]D, on instances [1:5, 31:40], PreSampleSize=0.75, 1pop';
 
 % BBOB/COCO framework settings
 

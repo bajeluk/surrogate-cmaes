@@ -1,5 +1,5 @@
 classdef HansenModel < Model
-   properties    % derived from abstract class "Model"
+  properties    % derived from abstract class "Model"
     dim                   % dimension of the input space X (determined from x_mean)
     trainGeneration = -1; % # of the generation when the model was built
     trainMean             % mean of the generation when the model was built
@@ -15,15 +15,15 @@ classdef HansenModel < Model
 
     predictionType        % type of prediction (f-values, PoI, EI)
     transformCoordinates  % transform X-space
-    
-    modelTerms
-    modelParams
-    type
-    
-    trainLikelihood
+
+    modelTerms            % individual terms of model polynomial
+    modelParams           % parameteres (values) of polynomial model terms
+    type                  % type of model polynomial (linear, quadratic, full-quadratic)
+
+    trainLikelihood       % TODO: delete this property
   end
     
-    methods
+  methods
         function obj = HansenModel(modelOptions, xMean)
             % constructor
             assert(size(xMean,1) == 1, 'HansenModel (constructor): xMean is not a row-vector.');
@@ -55,57 +55,65 @@ classdef HansenModel < Model
             nData = 3;
         end
         
-        function obj = trainModel(obj, X, y, xMean, generation, population, cmaesVariables)
-            if (~isempty(X) && ~isempty(y))
-                obj.dataset.X = X;
-                obj.dataset.y = y;
-            end
-            obj.trainLikelihood = 0.1;
-            obj.trainGeneration = generation;
-            obj = createModelTerms(obj, X);
-            
-            Z = modelValues(obj, X);
-            
-            [points, ~] = size(y);
-            weights = linspace(obj.options.maxScalingFactor, 1, points);
-           
-            scaledY = weights' .* y;
-            
-            scaledZ = Z .* weights';
-                      
-            obj.modelParams = pinv(scaledZ) * scaledY;
-        end
+    function obj = trainModel(obj, X, y, ~, generation, ~, ~)
+    % train the linear-quadratic model based on the data (X,y)
+
+      % save training data
+      if (~isempty(X) && ~isempty(y))
+        obj.dataset.X = X;
+        obj.dataset.y = y;
+      end
+      % TODO: delete trainLikelihood property (now neccessary due to stats)
+      obj.trainLikelihood = NaN;
+      obj.trainGeneration = generation;
+      % create terms of polynomial model according to the number of points
+      nPoints = size(X, 1);
+      obj = createModelTerms(obj, nPoints);
+      % get polynomial model values for recent X
+      Z = modelValues(obj, X);
+
+      weights = linspace(obj.options.maxScalingFactor, 1, nPoints);
+
+      scaledY = weights' .* y;
+
+      scaledZ = Z .* repmat(weights', 1, size(Z, 2));
+
+      obj.modelParams = pinv(scaledZ) * scaledY;
+    end
         
-        function [obj] = createModelTerms(obj, X)
-            [points, ~] = size(X);
-            obj.modelTerms = [];
-            obj.type = "linear";
-            for i=1:obj.dim+1
-                vals = zeros(obj.dim + 1, 1);
-                vals(i)= 1;
-                obj.modelTerms = [obj.modelTerms vals];
-            end
-           
-            if (points > (obj.dim * 2 + 1) * 1.1)
-                obj.type = "quad";
-                for i=2:obj.dim+1
-                    vals = zeros(obj.dim + 1, 1);
-                    vals(i) = 2;
-                    obj.modelTerms = [obj.modelTerms vals];
-                end
-            end
-            if (points > ((obj.dim * 2 + 1) + ((obj.dim / 2) * (obj.dim - 1))) * 1.1)
-                obj.type = "full";
-                for i=2:obj.dim+1
-                    for j=i+1:obj.dim+1
-                        vals = zeros(obj.dim + 1, 1);
-                        vals(i) = 1;
-                        vals(j) = 1;
-                        obj.modelTerms = [obj.modelTerms vals];
-                    end
-                end
-            end
+    function [obj] = createModelTerms(obj, nPoints)
+    % create terms of polynomial model according to the number of points
+
+      obj.modelTerms = [];
+      % linear terms
+      obj.type = 'linear';
+      for i = 1 : obj.dim + 1
+        vals = zeros(obj.dim + 1, 1);
+        vals(i)= 1;
+        obj.modelTerms = [obj.modelTerms, vals];
+      end
+      % (pure) quadratic terms
+      if (nPoints > (obj.dim * 2 + 1) * 1.1)
+        obj.type = 'quad';
+        for i = 2 : obj.dim + 1
+          vals = zeros(obj.dim + 1, 1);
+          vals(i) = 2;
+          obj.modelTerms = [obj.modelTerms, vals];
         end
+      end
+      % interaction terms (full-quadratic)
+      if (nPoints > ((obj.dim * 2 + 1) + ((obj.dim / 2) * (obj.dim - 1))) * 1.1)
+        obj.type = 'full';
+        for i = 2 : obj.dim + 1
+          for j = i + 1 : obj.dim + 1
+            vals = zeros(obj.dim + 1, 1);
+            vals(i) = 1;
+            vals(j) = 1;
+            obj.modelTerms = [obj.modelTerms, vals];
+          end
+        end
+      end
+    end
         
         function x = modelValues(obj, X)
             [points, dim] = size(X);
@@ -132,26 +140,30 @@ classdef HansenModel < Model
             sd2 = var(y);
         end
         
-        function [x] = minimumX(obj, archive)
-            if (obj.type == "linear")
-                x = archive.X(end, :) - 2 * transpose(obj.modelParams(2:end));
-            else
-                k = 2 * obj.dim + 2;
-                hessian = zeros(obj.dim, obj.dim);
-                for i = [1:obj.dim]
-                    hessian(i, i) = obj.modelParams(i + obj.dim + 1);
-                    if (obj.type == "full")
-                        for j = [i+1: obj.dim]
-                            hessian(i, j) = obj.modelParams(k) / 2;
-                            hessian(j, i) = obj.modelParams(k) / 2;
-                            k = k + 1;
-                        end
-                    end
-                end
-                baseCoeff = obj.modelParams(2:obj.dim + 1);
-                x = (pinv(hessian) * (baseCoeff / -2))';
-            end
-        end
-    end
-end
+    function x = minimumX(obj, archive)
+    % get input values of model minimum
 
+      % linear polynom
+      if strcmp(obj.type, 'linear')
+        x = archive.X(end, :) - 2 * transpose(obj.modelParams(2:end));
+      % quadratic polynom
+      else
+        k = 2 * obj.dim + 2;
+        hessian = zeros(obj.dim, obj.dim);
+        for i = 1 : obj.dim
+          hessian(i, i) = obj.modelParams(i + obj.dim + 1);
+          % full-quadratic polynom
+          if strcmp(obj.type, 'full')
+            for j = i + 1 : obj.dim
+              hessian(i, j) = obj.modelParams(k) / 2;
+              hessian(j, i) = obj.modelParams(k) / 2;
+              k = k + 1;
+            end
+          end
+        end
+        baseCoeff = obj.modelParams(2:obj.dim + 1);
+        x = (pinv(hessian) * (baseCoeff / -2))';
+      end
+    end
+  end
+end

@@ -562,43 +562,9 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
     % [ ] consider feeding all the population into expectedRankDiff()
       notOrigEvaledX = pop.getNotOrigEvaledX();
 
-      if any(strcmpi(thisModel.predictionType, {'sd2', 'poi', 'ei'}))
-        % higher criterion is better (sd2, poi, ei)
-        modelOutput = thisModel.getModelOutput(notOrigEvaledX');
-        [~, pointID] = sort(modelOutput, 'descend');
-
-      elseif any(strcmpi(thisModel.predictionType, {'erde', 'expectedrank'}))
-        ok = true;
-        if (isempty(thisModel) || ~thisModel.isTrained())
-          warning('No valid model for calculating expectedRankDiff(). Using "sd2" criterion.');
-          ok = false;
-        end
-        if (size(notOrigEvaledX, 2) < obj.minPointsForExpectedRank)
-          fprintf(2, 'expectedRankDiff(): #pop=%d < %d: using sd2 criterion\n', size(notOrigEvaledX, 2), obj.minPointsForExpectedRank);
-          ok = false;
-        end
-        if (ok)
-          modelOutput = thisModel.getModelOutput(notOrigEvaledX');
-          if (~ (sum(modelOutput >= eps) > (size(notOrigEvaledX, 2)/2)) )
-            warning('expectedRankDiff() returned more than half of points with zero or NaN expected rankDiff error. Using "sd2" criterion.');
-            ok = false;
-          end
-        end
-        if (~ok)
-          % predict sd2
-          [~, modelOutput] = thisModel.predict(notOrigEvaledX');
-        end
-        % higher criterion values are better (expectedrank, sd2)
-        [~, pointID] = sort(modelOutput, 'descend');
-        % Debug:
-        % y_r = ranking(y_m);
-        % fprintf('  Expected permutation of sorted f-values: %s\n', num2str(y_r(pointID)'));
-
-      else
-        % lower criterion is better (fvalues, lcb, fpoi, fei)
-        modelOutput = thisModel.getModelOutput(notOrigEvaledX');
-        [~, pointID] = sort(modelOutput, 'ascend');
-      end
+      % get ordering of population according to the specified criterion
+      [~, pointID] = thisModel.getSortedModelOutput(notOrigEvaledX', ...
+        'minPointsForExpectedRank', obj.minPointsForExpectedRank);
 
       reevalID = false(1, pop.lambda);
       notOrigEvaledID = find(~pop.origEvaled);
@@ -613,7 +579,6 @@ classdef DoubleTrainedEC < EvolutionControl & Observable
       % Check the value of origRatio
       assert(obj.origRatioUpdater.getLastRatio() >= 0 && obj.origRatioUpdater.getLastRatio() <= 1, 'origRatio out of bounds [0,1]');
     end
-
 
     function [rmse, kendall, rankErr] = reevalStatistics(obj, yModel1)
       % calculate RMSE and possibly Kendall's coeff. of the re-evaluated point(s)
