@@ -55,7 +55,7 @@ classdef HansenModel < Model
             nData = 3;
         end
         
-    function obj = trainModel(obj, X, y, ~, generation, ~, ~)
+    function obj = trainModel(obj, X, y, ~, generation)
     % train the linear-quadratic model based on the data (X,y)
 
       % save training data
@@ -140,12 +140,12 @@ classdef HansenModel < Model
             sd2 = var(y);
         end
         
-    function x = minimumX(obj, archive)
+    function x = minimumX(obj)
     % get input values of model minimum
 
       % linear polynom
       if strcmp(obj.type, 'linear')
-        x = archive.X(end, :) - 2 * transpose(obj.modelParams(2:end));
+        x = obj.dataset.X(end, :) - 2 * transpose(obj.modelParams(2:end));
       % quadratic polynom
       else
         k = 2 * obj.dim + 2;

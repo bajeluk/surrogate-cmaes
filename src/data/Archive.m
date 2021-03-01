@@ -94,6 +94,12 @@ classdef Archive < handle
       y = obj.y(dataIdxs);
     end
 
+    function [X, y] = getFullData(obj)
+      % return all data saved in the archive
+      X = obj.X;
+      y = obj.y;
+    end
+
     function [X, y, nData] = getDataNearPoint(obj, n, x, rangeSigma, sigma, BD)
       % returns up to 'n' data within distance of 'rangeSigma' along the point 'x'
       % using (sigma*BD)-metric
@@ -287,8 +293,9 @@ classdef Archive < handle
       %     'clustering'          - clustering the points in the input
       %                             space into 'trainsetSizeMax' clusters
       %                             and taking the points nearest to
-      %                             clusters’ centroids (e.g., in (Bajer et
+      %                             clusters' centroids (e.g., in (Bajer et
       %                             al., 2015))
+      %     'full'                - get all data from the archive
       %     'nearest'             - selecting the union of the k nearest
       %                             neighbors of every point  for which the
       %                             fitness should be predicted (e.g., in
@@ -339,9 +346,12 @@ classdef Archive < handle
           end
         case 'clustering'
           % clustering the points in the input space into 'trainsetSizeMax'
-          % clusters and taking the points nearest to clusters’ centroids
+          % clusters and taking the points nearest to clusters' centroids
           % (e.g., in (Bajer et al., 2015))
           [X, y] = obj.getDataNearPoint(trainsetSizeMax, xMean, trainRange, sigma, BD);
+        case 'full'
+          % get all points from the archive
+          [X, y] = obj.getFullData();
         case 'nearest'
           % selecting the union of the k nearest neighbors of every point
           % for which the fitness should be predicted (e.g., in (Kern et
@@ -385,6 +395,11 @@ classdef Archive < handle
         dataCnt = min(trainsetSizeMax, archiveSize);
         X = obj.X(end-dataCnt+1:end, :);
         y = obj.y(end-dataCnt+1:end);
+    end
+
+    function n = getNumOfData(obj)
+      % get number of saved data points
+      n = size(obj.X, 1);
     end
 
     function obj2 = duplicate(obj)

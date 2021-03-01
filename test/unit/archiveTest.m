@@ -2,13 +2,9 @@ function tests = archiveTest
   tests = functiontests(localfunctions);
 end
 
-function setupOnce(testCase)
-% initial settings
-  cd(fullfile('..', '..'))
-end
-
 function testSaveArchive(testCase)
-  X = (0:0.1:2)';
+% test archive saving ability
+  X = (0:0.1:1.9)';
   y = sin(X);
 
   a = Archive(size(X,2));
@@ -22,7 +18,24 @@ function testSaveArchive(testCase)
   verifyEqual(testCase, a.gens, [ones(size(X)); 2*ones(size(X))]);
 end
 
+function testGetFullData(testCase)
+% test getting all data in the archive
+  X = randn(20, 2);
+  y = fsphere(X);
+
+  a = Archive(size(X, 2));
+  a = a.save(X, y, 1);
+
+  % call getFullData function
+  [Xtest, yTest] = a.getFullData();
+
+  verifyEqual(testCase, Xtest, X);
+  verifyEqual(testCase, yTest, y);
+end
+
 function testGetDataNearPoint(testCase)
+% test getting all available data in the specified range from the specified
+% point
 
   % X1 = repmat([1 2],10,1) + randn(10,2)
   X1 = [ 0.020498921332767          1.38965592083978; ...
@@ -74,15 +87,15 @@ function testGetDataNearPoint(testCase)
   a = Archive(2);
 
   a = a.save(X1, fsphere(X1), 1);
+  rangeSigma = 1;
   sigma = 1;
   BD = [1 0; 0 1.5];
 
-  [Xt, ~] = a.getDataNearPoint(5, xmean, sigma, BD);
-  Xt_test = [-0.8062       2.2761; ...
+  [Xt, ~] = a.getDataNearPoint(5, xmean, rangeSigma, sigma, BD);
+  Xt_test = [ ...
      -0.77929      0.63905; ...
      0.020499       1.3897; ...
-        1.112      0.14438; ...
-       1.6611       1.4826];
+      0.34028      0.69204];
   [~, idx] = sort(Xt(:,1),1);
   verifyEqual(testCase, Xt(idx,:), Xt_test, 'AbsTol', 1e-2);
 

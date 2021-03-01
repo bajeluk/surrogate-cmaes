@@ -1,5 +1,5 @@
 classdef RegModel < Model
-   properties    % derived from abstract class "Model"
+  properties    % derived from abstract class "Model"
     dim                   % dimension of the input space X (determined from x_mean)
     trainGeneration = -1; % # of the generation when the model was built
     trainMean             % mean of the generation when the model was built
@@ -17,11 +17,11 @@ classdef RegModel < Model
     transformCoordinates  % transform X-space
     
     polyModel
-    trainLikelihood
+    trainLikelihood       % TODO: delete this property
     modelterms
   end
     
-    methods
+  methods
         function obj = RegModel(modelOptions, xMean)
             % constructor
             assert(size(xMean,1) == 1, 'RegModel (constructor): xMean is not a row-vector.');
@@ -50,16 +50,20 @@ classdef RegModel < Model
             nData = length(obj.modelterms) + 1;
         end
         
-        function obj = trainModel(obj, X, y, xMean, generation, population, cmaesVariables)
-            if (~isempty(X) && ~isempty(y))
-                obj.dataset.X = X;
-                obj.dataset.y = y;
-            end
-            obj.trainLikelihood = 0.99;
-            obj.trainGeneration = generation;
+    function obj = trainModel(obj, X, y, ~, generation)
+    % train polynomial model
 
-            obj.polyModel = polyfitn(X, y, obj.modelterms);
-        end
+      % save training data
+      if (~isempty(X) && ~isempty(y))
+          obj.dataset.X = X;
+          obj.dataset.y = y;
+      end
+      % TODO: delete trainLikelihood property (now neccessary due to stats)
+      obj.trainLikelihood = NaN;
+      obj.trainGeneration = generation;
+      % train polynomial model
+      obj.polyModel = polyfitn(X, y, obj.modelterms);
+    end
 
         function [y, sd2] = modelPredict(obj, X)
             y = polyvaln(obj.polyModel, X);

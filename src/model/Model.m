@@ -410,7 +410,9 @@ classdef (Abstract) Model
       trainsetType = defopts(obj.options, 'trainsetType', 'parameters');
       obj.options.trainsetSizeMax = defopts(obj.options, 'trainsetSizeMax', 15*obj.dim);
       obj.options.trainRange = defopts(obj.options, 'trainRange', 1);
-      if (~strcmpi(trainsetType, 'parameters') && exist('archive','var'))
+      if (~strcmpi(trainsetType, 'parameters') && (archive.getNumOfData > 0))
+        % TODO: this condition should be less dependent on the archive,
+        %       in this way, input X and y can be easily ignored
         [X, y] = obj.generateDataset(archive, population);
       end
 
@@ -424,7 +426,7 @@ classdef (Abstract) Model
 
       if (isempty(X))
         XtransfReduce = [];
-        if (~isfield(dataset, 'X') || isempty(obj.dataset.X))
+        if (~isfield(obj.dataset, 'X') || isempty(obj.dataset.X))
           warning('scmaes:model:emptytrainset', 'Model.train() - empty trainset.');
         end
       else
@@ -451,7 +453,7 @@ classdef (Abstract) Model
 
         % train specific model
         try
-          obj = trainModel(obj, XtransfReduce, y, xMean, generation, archive);
+          obj = trainModel(obj, XtransfReduce, y, xMean, generation);
         catch err
           fprintf(2, 'Model.train(): Training failed with the following error:\n%s\n', getReport(err));
           obj.trainGeneration = -1;
@@ -471,6 +473,32 @@ classdef (Abstract) Model
         end
       end
 
+    end
+
+    function x = minimumX(obj)
+    % get input values of model minimum
+
+      ub = obj.sampleOpts.ubounds;
+      lb = obj.sampleOpts.lbounds;
+
+      % set CMA-ES options for the search
+      cmaesopt.LBounds = lb;
+      cmaesopt.UBounds = ub;
+      cmaesopt.SaveVariables = false;
+      cmaesopt.LogModulo = 0;
+      cmaesopt.DispModulo = 0;
+      cmaesopt.DispFinal = 0;
+      cmaesopt.Seed = 'inherit';
+      sigma = [0.3*(ub - lb)];
+      % sigma(end) = min(10*mean(sigma(1:end-1)), sigma(end));
+      % there is ARD covariance
+      % try run cmaes for 500 funevals to get bounds for covariances
+      cmaesopt.MaxFunEvals = 500;
+
+      % run CMA-ES to find model minimum
+      eval_func = @(X) obj.predict(X');ted
+      opt = s_cmaes(eval_func, obj.trainMean, sigma, cmaesopt);
+      x = opt';
     end
   end
 
@@ -506,9 +534,12 @@ classdef (Abstract) Model
 
 
     function [X,y] = generateDataset(obj, archive, population)
+    % generate dataset from the archive according to selected trainsetType
+    % and current population
       xMean = obj.stateVariables.xmean';
       sigma = obj.stateVariables.sigma;
       BD = obj.stateVariables.BD;
+      % set dimension due to myeval(obj.options.trainsetSizeMax)
       dim = obj.dim;
       [X,y] = archive.getTrainsetData(obj.options.trainsetType,...
           myeval(obj.options.trainsetSizeMax), xMean, obj.options.trainRange,...

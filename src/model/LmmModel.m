@@ -17,13 +17,12 @@ classdef LmmModel < Model
     transformCoordinates  % transform X-space
 
     polyModel
-    trainLikelihood
+    trainLikelihood       % TODO: delete this property
     modelterms
 
     kernel                % model kernel function
     knn                   % number of nearest neighbours
     modelTerms
-    archive
     M
   end
     
@@ -55,22 +54,22 @@ classdef LmmModel < Model
       nData = obj.dim * (obj.dim + 3)/2 + 3;
     end
         
-        function obj = trainModel(obj, X, y, xMean, generation, archive)
-            if (~isempty(X) && ~isempty(y))
-                obj.dataset.X = X;
-                obj.dataset.y = y;
-            end
-            obj.trainLikelihood = 0.1;
-            obj.trainGeneration = generation;
-            
-            
-            % All we have to do is save archive, since lmm model cannot
-            % really be trained
-            [pointsInArchive, ~] = size(archive.X);
-            obj.archive = archive;
-            obj.knn = ceil(min(2*(getNTrainData(obj)-2), sqrt(pointsInArchive * (getNTrainData(obj) - 2))));
-          
-        end
+    function obj = trainModel(obj, X, y, ~, generation)
+      % train the locally-weighted meta-model based on the data (X, y)
+
+      % save training data - the core training part, since lmm model cannot
+      % really be trained
+      if (~isempty(X) && ~isempty(y))
+        obj.dataset.X = X;
+        obj.dataset.y = y;
+      end
+      % TODO: delete trainLikelihood property (now neccessary due to stats)
+      obj.trainLikelihood = NaN;
+      obj.trainGeneration = generation;
+      % set k for knn
+      obj.knn = ceil(min(2*(getNTrainData(obj)-2), sqrt(obj.getTrainsetSize * (getNTrainData(obj) - 2))));
+
+    end
 
     function [y, sd2] = modelPredict(obj, X)
       % predict function values for matrix of input points X using local
@@ -94,28 +93,7 @@ classdef LmmModel < Model
       % set identical sd2 for all points (could be estimated)
       sd2 = var(y) * ones(nPoints, 1);
     end
-        
-        function [x] = minimumX(obj, archive)
-            ub = obj.sampleOpts.ubounds;
-            lb = obj.sampleOpts.lbounds;
-        
-            cmaesopt.LBounds = lb;
-            cmaesopt.UBounds = ub;
-            cmaesopt.SaveVariables = false;
-            cmaesopt.LogModulo = 0;
-            cmaesopt.DispModulo = 0;
-            cmaesopt.DispFinal = 0;
-            cmaesopt.Seed = 'inherit';
-            sigma = [0.3*(ub - lb)];
-            % sigma(end) = min(10*mean(sigma(1:end-1)), sigma(end));
-            % there is ARD covariance
-            % try run cmaes for 500 funevals to get bounds for covariances
-            cmaesopt.MaxFunEvals = 500;
-        
-            eval_func = @(X) obj.predict(X');
-            [opt, fval] = s_cmaes(eval_func, obj.trainMean, sigma, cmaesopt);        
-            x = opt';
-        end
+
   end
 
   methods (Access = protected)
@@ -123,17 +101,17 @@ classdef LmmModel < Model
     % get points from the Archive closest to the query point
 
       % get Z values of X points (change of variables)
-      zValues = (obj.M * (obj.archive.X - repmat(queryPoint, size(obj.archive.X, 1), 1))')';
+      zValues = (obj.M * (obj.getDataset_X() - repmat(queryPoint, size(obj.getDataset_X(), 1), 1))')';
       % Mahalanobis distance is Euclidean distance with the new
       % variable Z computing Euclidean distance
       distances = sqrt(sum(zValues.*zValues, 2));
       % find the closest points by sorting distance
       [~, I] = sort(distances);
-      % select only k-nearest points from the archive, their Z values
+      % select only k-nearest points from the dataset, their Z values
       % and distances
       selectedIndexes = I(1:obj.knn);
-      closestX = obj.archive.X(selectedIndexes, :);
-      closestY = obj.archive.y(selectedIndexes, :);
+      closestX = obj.dataset.X(selectedIndexes, :);
+      closestY = obj.dataset.y(selectedIndexes, :);
       closestZ = zValues(selectedIndexes, :);
       closestDistance = distances(selectedIndexes);
     end

@@ -251,9 +251,9 @@ classdef LinQuadEC < EvolutionControl & Observable
       end
       
       if obj.useInject
-        modelMinimum = obj.model.minimumX(obj.archive);
+        % get model minimum coordinates
+        modelMinimum = obj.model.minimumX();
         obj.individualToInject = modelMinimum;
-        
       end
       
       

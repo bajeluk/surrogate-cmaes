@@ -111,7 +111,8 @@ classdef GpModel < Model
       %     matrix is given as 'hypRestartSigma' option
       obj.restartDesign = defopts(obj.options, 'restartDesign', 'uniform');
       obj.hypRestartSigma = defopts(obj.options, 'hypRestartSigma', ...
-        eye(length(obj.hyp.cov) + 1)); % FIXME: default won't work with meanConst
+        diag([2, 5*ones(1, length(obj.hyp.cov)), 0.01]));
+        % eye(length(obj.hyp.cov) + 1)); % FIXME: default won't work with meanConst
 
       if ischar(obj.hypRestartSigma)
         obj.hypRestartSigma = myeval(obj.hypRestartSigma);
@@ -121,7 +122,7 @@ classdef GpModel < Model
       % DEBUG OUTPUT:
       % fprintf('GpModel(constructor): Covariance function: %s\n', covFcn);
 
-      if (exist(covFcn) == 2)
+      if isfile(covFcn)
         % string with name of an m-file function
         obj.covFcn  = str2func(covFcn);
       else
@@ -231,7 +232,7 @@ classdef GpModel < Model
       end
     end
 
-    function obj = trainModel(obj, X, y, xMean, generation, ~)
+    function obj = trainModel(obj, X, y, xMean, generation)
       % train the GP model based on the data (X,y)
       % TODO
       %   [ ] implement choosing the best covariance function according to
@@ -456,33 +457,8 @@ classdef GpModel < Model
         % end
       else
         y = []; sd2 = [];
-        fprintf(2, 'GpModel.(): the model is not yet trained!\n');
+        fprintf(2, 'GpModel.predict(): the model is not yet trained!\n');
       end
-    end
-    
-    function [x] = minimumX(obj, archive)
-        ub = obj.sampleOpts.ubounds;
-        lb = obj.sampleOpts.lbounds;
-        
-        cmaesopt.LBounds = lb;
-        cmaesopt.UBounds = ub;
-        cmaesopt.SaveVariables = false;
-        cmaesopt.LogModulo = 0;
-        cmaesopt.DispModulo = 0;
-        cmaesopt.DispFinal = 0;
-        cmaesopt.Seed = 'inherit';
-        sigma = [0.3*(ub - lb)];
-        % sigma(end) = min(10*mean(sigma(1:end-1)), sigma(end));
-        % there is ARD covariance
-        % try run cmaes for 500 funevals to get bounds for covariances
-        MAX_DIFF = 2.5;
-        cmaesopt.MaxFunEvals = 500;
-        modelTrainNErrors = 0;
-        
-        
-        eval_func = @(X) obj.predict(X');
-        [opt, fval] = s_cmaes(eval_func, obj.trainMean, sigma, cmaesopt);        
-        x = opt';
     end
 
   end

@@ -3,9 +3,76 @@ function tests = gpModelTest
 end
 
 function setupOnce(testCase)
-  addpath('../gpeda/src/vendor/gpml-matlab-v3.2/');
-  run '../gpeda/src/vendor/gpml-matlab-v3.2/startup.m';
+  % setup for all tests
+  addpath('src/vendor/gpml_v4.0/');
+  run 'src/vendor/gpml_v4.0/startup.m';
+end
+
+function testEmptyInput(testCase)
+  % test the GP model with empty input
+  modelOpts = [];
+  X = [];
+  y = [];
   
+  m = GpModel(modelOpts, 1);
+  verifyNotEmpty(testCase, m);
+  % empty training
+  trainHandle = @() m.train(X, y);
+  verifyWarning(testCase, trainHandle, 'scmaes:model:emptytrainset')
+end
+
+function testOldSettings(testCase)
+  % test settings used in experiments older than exp_doubleEC_28_log
+
+  dim = 2;
+  nPoints = 20;
+  f1 = @(x) sum(x.^2, 2);
+  X = randn(nPoints, dim);
+  y = f1(X);
+  xMean = mean(X);
+
+  % joint model options
+  modelOptions.meanFcn = 'meanConst';
+  modelOptions.trainAlgorithm = 'fmincon';
+  modelOptions.predictionType = 'poi';
+  modelOptions.useShift = false;
+  modelOptions.normalizeY = true;
+  modelOptions.trainsetType = 'nearest';
+  modelOptions.trainRange = 4;
+  modelOptions.trainsetSizeMax = '20*dim';
+  modelOptions.bbob_func = f1;
+
+  covFcn = '{@covMaterniso, 5}';
+  hyp = struct('lik', log(0.01), 'cov', log([0.5; 2]));
+
+  % new model options
+  modelOptsNew = modelOptions;
+  modelOptsNew.restartDesign = 'normal';
+  modelOptsNew.nRestarts = 2;
+  modelOptsNew.cmaesCheckBounds = false;
+  modelOptsNew.hypOptions.covFcn = covFcn;
+  modelOptsNew.hypOptions.hypRestartSigma = diag([2, 5, 5, 0.01]);
+  modelOptsNew.hypOptions.hyp = hyp;
+
+  % old model options
+  modelOptsOld = modelOptions;
+  modelOptsOld.covFcn = covFcn;
+  modelOptsOld.hyp = hyp;
+
+  % construct models
+  mNew = GpModel(modelOptsNew, xMean);
+  mOld = GpModel(modelOptsOld, xMean);
+
+  verifyNotEmpty(testCase, mNew)
+  verifyNotEmpty(testCase, mOld)
+
+  % train models
+  mNew = mNew.train(X, y);
+  mOld = mOld.train(X, y);
+
+  verifyTrue(testCase, mNew.isTrained())
+  verifyTrue(testCase, mOld.isTrained())
+
 end
 
 function test1DSinTest(testCase)
@@ -17,7 +84,7 @@ function test1DSinTest(testCase)
   modelOpts = [];
   m = GpModel(modelOpts, 1);
   warning('off');
-  m = m.train(X, y, 1, 1);
+  m = m.train(X, y);
   warning('on');
   [yPred, dev] = m.predict(X);
   
