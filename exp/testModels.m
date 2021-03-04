@@ -28,6 +28,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 %       .scratch         - scrath directory | string
 %       .statistics      - cell-array of statistics' names | cell array of
 %                          strings
+%       .statusFile      - file for status messages logging | string
 %       .(fieldname)     - testOneModel function opts fields | see
 %                          testOneModel
 %   funcToTest   - functions  to test | array of integers
@@ -84,6 +85,8 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
   opts.statistics = defopts(opts, 'statistics', { 'mse' });
   opts.saveModels = defopts(opts, 'saveModels', false);
   opts.scratch    = defopts(opts, 'scratch', fullfile(opts.exppath_short, opts.exp_id));
+  statusFile = defopts(opts, 'statusFile', ...
+                       fullfile(opts.exppath_short, opts.exp_id, 'status', [opts.exp_id, '__0']));
   opts.rewrite_results = defopts(opts, 'rewrite_results', false);
   opts.mfts_settings = defopts(opts, 'mfts_settings', []);
   opts.mfts_only = defopts(opts, 'mfts_only', false);
@@ -115,6 +118,9 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
   idsToTest = restricToDataset(idsToTest, dataIds, 'Model settings');
   allInstances = instToTest;
   allIds = idsToTest;
+
+  % create status file folder
+  [~, ~] = mkdir(fileparts(statusFile));
 
   % Assign (hopefully) unique names and output directories to models
   for m = 1:nModel
@@ -395,6 +401,19 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
             save(modelFile, ...
                  'stats', modelsVarString{:}, 'instances', 'ids', ...
                  'modelOptions', 'modelOptions1', 'fun', 'dim', 'finished');
+            % print finishing to the status file
+            try
+              statusFID = fopen(statusFile, 'a');
+              fprintf(statusFID, ...
+                      ['[ X | %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+                       'Finished f%d : %dD : model %d : inst %d : id %d\n'], ...
+                      fix(clock), fun, dim, m, inst, id);
+              fclose(statusFID);
+            catch err
+              warning('scmaes:testModels:statFileWriteFile', ...
+                      'Could not write to status file %s due to the following error: %s', ...
+                      statusFile, err.message)
+            end
           end % id loop
         end  % instance loop
       end  % model loop

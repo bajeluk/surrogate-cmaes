@@ -67,10 +67,10 @@ echo "[ R | $(date "+%Y-%m-%d %H:%M:%S") ] Running" $MATLAB_BINARY_CALL "$EXPID"
 ######### CALL #########
 #
 echo '##############'
-echo Will be called: $MATLAB_BINARY_CALL \"$EXPID\" \"$EXPPATH_SHORT\" \"$FUNC\" \"$DIM\" \"$INST\" \"$IDS\" \"$OPTS\" \"$DATASET\"
+echo Will be called: $MATLAB_BINARY_CALL \"$EXPID\" \"$EXPPATH_SHORT\" \"$FUNC\" \"$DIM\" \"$INST\" \"$IDS\" \"$OPTS\" \"$DATASET\" \"$ID\"
 echo '##############'
 
-$MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" "$FUNC" "$DIM" "$INST" "$IDS" "$OPTS" "$DATASET"
+$MATLAB_BINARY_CALL "$EXPID" "$EXPPATH_SHORT" "$FUNC" "$DIM" "$INST" "$IDS" "$OPTS" "$DATASET" "$ID"
 #
 ########################
 

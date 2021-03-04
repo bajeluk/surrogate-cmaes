@@ -1,4 +1,4 @@
-function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_str, ids_str, opts_str, dataset)
+function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_str, inst_str, ids_str, opts_str, dataset, job_id_str)
 % metacentrum_testmodels Metacentrum version of testModels testing fitting
 %   power of models on DTS dataset. (Matlab part to be MCR-compiled)
 %   Function is called by modelTesting_binary_metajob.sh on a single
@@ -26,6 +26,7 @@ function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_st
 %   opts_str      - additional settings replacing {exp_id}.m settings to
 %                   run given as text | string | default: 'struct()'
 %   dataset       - path to dataset to run | string | default: 'DTS_005'
+%   job_id_str    - id of metacentrum job | string | default: '0'
 %
 % Output:
 %   status - status variable, zero if metacentrum_testmodels finished with
@@ -57,12 +58,15 @@ function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_st
     opts_str = []; end
   if (~exist('ids_str', 'var'))
     ids_str = []; end
+  if (~exist('job_id_str', 'var'))
+    job_id_str = []; end
 
   func          = parseCmdParam('func_str', func_str, 1:24);
   dims          = parseCmdParam('dim_str',  dim_str,  [2, 5, 10]);
   instances     = parseCmdParam('inst_str', inst_str, [1:5, 41:50]);
   cmd_opts      = parseCmdParam('opts_str', opts_str, struct());
   ids           = parseCmdParam('ids_str', ids_str, 1);
+  job_id        = parseCmdParam('job_id_str', job_id_str, 0);
 
   % run the script EXP_ID.m if it exists
   opts = struct();
@@ -124,6 +128,7 @@ function status = metacentrum_testmodels(exp_id, exppath_short, func_str, dim_st
     opts.dataset = fullfile(opts.exppath, 'dataset', [opts.dataset, '.mat']);
   end
   % defSetFile = fullfile(scratch, 'model', 'defData', ['defSet_', num2str(maxEvals), 'FE.mat']);
+  opts.statusFile = fullfile(opts.exppath, 'status', [opts.exp_id, '__', num2str(job_id)]);
 
   % use this default model options if not specified in the experiment
   % script exp/experiments/EXP_ID.m
