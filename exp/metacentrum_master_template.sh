@@ -69,9 +69,9 @@ fi
 if [ ! -f "$EXPPATH_SHORT/$EXPID/scmaes_params.mat" ]; then
   echo "Warning: 'scmaes_params.mat' does not exist. I will create it by calling"
   echo ""
-  echo "matlab -nodisplay -nojvm -r \"expInit('$EXPID'); exit(0);\""
+  echo "matlab -nodisplay -nojvm -r \"try; expInit('$EXPID'); exit(0); catch err; fprintf(2, '%s\n', err.message); exit(1); end;\""
   echo ""
-  matlab -nodisplay -nojvm -r "expInit('$EXPID'); exit(0);"
+  matlab -nodisplay -nojvm -r "try; expInit('$EXPID'); exit(0); catch err; fprintf(2, '%s\n', err.message); exit(1); end;"
   if [ $? != 0 ]; then
     echo "Matlab ended with error. I'm ending, too."
     exit 1
