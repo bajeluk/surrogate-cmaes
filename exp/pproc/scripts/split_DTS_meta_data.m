@@ -44,7 +44,7 @@ ds_train(coor2ind(traindsCoor, [nFunc, nDim, nInst, 7])) = ds_new(coor2ind(train
 
 % testing dataset
 testCoor = [combMat', msPerm(:, 8)];
-ds_test(coor2ind(combMat'), [nFunc, nDim, nInst]) = ds_new(coor2ind(testCoor, dsNewSize));
+ds_test(coor2ind(combMat', [nFunc, nDim, nInst])) = ds_new(coor2ind(testCoor, dsNewSize));
 
 %% save resulting datasets
 
