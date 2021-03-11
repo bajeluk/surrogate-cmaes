@@ -100,7 +100,11 @@ function ds = modelTestSets(exp_id, fun, dim, inst, varargin)
   [~, ~] = mkdir(outputDir);
   outputDir = fullfile(outputDir, 'dataset');
   [~, ~] = mkdir(outputDir);
-  opts.datasetFile = fullfile(outputDir, [opts.datasetName '.mat']);
+  if numel(opts.datasetName) > 3 && strcmpi(opts.datasetName(end-3:end), '.mat')
+    opts.datasetFile = fullfile(outputDir, opts.datasetName);
+  else
+    opts.datasetFile = fullfile(outputDir, [opts.datasetName '.mat']);
+  end
 
   % check experiment parameters
   opts.paramsMatFile = fullfile(opts.exppath, 'scmaes_params.mat');

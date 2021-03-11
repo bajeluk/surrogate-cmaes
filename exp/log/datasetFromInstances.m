@@ -178,9 +178,14 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
 
       % identify snapshot generations
       cmo = cmaes_out{expInstanceId}{1};
-      % identify the first maxEval*dim orig-evaluated points
-      origEvaledIdMax = find(cmo.origEvaled, opts.maxEval*dim, 'first');
-      lastOrigEvaledIdMax = origEvaledIdMax(end);
+      % identify all the original-evaluated points
+      orig_id = find(cmo.origEvaled);
+      % identify unique original-evaluated points
+      [~, uniqueOrigId] = unique(cmo.arxvalids(:, cmo.origEvaled)', 'rows');
+      % select ids of unique points preserving the original ordering
+      orig_id = orig_id(sort(uniqueOrigId));
+      % select maxEval*dim points at maximum
+      orig_id = orig_id(1:min(numel(orig_id), opts.maxEval*dim));
 
       firstGeneration = cmo.generations(find(~cmo.origEvaled, 1));
       lastGeneration = cmo.generations(end);
@@ -422,7 +427,6 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
         for sai = 1:nSampleArchives % sai = Sample Archive Index
           archive{sai} = Archive(dim);
         end
-        orig_id = logical(cmo.origEvaled(1:lastOrigEvaledIdMax));
         generations = cmo.generations(orig_id);
         % archive genenerating through distribution smoothing
         for gi = 1:lastGeneration
@@ -455,12 +459,11 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
       else
         % create the Archive with the original-evaluated points
         archive = Archive(dim);
-        orig_id = logical(cmo.origEvaled(1:lastOrigEvaledIdMax));
         X_orig = cmo.arxvalids(:,orig_id)';
         if isfield(cmo, 'fvaluesOrig')
           y_orig = cmo.fvaluesOrig(orig_id)';
         else
-          y_orig = fgeneric(cmo.arxvalids);
+          y_orig = fgeneric(X_orig);
         end
         archive.save(X_orig, y_orig, cmo.generations(orig_id));
       end
