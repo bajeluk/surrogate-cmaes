@@ -7,17 +7,18 @@
 %% load data
 datasetFolder = fullfile('exp', 'experiments', 'dataset');
 origFile = fullfile(datasetFolder, 'DTS_meta_005.mat');
+fprintf('Loading %s\n', origFile)
 dat = load(origFile);
 
 %% Split data
 
+fprintf('Creating random permutations of modelSettings in dataset\n')
 % set seed for similar results
 rng(42)
 
 % exclude ADD covariance function
 useModelSet = [1:6,8:9];
 ds_new = dat.ds(:, :, :, useModelSet);
-modelSettings_new = dat.modelSettings(useModelSet);
 [nFunc, nDim, nInst, nMSet] = size(ds_new);
 dsNewSize = [nFunc, nDim, nInst, nMSet];
 
@@ -49,14 +50,17 @@ ds_test(coor2ind(combMat', [nFunc, nDim, nInst])) = ds_new(coor2ind(testCoor, ds
 %% save resulting datasets
 
 dat_new = dat;
-dat_new.modelSettings = modelSettings_new;
-dat_new.opts.note = 'Created using split_DTS_meta_data.m';
+dat_new.opts.note = ['Created using split_DTS_meta_data.m. ', ...
+                     'Model settings does not match to the original ids due to their random permutation.'];
 
 % validation dataset
 dat_validation = dat_new;
 dat_validation.ds = ds_validation;
 dat_validation.opts.datasetName = 'DTS_meta_005_validation';
 dat_validation.opts.datasetFile = fullfile(datasetFolder, 'DTS_meta_005_validation.mat');
+dat_validation.modelSettings = 1; % only one model id available
+
+fprintf('Saving %s\n', dat_validation.opts.datasetFile)
 save(dat_validation.opts.datasetFile, '-struct', 'dat_validation')
 
 % training dataset
@@ -64,6 +68,9 @@ dat_train = dat_new;
 dat_train.ds = ds_train;
 dat_train.opts.datasetName = 'DTS_meta_005_train';
 dat_train.opts.datasetFile = fullfile(datasetFolder, 'DTS_meta_005_train.mat');
+dat_train.modelSettings = 1:7; % seven model ids available
+
+fprintf('Saving %s\n', dat_train.opts.datasetFile)
 save(dat_train.opts.datasetFile, '-struct', 'dat_train')
 
 % testing dataset
@@ -71,4 +78,7 @@ dat_test = dat_new;
 dat_test.ds = ds_test;
 dat_test.opts.datasetName = 'DTS_meta_005_test';
 dat_test.opts.datasetFile = fullfile(datasetFolder, 'DTS_meta_005_test.mat');
+dat_test.modelSettings = 1; % only one model id available
+
+fprintf('Saving %s\n', dat_test.opts.datasetFile)
 save(dat_test.opts.datasetFile, '-struct', 'dat_test')
