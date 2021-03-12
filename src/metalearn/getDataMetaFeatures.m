@@ -28,7 +28,7 @@ function getDataMetaFeatures(folder, varargin)
 %     'Inst'      - instance id of data (used only when first input is
 %                   a structure) | integer
 %     'MetaInput' - input sets for metafeature calculation | {'archive',
-%                   'test', 'train', 'traintest'}
+%                   'test', 'train', 'archivetest', 'traintest'}
 %     'MixTrans'  - results of different transformation settings for one
 %                   input set are returned in one structure | boolean
 %                 - previously calculated results are replaced by new ones
@@ -199,6 +199,8 @@ function getRegularDataMetaFeatures(folder, settings)
         error('No input folder is actually file or folder')
       end
     end
+    % save to settings
+    settings.output = outputFolder;
   end
   [~, ~] = mkdir(outputFolder);
   
@@ -314,6 +316,14 @@ function res = getSingleDataMF(ds, opts)
     ds.archive = {ds.archive};
   end
   nArch = numel(ds.archive);
+  % reformat ds to the correct size [num of generations, 1] if regular (no
+  % extra archives, no model pooling) dataset is used
+  if (nArch == 1) && isvector(ds.testSetX)
+    dsFields = fieldnames(ds);
+    for fld = 1:numel(dsFields)
+      ds.(dsFields{fld}) = ds.(dsFields{fld})(:);
+    end
+  end
   
   % prepare result variable
 %   res.ft(1:nGen, 1:nArch) = struct();
@@ -408,6 +418,11 @@ function [ft, values] = oneMftsGeneration(ds, opts, g, a, generations, useFeat)
       case 'train'
         dsTrain = createTrainDS(ds, a, generations, g);
         [X, y] = getTrainData(dsTrain, g, opts.trainOpts);
+      case 'archivetest'
+        X = ds.archive{a}.X(ds.archive{a}.gens < generations(g), :);
+        y = ds.archive{a}.y(ds.archive{a}.gens < generations(g), :);
+        X = [X; ds.testSetX{g, a}];
+        y = [y; NaN(size(ds.testSetX{g, a}, 1), 1)];
       case {'testtrain', 'traintest'}
         dsTrain = createTrainDS(ds, a, generations, g);
         [X, y] = getTrainData(dsTrain, g, opts.trainOpts);
@@ -461,7 +476,7 @@ function [ft, values] = oneMftsGeneration(ds, opts, g, a, generations, useFeat)
       end
     % create unique fieldnames
     else
-      ft([mtInput, '_', lower(opts.transform{iSet})]) = res_fts;
+      ft.([mtInput, '_', lower(opts.transform{iSet})]) = res_fts;
     end
 
     % enable warnings
@@ -488,17 +503,20 @@ function ds = createTrainDS(ds, a, generations, g)
   trainArchive.gens = ds.archive{a}.gens(ds.archive{a}.gens < generations(g));
   % create training dataset
   ds.archive = trainArchive;
-  ds.BDs = ds.BDs(:, a);
-  ds.cmaesStates = ds.cmaesStates(:, a);
-  ds.diagCs = ds.diagCs(:, a);
-  ds.diagDs = ds.diagDs(:, a);
-  ds.iruns = ds.iruns(:, a);
-  ds.means = ds.means(:, a);
-  ds.pcs = ds.pcs(:, a);
-  ds.pss = ds.pss(:, a);
-  ds.sigmas = ds.sigmas(:, a);
-  ds.testSetX = ds.testSetX(:, a);
-  ds.testSetY = ds.testSetY(:, a);
+  % select apropriate property value if there is more than one
+  if ~isvector(ds.BDs)
+    ds.BDs = ds.BDs(:, a);
+    ds.cmaesStates = ds.cmaesStates(:, a);
+    ds.diagCs = ds.diagCs(:, a);
+    ds.diagDs = ds.diagDs(:, a);
+    ds.iruns = ds.iruns(:, a);
+    ds.means = ds.means(:, a);
+    ds.pcs = ds.pcs(:, a);
+    ds.pss = ds.pss(:, a);
+    ds.sigmas = ds.sigmas(:, a);
+    ds.testSetX = ds.testSetX(:, a);
+    ds.testSetY = ds.testSetY(:, a);
+  end
 end
 
 function [X, y] = getTrainData(ds, g, opts)

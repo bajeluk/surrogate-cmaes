@@ -675,13 +675,15 @@ function testGetDataMetaFeatures(testCase)
   % empty input should not generate error or warning
   verifyWarningFree(testCase, @getDataMetaFeatures);
   % test data
-  testdata = 'exp/experiments/test/DTS_meta';
-  outputData = 'exp/experiments/test/DTS_meta_test_fts';
+  testdata = 'exp/experiments/test/dataset';
   if ~isdir(testdata)
-    warning('Could not finish testGetDataMetaFeatures due to missing test files in %s', ...
-            testdata)
-    return
+    fprintf(2, 'metafeatureTest:testGetDataMetaFeatures(): Missing test files in %s\n', testdata)
+    createTestDataMfts()
   end
+  outputData = 'exp/experiments/test/DTS_meta_test_fts';
+  assert(isdir(testdata), 'scmaes:metafeatureTest:testGetDataMetaFeatures:notestdata', ...
+         'Could not finish testGetDataMetaFeatures due to missing test files in %s', testdata)
+
   % feature groups
   featGroups =   {'basic', ...
                   'cm_angle', ...
@@ -700,8 +702,9 @@ function testGetDataMetaFeatures(testCase)
                  };
   % test no settings
   outputFolder = [testdata, '_fts'];
-%   getGetMetaFeatures(testdata);
-%   verifyTrue(testCase, isdir(outputFolder))
+  getDataMetaFeatures(testdata);
+  verifyTrue(testCase, isdir(outputFolder))
+
   % test with settings
   settings.lb = 'min(X)'; %'-5*ones(1, dim)';
   settings.ub = 'max(X)'; % 5*ones(1, dim)';
@@ -717,5 +720,25 @@ function testGetDataMetaFeatures(testCase)
   tic
   getDataMetaFeatures(testdata, settings);
   toc
-  verifyTrue(testCase, isdir(outputFolder))
+  verifyTrue(testCase, isdir(outputData))
+end
+
+function ds = createTestDataMfts()
+% function creates test data for testGetDataMetaFeatures
+    % set experiment
+  exp_id = 'exp_doubleEC_28_log_nonadapt';
+
+  fun = 1;
+  dim = 2;
+  inst = 11;
+
+  opts.datasetName = 'DTS_meta';
+  opts.isForData = true;
+  opts.nSnapshotsPerRun = 25;
+  opts.outputDirname = 'test';
+  opts.rewriteResults = false;
+  opts.sampleMethod = 'uniform_wor';
+
+  fprintf('Creating test data for metafeatureTest\n')
+  ds = modelTestSets(exp_id, fun, dim, inst, opts);
 end

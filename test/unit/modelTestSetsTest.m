@@ -22,10 +22,10 @@ function testOutput(testCase)
   dim = 2;
   inst = 11;
 
-  opts.datasetName = 'DTS_test';
+  opts.datasetName = 'DTS_meta';
   opts.isForData = true;
   opts.nSnapshotsPerRun = 25;
-  opts.outputDirname = 'exp_deleteme';
+  opts.outputDirname = 'test';
   opts.rewriteResults = false;
   opts.sampleMethod = 'uniform_wor';
 

@@ -281,17 +281,17 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
         dataset{i_inst, ii_id}.iruns    = zeros(nSnapshots, nSampleArchives);
         dataset{i_inst, ii_id}.cmaesStates = cell(nSnapshots, nSampleArchives);
       else
-        dataset{i_inst, ii_id}.testSetX = cell(1, nSnapshots);
-        dataset{i_inst, ii_id}.testSetY = cell(1, nSnapshots);
-        dataset{i_inst, ii_id}.means    = cell(1, nSnapshots);
-        dataset{i_inst, ii_id}.sigmas   = cell(1, nSnapshots);
-        dataset{i_inst, ii_id}.BDs      = cell(1, nSnapshots);
-        dataset{i_inst, ii_id}.diagDs   = cell(1, nSnapshots);
-        dataset{i_inst, ii_id}.diagDs   = cell(1, nSnapshots);
-        dataset{i_inst, ii_id}.pcs      = cell(1, nSnapshots);
-        dataset{i_inst, ii_id}.pss      = cell(1, nSnapshots);
-        dataset{i_inst, ii_id}.iruns    = zeros(1, nSnapshots);
-        dataset{i_inst, ii_id}.cmaesStates = cell(1, nSnapshots);
+        dataset{i_inst, ii_id}.testSetX = cell(nSnapshots, 1);
+        dataset{i_inst, ii_id}.testSetY = cell(nSnapshots, 1);
+        dataset{i_inst, ii_id}.means    = cell(nSnapshots, 1);
+        dataset{i_inst, ii_id}.sigmas   = cell(nSnapshots, 1);
+        dataset{i_inst, ii_id}.BDs      = cell(nSnapshots, 1);
+        dataset{i_inst, ii_id}.diagDs   = cell(nSnapshots, 1);
+        dataset{i_inst, ii_id}.diagDs   = cell(nSnapshots, 1);
+        dataset{i_inst, ii_id}.pcs      = cell(nSnapshots, 1);
+        dataset{i_inst, ii_id}.pss      = cell(nSnapshots, 1);
+        dataset{i_inst, ii_id}.iruns    = zeros(nSnapshots, 1);
+        dataset{i_inst, ii_id}.cmaesStates = cell(nSnapshots, 1);
       end
 
       % Dataset generation
