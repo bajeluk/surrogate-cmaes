@@ -187,12 +187,12 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
       % select maxEval*dim points at maximum
       orig_id = orig_id(1:min(numel(orig_id), opts.maxEval*dim));
 
-      firstGeneration = cmo.generations(find(~cmo.origEvaled, 1));
+      firstModelGeneration = cmo.generations(find(~cmo.origEvaled, 1));
       lastGeneration = cmo.generations(end);
       if (loadModels)
         lastGeneration = min(lastGeneration, length(MF.models));
       end
-      nGenerations = lastGeneration-firstGeneration+1;
+      nGenerations = lastGeneration - firstModelGeneration + 1;
 
       if nSnapshots < 1
         % nSnapshots relative to all admissible generations
@@ -209,9 +209,9 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
       % third: sample nSnapshots generations
       switch opts.sampleMethod
         case 'uniform_wor'
-          gens = sort(randsample(firstGeneration:lastGeneration, nSnapshots, false));
+          gens = sort(randsample(firstModelGeneration:lastGeneration, nSnapshots, false));
         case 'uniform'
-          gens = sort(randsample(firstGeneration:lastGeneration, nSnapshots, true));
+          gens = sort(randsample(firstModelGeneration:lastGeneration, nSnapshots, true));
         case 'geometric'
           % setting the parameter p of geometric distribution such that
           % nGenerations is the geometric distribution's quantile alpha
@@ -220,7 +220,7 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
           % setting weights by probability mass function of the geometric
           % distribution
           w = geopdf(0:nGenerations-1, p);
-          gens = sort(randsample(firstGeneration:lastGeneration, nSnapshots, true, w));
+          gens = sort(randsample(firstModelGeneration:lastGeneration, nSnapshots, true, w));
         case 'geometric_wor'
           % TODO: make this part of code more readable
           alpha = 0.9;
@@ -232,7 +232,7 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
           draws = 0;
           while length(gens) < nSnapshots
             draws = draws + 1;
-            draw = randsample(firstGeneration:lastGeneration, 1, true, w);
+            draw = randsample(firstModelGeneration:lastGeneration, 1, true, w);
 
             i_inst, ii_id = find(gens >= draw, 1);
             if i_inst, ii_id && gens(i_inst, ii_id) > draw
@@ -246,11 +246,11 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
             end
           end
         case 'equidistant'
-          gens = floor(linspace(firstGeneration, lastGeneration, nSnapshots));
+          gens = floor(linspace(firstModelGeneration, lastGeneration, nSnapshots));
         otherwise % case 'equidistant'
           warning('sampleMethod ''%s not'' recognized, fall back to ''equidistant''', ...
             opts.sampleMethod);
-          gens = floor(linspace(firstGeneration, lastGeneration, nSnapshots));
+          gens = floor(linspace(firstModelGeneration, lastGeneration, nSnapshots));
       end
 
       % prepare output fields
@@ -428,20 +428,47 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
           archive{sai} = Archive(dim);
         end
         generations = cmo.generations(orig_id);
-        % archive genenerating through distribution smoothing
+        % save initial point to individual archives
+        if ismember(0, generations)
+          for sai = 1:nSampleArchives
+            % save the first mean as starting point (as it is in CMA-ES)
+            archive{sai}.save(cmo.means(:, 1)', fgeneric(cmo.means(:, 1)), 0);
+          end
+        end
+        % archive generating through distribution smoothing
         for gi = 1:lastGeneration
           % sample for all archives at once
           [X_smooth, cmaesState, sampleOpts] = smoothedSampling(...
             cmo, gi, nSampleArchives, smoothDistribution, nSmoothGenerations);
-          % evaluate points for all archives
-          y_smooth = fgeneric(X_smooth)';
-          % save points to individual archives
-          for sai = 1:nSampleArchives
-            saveId = (sai-1)*cmaesState.lambda + 1 : sai*cmaesState.lambda;
-            % save only the same number of original evaluated as in the
-            % original run
-            archive{sai}.save(X_smooth(:, saveId(1:sum(generations == gi)))', ...
-                              y_smooth(saveId(1:sum(generations == gi))), gi);
+
+          % save points in generations with at least one original evaluated
+          % point
+          if ismember(gi, generations)
+            % evaluate points for all archives
+            y_smooth = fgeneric(X_smooth)';
+            % point identifier in Xsmooth
+            pId = 0;
+            % save points to individual archives
+            for sai = 1:nSampleArchives
+              % while there are points to save to the archive in current
+              % generation
+              % TODO: this cycle can be slow, on the other hand, ensures
+              %       the same numbers of points in archives regardless
+              %       duplicities
+              while numel(archive{sai}.y) < sum(generations <= gi)
+                % get remaining ids of generated points
+                pId = pId(end) + (1:(sum(generations <= gi) - numel(archive{sai}.y)));
+                % in case of reaching the last point, start over again
+                if any(pId > numel(y_smooth))
+                  pId = 1;
+                  warning('scmaes:datasetFromIntances:overNpoints', ...
+                          ['Maximal number of points %d in distribution smoothing reached. ', ...
+                           'Starting again from 1.'], numel(y_smooth))
+                end
+                % save original evaluated points
+                archive{sai}.save(X_smooth(:, pId)', y_smooth(pId), gi);
+              end
+            end
           end
 
           % save cmaesState if gi == snapshot generation
