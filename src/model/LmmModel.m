@@ -20,8 +20,10 @@ classdef LmmModel < Model
     trainLikelihood       % TODO: delete this property
     modelterms
 
+    k                     % actual number of nearest neighbours
     kernel                % model kernel function
-    knn                   % number of nearest neighbours
+    knn                   % user-defined number of nearest neighbours (is
+                          % evaled during training)
     modelTerms
     M
   end
@@ -44,6 +46,9 @@ classdef LmmModel < Model
       
       % local meta model settings
       obj.kernel = defopts(modelOptions, 'kernel', @(x) (1 - x.^2).^2);
+      def_knn = ['ceil(min(              2 * (obj.dim * (obj.dim + 3)/2 + 1), ', ...
+                 'sqrt(obj.getTrainsetSize * (obj.dim * (obj.dim + 3)/2 + 1))))'];
+      obj.knn = defopts(modelOptions, 'knn', def_knn);
 
        % Turn off warnings
 %             warning('off','MATLAB:rankDeficientMatrix')
@@ -51,7 +56,7 @@ classdef LmmModel < Model
         
     function nData = getNTrainData(obj)
       % returns the required number of data for training the model
-      nData = obj.dim * (obj.dim + 3)/2 + 3;
+      nData = obj.dim * (obj.dim + 3)/2 + 2;
     end
         
     function obj = trainModel(obj, X, y, ~, generation)
@@ -67,7 +72,10 @@ classdef LmmModel < Model
       obj.trainLikelihood = NaN;
       obj.trainGeneration = generation;
       % set k for knn
-      obj.knn = ceil(min(2*(getNTrainData(obj)-2), sqrt(obj.getTrainsetSize * (getNTrainData(obj) - 2))));
+      obj.k = min(myeval(obj.knn), numel(y));
+      % check value of k
+      assert(isnatural(obj.k), 'scmaes:LmmModel:trainModel:kNotNatural', ...
+             'Resulting k for knn is not natural.')
 
     end
 
@@ -109,7 +117,7 @@ classdef LmmModel < Model
       [~, I] = sort(distances);
       % select only k-nearest points from the dataset, their Z values
       % and distances
-      selectedIndexes = I(1:obj.knn);
+      selectedIndexes = I(1:obj.k);
       closestX = obj.dataset.X(selectedIndexes, :);
       closestY = obj.dataset.y(selectedIndexes, :);
       closestZ = zValues(selectedIndexes, :);
@@ -126,7 +134,7 @@ classdef LmmModel < Model
       % Ztilda =
       %   (z_1^2, ..., z_D^2, z_1*z_2, ..., z_{D-1}*z_D, z_1, ..., z_D, 1)
       % using 'ones' function instantly determinates constant term to 1
-      Ztilda = ones(obj.knn, lsqDim);
+      Ztilda = ones(obj.k, lsqDim);
       jj=1;
       % quadratic terms
       Ztilda(:, jj:jj+obj.dim-1) = zValues.^2;
@@ -140,7 +148,7 @@ classdef LmmModel < Model
       Ztilda(:, jj:jj+obj.dim-1) = zValues;
 
       % calculate weights
-      W = sqrt(obj.kernel(distances / distances(obj.knn)));
+      W = sqrt(obj.kernel(distances / distances(obj.k)));
 
       WZ = repmat(W, 1, lsqDim) .* Ztilda;
       Wy = W .* y;

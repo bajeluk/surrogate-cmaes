@@ -496,7 +496,7 @@ classdef (Abstract) Model
       cmaesopt.MaxFunEvals = 500;
 
       % run CMA-ES to find model minimum
-      eval_func = @(X) obj.predict(X');ted
+      eval_func = @(X) obj.predict(X');
       opt = s_cmaes(eval_func, obj.trainMean, sigma, cmaesopt);
       x = opt';
     end
