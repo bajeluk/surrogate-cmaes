@@ -280,6 +280,50 @@ classdef Archive < handle
       y = obj.y(indicesToReturn);
     end
 
+    function [X, y] = getKnnData(obj, knn, xInput, sigma, BD)
+      % [X, y] = getKnnData(obj, knn, xInput, sigma, BD)
+      % Return union of k-nearest neighbors of population points from
+      % Archive using (sigma*BD)-metric according to defined k.
+      % Implemented using code from (Auger et al., 2013), (Kern et al.
+      % 2006).
+
+      % initialize
+      nData = length(obj.y);
+      X = [];
+      y = [];
+
+      if (nData == 0)
+        return;
+      end
+
+      lambda = size(xInput, 1);
+      % evaluate k
+      k = min(myeval(knn), nData);
+      % check value of k
+      assert(isnatural(k), 'scmaes:Archive:getKnnData:kNotNatural', ...
+             'Resulting k for knn is not natural.')
+
+      indicesToReturn = false(nData, 1);
+
+      % compute coordinates in the (sigma*BD)-basis
+      BDinv = inv(sigma*BD);
+
+      % for each point from xInput:
+      for i = 1:lambda
+        xTransf = ( BDinv * (obj.X - repmat(xInput(i, :), nData, 1))' )';
+        diff2 = sum(xTransf.^2, 2);
+        % find the closest points by sorting distance
+        [~, I] = sort(diff2);
+        % select only k-nearest points from the dataset, their Z values
+        % and distances
+        indicesToReturn(I(1:k)) = true;
+      end
+
+      % return the final points
+      X = obj.X(indicesToReturn, :);
+      y = obj.y(indicesToReturn);
+    end
+
     function [X, y] = getTrainsetData(obj, trainsetType, trainsetSizeMax, xMean, trainRange, sigma, BD, population, modelOptions)
       % getTrainsetData Get data for model training according to chosen
       %   training set selection method in 'trainsetType'.
@@ -296,10 +340,14 @@ classdef Archive < handle
       %                             clusters' centroids (e.g., in (Bajer et
       %                             al., 2015))
       %     'full'                - get all data from the archive
+      %     'knn'                 - selecting the union of the k nearest
+      %                             neighbors of every point for which the
+      %                             fitness should be predicted (e.g., in
+      %                             (Kern et al., 2006)); k is user-defined
       %     'nearest'             - selecting the union of the k nearest
       %                             neighbors of every point  for which the
-      %                             fitness should be predicted (e.g., in
-      %                             (Kern et al., 2006)), where k is
+      %                             fitness should be predicted; derived
+      %                             from (Kern et al., 2006); here, k is
       %                             maximal such that the total number of
       %                             selected points does not exceed
       %                             'trainsetSizeMax'
@@ -352,10 +400,18 @@ classdef Archive < handle
         case 'full'
           % get all points from the archive
           [X, y] = obj.getFullData();
-        case 'nearest'
+        case 'knn'
           % selecting the union of the k nearest neighbors of every point
           % for which the fitness should be predicted (e.g., in (Kern et
-          % al., 2006)), where k is maximal such that the total number of
+          % al., 2006)); k is user-defined
+          def_knn = ['ceil(min(2 * (obj.dim * (obj.dim + 3)/2 + 1), ', ...
+                     'sqrt(nData * (obj.dim * (obj.dim + 3)/2 + 1))))'];
+          knn = defopts(modelOptions, 'knn', def_knn);
+          [X, y] = getKnnData(obj, knn, population.x', sigma, BD);
+        case 'nearest'
+          % selecting the union of the k nearest neighbors of every point
+          % for which the fitness should be predicted; derived from (Kern
+          % et al., 2006); here, k is maximal such that the total number of
           % selected points does not exceed 'trainsetSizeMax'
           [X, y] = obj.getClosestDataFromPoints(trainsetSizeMax, population.x', sigma, BD, trainRange);
         case 'nearesttopopulation'

@@ -109,6 +109,41 @@ function testGetDataNearPoint(testCase)
 
 end
 
+function testGetKnnData(testCase)
+% test getting knn from the archive of specified points
+
+  dim = 2;
+  X = 5 + randn(20, dim);
+  y = fsphere(X);
+  % nearest neighbors
+  knnX = -1*ones(2, dim);
+  knny = fsphere(knnX);
+  X = [X; knnX];
+  y = [y; knny];
+
+  knn = 'obj.dim';
+  xInput = zeros(1, dim);
+  sigma = 1;
+  BD = [1 0; 0 1.5];
+
+  a = Archive(dim);
+  a = a.save(X, y, 1);
+
+  % call getKnnPoints function
+  [Xtest, yTest] = a.getKnnData(knn, xInput, sigma, BD);
+
+  verifyEqual(testCase, Xtest, knnX);
+  verifyEqual(testCase, yTest, knny);
+
+  % call getKnnPoints with k greater than number of available points
+  knn = Inf;
+  xInput = randn(10, dim);
+  [Xtest, yTest] = a.getKnnData(knn, xInput, sigma, BD);
+  % function should return all available points
+  verifyEqual(testCase, Xtest, X);
+  verifyEqual(testCase, yTest, y);
+end
+
 function y = fsphere(x)
   y = sum(x.^2, 2);
 end
