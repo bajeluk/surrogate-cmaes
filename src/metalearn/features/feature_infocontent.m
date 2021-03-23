@@ -15,22 +15,30 @@ function ft = feature_infocontent(X, y, settings)
 % 
 % This symbol sequence Φ is aggregated by the information content 
 % H(ε) := sum_{i \neq j} p_{ij}*log_6 p_{ij}, where p_{ij} is the 
-% probability of having the “block” φ_i φ_j , with φ_i, φ_j ∈ {a, b, c}, 
+% probability of having the “block” φ_i φ_j , with φ_i, φ_j \in {a, b, c},
 % within the sequence. Note that the base of the logarithm was set to six 
-% as this equals the number of possible blocks φ_i φ_j for which φ_i = φ_j,
-% i.e., φ_i φ_j ∈ {ab, ba, ac, ca, bc, cb}.
+% as this equals the number of possible blocks φ_i φ_j for which φ_i \neq
+% φ_j, i.e., φ_i φ_j \in {ab, ba, ac, ca, bc, cb}.
 %
 % Another aggregation of the information is the so-called partial 
-% information content M(ε) := |Φ|/(n − 1), where Φ is the symbol sequence 
+% information content M(ε) := |Φ'|/(n − 1), where Φ' is the symbol sequence
 % of alternating a’s and c’s, which is derived from Φ by removing all zeros
 % and repeated symbols. These two characteristics are then utilized for 
 % computing five features (see Munoz Acosta et al., 2015).
+%
+% When considering NaN's in y as valid state, the sequence Φ consists of
+% φ_i \in {a, b, c, N}, where φ_i = N, if y_{i+1} = NaN or y_i = NaN. Thus,
+% H(ε) := sum_{i \neq j} p_{ij}*log_{12} p_{ij} due to increased number of
+% possible φ_i φ_j blocks, i.e., φ_i φ_j \in {ab, ba, ac, ca, bc, cb, Na,
+% Nb, Nc, aN, bN, cN}.
 %
 % settings:
 %   distance      - distance metric (similar to pdist function) | default:
 %                   'euclidean'
 %   epsilon       - vector of epsilon values (has to contain 0) | default: 
 %                   [0, 10.^linspace(-5, 15, 1000)]
+%   nan_state     - consider NaN values in y as valid state | default:
+%                   false
 %   partial_ratio - parameter r for ratio of partial information
 %                   sensitivity | default: 0.5
 %   sorting       - sorting strategy for φ calculation | {'nn', 'random'} |
@@ -79,6 +87,7 @@ function ft = feature_infocontent(X, y, settings)
          '%s sorting setting is not implemented.', sorting)
   settling_param = defopts(settings, 'settling', 0.05);
   eps_ratio_tresh = defopts(settings, 'partial_ratio', 0.5);
+  nan_state = defopts(settings, 'nan_state', false);
   
   nData = numel(y);
   nEps = numel(epsilon);
@@ -121,7 +130,11 @@ function ft = feature_infocontent(X, y, settings)
     % compute psi
     psi_val = computePsi(y, seq, distSeq, epsilon(e));
     % compute H, M
-    H(e) = computeH(psi_val);
+    if nan_state
+      H(e) = computeNaNH(psi_val);
+    else
+      H(e) = computeH(psi_val);
+    end
     M(e) = computeM(psi_val);
   end
   
@@ -181,7 +194,7 @@ function psi_val = computePsi(y, seq, distSeq, epsilon)
 end
 
 function H = computeH(psi_val)
-% calculate information content
+% calculate information content ignoring NaN values (original)
   a = psi_val(1:end-1);
   b = psi_val(2:end);
   % calculate probabilities
@@ -195,6 +208,30 @@ function H = computeH(psi_val)
   nZp = p~=0;
   % calculate H
   H(nZp) = p(nZp).*log(p(nZp))/log(6);
+  H = -sum(H);
+end
+
+function H = computeNaNH(psi_val)
+% calculate information content taking into account NaN values
+  a = psi_val(1:end-1);
+  b = psi_val(2:end);
+  % calculate probabilities
+  p(1)  = mean((a == -1) & (b ==  0));
+  p(2)  = mean((a == -1) & (b ==  1));
+  p(3)  = mean((a ==  0) & (b == -1));
+  p(4)  = mean((a ==  0) & (b ==  1));
+  p(5)  = mean((a ==  1) & (b == -1));
+  p(6)  = mean((a ==  1) & (b ==  0));
+  p(7)  = mean( isnan(a) & (b == -1));
+  p(8)  = mean( isnan(a) & (b ==  0));
+  p(9)  = mean( isnan(a) & (b ==  1));
+  p(10) = mean((a == -1) &  isnan(b));
+  p(11) = mean((a ==  0) &  isnan(b));
+  p(12) = mean((a ==  1) &  isnan(b));
+  % non zero probability
+  nZp = p~=0;
+  % calculate H
+  H(nZp) = p(nZp).*log(p(nZp))/log(numel(p));
   H = -sum(H);
 end
 

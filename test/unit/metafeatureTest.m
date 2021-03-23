@@ -193,6 +193,31 @@ function testInfocontent(testCase)
   for m = 1:numel(featFields)
     verifyTrue(testCase, isnan(ft.(featFields{m})))
   end
+
+  % test nan_state settings
+  ft1pointRes = struct('h_max', 0, 'eps_s', -Inf, 'eps_max', 0, ...
+                       'm0', 1, 'eps_ratio', 15);
+  settings2.nan_state = true;
+  nPoints = 2;
+  nNaNs = 10;
+  X = eps*rand(nPoints, dim); % get points near each other
+  y = randn(nPoints, 1);
+  Xnan = [X; rand(nNaNs, dim)];
+  ynan = [y; NaN(nNaNs, 1)];
+  % test with nan_state off for 1 point
+  ft = feature_infocontent(Xnan(nPoints:end, :), ynan(nPoints:end));
+  verifyEqual(testCase, ft, ft1pointRes)
+  % test with nan_state on for 1 point
+  ft = feature_infocontent(Xnan(nPoints:end, :), ynan(nPoints:end, :), settings2);
+  verifyEqual(testCase, ft, ft1pointRes)
+
+  % test with nan_state off for more points
+  ft_off = feature_infocontent(Xnan, ynan);
+  verifyEqual(testCase, ft, ft1pointRes)
+  % test with nan_state on for more points
+  ft = feature_infocontent(Xnan, ynan, settings2);
+  verifyNotEqual(testCase, ft, ft_off)
+
 end
 
 function testPCA(testCase)
@@ -683,6 +708,7 @@ function testGetDataMetaFeatures(testCase)
   outputData = 'exp/experiments/test/DTS_meta_test_fts';
   assert(isdir(testdata), 'scmaes:metafeatureTest:testGetDataMetaFeatures:notestdata', ...
          'Could not finish testGetDataMetaFeatures due to missing test files in %s', testdata)
+  outputFile = fullfile(outputData, 'DTS_meta_fts.mat');
 
   % feature groups
   featGroups =   {'basic', ...
@@ -717,10 +743,34 @@ function testGetDataMetaFeatures(testCase)
   settings.trainOpts.trainsetType = 'nearest';
   settings.output = outputData;
   settings.transData = 'cma';
+  settings.statistics = {'hist', 'mean', 'median', 'nan', 'inf', 'var', 'values'};
   tic
   getDataMetaFeatures(testdata, settings);
   toc
+  % verify output directory
   verifyTrue(testCase, isdir(outputData))
+  % verify output file
+  verifyTrue(testCase, isfile(outputFile))
+  % load output file
+  S = load(outputFile);
+  verifyNotEmpty(testCase, S)
+  variables = {'dim', 'fun', 'inst', 'res', 'stats'};
+  statFields = {'histEdges', 'histVals', 'infminus', 'infplus', ...
+                'means', 'medians', 'nans', 'vars', 'values'};
+  for fn = 1:numel(variables)
+    % variable exists and is filled
+    verifyTrue(testCase, isfield(S, variables{fn}) & ...
+                        ~isempty(S.(variables{fn})))
+  end
+  % verify calculated statistics
+  for c = 1:numel(S.stats)
+    for s = 1:numel(statFields)
+      % stat results exists, is filled, and is numeric
+      verifyTrue(testCase, isfield(S.stats{c}, statFields{fn}) & ...
+                          ~isempty(S.stats{c}.(statFields{fn})) & ...
+                         isnumeric(S.stats{c}.(statFields{fn})))
+    end
+  end
 end
 
 function ds = createTestDataMfts()

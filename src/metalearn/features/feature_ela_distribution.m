@@ -15,8 +15,8 @@ function ft = feature_ela_distribution(~, y, settings)
 %                      skewness type 3 (default)
 %   kurtosis_type - 1: MATLAB kurtosis (flag = 1)
 %                   2: MATLAB kurtosis (flag = 0)
-%                   3: skewness according to R-package e1071 v1.6-8 
-%                      skewness type 3 (default)
+%                   3: kurtosis according to R-package e1071 v1.6-8
+%                      kurtosis type 3 (default)
 %
 % Features:
 %   skewness        - skewness of y values
