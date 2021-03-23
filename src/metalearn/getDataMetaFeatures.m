@@ -36,6 +36,18 @@ function getDataMetaFeatures(folder, varargin)
 %                   lower than the number of elements in values vector
 %     'Output'    - output folder | string
 %     'Rewrite'   - rewrite already computed results | boolean | false
+%     'Statistics'- statistics to calculate on individual metafeatures |
+%                   {'hist', 'inf', 'mean', 'median', 'nan', 'var',
+%                   'values'}
+%                     'hist'   - simplified histogram, number of NaNs, +Inf,
+%                                and -Inf of feature values
+%                     'inf'    - numbers of +Inf and -Inf feature values
+%                     'mean'   - nanmean to feature values
+%                     'median' - nanmedian to feature values
+%                     'nan'    - number of NaN feature values
+%                     'var'    - nanvar to feature values
+%                     'values' - raw matrix of feature values
+%     'StatsOnly' - save only statistic
 %     'TrainOpts' - training set options | structure with fields 
 %                   evoControlTrainNArchivePoints, evoControlTrainRange,
 %                   trainRange, trainsetSizeMax, and trainSetType
@@ -126,7 +138,7 @@ function getDataMetaFeatures(folder, varargin)
       saveVars = {'fun', 'dim', 'inst'};
       % feature statistics
       if ~isempty(settings.statistics)
-        stats = getDataStats(res, settings.statistics);
+        stats = getDataStats(res.values, settings.statistics);
         statsNames = fieldnames(stats);
         for st = 1:numel(statsNames)
           eval([statsNames{st}, ' = stats.(statsNames{st});'])
@@ -273,7 +285,7 @@ function getRegularDataMetaFeatures(folder, settings)
                 saveVars = {'fun', 'dim', 'inst'};
                 % feature statistics
                 if ~isempty(settings.statistics)
-                  stats{fId, dId, imId, mId} = getDataStats(res{fId, dId, imId, mId}, settings.statistics);
+                  stats{fId, dId, imId, mId} = getDataStats(res{fId, dId, imId, mId}.values, settings.statistics);
                   saveVars{end+1} = 'stats';
                 end
                 % save only statistics
@@ -700,28 +712,11 @@ function val = checkCalcVal(dataVal, settingsVal, valName)
   
 end
 
-function stats = getDataStats(res, statistics)
+function stats = getDataStats(values, statistics)
 % calculate statistics on resulting features
-  for s = 1:numel(statistics)
-    switch statistics{s}
-      case 'mean'
-        stats.means = nanmean(res.values, 3);
-      case 'var'
-        stats.vars = nanvar(res.values, 0, 3);
-      case 'hist'
-        [stats.histVals, stats.histEdges, stats.nans, ...
-          stats.infplus, stats.infminus] = myhist(res.values);
-    end
-  end
-end
 
-function [histVals, histEdges, nans, infplus, infminus] = myhist(X)
-% simplified histogram
-
-  maxBins = 20;
-  [nFt, nGen, nArch] = size(X);
-
-  % variable type selection
+  % variable type selection (to decrease memory requirements)
+  nArch = size(values, 3);
   if nArch < 2^8
     varType = @uint8;
   elseif nArch < 2^16
@@ -730,22 +725,47 @@ function [histVals, histEdges, nans, infplus, infminus] = myhist(X)
     varType = @uint64;
   end
 
+  for s = 1:numel(statistics)
+    switch statistics{s}
+      % simplified histogram
+      case 'hist'
+        [stats.histVals, stats.histEdges] = myhist(values, varType);
+      % number of +Inf and -Inf
+      case 'inf'
+        stats.infplus  = varType(sum(isinf(values) & values > 0, 3));
+        stats.infminus = varType(sum(isinf(values) & values < 0, 3));
+      % mean values
+      case 'mean'
+        stats.means = nanmean(values, 3);
+      % median values
+      case 'median'
+        stats.medians = nanmedian(values, 3);
+      % number of NaN
+      case 'nan'
+        stats.nans = varType(sum(isnan(values), 3));
+      % raw values
+      case 'values'
+        stats.values = values;
+      % variances
+      case 'var'
+        stats.vars = nanvar(values, 0, 3);
+    end
+  end
+end
+
+function [histVals, histEdges] = myhist(X, varType)
+% simplified histogram
+
+  maxBins = 20;
+  [nFt, nGen] = size(X);
+
   % initialize
   histVals = varType(zeros(nFt, nGen, maxBins));
   histEdges = zeros(nFt, nGen, 2);
-  nans = varType(zeros(nFt, nGen));
-  infplus = varType(zeros(nFt, nGen));
-  infminus = varType(zeros(nFt, nGen));
 
   for ft = 1:nFt
     for g = 1:nGen
       X_arch = X(ft, g, :);
-      % number of NaN
-      nans(ft, g)     = varType(sum(isnan(X_arch)));
-      % number of +Inf
-      infplus(ft, g)  = varType(sum(isinf(X_arch) & X_arch > 0));
-      % number of -Inf
-      infminus(ft, g) = varType(sum(isinf(X_arch) & X_arch < 0));
       % histogram
       [N, edges] = histcounts(X_arch);
       % check maximal size
