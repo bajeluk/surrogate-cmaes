@@ -135,7 +135,7 @@ function getDataMetaFeatures(folder, varargin)
     outputFile = defoptsi(settings, 'Output', fileString);
     if settings.rewrite || ~isfile(outputFile) 
       res = getSingleDataMF(folder, settings);
-      saveVars = {'fun', 'dim', 'inst'};
+      saveVars = {'fun', 'dim', 'inst', 'id'};
       % feature statistics
       if ~isempty(settings.statistics)
         stats = getDataStats(res.values, settings.statistics);
@@ -365,9 +365,11 @@ function res = getSingleDataMF(ds, opts)
     vals = cell(nGen, nArch);
     parfor iag = 1:nGen*nArch
       [g, a] = ind2sub([nGen, nArch], iag);
+      tic
       [ft{iag}, vals{iag}] = oneMftsGeneration(ds, opts, g, a, generations, useFeat);
-      fprintf('%s: Archive %d (%d/%d)  Generation %d (%d/%d) %s\n', ...
-        resFname, a, a, nArch, generations(g), g, nGen, req(10))
+      t = toc;
+      fprintf('%s: Archive %3d (%3d/%d)  Generation %4d (%3d/%d)  (%0.2fs) %s\n', ...
+        resFname, a, a, nArch, generations(g), g, nGen, t, req(10))
     end
     values = cell2mat(reshape(vals, [1, nGen, nArch]));
   % sequential computation
@@ -376,7 +378,7 @@ function res = getSingleDataMF(ds, opts)
     for a = 1:nArch
       % generation loop
       for g = 1:nGen
-        fprintf('%s  Archive %d (%d/%d)  Generation %d (%d/%d) %s\n', ...
+        fprintf('%s  Archive %3d (%3d/%d)  Generation %4d (%3d/%d) %s\n', ...
                 req(40), a, a, nArch, generations(g), g, nGen, req(40))
         [ft{g, a}, values(:, g, a)] = oneMftsGeneration(ds, opts, g, a, generations, useFeat);
       % generation loop

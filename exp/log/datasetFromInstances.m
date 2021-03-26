@@ -458,12 +458,14 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
               while numel(archive{sai}.y) < sum(generations <= gi)
                 % get remaining ids of generated points
                 pId = pId(end) + (1:(sum(generations <= gi) - numel(archive{sai}.y)));
-                % in case of reaching the last point, start over again
+                % in case of reaching the last point, generate new points
                 if any(pId > numel(y_smooth))
-                  pId = 1;
-                  warning('scmaes:datasetFromIntances:overNpoints', ...
-                          ['Maximal number of points %d in distribution smoothing reached. ', ...
-                           'Starting again from 1.'], numel(y_smooth))
+                  pId = 1:(sum(generations <= gi) - numel(archive{sai}.y));
+                  % Generate fresh CMA-ES' offspring
+                  [~, X_smooth, ~] = sampleCmaesNoFitness( ...
+                    cmaesState.sigma, nSampleArchives*cmaesState.lambda, ...
+                    cmaesState, sampleOpts);
+                  y_smooth = fgeneric(X_smooth)';
                 end
                 % save original evaluated points
                 archive{sai}.save(X_smooth(:, pId)', y_smooth(pId), gi);
