@@ -28,7 +28,10 @@ DEPLOY_ARCHIVE=${EXPID}_src.tar
 FILES_TO_DEPLOY="exp/*.m exp/*.sh exp/experiments/*.m exp/util exp/log exp/vendor/bbob exp/vendor/bbob_extra exp/vendor/saACMES src/ exp/pproc/generateGnuplot* Makefile startup.m"
 
 # Change timestamp of files with timestamp in future to now (sometimes on Metacentrum when git pull or checkout)
-find $FILES_TO_DEPLOY -mtime -0 -exec touch {} \;
+# checking frontend using startup.m - not necessary on other machines
+if [ -f "startup.m" ]; then
+  find $FILES_TO_DEPLOY -mtime -0 -exec touch {} \;
+fi
 
 # allow read-access of newly created files and directories for the group
 umask 0027
