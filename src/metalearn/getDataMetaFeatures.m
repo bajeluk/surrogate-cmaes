@@ -580,7 +580,7 @@ function [X, y] = getTrainData(ds, g, opts)
   else
     [X, y] = ds.archive.getTrainsetData(opts.trainsetType,...
              myeval(opts.trainsetSizeMax), xmean, opts.trainRange,...
-             sigma, BD, population);
+             sigma, BD, population, opts);
   end
 end
   
