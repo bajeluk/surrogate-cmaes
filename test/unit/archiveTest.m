@@ -124,8 +124,30 @@ function testGetKnnData(testCase)
   knn = 'obj.dim';
   xInput = zeros(1, dim);
   sigma = 1;
-  BD = [1 0; 0 1.5];
+  % following 3 lines are taken from CMA-ES code
+  [B, diagD] = eig(cov(X));
+  diagD = diag(sqrt(diagD)); % D contains standard deviations now
+  BD = B*diag(diagD); % identical to BD = B.*repmat(diagD', dim, 1);
 
+  % set state variables
+  stateVariables.xmean = mean(X)';
+  stateVariables.sigma = sigma;
+  stateVariables.lambda = 4 + floor(3*log(dim));
+  stateVariables.BD = BD;
+  stateVariables.diagD = diagD;
+  stateVariables.countiter = 1;
+  % set sampleOpts
+  sampleOpts.noiseReevals = 0;
+  sampleOpts.lbounds = -5;
+  sampleOpts.ubounds = 5;
+  sampleOpts.isBoundActive = true;
+  sampleOpts.counteval = 1;
+  sampleOpts.flgEvalParallel = false;
+  sampleOpts.flgDiagonalOnly = false;
+  sampleOpts.noiseHandling = 0;
+  sampleOpts.xintobounds = @xintobounds;
+
+  % set archive
   a = Archive(dim);
   a = a.save(X, y, 1);
 
@@ -142,6 +164,31 @@ function testGetKnnData(testCase)
   % function should return all available points
   verifyEqual(testCase, Xtest, X);
   verifyEqual(testCase, yTest, y);
+
+  % verify identity with LmmModel for various numbers of k
+  maxK = 100;
+  % construct archive
+  a = Archive(dim);
+  xInput = randn(10, dim);
+  for knn = 1:maxK
+    % generate and save new points
+    X = randn(10, dim);
+    y = fsphere(X);
+    a = a.save(X, y, 1);
+    % construct lmm model
+    lmm = LmmModel(struct('lmmKnn', knn), stateVariables.xmean');
+    % get training data for lmm model
+    [X, y] = a.getFullData();
+    % train lmm model
+    lmm = lmm.train(X, y, stateVariables, sampleOpts);
+    % get lmm training set
+    [Xlmm, ylmm] = lmm.getTrainSet(xInput);
+    % get archive training set
+    [Xarch, yarch] = a.getKnnData(knn, xInput, sigma, BD);
+    % verify identity
+    verifyEqual(testCase, unique(Xlmm, 'rows'), unique(Xarch, 'rows'))
+    verifyEqual(testCase, sort(ylmm), sort(yarch))
+  end
 end
 
 function y = fsphere(x)

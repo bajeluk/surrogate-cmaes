@@ -106,7 +106,7 @@ function testKnn(testCase)
   sampleOpts.xintobounds = @xintobounds;
 
   % test evaluation of knn option using char
-  modelOptions.knn = 'obj.dim^3 + 1';
+  modelOptions.lmmKnn = 'obj.dim^3 + 1';
   % construct model
   m = LmmModel(modelOptions, xMean);
   % train model
@@ -116,7 +116,7 @@ function testKnn(testCase)
 
   % test evaluation of knn option using settings for all training points
   % Inf settings:
-  modelOptions.knn = Inf;
+  modelOptions.lmmKnn = Inf;
   % construct model
   m = LmmModel(modelOptions, xMean);
   % train model
@@ -124,7 +124,7 @@ function testKnn(testCase)
   % test k value
   verifyEqual(testCase, m.k, nPoints)
   % NaN settings:
-  modelOptions.knn = NaN;
+  modelOptions.lmmKnn = NaN;
   % construct model
   m = LmmModel(modelOptions, xMean);
   % train model
@@ -133,7 +133,7 @@ function testKnn(testCase)
   verifyEqual(testCase, m.k, nPoints)
 
   % test evaluation of knn option using incorrect settings
-  modelOptions.knn = 0;
+  modelOptions.lmmKnn = 0;
   % construct model
   m = LmmModel(modelOptions, xMean);
   % train model
@@ -141,4 +141,59 @@ function testKnn(testCase)
   % error is catched in Model, therefore the model should not be trained
   verifyFalse(testCase, m.isTrained())
 
+end
+
+function testGetTrainSet(testCase)
+% test getTrainSet function
+  dim = 2;
+  X = 5 + randn(20, dim);
+  y = fsphere(X);
+  % nearest neighbors
+  knnX = -1*ones(2, dim);
+  knny = fsphere(knnX);
+  X = [X; knnX];
+  y = [y; knny];
+
+  knn = 'obj.dim';
+  xInput = randn(10, dim);
+  sigma = 1;
+  % following 3 lines are taken from CMA-ES code
+  [B, diagD] = eig(cov(X));
+  diagD = diag(sqrt(diagD)); % D contains standard deviations now
+  BD = B*diag(diagD); % identical to BD = B.*repmat(diagD', dim, 1);
+  xMean = mean(X);
+
+  % set state variables
+  stateVariables.xmean = xMean';
+  stateVariables.sigma = sigma;
+  stateVariables.lambda = 4 + floor(3*log(dim));
+  stateVariables.BD = BD;
+  stateVariables.diagD = diagD;
+  stateVariables.countiter = 1;
+  % set sampleOpts
+  sampleOpts.noiseReevals = 0;
+  sampleOpts.lbounds = -5;
+  sampleOpts.ubounds = 5;
+  sampleOpts.isBoundActive = true;
+  sampleOpts.counteval = 1;
+  sampleOpts.flgEvalParallel = false;
+  sampleOpts.flgDiagonalOnly = false;
+  sampleOpts.noiseHandling = 0;
+  sampleOpts.xintobounds = @xintobounds;
+
+  % test
+  modelOptions.lmmKnn = knn;
+  % construct model
+  m = LmmModel(modelOptions, xMean);
+  % train model
+  m = m.train(X, y, stateVariables, sampleOpts);
+  % get training set
+  [Xtr, ytr] = m.getTrainSet(xInput);
+  % test same number of points
+  verifyEqual(testCase, size(Xtr, 1), size(ytr, 1))
+
+end
+
+function y = fsphere(x)
+  y = sum(x.^2, 2);
 end

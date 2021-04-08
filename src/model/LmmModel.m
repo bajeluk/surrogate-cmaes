@@ -48,7 +48,7 @@ classdef LmmModel < Model
       obj.kernel = defopts(modelOptions, 'kernel', @(x) (1 - x.^2).^2);
       def_knn = ['ceil(min(              2 * (obj.dim * (obj.dim + 3)/2 + 1), ', ...
                  'sqrt(obj.getTrainsetSize * (obj.dim * (obj.dim + 3)/2 + 1))))'];
-      obj.knn = defopts(modelOptions, 'knn', def_knn);
+      obj.knn = defopts(modelOptions, 'lmmKnn', def_knn);
 
        % Turn off warnings
 %             warning('off','MATLAB:rankDeficientMatrix')
@@ -100,6 +100,32 @@ classdef LmmModel < Model
 
       % set identical sd2 for all points (could be estimated)
       sd2 = var(y) * ones(nPoints, 1);
+    end
+
+    function [Xtrain, ytrain] = getTrainSet(obj, X)
+      % get training set of the whole local meta model, i.e., unification
+      % of k nearest points to each point in X
+
+      Xtrain = [];
+      ytrain = [];
+      % calculate M matrix from sigma and BD
+      obj.M = calculateM(obj, obj.stateVariables);
+
+      [nPoints, ~] = size(X);
+
+      % query point loop
+      for i = 1:nPoints
+        queryPoint = X(i, :);
+        % get points closest to the query point
+        [closestX, closestY] = getClosestPoints(obj, queryPoint);
+        % add closest points for the query point
+        Xtrain = [Xtrain; closestX];
+        ytrain = [ytrain; closestY];
+      end
+
+      % return unique points
+      [Xtrain, ids] = unique(Xtrain, 'rows');
+      ytrain = ytrain(ids);
     end
 
   end
