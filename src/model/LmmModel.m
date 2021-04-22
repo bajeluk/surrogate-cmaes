@@ -83,23 +83,35 @@ classdef LmmModel < Model
       % predict function values for matrix of input points X using local
       % meta model (locally-weighted regression)
 
-      % calculate M matrix from sigma and BD
-      obj.M = calculateM(obj, obj.stateVariables);
+      if (obj.isTrained())
+        % calculate M matrix from sigma and BD
+        obj.M = calculateM(obj, obj.stateVariables);
 
-      [nPoints, ~] = size(X);
+        [nPoints, ~] = size(X);
 
-      y = NaN(nPoints, 1);
-      % query point loop
-      for i = 1:nPoints
-        queryPoint = X(i, :);
-        % get points closest to the query point
-        [~, closestY, closestZ, closestDistance] = getClosestPoints(obj, queryPoint);
-        % predict function value for the query point
-        y(i) = predictQueryPoint(obj, closestY, closestZ, closestDistance);
+        y = NaN(nPoints, 1);
+        % query point loop
+        for i = 1:nPoints
+          queryPoint = X(i, :);
+          % get points closest to the query point
+          [~, closestY, closestZ, closestDistance] = getClosestPoints(obj, queryPoint);
+          % predict function value for the query point
+          y(i) = predictQueryPoint(obj, closestY, closestZ, closestDistance);
+          if isnan(y(i))
+            y = []; sd2 = [];
+            fprintf(2, ['LmmModel.predict(): prediction in one query point failed ', ...
+                        '- probably the weight matrix is singular!\n']);
+            return
+          end
+        end
+
+        % set identical sd2 for all points (could be estimated)
+        sd2 = var(y) * ones(nPoints, 1);
+      else
+        y = []; sd2 = [];
+        fprintf(2, 'LmmModel.predict(): the model is not yet trained!\n');
       end
 
-      % set identical sd2 for all points (could be estimated)
-      sd2 = var(y) * ones(nPoints, 1);
     end
 
     function [Xtrain, ytrain] = getTrainSet(obj, X)
@@ -179,8 +191,10 @@ classdef LmmModel < Model
       WZ = repmat(W, 1, lsqDim) .* Ztilda;
       Wy = W .* y;
 
+      warning('off', 'MATLAB:singularMatrix')
       % Beta = (W*Z)\(W*y);
       Beta = WZ \ Wy;
+      warning('on', 'MATLAB:singularMatrix')
       % estimate of the function value at the query point corresponds
       % to the last coefficient of Beta, i.e., constant term of the
       % quadratic model
