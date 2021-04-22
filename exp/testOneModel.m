@@ -383,10 +383,10 @@ function rde = validationRDE(model, cmaesState, nRepeats, bbob_func_handle)
     end
     % kendallValid(i) = corr(yPredict, yTest, 'type', 'Kendall');
     % rmseValid(i) = sqrt(sum((yPredict - yTest).^2))/length(yPredict);
-    if yPredict
-      rdeValid(rep) = errRankMu(yPredict, yTest, cmaesState.mu);
-    else
+    if isempty(yPredict) || any(isnan(yPredict))
       rdeValid(rep) = NaN;
+    else
+      rdeValid(rep) = errRankMu(yPredict, yTest, cmaesState.mu);
     end
   end
   rde = nanmean(rdeValid);
