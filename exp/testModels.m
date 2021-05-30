@@ -19,6 +19,8 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
 %                          string
 %       .maxEvals        - maximal number of FE per dimensions to consider
 %                          | integer
+%       .mfts_only       - calculate only metafeatures, ignore model
+%                          settings | logical
 %       .mfts_settings   - settings of data metafeatures (keep empty if no
 %                          metafeature calculation should be performed) |
 %                          struct
@@ -445,6 +447,15 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
       % instances loop
       for ii = 1:length(instToTest)
         for i_id = 1:length(idsToTest)
+          fprintf(['******************* Metafeature calculation  ', ...
+                   'Dim: %2d (%2d/%2d) Fun: %2d (%2d/%2d) ', ...
+                   'Inst: %2d (%2d/%2d) Id: %2d (%2d/%2d) ', ...
+                   '*******************\n'], ...
+                  dim, find(dim == dimsToTest, 1), numel(dimsToTest), ...
+                  fun, find(fun == funcToTest, 1), numel(funcToTest), ...
+                  instToTest(ii), ii, numel(instToTest), ...
+                  idsToTest(i_id), i_id, numel(idsToTest))
+          tic
           inst = instToTest(ii);
           id = idsToTest(i_id);
           i_data = find(inst == dataInst, 1);
@@ -462,6 +473,7 @@ function modelFolder = testModels(modelOptions, opts, funcToTest, dimsToTest, in
               (opts.rewrite_results || ~isfile(opts.mfts_settings.output))
             getDataMetaFeatures(data{f_data, d_data, i_data, id_data}, opts.mfts_settings)
           end
+          toc
         end % id loop
       end  % instance loop
     end  % function loop
