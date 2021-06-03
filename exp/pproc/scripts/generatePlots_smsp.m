@@ -30,26 +30,42 @@ experimentFolder = fullfile('exp', 'experiments', 'exp_smsp');
 
 expfolder = fullfile('exp', 'experiments');
 exp_id = 'exp_DTSmeta_03';
-exp_output = fullfile(expfolder, exp_id, 'meta_output');
-exp_reduced_output = fullfile(expfolder, exp_id, 'dataset', 'sampled_mfts_reduced');
-[~, ~] = mkdir(exp_output);
-[~, ~] = mkdir(exp_reduced_output);
-exp_meta_minmax = fullfile(exp_output, 'exp_DTSmeta_03_minmax.mat');
-exp_meta_inf = fullfile(exp_output, 'exp_DTSmeta_03_inf.mat');
-exp_meta_output = fullfile(exp_output, 'exp_DTSmeta_03_res.mat');
-exp_meta_quantile = fullfile(exp_output, 'exp_DTSmeta_03_quantile.mat');
+exp_id_knn = 'exp_DTSmeta_03_knn';
+
+dims = [2, 3, 5, 10, 20];
+tssList = {'full', 'nearest', 'knn'};
+nTSS = numel(tssList);
+fullId = find(strcmp(tssList, 'full'));
+nearId = find(strcmp(tssList, 'nearest'));
+knnId  = find(strcmp(tssList, 'knn'));
+
+exp_output = cellfun(@(x) fullfile(experimentFolder, x), tssList, 'Uni', false);
+exp_reduced_output = cellfun(@(x) fullfile(experimentFolder, x, 'sampled_mfts_reduced'), tssList, 'Uni', false);
+% make directories
+for tss = 1:nTSS
+  [~, ~] = mkdir(exp_output{tss});
+  [~, ~] = mkdir(exp_reduced_output{tss});
+end
+
+exp_meta_minmax   = cellfun(@(x) fullfile(x, 'exp_DTSmeta_03_minmax.mat'),   exp_output, 'Uni', false);
+exp_meta_inf      = cellfun(@(x) fullfile(x, 'exp_DTSmeta_03_inf.mat'),      exp_output, 'Uni', false);
+exp_meta_output   = cellfun(@(x) fullfile(x, 'exp_DTSmeta_03_res.mat'),      exp_output, 'Uni', false);
+exp_meta_quantile = cellfun(@(x) fullfile(x, 'exp_DTSmeta_03_quantile.mat'), exp_output, 'Uni', false);
+exp_meta_dimgen   = fullfile(experimentFolder, 'exp_DTSmeta_03_dimgen.mat');
 printScriptMess = false;
 
 % resulting files
-exp_smsp_dimension_test = fullfile(experimentFolder, 'exp_smsp_dimension_test.mat');
-exp_smsp_corr_test = fullfile(experimentFolder, 'exp_smsp_corr_test.mat');
-exp_smsp_corr_cluster = fullfile(experimentFolder, 'exp_smsp_corr_cluster.mat');
+exp_smsp_dimension_test = cellfun(@(x) fullfile(x, 'exp_smsp_dimension_test.mat'), exp_output, 'Uni', false);
+exp_smsp_corr_test      = cellfun(@(x) fullfile(x, 'exp_smsp_corr_test.mat'),      exp_output, 'Uni', false);
+exp_smsp_corr_cluster   = cellfun(@(x) fullfile(x, 'exp_smsp_corr_cluster.mat'),   exp_output, 'Uni', false);
 
-exp_smsp_corr_dim_table = fullfile(tableFolder, 'corr_dim.tex');
+exp_smsp_corr_dim_table = cellfun(@(x) fullfile(tableFolder, ['corr_dim_', x, '.tex']), tssList, 'Uni', false);
 
-% file list
+% file lists
 fileList = searchFile(fullfile(expfolder, exp_id, 'dataset', 'sampled_metafeatures'), '*.mat*');
 nResFiles = numel(fileList);
+fileList_knn = searchFile(fullfile(expfolder, exp_id_knn, 'dataset', 'sampled_metafeatures'), '*.mat*');
+nResFiles_knn = numel(fileList_knn);
 
 %%
 
@@ -95,14 +111,17 @@ mfts_names = {};
 for mi = 1:numel(opts.mfts_settings.MetaInput)
   for uf = opts.mfts_settings.useFeat{mi}
     for mn = 1:numel(mfts_group.(opts.mfts_settings.features{uf}))
-      mfts_names{end+1} = strjoin({opts.mfts_settings.MetaInput{mi}, ...
-                                   opts.mfts_settings.TransData{mi}, ...
-                                   opts.mfts_settings.features{uf}, ...
-                                   mfts_group.(opts.mfts_settings.features{uf}){mn}}, ...
-                                  '_');
+      mfts_names{end+1, 1} = strjoin({opts.mfts_settings.MetaInput{mi}, ...
+                                      opts.mfts_settings.TransData{mi}, ...
+                                      opts.mfts_settings.features{uf}, ...
+                                      mfts_group.(opts.mfts_settings.features{uf}){mn}}, ...
+                                     '_');
     end
   end
 end
+
+% identify last archive feature
+lastArchFtId = find(cellfun(@(x) contains(x, 'archive'), mfts_names), 1, 'last');
 
 % clear unnecessary variables
 clear mi mn modelOptions uf
@@ -182,8 +201,6 @@ for mi = 1:numel(opts.mfts_settings.MetaInput)
 end
 rem_mfts = [rem_mfts, rem2_mfts, rem3_mfts];
 
-% TODO:
-
 fprintf('Removing user-defined metafeatures:\n')
 removeId = false(numel(mfts_names), 1);
 for m = 1:numel(rem_mfts)
@@ -219,6 +236,9 @@ end
 % metafeature names for printing
 mfts_names_prt = strrep(mfts_names, '_', '\_');
 
+% identify last archive feature after reduction
+lastArchFtId_red = find(cellfun(@(x) contains(x, 'archive'), mfts_names), 1, 'last');
+
 clear rem_mfts rem2_mfts rem3_mfts m ms mId mss
 
 %% 
@@ -228,52 +248,86 @@ clear rem_mfts rem2_mfts rem3_mfts m ms mId mss
 % list of ids to reduce (exclude n.7)
 redIds = [1:6, 8:9];
 
+% reduce TSS nearest
 for fl = 1:nResFiles
   [~, actFile] = fileparts(fileList{fl});
-  reducedFilename = fullfile(exp_reduced_output, [actFile, '_red.mat']);
+  reducedFilename_full = fullfile(exp_reduced_output{fullId}, [actFile, '_red.mat']);
+  reducedFilename_near = fullfile(exp_reduced_output{nearId}, [actFile, '_red.mat']);
   id_str = regexp(actFile, '_id(\d)_', 'tokens');
   id = str2double(id_str{1});
-  % create reduced results
-  if ~isfile(reducedFilename) && ismember(id, redIds)
+  % create reduced TSS nearest and TSS full results
+  if (~isfile(reducedFilename_full) || ~isfile(reducedFilename_near)) ...
+      && ismember(id, redIds)
     if printScriptMess
-      fprintf('Saving %s\n', reducedFilename)
+      fprintf('Saving %s\n', reducedFilename_full)
+      fprintf('Saving %s\n', reducedFilename_near)
     end
     S = load(fileList{fl});
-    mfts_values = S.res.values(~removeId, :, :);
     dim = S.dim;
     fun = S.fun;
     inst = S.inst;
-    save(reducedFilename, 'dim', 'fun', 'inst', 'id', 'mfts_names', 'mfts_values')
+    % TSS full
+    mfts_values = S.values(~removeId(1:lastArchFtId), :, :);
+    mfts_names_red = mfts_names(1:lastArchFtId_red);
+    save(reducedFilename_full, 'dim', 'fun', 'inst', 'id', 'mfts_names_red', 'mfts_values')
+    % TSS nearest
+    mfts_values = S.values(~removeId(lastArchFtId+1:end), :, :);
+    mfts_names_red = mfts_names(lastArchFtId_red+1:end);
+    save(reducedFilename_near, 'dim', 'fun', 'inst', 'id', 'mfts_names_red', 'mfts_values')
+  elseif isfile(reducedFilename_full)
+    S = load(fileList{fl});
+  end
+
+  % create reduced TSS knn results
+  fileName_knn = fullfile(expfolder, exp_id_knn, 'dataset', 'sampled_metafeatures', [actFile, '.mat']);
+  reducedFilename_knn = fullfile(exp_reduced_output{knnId}, [actFile, '_red.mat']);
+  if ~isfile(reducedFilename_knn) && isfile(fileName_knn) && ismember(id, redIds)
+    if printScriptMess
+      fprintf('Saving %s\n', reducedFilename_knn)
+    end
+    S_knn = load(fileName_knn);
+    dim = S.dim;
+    fun = S.fun;
+    inst = S.inst;
+    % TSS knn
+    mfts_values = S_knn.values(~removeId(lastArchFtId+1:end), :, :);
+    mfts_names_red = mfts_names(lastArchFtId_red+1:end);
+    save(reducedFilename_knn, 'dim', 'fun', 'inst', 'id', 'mfts_names_red', 'mfts_values')
   end
 end
 
-clear actFile fl dim fun inst id id_str mfts_values S reducedFilename
+clear actFile filename_knn fl dim fun inst id id_str mfts_values S S_knn ...
+      reducedFilename_full reducedFilename_nearest reducedFilename_knn
 
 %% 
 
-% feature distribution
-
-% create list of files with reduced data
-redFileList = searchFile(exp_reduced_output, '*.mat*');
+% feature distribution - is it necessary - code is not effective for large
+% number of files
 
 q_levels = 0:0.01:1;
 
-if isfile(exp_meta_quantile)
-  S = load(exp_meta_quantile);
-  q_ft = S.q_ft;
-else
-  for ft = 1:numel(mfts_names)
-    fprintf('%s\n', mfts_names{ft})
-    
-    actual_ft = [];
-    for fl = 1: numel(redFileList)
-      S = load(redFileList{fl}, 'mfts_values');
-      actual_ft = [actual_ft, shiftdim(S.mfts_values(ft, :, :), 1)];
-    end
-    q_ft(ft, :) = quantile(actual_ft(:), q_levels);
-  end
-  save(exp_meta_quantile, 'q_ft')
-end
+% % TSS loop
+% for tss = 1:nTSS
+%   if ~isfile(exp_meta_quantile{tss})
+%     % create list of files with reduced data
+%     redFileList = searchFile(exp_reduced_output{tss}, '*.mat*');
+%     % load first file to get metafeature names
+%     S = load(redFileList{1}, 'mfts_names_red');
+%     mfts_names_red = S.mfts_names_red;
+%     for ft = 1:numel(mfts_names_red)
+%       fprintf('Distribution TSS %s (%3d/%3d): %s\n', tssList{tss}, ...
+%               ft, numel(mfts_names_red), mfts_names_red{ft})
+%
+%       actual_ft = [];
+%       for fl = 1 : numel(redFileList)
+%         S = load(redFileList{fl}, 'mfts_values');
+%         actual_ft = [actual_ft, shiftdim(S.mfts_values(ft, :, :), 1)];
+%       end
+%       q_ft(ft, :) = quantile(actual_ft(:), q_levels);
+%     end
+%     save(exp_meta_quantile{tss}, 'q_ft', 'mfts_names_red')
+%   end
+% end
 
 clear actual_ft fl ft q_levels S
 
@@ -281,161 +335,207 @@ clear actual_ft fl ft q_levels S
 
 % feature mins and maxs
 
-% create list of files with reduced data
-redFileList = searchFile(exp_reduced_output, '*.mat*');
+% TSS loop
+for tss = 1:nTSS
+  % create list of files with reduced data
+  redFileList = searchFile(exp_reduced_output{tss}, '*.mat*');
 
-if isfile(exp_meta_minmax)
-  MM = load(exp_meta_minmax);
-  ft_max = MM.ft_max;
-  ft_min = MM.ft_min;
-  ft_min_ninf = MM.ft_min_ninf;
-  ft_max_ninf = MM.ft_max_ninf;
-else
-  if printScriptMess
-    fprintf('Calculating feature minimums and maximums') 
-  end
-  S = load(exp_meta_quantile, 'q_ft');
-  ft_min = S.q_ft(:, 1);
-  ft_max = S.q_ft(:, end);
-  
-  % find inf valued min and max
-  ft_inf = isinf(ft_min) | isinf(ft_max);
-  
-  % init values
-  ft_min_ninf = ft_min;
-  ft_max_ninf = ft_max;
-  ft_min_ninf(ft_inf) = NaN(sum(ft_inf), 1);
-  ft_max_ninf(ft_inf) = NaN(sum(ft_inf), 1);
-  
-  % compare with the rest of results
-  for fl = 1:numel(redFileList)
-    S = load(redFileList{fl}, 'mfts_values');
-    % find non-inf min and max values
-    for ft = find(ft_inf)'
-      actMfts = S.mfts_values(ft, :, :);
-      act_ft_min = min(actMfts(~isinf(actMfts)));
-      act_ft_max = max(actMfts(~isinf(actMfts)));
-      if isempty(act_ft_min)
-        S_ft_min_ninf(ft, 1) = NaN;
-      else
-        S_ft_min_ninf(ft, 1) = act_ft_min;
-      end
-      if isempty(act_ft_max)
-        S_ft_max_ninf(ft, 1) = NaN;
-      else
-        S_ft_max_ninf(ft, 1) = act_ft_max;
-      end
+  if isfile(exp_meta_minmax{tss})
+%     MM = load(exp_meta_minmax{tss});
+%     ft_max = MM.ft_max;
+%     ft_min = MM.ft_min;
+%     ft_min_ninf = MM.ft_min_ninf;
+%     ft_max_ninf = MM.ft_max_ninf;
+  else
+    if printScriptMess
+      fprintf('Calculating feature minimums and maximums for TSS %s\n', tssList{tss})
     end
-    % compare to overall 2nd min and max
-    ft_max_ninf = max(ft_max_ninf, S_ft_max_ninf);
-    ft_min_ninf = min(ft_min_ninf, S_ft_min_ninf);
+    S = load(redFileList{1}, 'mfts_names_red');
+    mfts_names_red = S.mfts_names_red;
+    nMftsAct = numel(mfts_names_red);
+
+    % init extreme values
+    ft_min = NaN(nMftsAct, 1);
+    ft_max = NaN(nMftsAct, 1);
+    ft_min_ninf = ft_min;
+    ft_max_ninf = ft_max;
+    S_ft_min_ninf = NaN(size(ft_min_ninf));
+    S_ft_max_ninf = NaN(size(ft_max_ninf));
+
+    % compare with the rest of results
+    for fl = 1:numel(redFileList)
+      fprintf('MinMax TSS %s (%3d/%3d): %s\n', tssList{tss}, ...
+        fl, numel(redFileList), redFileList{fl})
+      S = load(redFileList{fl}, 'mfts_values');
+      ft_min = min(ft_min, min(min(S.mfts_values, [], 3), [], 2));
+      ft_max = max(ft_max, max(max(S.mfts_values, [], 3), [], 2));
+      % find non-inf min values
+      for ft = 1:find(isinf(ft_min))
+        actMfts = S.mfts_values(ft, :, :);
+        act_ft_min_ninf = min(actMfts(~isinf(actMfts)));
+        if ~isempty(act_ft_min_ninf)
+          S_ft_min_ninf(ft, 1) = act_ft_min_ninf;
+        end
+      end
+      % find non-inf max values
+      for ft = 1:find(isinf(ft_max))
+        actMfts = S.mfts_values(ft, :, :);
+        act_ft_max_ninf = max(actMfts(~isinf(actMfts)));
+        if ~isempty(act_ft_max_ninf)
+          S_ft_max_ninf(ft, 1) = act_ft_max_ninf;
+        end
+      end
+      % compare to overall 2nd min and max
+      ft_min_ninf = min(ft_min_ninf, S_ft_min_ninf);
+      ft_max_ninf = max(ft_max_ninf, S_ft_max_ninf);
+    end
+
+    % save inf and non-inf min and max
+    save(exp_meta_minmax{tss}, 'ft_min', 'ft_max', 'ft_min_ninf', 'ft_max_ninf', ...
+                               'mfts_names_red')
   end
-  
-  % save inf and non-inf min and max
-  save(exp_meta_minmax, 'ft_min', 'ft_max', 'ft_min_ninf', 'ft_max_ninf')
 end
 
-clear actMfts act_ft_max act_ft_min fl ft MM S S_ft_max_ninf S_ft_min_ninf
+clear actMfts act_ft_max act_ft_min fl ft ft_min ft_max ft_min_ninf ...
+      ft_max_ninf mfts_names_red MM redFileList S S_ft_max_ninf ...
+      S_ft_min_ninf tss
 
 %%
 
 % feature infs
 
-% create list of files with reduced data
-redFileList = searchFile(exp_reduced_output, '*.mat*');
+% TSS loop
+for tss = 1:nTSS
+  % create list of files with reduced data
+  redFileList = searchFile(exp_reduced_output{tss}, '*.mat*');
 
-if isfile(exp_meta_inf)
-  MM = load(exp_meta_inf);
-  inf_plus = MM.inf_plus;
-  inf_min = MM.inf_min;
-else
-  if printScriptMess
-    fprintf('Calculating feature infs') 
-  end
-  S = load(redFileList{1}, 'mfts_values');
-  % calculate number of infs
-  inf_plus = sum(sum(isinf(S.mfts_values) & S.mfts_values > 0, 3), 2);
-  inf_min = sum(sum(isinf(S.mfts_values) & S.mfts_values < 0, 3), 2);
-  
-  % compare with the rest of results
-  for fl = 2:numel(redFileList)
-    S = load(redFileList{fl}, 'mfts_values');
+  if isfile(exp_meta_inf{tss})
+%     MM = load(exp_meta_inf);
+%     inf_plus = MM.inf_plus;
+%     inf_min = MM.inf_min;
+  else
+    if printScriptMess
+      fprintf('Calculating feature infs\n')
+    end
+    fprintf('Inf TSS %s (%3d/%3d): %s\n', tssList{tss}, ...
+            1, numel(redFileList), redFileList{1})
+
+    S = load(redFileList{1}, 'mfts_values', 'mfts_names_red');
+    mfts_names_red = S.mfts_names_red;
     % calculate number of infs
-    inf_plus = inf_plus + sum(sum(isinf(S.mfts_values) & S.mfts_values > 0, 3), 2);
-    inf_min = inf_min + sum(sum(isinf(S.mfts_values) & S.mfts_values < 0, 3), 2);
+    inf_plus = sum(sum(isinf(S.mfts_values) & S.mfts_values > 0, 3), 2);
+    inf_min = sum(sum(isinf(S.mfts_values) & S.mfts_values < 0, 3), 2);
+
+    % compare with the rest of results
+    for fl = 2:numel(redFileList)
+      fprintf('Inf TSS %s (%3d/%3d): %s\n', tssList{tss}, ...
+              fl, numel(redFileList), redFileList{fl})
+      S = load(redFileList{fl}, 'mfts_values');
+      % calculate number of infs
+      inf_plus = inf_plus + sum(sum(isinf(S.mfts_values) & S.mfts_values > 0, 3), 2);
+      inf_min = inf_min + sum(sum(isinf(S.mfts_values) & S.mfts_values < 0, 3), 2);
+    end
+
+    % save min and max
+    save(exp_meta_inf{tss}, 'inf_plus', 'inf_min', 'mfts_names_red')
   end
-  
-  % save min and max
-  save(exp_meta_inf, 'inf_plus', 'inf_min')
 end
 
-clear fl MM S
+clear fl inf_plus inf_min MM redFileList S tss
 
 %%
 
 % load and normalize results
 
-% create list of files with reduced data
-redFileList = searchFile(exp_reduced_output, '*.mat*');
+% TSS loop
+for tss = 1:nTSS
+  % create list of files with reduced data
+  redFileList = searchFile(exp_reduced_output{tss}, '*.mat*');
 
-if isfile(exp_meta_minmax)
-  load(exp_meta_minmax, 'ft_min', 'ft_max', 'ft_min_ninf', 'ft_max_ninf')
-else
-  error('There is %s missing.', exp_meta_minmax)
-end
-
-if ~isfile(exp_meta_output)
-  if printScriptMess
-    fprintf('Loading metalearing results\n')
+  if isfile(exp_meta_minmax{tss})
+    load(exp_meta_minmax{tss}, 'ft_min', 'ft_max', 'ft_min_ninf', 'ft_max_ninf', 'mfts_names_red');
+  else
+    error('There is %s missing.', exp_meta_minmax{tss})
   end
-  
-  % init  
-  observations = ([]); % expected range [0, 5000]
-  generations = ([]);  % expected range [0, 5000]
-  dimensions = ([]);    % expected range [2, 20]
-  vars = [];
-  means = [];
-  medians = [];
-  nans = ([]);     % expected range [0, 100]
-  inf_plus = ([]); % expected range [0, 100]
-  inf_mins = ([]); % expected range [0, 100]
 
-  for fl = 1:numel(redFileList)
-    S = load(redFileList{fl}, 'mfts_values');
-
-    % normalize to [0,1]
-    for ft = 1:size(S.mfts_values, 1)
-      act_mfts_values = S.mfts_values(ft, :, :);
-      
-      % linear transformation to [0, 1]
-      norm_val(ft, :, :) = (act_mfts_values - ft_min_ninf(ft))/(ft_max_ninf(ft)-ft_min_ninf(ft));
+  if ~isfile(exp_meta_output{tss})
+    if printScriptMess
+      fprintf('Loading metalearing results\n')
     end
 
-    % collect generations, numbers of points, and dimensions
-    observations = [observations, [S.mfts_values(2, :, 1); S.mfts_values(67, :, 1); S.mfts_values(125, :, 1)]];
-    generations  = [generations,  S.mfts_values(3, :, 1)];
-    dimensions   = [dimensions,   S.mfts_values(1, :, 1)];
-    
-    % collect nans and infs
-    nans = [nans, sum(isnan(norm_val), 3)];
-    inf_plus = [inf_plus, sum(isinf(norm_val) & norm_val > 0, 3)];
-    inf_mins = [inf_mins, sum(isinf(norm_val) & norm_val < 0, 3)];
-    
-    % calculate statistics from non-inf and non-nan values
-    norm_val(isinf(norm_val)) = NaN;
-    vars  = [vars,  nanvar(norm_val, 0, 3)];
-    means = [means, nanmean(norm_val, 3)];
-    medians = [medians, nanmedian(norm_val, 3)];
-    
-    % save results after each 100 files
-    if mod(fl, 100) == 0
-      save(exp_meta_output, 'observations', 'generations', 'dimensions', 'nans', 'inf_plus', 'inf_mins', 'vars', 'means', 'medians')
+    % init
+    observations = ([]); % expected range [0, 5000]
+    if tss == fullId
+      generations = ([]);  % expected range [0, 5000]
+      dimensions = ([]);    % expected range [2, 20]
     end
+    vars = [];
+    means = [];
+    medians = [];
+    nans = ([]);     % expected range [0, 100]
+    inf_plus = ([]); % expected range [0, 100]
+    inf_mins = ([]); % expected range [0, 100]
+    norm_val = [];
+
+    for fl = 1:numel(redFileList)
+      fprintf('Normalization TSS %s (%3d/%3d): %s\n', tssList{tss}, ...
+              fl, numel(redFileList), redFileList{fl})
+      S = load(redFileList{fl}, 'mfts_values');
+
+      % normalize to [0,1]
+      for ft = 1:size(S.mfts_values, 1)
+        act_mfts_values = S.mfts_values(ft, :, :);
+
+        % linear transformation to [0, 1]
+        if (ft_max_ninf(ft)-ft_min_ninf(ft)) == 0
+          % constant feature
+          norm_val(ft, :, :) = 0.5*ones(size(act_mfts_values));
+        else
+          norm_val(ft, :, :) = (act_mfts_values - ft_min_ninf(ft))/(ft_max_ninf(ft)-ft_min_ninf(ft));
+        end
+      end
+
+      % collect generations, numbers of points, and dimensions
+      observations = [observations, S.mfts_values(contains(mfts_names_red, 'observations'), :, 1)];
+      if tss == fullId
+        generations  = [generations,  S.mfts_values(contains(mfts_names_red, 'generation'),   :, 1)];
+        dimensions   = [dimensions,   S.mfts_values(contains(mfts_names_red, 'dimension'),    :, 1)];
+      end
+
+      % collect nans and infs
+      nans = [nans, sum(isnan(norm_val), 3)];
+      inf_plus = [inf_plus, sum(isinf(norm_val) & norm_val > 0, 3)];
+      inf_mins = [inf_mins, sum(isinf(norm_val) & norm_val < 0, 3)];
+
+      % calculate statistics from non-inf and non-nan values
+      norm_val(isinf(norm_val)) = NaN;
+      vars  = [vars,  nanvar(norm_val, 0, 3)];
+      means = [means, nanmean(norm_val, 3)];
+      medians = [medians, nanmedian(norm_val, 3)];
+
+      % save results after each 100 files
+      if mod(fl, 100) == 0
+        save(exp_meta_output{tss}, 'observations', 'nans', ...
+          'inf_plus', 'inf_mins', 'vars', 'means', 'medians', 'mfts_names_red')
+        % save dimensions and generations
+        if tss == fullId
+          save(exp_meta_dimgen, 'dimensions', 'generations')
+        end
+      end
+    end
+
+    % save dimensions and generations
+    if tss == fullId
+      save(exp_meta_dimgen, 'dimensions', 'generations')
+    end
+    S = load(exp_meta_dimgen, 'dimensions', 'generations');
+    dimensions = S.dimensions;
+    generations = S.generations;
+    % save overall results
+    save(exp_meta_output{tss}, 'observations', 'generations', 'dimensions', 'nans', ...
+      'inf_plus', 'inf_mins', 'vars', 'means', 'medians', 'mfts_names_red')
+  %   save(exp_meta_output, 'nans', 'inf_plus', 'inf_mins', 'vars', 'means', 'medians')
   end
-  
-  % save overall results
-  save(exp_meta_output, 'observations', 'generations', 'dimensions', 'nans', 'inf_plus', 'inf_mins', 'vars', 'means', 'medians')
-%   save(exp_meta_output, 'nans', 'inf_plus', 'inf_mins', 'vars', 'means', 'medians')
 end
 
 clear actualFolder articleFolder fl ft i infBound logscale norm_val S act_ft_min act_ft_max act_mfts_values
@@ -461,7 +561,7 @@ overall_mean = nanmedian(means, 2);
 if printScriptMess
   fprintf('Dimension results\n')
 end
-dims = [2, 3, 5, 10, 20];
+
 for d = 1:numel(dims)
   dim_var(:, d)  = nanmedian(vars(:, dims(d) == dimensions), 2);
   dim_mean(:, d) = nanmedian(means(:, dims(d) == dimensions), 2);
@@ -492,7 +592,7 @@ dens_dims = false(size(observations, 1), nQuant, numel(dims));
 if printScriptMess
   fprintf('Results according to the number of observations\n')
 end
-sampleSets = {'archive_', 'train_', 'traintest_'};
+sampleSets = {'archive_', 'archivetest_', 'train_', 'traintest_'};
 % calculate variance and mean medians according to number of observations 
 % for different sample sets
 noSampleSetId = ~contains(mfts_names, sampleSets);
@@ -561,56 +661,69 @@ end
 % equality of medians for any pair of dimensions using Bonferroni
 % correction on the number of possible pairs.
 
-if isfile(exp_meta_output)
-  load(exp_meta_output)
-else
-  error('File %s is missing!', exp_meta_output)
-end
-
 alpha = 0.05;
 
-medtest_meds_p = zeros(nMfts, nchoosek(numel(dims), 2));
-friedman_meds_p_bh = medtest_meds_p;
-for m = 1:size(vars, 1)
-  act_meds = medians(m, :);
-  j = 0;
-  for d = 1:numel(dims)
-    for d2 = d+1 : numel(dims)
-      % increase counter
-      j = j+1;
-%       median test on all non-nan median values of a pair of dimensions
-%       medtest_meds_p(m, j) = mediantest(act_meds(~isnan(act_meds) & dims(d) == dimensions), ...
-%                                         act_meds(~isnan(act_meds) & dims(d2) == dimensions));
+% TSS loop
+for tss = 1:nTSS
+  fprintf('Performing Friedman test on dimension TSS %s\n', tssList{tss})
+
+  if isfile(exp_meta_output{tss})
+    load(exp_meta_output{tss})
+  else
+    error('File %s is missing!', exp_meta_output{tss})
+  end
+
+  nMfts = numel(mfts_names_red);
+  % medtest_meds_p = zeros(nMfts, nchoosek(numel(dims), 2));
+  friedman_meds_p = NaN(nMfts);
+  stats_meds = cell(nMfts, 1);
+  multcomp_meds = cell(nMfts, 1);
+  friedman_meds_p_bh = NaN(nMfts, nchoosek(numel(dims), 2));
+  for m = 1:size(vars, 1)
+    act_meds = medians(m, :);
+  %   j = 0;
+  %   for d = 1:numel(dims)
+  %     for d2 = d+1 : numel(dims)
+  %       % increase counter
+  %       j = j+1;
+  %       median test on all non-nan median values of a pair of dimensions
+  %       medtest_meds_p(m, j) = mediantest(act_meds(~isnan(act_meds) & dims(d) == dimensions), ...
+  %                                         act_meds(~isnan(act_meds) & dims(d2) == dimensions));
+  %     end
+  %   end
+
+  % % display independent features on the level alpha/number of pairs
+  % % (Bonferroni)
+  %   if all(medtest_meds_p(m, :) > alpha/nchoosek(numel(dims), 2))
+  %     fprintf('Not rejecting independence of medians on dimension for %s on (alpha = %0.3f) using Bonferroni correction\n', mfts_names{m}, alpha)
+  %   end
+
+    % Friedman's test
+    mat_meds = [];
+    % cat medians for individual dimensions (number of data for each
+    % dimension must be identical)
+    for d = 1:numel(dims)
+      mat_meds = [mat_meds, act_meds(dims(d) == dimensions)'];
     end
+    % remove NaN's
+    mat_meds(any(isnan(mat_meds), 2), :) = [];
+    if size(mat_meds, 1) > 1 && size(mat_meds, 2) > 1
+      % Friedman's test on statistical significance of pairwise differences
+      % of dimension medians
+      [friedman_meds_p(m), ~, stats_meds{m}] = friedman(mat_meds, 1, 'off');
+    %   fprintf('%48s Friedman: %f\n', mfts_names{m}, friedman_meds_p(m))
+      multcomp_meds{m} = multcompare(stats_meds{m});
+      % p-values using Bonferroni-Holm correction on the alpha level
+      friedman_meds_p_bh(m, :) = bonfHolm(multcomp_meds{m}(:, end), alpha);
+    end
+
   end
 
-  % display independent features on the level alpha/number of pairs
-  % (Bonferroni)
-  if all(medtest_meds_p(m, :) > alpha/nchoosek(numel(dims), 2))
-    fprintf('Not rejecting independence of medians on dimension for %s on (alpha = %0.3f) using Bonferroni correction\n', mfts_names{m}, alpha)
-  end
-
-  % Friedman's test
-  mat_meds = [];
-  for d = 1:numel(dims)
-    mat_meds = [mat_meds, act_meds(dims(d) == dimensions)'];
-  end
-  % remove NaN's
-  mat_meds(any(isnan(mat_meds), 2), :) = [];
-  % Friedman's test on statistical significance of pairwise differences of
-  % dimension medians
-  [friedman_meds_p(m), ~, stats_meds{m}] = friedman(mat_meds, 1, 'off');
-%   fprintf('%48s Friedman: %f\n', mfts_names{m}, friedman_meds_p(m))
-  multcomp_meds{m} = multcompare(stats_meds{m});
-  % p-values using Bonferroni-Holm correction on the alpha level
-  friedman_meds_p_bh(m, :) = bonfHolm(multcomp_meds{m}(:, end), alpha);
-
+  % save testing results
+  save(exp_smsp_dimension_test{tss}, ...
+    'alpha', 'dims', ...
+    'friedman_meds_p', 'stats_meds', 'multcomp_meds', 'friedman_meds_p_bh')
 end
-
-% save testing results
-save(exp_smsp_dimension_test, ...
-  'alpha', 'dims', 'medtest_meds_p', ...
-  'friedman_meds_p', 'stats_meds', 'multcomp_meds', 'friedman_meds_p_bh')
 
 % clear large variables saved in exp_meta_output
 % clear means medians vars nans inf_plus inf_mins
@@ -621,17 +734,24 @@ clear alpha d m mat_meds
 % Split metafeatures to groups according to the rejected pairs of
 % dimensions
 
-if isfile(exp_smsp_dimension_test)
-  load(exp_smsp_dimension_test)
-else
-  error('File %s is missing!', exp_smsp_dimension_test)
+% TSS loop
+for tss = 1:nTSS
+  if isfile(exp_smsp_dimension_test{tss})
+    load(exp_smsp_dimension_test{tss})
+  else
+    error('File %s is missing!', exp_smsp_dimension_test{tss})
+  end
+
+  % find unique combinations of rejected hypothesis
+  [friedman_uniq_combs, ~, friedman_uniq_combs_id] = unique(friedman_meds_p_bh > alpha, 'rows');
+
+  % add results to already existing ones
+  save(exp_smsp_dimension_test{tss}, 'friedman_uniq_combs', 'friedman_uniq_combs_id', '-append')
 end
 
-% find unique combinations of rejected hypothesis
-[friedman_uniq_combs, ~, friedman_uniq_combs_id] = unique(friedman_meds_p_bh > alpha, 'rows');
-
-% add results to already existing ones
-save(exp_smsp_dimension_test, 'friedman_uniq_combs', 'friedman_uniq_combs_id', '-append')
+clear('alpha', 'dims', 'medtest_meds_p', ...
+    'friedman_meds_p', 'stats_meds', 'multcomp_meds', 'friedman_meds_p_bh', ...
+    'tss')
 
 %% Feature correlation analysis
 % Schweizer-Wolff correlation between each pair of available features used
@@ -697,9 +817,15 @@ corrNanSWdist = @(x,y) 1-nancorr(x', y', 'rows', 'pairwise', 'type', 'Schweizer'
 
 % remove NaN columns
 nanCols = any(isnan(medians_minmax), 1);
-% clustering to 60 clusters using k-medoids without columns containing at
-% least one NaN
-[corrClusterId_all, ~, ~, ~, corrMedoidId_all] = kmedoids(medians_minmax(:, ~nanCols), k, 'Distance', corrSWdist);
+if size(medians_minmax(:, ~nanCols), 2) > 0
+  % clustering to 60 clusters using k-medoids without columns containing at
+  % least one NaN
+  [corrClusterId_all, ~, ~, ~, corrMedoidId_all] = kmedoids(medians_minmax(:, ~nanCols), k, 'Distance', corrSWdist);
+else
+  % each column contains NaN
+  corrClusterId_all = [];
+  corrMedoidId_all = [];
+end
 
 % clustering to 60 clusters using k-medoids with wasnan (line 217) set to
 % false, i.e. NaNs will be taken into account pairwise
@@ -751,10 +877,14 @@ isMed = ismember((1:nMfts)', corrMedoidId_nanpair);
 % table mfts notation
 mftsSplit = cellfun(@(x) strsplit(x, '_'), mfts_names, 'Uni', false);
 for m = 1:nMfts
-  if any(strcmp(mftsSplit{m}{1}, {'archive', 'traintest', 'train'}))
+  % set notation
+  if any(strcmp(mftsSplit{m}{1}, ...
+      {'archive', 'archivetest', 'traintest', 'train'}))
     switch mftsSplit{m}{1}
       case 'archive'
         setColumn{m} = '\archive';
+      case 'archivetest'
+        setColumn{m} = '\archivepred';
       case 'train'
         setColumn{m} = '\trainset';
       case 'traintest'
@@ -763,6 +893,19 @@ for m = 1:nMfts
     % remove set notation
     mftsSplit{m}(1) = [];
   end
+  % transformation notation
+  if any(strcmp(mftsSplit{m}{1}, ...
+      {'none', 'cma'}))
+    switch mftsSplit{m}{1}
+      case 'none'
+        transColumn{m} = '\transnone';
+      case 'cma'
+        transColumn{m} = '\transcma';
+    end
+    % remove transformation notation
+    mftsSplit{m}(1) = [];
+  end
+  % feature class notation
   if any(strcmp(mftsSplit{m}{1}, ...
       {'cmaes', 'dispersion', 'ela', 'infocontent', 'nearest'}))
      switch mftsSplit{m}{1}
@@ -795,8 +938,8 @@ for m = 1:nMfts
   mftsSplit{m} = strjoin(mftsSplit{m}, '\\_');
 end
 tableMftsNotation = cellfun(...
-  @(x, y, z) sprintf('$\\tableFeat{\\texttt{%s}}{%s}{%s}$', x, y, z), ...
-  mftsSplit, setColumn, classColumn, 'Uni', false);
+  @(x, y, z, w) sprintf('$\\tableFeat{\\texttt{%s}}{%s}{%s}{%s}$', x, y, z, w), ...
+  mftsSplit, setColumn, transColumn, classColumn, 'Uni', false);
 
 % table with correlation clustering ids
 corrClusterTable = table(dimCombsAccepted(sortClId), ...
@@ -812,7 +955,7 @@ lt.opts.tableCaption = [...
   'Features are grouped to 60 clusters according to k-medoid clustering ', ...
   'using Schweizer-Wolf correlation distance. ', ...
   'Medoid representatives are marked as gray lines. ', ...
-  'The dimPairs column shows the pairs of feature dimensions not rejecting the indpendence of median feature values, ', ...
+  'The dimPairs column shows the pairs of feature dimensions not rejecting the independence of median feature values, ', ...
   '\ie where the Friedman post-hoc test on median values with the Bonferroni-Holm correction ', ...
   'at the family-wise level 0.05 was not rejected.'...
   ];
