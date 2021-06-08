@@ -134,7 +134,8 @@ clear mi mn modelOptions uf
 % Process metafeatures
 
 if printScriptMess
-  fprintf('Processing metafeatures\n')
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Processing metafeatures\n'], fix(clock))
 end
 % remove user-defined metafeatures
 
@@ -201,7 +202,8 @@ for mi = 1:numel(opts.mfts_settings.MetaInput)
 end
 rem_mfts = [rem_mfts, rem2_mfts, rem3_mfts];
 
-fprintf('Removing user-defined metafeatures:\n')
+fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+         'Removing user-defined metafeatures:\n'], fix(clock))
 removeId = false(numel(mfts_names), 1);
 for m = 1:numel(rem_mfts)
   mId = strcmp(mfts_names, rem_mfts{m});
@@ -259,8 +261,10 @@ for fl = 1:nResFiles
   if (~isfile(reducedFilename_full) || ~isfile(reducedFilename_near)) ...
       && ismember(id, redIds)
     if printScriptMess
-      fprintf('Saving %s\n', reducedFilename_full)
-      fprintf('Saving %s\n', reducedFilename_near)
+      fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'Saving %s\n'], fix(clock), reducedFilename_full)
+      fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'Saving %s\n'], fix(clock), reducedFilename_near)
     end
     S = load(fileList{fl});
     dim = S.dim;
@@ -283,7 +287,8 @@ for fl = 1:nResFiles
   reducedFilename_knn = fullfile(exp_reduced_output{knnId}, [actFile, '_red.mat']);
   if ~isfile(reducedFilename_knn) && isfile(fileName_knn) && ismember(id, redIds)
     if printScriptMess
-      fprintf('Saving %s\n', reducedFilename_knn)
+      fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'Saving %s\n'], fix(clock), reducedFilename_knn)
     end
     S_knn = load(fileName_knn);
     dim = S.dim;
@@ -348,7 +353,9 @@ for tss = 1:nTSS
 %     ft_max_ninf = MM.ft_max_ninf;
   else
     if printScriptMess
-      fprintf('Calculating feature minimums and maximums for TSS %s\n', tssList{tss})
+      fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'Calculating feature minimums and maximums for TSS %s\n'], ...
+              fix(clock), tssList{tss})
     end
     S = load(redFileList{1}, 'mfts_names_red');
     mfts_names_red = S.mfts_names_red;
@@ -364,8 +371,10 @@ for tss = 1:nTSS
 
     % compare with the rest of results
     for fl = 1:numel(redFileList)
-      fprintf('MinMax TSS %s (%3d/%3d): %s\n', tssList{tss}, ...
-        fl, numel(redFileList), redFileList{fl})
+      fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'MinMax TSS %s (%3d/%3d): %s\n'], ...
+              fix(clock), tssList{tss}, ...
+              fl, numel(redFileList), redFileList{fl})
       S = load(redFileList{fl}, 'mfts_values');
       ft_min = min(ft_min, min(min(S.mfts_values, [], 3), [], 2));
       ft_max = max(ft_max, max(max(S.mfts_values, [], 3), [], 2));
@@ -415,9 +424,11 @@ for tss = 1:nTSS
 %     inf_min = MM.inf_min;
   else
     if printScriptMess
-      fprintf('Calculating feature infs\n')
+      fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'Calculating feature infs\n'], fix(clock))
     end
-    fprintf('Inf TSS %s (%3d/%3d): %s\n', tssList{tss}, ...
+    fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+             'Inf TSS %s (%3d/%3d): %s\n'], fix(clock), tssList{tss}, ...
             1, numel(redFileList), redFileList{1})
 
     S = load(redFileList{1}, 'mfts_values', 'mfts_names_red');
@@ -428,7 +439,8 @@ for tss = 1:nTSS
 
     % compare with the rest of results
     for fl = 2:numel(redFileList)
-      fprintf('Inf TSS %s (%3d/%3d): %s\n', tssList{tss}, ...
+      fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'Inf TSS %s (%3d/%3d): %s\n'], fix(clock), tssList{tss}, ...
               fl, numel(redFileList), redFileList{fl})
       S = load(redFileList{fl}, 'mfts_values');
       % calculate number of infs
@@ -460,7 +472,8 @@ for tss = 1:nTSS
 
   if ~isfile(exp_meta_output{tss})
     if printScriptMess
-      fprintf('Loading metalearing results\n')
+      fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'Loading metalearing results\n'], fix(clock))
     end
 
     % init
@@ -478,7 +491,9 @@ for tss = 1:nTSS
     norm_val = [];
 
     for fl = 1:numel(redFileList)
-      fprintf('Normalization TSS %s (%3d/%3d): %s\n', tssList{tss}, ...
+      fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'Normalization TSS %s (%3d/%3d): %s\n'], ...
+              fix(clock), tssList{tss}, ...
               fl, numel(redFileList), redFileList{fl})
       S = load(redFileList{fl}, 'mfts_values');
 
@@ -552,14 +567,16 @@ end
 
 % overall results
 if printScriptMess
-  fprintf('Overall results\n')
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Overall results\n'], fix(clock))
 end
 overall_var  = nanmedian(vars, 2);
 overall_mean = nanmedian(means, 2);
 
 % results according to dimension
 if printScriptMess
-  fprintf('Dimension results\n')
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Dimension results\n'], fix(clock))
 end
 
 for d = 1:numel(dims)
@@ -590,7 +607,9 @@ dens_inf_mins = NaN(nMfts, nQuant, nDispQuant);
 dens_dims = false(size(observations, 1), nQuant, numel(dims));
 
 if printScriptMess
-  fprintf('Results according to the number of observations\n')
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Results according to the number of observations\n'], ...
+          fix(clock))
 end
 sampleSets = {'archive_', 'archivetest_', 'train_', 'traintest_'};
 % calculate variance and mean medians according to number of observations 
@@ -665,7 +684,9 @@ alpha = 0.05;
 
 % TSS loop
 for tss = 1:nTSS
-  fprintf('Performing Friedman test on dimension TSS %s\n', tssList{tss})
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Performing Friedman test on dimension TSS %s\n'], ...
+          fix(clock), tssList{tss})
 
   if isfile(exp_meta_output{tss})
     load(exp_meta_output{tss})
@@ -736,6 +757,9 @@ clear alpha d m mat_meds
 
 % TSS loop
 for tss = 1:nTSS
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Performing feature dimensional inluence clustering on TSS %s\n'], ...
+          fix(clock), tssList{tss})
   if isfile(exp_smsp_dimension_test{tss})
     load(exp_smsp_dimension_test{tss})
   else
@@ -757,92 +781,156 @@ clear('alpha', 'dims', 'medtest_meds_p', ...
 % Schweizer-Wolff correlation between each pair of available features used
 % to calculation of distances between features
 
-if isfile(exp_meta_output)
-  load(exp_meta_output)
-else
-  error('File %s is missing!', exp_meta_output)
+for tss = 1:nTSS
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Performing feature correlation analysis on TSS %s\n'], ...
+          fix(clock), tssList{tss})
+  % for each TSS load data for TSS full
+  if isfile(exp_meta_output{1})
+    S_full = load(exp_meta_output{1});
+  else
+    error('File %s is missing!', exp_meta_output{1})
+  end
+  % load minmax TSS full
+  if isfile(exp_meta_minmax{1})
+    S_mm_full = load(exp_meta_minmax{1});
+  else
+    error('File %s is missing!', exp_meta_minmax{1})
+  end
+
+  if tss > 1
+    % load output
+    if isfile(exp_meta_output{tss})
+      S_tss = load(exp_meta_output{tss});
+    else
+      error('File %s is missing!', exp_meta_output{tss})
+    end
+    % load minmax
+    if isfile(exp_meta_minmax{tss})
+      S_mm_tss = load(exp_meta_minmax{tss});
+    else
+      error('File %s is missing!', exp_meta_minmax{tss})
+    end
+  else
+    S_tss.medians = [];
+    S_tss.inf_mins = [];
+    S_tss.inf_plus = [];
+    S_mm_tss.ft_min_ninf = [];
+    S_mm_tss.ft_max_ninf = [];
+  end
+
+  % concatenate results from TSS full and actual TSS
+  medians = [S_full.medians; S_tss.medians];
+  inf_mins = [S_full.inf_mins; S_tss.inf_mins];
+  inf_plus = [S_full.inf_plus; S_tss.inf_plus];
+  ft_min_ninf = [S_mm_full.ft_min_ninf; S_mm_tss.ft_min_ninf];
+  ft_max_ninf = [S_mm_full.ft_max_ninf; S_mm_tss.ft_max_ninf];
+  nMfts = size(medians, 1);
+
+  medians_minmax = medians;
+  % replace NaN's with max or min values, where NaN was placed due to Inf
+  % value
+  for m = 1:nMfts
+    medians_minmax(m, inf_mins(m, :) > 49) = ft_min_ninf(m);
+    medians_minmax(m, inf_plus(m, :) > 49) = ft_max_ninf(m);
+  end
+
+  % calculate Schweizer-Wolff correlations excluding NaN values pairwise
+  % med_corr = corrSchweizer(medians_minmax', 'rows', 'pairwise');
+  [med_sim, med_corr, med_2reals, med_2nans] = ...
+    nancorr(medians_minmax', 'rows', 'pairwise', 'type', 'Schweizer');
+
+  % create dendrogram from similarity distance (1 - sim) => 0
+  med_link = linkage(squareform(1 - med_sim));
+  % plot dendrogram with red line marking 0.2 distance threshold
+  h_dendr = figure();
+  med_dendr = dendrogram(med_link, 0);
+  hold on
+  line([0, nMfts+1], [0.25, 0.25], 'Color', 'r')
+  hold off
+
+  % save testing results
+  save(exp_smsp_corr_test{tss}, 'medians_minmax', ...
+                           'med_corr', 'med_2reals', 'med_2nans', 'med_sim', ...
+                           'med_link', 'h_dendr')
 end
 
-medians_minmax = medians;
-% replace NaN's with max or min values, where NaN was placed due to Inf
-% value
-for m = 1:nMfts
-  medians_minmax(m, inf_mins(m, :) > 49) = ft_min_ninf(m);
-  medians_minmax(m, inf_plus(m, :) > 49) = ft_max_ninf(m);
-end
-
-% calculate Schweizer-Wolff correlations excluding NaN values pairwise
-% med_corr = corrSchweizer(medians_minmax', 'rows', 'pairwise');
-[med_sim, med_corr, med_2reals, med_2nans] = ...
-  nancorr(medians_minmax', 'rows', 'pairwise', 'type', 'Schweizer');
-
-% create dendrogram from similarity distance (1 - sim) => 0
-med_link = linkage(squareform(1 - med_sim));
-% plot dendrogram with red line marking 0.2 distance threshold
-h_dendr = figure();
-med_dendr = dendrogram(med_link, 0);
-hold on
-line([0, nMfts+1], [0.25, 0.25], 'Color', 'r')
-hold off
-
-% save testing results
-save(exp_smsp_corr_test, 'medians_minmax', ...
-                         'med_corr', 'med_2reals', 'med_2nans', 'med_sim', ...
-                         'med_link', 'h_dendr')
-
-% clear large variables saved in exp_meta_output
-% clear means medians vars nans inf_plus inf_mins
-
-clear m
+clear('m', 'medians', 'medians_minmax', 'nMfts', ...
+      'med_sim', 'med_corr', 'med_2reals', 'med_2nans', ...
+      'med_link', 'med_dendr', ...
+      'S_full',  'S_tss', 'S_mm_full', 'S_mm_tss')
 
 %% Feature correlation clustering
 % Cluster features using k-medoids and results from hierarchical clustering
 
-if isfile(exp_smsp_corr_test)
-  load(exp_smsp_corr_test)
-else
-  error('File %s is missing!', exp_smsp_corr_test)
+% TSS loop
+for tss = 1:nTSS
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Performing feature correlation clustering on TSS %s\n'], ...
+           fix(clock), tssList{tss})
+  if isfile(exp_smsp_corr_test{tss})
+    S = load(exp_smsp_corr_test{tss});
+  else
+    error('File %s is missing!', exp_smsp_corr_test{tss})
+  end
+  % extract variables
+  medians_minmax = S.medians_minmax;
+  nMfts = size(medians_minmax, 1);
+
+  % set number of clusters
+  k = 60;
+  % set Schweizer-Wolf distance
+  corrSWdist = @(x,y) 1-corrSchweizer(x', y', 'rows', 'pairwise');
+  % set Schweizer-Wolf distance taking NaNs into account
+  corrNanSWdist = @(x,y) 1-nancorr(x', y', 'rows', 'pairwise', 'type', 'Schweizer');
+
+  % clustering to 60 clusters using k-medoids with wasnan (line 217) set to
+  % false, i.e. NaNs will be removed pairwise
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Running k-medoids - NaNs removed pairwise\n'], fix(clock))
+  [corrClusterId_pair, ~, ~, ~, corrMedoidId_pair] = kmedoids2(medians_minmax, k, 'Distance', corrSWdist);
+
+  % remove NaN columns
+  nanCols = any(isnan(medians_minmax), 1);
+  if size(medians_minmax(:, ~nanCols), 2) > 0
+    % clustering to 60 clusters using k-medoids without columns containing at
+    % least one NaN
+    fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+             'Running k-medoids - without columns with NaN\n'], fix(clock))
+    [corrClusterId_all, ~, ~, ~, corrMedoidId_all] = kmedoids(medians_minmax(:, ~nanCols), k, 'Distance', corrSWdist);
+  else
+    fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+             'Omitting k-medoids - without columns with NaN ', ...
+             'because each column contains NaN\n'], fix(clock))
+    % each column contains NaN
+    corrClusterId_all = [];
+    corrMedoidId_all = [];
+  end
+
+  % clustering to 60 clusters using k-medoids with wasnan (line 217) set to
+  % false, i.e. NaNs will be taken into account pairwise
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Running k-medoids - NaNs taken into account pairwise\n'], ...
+          fix(clock))
+  [corrClusterId_nanpair, ~, ~, ~, corrMedoidId_nanpair] = kmedoids2(medians_minmax, k, 'Distance', corrNanSWdist);
+
+  % count loss of data in 'all' k-medoids strategy
+  dataLoss_all = sum(nanCols)/numel(nanCols);
+  % count loss of data in 'pairwise' k-medoids strategy
+  dataLoss_pair = sum(sort(sum(isnan(medians_minmax), 2))'.*(0:(nMfts-1))) / nchoosek(nMfts,2) / numel(nanCols);
+
+  save(exp_smsp_corr_cluster{tss}, 'k', 'corrSWdist', 'corrNanSWdist', ...
+                              'corrClusterId_pair', 'corrMedoidId_pair', ...
+                              'corrClusterId_all', 'corrMedoidId_all', ...
+                              'corrClusterId_nanpair', 'corrMedoidId_nanpair', ...
+                              'dataLoss_all', 'dataLoss_pair')
 end
 
-% set number of clusters
-k = 60;
-% set Schweizer-Wolf distance
-corrSWdist = @(x,y) 1-corrSchweizer(x', y', 'rows', 'pairwise');
-% set Schweizer-Wolf distance taking NaNs into account
-corrNanSWdist = @(x,y) 1-nancorr(x', y', 'rows', 'pairwise', 'type', 'Schweizer');
-
-% clustering to 60 clusters using k-medoids with wasnan (line 217) set to
-% false, i.e. NaNs will be removed pairwise
-[corrClusterId_pair, ~, ~, ~, corrMedoidId_pair] = kmedoids2(medians_minmax, k, 'Distance', corrSWdist);
-
-% remove NaN columns
-nanCols = any(isnan(medians_minmax), 1);
-if size(medians_minmax(:, ~nanCols), 2) > 0
-  % clustering to 60 clusters using k-medoids without columns containing at
-  % least one NaN
-  [corrClusterId_all, ~, ~, ~, corrMedoidId_all] = kmedoids(medians_minmax(:, ~nanCols), k, 'Distance', corrSWdist);
-else
-  % each column contains NaN
-  corrClusterId_all = [];
-  corrMedoidId_all = [];
-end
-
-% clustering to 60 clusters using k-medoids with wasnan (line 217) set to
-% false, i.e. NaNs will be taken into account pairwise
-[corrClusterId_nanpair, ~, ~, ~, corrMedoidId_nanpair] = kmedoids2(medians_minmax, k, 'Distance', corrNanSWdist);
-
-% count loss of data in 'all' k-medoids strategy
-dataLoss_all = sum(nanCols)/numel(nanCols);
-% count loss of data in 'pairwise' k-medoids strategy
-dataLoss_pair = sum(sort(sum(isnan(medians_minmax), 2))'.*(0:(nMfts-1))) / nchoosek(nMfts,2) / numel(nanCols);
-
-save(exp_smsp_corr_cluster, 'k', 'corrSWdist', 'corrNanSWdist', ...
-                            'corrClusterId_pair', 'corrMedoidId_pair', ...
-                            'corrClusterId_all', 'corrMedoidId_all', ...
-                            'corrClusterId_nanpair', 'corrMedoidId_nanpair', ...
-                            'dataLoss_all', 'dataLoss_pair')
-
-clear S nanCols
+clear('corrSWdist', 'corrNaNSWdist', ...
+      'corrClusterId_pair', 'corrMedoidId_pair', ...
+      'corrClusterId_all', 'corrMedoidId_all', ...
+      'corrClusterId_nanpair', 'corrMedoidId_nanpair', ...
+      'dataLoss_all', 'dataLoss_pair', 'k', 'nanCols', 'S', 'tss')
 
 %% Feature correlation clustering analysis
 % Analyse results of feature clustering
