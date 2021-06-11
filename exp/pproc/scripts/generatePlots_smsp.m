@@ -59,7 +59,7 @@ exp_smsp_dimension_test = cellfun(@(x) fullfile(x, 'exp_smsp_dimension_test.mat'
 exp_smsp_corr_test      = cellfun(@(x) fullfile(x, 'exp_smsp_corr_test.mat'),      exp_output, 'Uni', false);
 exp_smsp_corr_cluster   = cellfun(@(x) fullfile(x, 'exp_smsp_corr_cluster.mat'),   exp_output, 'Uni', false);
 
-exp_smsp_corr_dim_table = cellfun(@(x) fullfile(tableFolder, ['corr_dim_', x, '.tex']), tssList, 'Uni', false);
+exp_smsp_corr_dim_table = cellfun(@(x) fullfile(tableFolder, ['corr_dim_', x]), tssList, 'Uni', false);
 
 % file lists
 fileList = searchFile(fullfile(expfolder, exp_id, 'dataset', 'sampled_metafeatures'), '*.mat*');
@@ -559,108 +559,108 @@ clear actualFolder articleFolder fl ft i infBound logscale norm_val S act_ft_min
 
 % prepare vars and means for observation and density point of view
 
-if isfile(exp_meta_output)
-  load(exp_meta_output)
-else
-  error('File %s is missing!', exp_meta_output)
-end
-
-% overall results
-if printScriptMess
-  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
-           'Overall results\n'], fix(clock))
-end
-overall_var  = nanmedian(vars, 2);
-overall_mean = nanmedian(means, 2);
-
-% results according to dimension
-if printScriptMess
-  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
-           'Dimension results\n'], fix(clock))
-end
-
-for d = 1:numel(dims)
-  dim_var(:, d)  = nanmedian(vars(:, dims(d) == dimensions), 2);
-  dim_mean(:, d) = nanmedian(means(:, dims(d) == dimensions), 2);
-end
-
-% number of xaxis quantiles
-nQuant = 1000;
-nMfts = numel(mfts_names);
-% plot data quantiles
-disp_quant = [0.05, 0.5, 0.95];
-nDispQuant = numel(disp_quant);
-
-% init variables
-obs_vars = NaN(nMfts, nQuant, nDispQuant);
-obs_means = NaN(nMfts, nQuant, nDispQuant);
-obs_nans = NaN(nMfts, nQuant, nDispQuant);
-obs_inf_plus = NaN(nMfts, nQuant, nDispQuant);
-obs_inf_mins = NaN(nMfts, nQuant, nDispQuant);
-obs_dims = false(size(observations, 1), nQuant, numel(dims));
-
-dens_vars = NaN(nMfts, nQuant, nDispQuant);
-dens_means = NaN(nMfts, nQuant, nDispQuant);
-dens_nans = NaN(nMfts, nQuant, nDispQuant);
-dens_inf_plus = NaN(nMfts, nQuant, nDispQuant);
-dens_inf_mins = NaN(nMfts, nQuant, nDispQuant);
-dens_dims = false(size(observations, 1), nQuant, numel(dims));
-
-if printScriptMess
-  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
-           'Results according to the number of observations\n'], ...
-          fix(clock))
-end
-sampleSets = {'archive_', 'archivetest_', 'train_', 'traintest_'};
-% calculate variance and mean medians according to number of observations 
-% for different sample sets
-noSampleSetId = ~contains(mfts_names, sampleSets);
-nGenFeat = sum(noSampleSetId); % number of sample independent features
-un_observations = cell(1, 3);
-for o = 1:size(observations, 1)
-  un_observations{o} = unique(observations(o, :));
-  sampleSetId = contains(mfts_names, sampleSets{o});
-  % calculate densities
-  densities(o, :) = nthroot(observations(o, :), dimensions);
-  % get ids of sorted values
-  [~,  obs_I] = sort(observations(o, :));
-  [~, dens_I] = sort(   densities(o, :));
-  % exclude zero observations
-  obs_I(~isnatural(observations(o, obs_I))) = [];
-  dens_I(~(densities(o, dens_I) > 0)) = [];
-  % create permilles (1000-quantile) data groups
-  obs_gId  = ceil(nQuant*(1:numel(obs_I))  / numel(obs_I));
-  dens_gId = ceil(nQuant*(1:numel(dens_I)) / numel(dens_I));
-  
-  for q = 1:nQuant
-    % observations
-    act_dataId = obs_I(obs_gId == q);
-    obs_vars(sampleSetId, q, :)      = shiftdim(quantile(     vars(sampleSetId, act_dataId), disp_quant, 2), -1);
-    obs_means(sampleSetId, q, :)     = shiftdim(quantile(    means(sampleSetId, act_dataId), disp_quant, 2), -1);
-    obs_nans(sampleSetId, q, :)      = shiftdim(quantile(     nans(sampleSetId, act_dataId), disp_quant, 2), -1);
-    obs_inf_plus(sampleSetId, q, :)  = shiftdim(quantile( inf_plus(sampleSetId, act_dataId), disp_quant, 2), -1);
-    obs_inf_mins(sampleSetId, q, :)  = shiftdim(quantile( inf_mins(sampleSetId, act_dataId), disp_quant, 2), -1);
-    % dimensions present in particular quantile
-    obs_dims(o, q, :) = ismember(dims, dimensions(act_dataId));
-    % observations in particular quantile
-    obs_obs(o, q, :) = median(observations(o, act_dataId));
-    % calculate only means for sample independent features
-%     general_obs_means((1:nGenFeat) + (o-1)*nGenFeat, uo) = ...
-%       median(means(noSampleSetId, un_observations{o}(uo) == observations(o, :)), 2);
-
-    % densities
-    act_dataId = dens_I(dens_gId == q);
-    dens_vars(sampleSetId, q, :)      = shiftdim(quantile(     vars(sampleSetId, act_dataId), disp_quant, 2), -1);
-    dens_means(sampleSetId, q, :)     = shiftdim(quantile(    means(sampleSetId, act_dataId), disp_quant, 2), -1);
-    dens_nans(sampleSetId, q, :)      = shiftdim(quantile(     nans(sampleSetId, act_dataId), disp_quant, 2), -1);
-    dens_inf_plus(sampleSetId, q, :)  = shiftdim(quantile( inf_plus(sampleSetId, act_dataId), disp_quant, 2), -1);
-    dens_inf_mins(sampleSetId, q, :)  = shiftdim(quantile( inf_mins(sampleSetId, act_dataId), disp_quant, 2), -1);
-    % dimensions present in particular quantile
-    dens_dims(o, q, :) = ismember(dims, dimensions(act_dataId));
-    % densities in particular quantile
-    dens_dens(o, q, :) = median(densities(o, act_dataId));
-  end
-end
+% if isfile(exp_meta_output)
+%   load(exp_meta_output)
+% else
+%   error('File %s is missing!', exp_meta_output)
+% end
+% 
+% % overall results
+% if printScriptMess
+%   fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+%            'Overall results\n'], fix(clock))
+% end
+% overall_var  = nanmedian(vars, 2);
+% overall_mean = nanmedian(means, 2);
+% 
+% % results according to dimension
+% if printScriptMess
+%   fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+%            'Dimension results\n'], fix(clock))
+% end
+% 
+% for d = 1:numel(dims)
+%   dim_var(:, d)  = nanmedian(vars(:, dims(d) == dimensions), 2);
+%   dim_mean(:, d) = nanmedian(means(:, dims(d) == dimensions), 2);
+% end
+% 
+% % number of xaxis quantiles
+% nQuant = 1000;
+% nMfts = numel(mfts_names);
+% % plot data quantiles
+% disp_quant = [0.05, 0.5, 0.95];
+% nDispQuant = numel(disp_quant);
+% 
+% % init variables
+% obs_vars = NaN(nMfts, nQuant, nDispQuant);
+% obs_means = NaN(nMfts, nQuant, nDispQuant);
+% obs_nans = NaN(nMfts, nQuant, nDispQuant);
+% obs_inf_plus = NaN(nMfts, nQuant, nDispQuant);
+% obs_inf_mins = NaN(nMfts, nQuant, nDispQuant);
+% obs_dims = false(size(observations, 1), nQuant, numel(dims));
+% 
+% dens_vars = NaN(nMfts, nQuant, nDispQuant);
+% dens_means = NaN(nMfts, nQuant, nDispQuant);
+% dens_nans = NaN(nMfts, nQuant, nDispQuant);
+% dens_inf_plus = NaN(nMfts, nQuant, nDispQuant);
+% dens_inf_mins = NaN(nMfts, nQuant, nDispQuant);
+% dens_dims = false(size(observations, 1), nQuant, numel(dims));
+% 
+% if printScriptMess
+%   fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+%            'Results according to the number of observations\n'], ...
+%           fix(clock))
+% end
+% sampleSets = {'archive_', 'archivetest_', 'train_', 'traintest_'};
+% % calculate variance and mean medians according to number of observations 
+% % for different sample sets
+% noSampleSetId = ~contains(mfts_names, sampleSets);
+% nGenFeat = sum(noSampleSetId); % number of sample independent features
+% un_observations = cell(1, 3);
+% for o = 1:size(observations, 1)
+%   un_observations{o} = unique(observations(o, :));
+%   sampleSetId = contains(mfts_names, sampleSets{o});
+%   % calculate densities
+%   densities(o, :) = nthroot(observations(o, :), dimensions);
+%   % get ids of sorted values
+%   [~,  obs_I] = sort(observations(o, :));
+%   [~, dens_I] = sort(   densities(o, :));
+%   % exclude zero observations
+%   obs_I(~isnatural(observations(o, obs_I))) = [];
+%   dens_I(~(densities(o, dens_I) > 0)) = [];
+%   % create permilles (1000-quantile) data groups
+%   obs_gId  = ceil(nQuant*(1:numel(obs_I))  / numel(obs_I));
+%   dens_gId = ceil(nQuant*(1:numel(dens_I)) / numel(dens_I));
+%   
+%   for q = 1:nQuant
+%     % observations
+%     act_dataId = obs_I(obs_gId == q);
+%     obs_vars(sampleSetId, q, :)      = shiftdim(quantile(     vars(sampleSetId, act_dataId), disp_quant, 2), -1);
+%     obs_means(sampleSetId, q, :)     = shiftdim(quantile(    means(sampleSetId, act_dataId), disp_quant, 2), -1);
+%     obs_nans(sampleSetId, q, :)      = shiftdim(quantile(     nans(sampleSetId, act_dataId), disp_quant, 2), -1);
+%     obs_inf_plus(sampleSetId, q, :)  = shiftdim(quantile( inf_plus(sampleSetId, act_dataId), disp_quant, 2), -1);
+%     obs_inf_mins(sampleSetId, q, :)  = shiftdim(quantile( inf_mins(sampleSetId, act_dataId), disp_quant, 2), -1);
+%     % dimensions present in particular quantile
+%     obs_dims(o, q, :) = ismember(dims, dimensions(act_dataId));
+%     % observations in particular quantile
+%     obs_obs(o, q, :) = median(observations(o, act_dataId));
+%     % calculate only means for sample independent features
+% %     general_obs_means((1:nGenFeat) + (o-1)*nGenFeat, uo) = ...
+% %       median(means(noSampleSetId, un_observations{o}(uo) == observations(o, :)), 2);
+% 
+%     % densities
+%     act_dataId = dens_I(dens_gId == q);
+%     dens_vars(sampleSetId, q, :)      = shiftdim(quantile(     vars(sampleSetId, act_dataId), disp_quant, 2), -1);
+%     dens_means(sampleSetId, q, :)     = shiftdim(quantile(    means(sampleSetId, act_dataId), disp_quant, 2), -1);
+%     dens_nans(sampleSetId, q, :)      = shiftdim(quantile(     nans(sampleSetId, act_dataId), disp_quant, 2), -1);
+%     dens_inf_plus(sampleSetId, q, :)  = shiftdim(quantile( inf_plus(sampleSetId, act_dataId), disp_quant, 2), -1);
+%     dens_inf_mins(sampleSetId, q, :)  = shiftdim(quantile( inf_mins(sampleSetId, act_dataId), disp_quant, 2), -1);
+%     % dimensions present in particular quantile
+%     dens_dims(o, q, :) = ismember(dims, dimensions(act_dataId));
+%     % densities in particular quantile
+%     dens_dens(o, q, :) = median(densities(o, act_dataId));
+%   end
+% end
 
 clear d o q
 % clear large variables saved in exp_meta_output
@@ -696,7 +696,7 @@ for tss = 1:nTSS
 
   nMfts = numel(mfts_names_red);
   % medtest_meds_p = zeros(nMfts, nchoosek(numel(dims), 2));
-  friedman_meds_p = NaN(nMfts);
+  friedman_meds_p = NaN(nMfts, 1);
   stats_meds = cell(nMfts, 1);
   multcomp_meds = cell(nMfts, 1);
   friedman_meds_p_bh = NaN(nMfts, nchoosek(numel(dims), 2));
@@ -742,14 +742,16 @@ for tss = 1:nTSS
 
   % save testing results
   save(exp_smsp_dimension_test{tss}, ...
-    'alpha', 'dims', ...
+    'alpha', 'dims', 'mfts_names_red', ...
     'friedman_meds_p', 'stats_meds', 'multcomp_meds', 'friedman_meds_p_bh')
 end
 
 % clear large variables saved in exp_meta_output
 % clear means medians vars nans inf_plus inf_mins
 
-clear alpha d m mat_meds
+clear('alpha', 'd', 'm', 'mat_meds', ...
+  'mfts_names_red', ...
+  'friedman_meds_p', 'stats_meds', 'multcomp_meds', 'friedman_meds_p_bh')
 
 %% Feature dimensional influence clustering
 % Split metafeatures to groups according to the rejected pairs of
@@ -773,7 +775,7 @@ for tss = 1:nTSS
   save(exp_smsp_dimension_test{tss}, 'friedman_uniq_combs', 'friedman_uniq_combs_id', '-append')
 end
 
-clear('alpha', 'dims', 'medtest_meds_p', ...
+clear('alpha', 'medtest_meds_p', ...
     'friedman_meds_p', 'stats_meds', 'multcomp_meds', 'friedman_meds_p_bh', ...
     'tss')
 
@@ -815,6 +817,7 @@ for tss = 1:nTSS
     S_tss.medians = [];
     S_tss.inf_mins = [];
     S_tss.inf_plus = [];
+    S_tss.mfts_names_red = {};
     S_mm_tss.ft_min_ninf = [];
     S_mm_tss.ft_max_ninf = [];
   end
@@ -825,7 +828,8 @@ for tss = 1:nTSS
   inf_plus = [S_full.inf_plus; S_tss.inf_plus];
   ft_min_ninf = [S_mm_full.ft_min_ninf; S_mm_tss.ft_min_ninf];
   ft_max_ninf = [S_mm_full.ft_max_ninf; S_mm_tss.ft_max_ninf];
-  nMfts = size(medians, 1);
+  mfts_names_red = [S_full.mfts_names_red; S_tss.mfts_names_red];
+  nMfts = numel(mfts_names_red);
 
   medians_minmax = medians;
   % replace NaN's with max or min values, where NaN was placed due to Inf
@@ -850,7 +854,7 @@ for tss = 1:nTSS
   hold off
 
   % save testing results
-  save(exp_smsp_corr_test{tss}, 'medians_minmax', ...
+  save(exp_smsp_corr_test{tss}, 'medians_minmax', 'mfts_names_red', ...
                            'med_corr', 'med_2reals', 'med_2nans', 'med_sim', ...
                            'med_link', 'h_dendr')
 end
@@ -875,7 +879,8 @@ for tss = 1:nTSS
   end
   % extract variables
   medians_minmax = S.medians_minmax;
-  nMfts = size(medians_minmax, 1);
+  mfts_names_red = S.mfts_names_red;
+  nMfts = numel(mfts_names_red);
 
   % set number of clusters
   k = 60;
@@ -893,8 +898,8 @@ for tss = 1:nTSS
   % remove NaN columns
   nanCols = any(isnan(medians_minmax), 1);
   if size(medians_minmax(:, ~nanCols), 2) > 0
-    % clustering to 60 clusters using k-medoids without columns containing at
-    % least one NaN
+    % clustering to 60 clusters using k-medoids without columns containing
+    % at least one NaN
     fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
              'Running k-medoids - without columns with NaN\n'], fix(clock))
     [corrClusterId_all, ~, ~, ~, corrMedoidId_all] = kmedoids(medians_minmax(:, ~nanCols), k, 'Distance', corrSWdist);
@@ -923,146 +928,207 @@ for tss = 1:nTSS
                               'corrClusterId_pair', 'corrMedoidId_pair', ...
                               'corrClusterId_all', 'corrMedoidId_all', ...
                               'corrClusterId_nanpair', 'corrMedoidId_nanpair', ...
-                              'dataLoss_all', 'dataLoss_pair')
+                              'dataLoss_all', 'dataLoss_pair', ...
+                              'mfts_names_red')
 end
 
 clear('corrSWdist', 'corrNaNSWdist', ...
       'corrClusterId_pair', 'corrMedoidId_pair', ...
       'corrClusterId_all', 'corrMedoidId_all', ...
       'corrClusterId_nanpair', 'corrMedoidId_nanpair', ...
-      'dataLoss_all', 'dataLoss_pair', 'k', 'nanCols', 'S', 'tss')
+      'dataLoss_all', 'dataLoss_pair', 'k', 'nanCols', 'S', 'tss', ...
+      'mfts_names_red')
 
 %% Feature correlation clustering analysis
 % Analyse results of feature clustering
 
-if isfile(exp_smsp_corr_cluster)
-  load(exp_smsp_corr_cluster)
-else
-  error('File %s is missing!', exp_smsp_corr_cluster)
-end
+maxFtsPerPage = 40;
 
-if isfile(exp_smsp_dimension_test)
-  load(exp_smsp_dimension_test)
-else
-  error('File %s is missing!', exp_smsp_dimension_test)
-end
+% TSS loop
+for tss = 1:nTSS
+  if isfile(exp_smsp_corr_cluster{tss})
+    S_corr = load(exp_smsp_corr_cluster{tss});
+  else
+    error('File %s is missing!', exp_smsp_corr_cluster{tss})
+  end
 
-% dimension test results
-dimCombs = nchoosek(dims, 2);
-dimCombsStr = arrayfun(@(x) ...
-                sprintf('(%d, %d)', dimCombs(x, 1), dimCombs(x, 2)), ...
-                1:size(dimCombs, 1), 'uni', false);
-dimCombsAccepted = arrayfun(@(x) ...
-  strjoin(dimCombsStr(friedman_uniq_combs(friedman_uniq_combs_id(x), :)), ','), ...
-  1:nMfts, 'uni', false)';
-
-% sort metafeatures to clusters
-[~, sortClId] = sort(corrClusterId_nanpair);
-
-% is medoid id
-isMed = ismember((1:nMfts)', corrMedoidId_nanpair);
-
-% table mfts notation
-mftsSplit = cellfun(@(x) strsplit(x, '_'), mfts_names, 'Uni', false);
-for m = 1:nMfts
-  % set notation
-  if any(strcmp(mftsSplit{m}{1}, ...
-      {'archive', 'archivetest', 'traintest', 'train'}))
-    switch mftsSplit{m}{1}
-      case 'archive'
-        setColumn{m} = '\archive';
-      case 'archivetest'
-        setColumn{m} = '\archivepred';
-      case 'train'
-        setColumn{m} = '\trainset';
-      case 'traintest'
-        setColumn{m} = '\trainpredset';
+  % TODO: dimension test was probably performed without TSS full and actual
+  % TSS unification => check and perhaps unify here
+  % TSS full dimension test result
+  if isfile(exp_smsp_dimension_test{fullId})
+    S_dim_full = load(exp_smsp_dimension_test{fullId});
+  else
+    error('File %s is missing!', exp_smsp_dimension_test{fullId})
+  end
+  % add actual TSS results
+  if tss ~= fullId
+    if isfile(exp_smsp_dimension_test{tss})
+      S_dim_tss = load(exp_smsp_dimension_test{tss});
+    else
+      error('File %s is missing!', exp_smsp_dimension_test{tss})
     end
-    % remove set notation
-    mftsSplit{m}(1) = [];
+  else
+    S_dim_tss.friedman_uniq_combs = [];
+    S_dim_tss.friedman_uniq_combs_id = [];
   end
-  % transformation notation
-  if any(strcmp(mftsSplit{m}{1}, ...
-      {'none', 'cma'}))
-    switch mftsSplit{m}{1}
-      case 'none'
-        transColumn{m} = '\transnone';
-      case 'cma'
-        transColumn{m} = '\transcma';
+  % prepare necessary variables and concatenate actual TSS and TSS full
+  % dimensional testing results
+  dims = S_dim_full.dims;
+  nMfts = numel(S_corr.mfts_names_red);
+  
+  % dimension test results
+  dimCombs = nchoosek(dims, 2);
+  dimCombsStr = arrayfun(@(x) ...
+                  sprintf('(%d, %d)', dimCombs(x, 1), dimCombs(x, 2)), ...
+                  1:size(dimCombs, 1), 'uni', false);
+  % TSS full combinations
+  dimCombsAccepted = arrayfun(@(x) ...
+    strjoin( ...
+      dimCombsStr( ...
+        S_dim_full.friedman_uniq_combs( ...
+          S_dim_full.friedman_uniq_combs_id(x), ...
+          :) ...
+        ), ...
+      ',' ...
+    ), ...
+    1:size(S_dim_full.friedman_uniq_combs_id, 1), ...
+    'UniformOutput', false)';
+  % add actual TSS combinations
+  dimCombsAccepted = [dimCombsAccepted; ...
+    arrayfun(@(x) ...
+      strjoin( ...
+        dimCombsStr( ...
+          S_dim_tss.friedman_uniq_combs( ...
+            S_dim_tss.friedman_uniq_combs_id(x), ...
+            :) ...
+          ), ...
+        ',' ...
+      ), ...
+      1:size(S_dim_tss.friedman_uniq_combs_id, 1), ...
+      'UniformOutput', false)' ...
+    ];
+
+  % sort metafeatures to clusters
+  [~, sortClId] = sort(S_corr.corrClusterId_nanpair);
+
+  % is medoid id
+  isMed = ismember((1:nMfts)', S_corr.corrMedoidId_nanpair);
+
+  % table mfts notation
+  mftsSplit = cellfun(@(x) strsplit(x, '_'), S_corr.mfts_names_red, 'Uni', false);
+  setColumn   = cell(nMfts, 1);
+  transColumn = cell(nMfts, 1);
+  classColumn = cell(nMfts, 1);
+  for m = 1:nMfts
+    % set notation
+    if any(strcmp(mftsSplit{m}{1}, ...
+        {'archive', 'archivetest', 'traintest', 'train'}))
+      switch mftsSplit{m}{1}
+        case 'archive'
+          setColumn{m} = '\archive';
+        case 'archivetest'
+          setColumn{m} = '\archivepred';
+        case 'train'
+          setColumn{m} = '\trainset';
+        case 'traintest'
+          setColumn{m} = '\trainpredset';
+      end
+      % remove set notation
+      mftsSplit{m}(1) = [];
     end
-    % remove transformation notation
-    mftsSplit{m}(1) = [];
+    % transformation notation
+    if any(strcmp(mftsSplit{m}{1}, ...
+        {'none', 'cma'}))
+      switch mftsSplit{m}{1}
+        case 'none'
+          transColumn{m} = '\transnone';
+        case 'cma'
+          transColumn{m} = '\transcma';
+      end
+      % remove transformation notation
+      mftsSplit{m}(1) = [];
+    end
+    % feature class notation
+    if any(strcmp(mftsSplit{m}{1}, ...
+        {'cmaes', 'dispersion', 'ela', 'infocontent', 'nearest'}))
+       switch mftsSplit{m}{1}
+         case 'cmaes'
+           classColumn{m} = '\featCMA';
+         case 'dispersion'
+           classColumn{m} = '\featDisp';
+         case 'ela'
+           switch mftsSplit{m}{2}
+             case 'distribution'
+               classColumn{m} = '\featyDis';
+             case 'levelset'
+               classColumn{m} = '\featLevel';
+             case 'metamodel'
+               classColumn{m} = '\featMM';
+           end
+           % remove ela set notation
+           mftsSplit{m}(1) = [];
+         case 'infocontent'
+           classColumn{m} = '\featInfo';
+         case 'nearest'
+           classColumn{m} = '\featNBC';
+           % remove 'nearest' part of set notation
+           mftsSplit{m}(1) = [];
+       end
+      % remove set notation
+      mftsSplit{m}(1) = [];
+    end
+    % unite the rest
+    mftsSplit{m} = strjoin(mftsSplit{m}, '\\_');
   end
-  % feature class notation
-  if any(strcmp(mftsSplit{m}{1}, ...
-      {'cmaes', 'dispersion', 'ela', 'infocontent', 'nearest'}))
-     switch mftsSplit{m}{1}
-       case 'cmaes'
-         classColumn{m} = '\featCMA';
-       case 'dispersion'
-         classColumn{m} = '\featDisp';
-       case 'ela'
-         switch mftsSplit{m}{2}
-           case 'distribution'
-             classColumn{m} = '\featyDis';
-           case 'levelset'
-             classColumn{m} = '\featLevel';
-           case 'metamodel'
-             classColumn{m} = '\featMM';
-         end
-         % remove ela set notation
-         mftsSplit{m}(1) = [];
-       case 'infocontent'
-         classColumn{m} = '\featInfo';
-       case 'nearest'
-         classColumn{m} = '\featNBC';
-         % remove 'nearest' part of set notation
-         mftsSplit{m}(1) = [];
-     end
-    % remove set notation
-    mftsSplit{m}(1) = [];
+  tableMftsNotation = cellfun(...
+    @(x, y, z, w) sprintf('$\\tableFeat{\\texttt{%s}}{%s}{%s}{%s}$', x, y, z, w), ...
+    mftsSplit, setColumn, transColumn, classColumn, 'Uni', false);
+
+  % sort table variables
+  dimCombsAccSorted = dimCombsAccepted(sortClId);
+  tableMftsNotationSorted = tableMftsNotation(sortClId);
+  corrClusterId_nanpairSorted = S_corr.corrClusterId_nanpair(sortClId);
+  isMedSorted = isMed(sortClId);
+  % page cycle
+  pages = ceil(nMfts/maxFtsPerPage);
+  for p = 1:pages
+    rowIds = (p-1)*maxFtsPerPage+1 : min(p*maxFtsPerPage, nMfts);
+    % table with correlation clustering ids
+    corrClusterTable = table(dimCombsAccSorted(rowIds), ...
+                             'RowNames', tableMftsNotationSorted(rowIds), ...
+                             'VariableNames', {'dimPairs'});
+
+    % print table to tex
+    lt = LatexTable(corrClusterTable);
+    lt.opts.tableColumnAlignment = num2cell('ll');
+    [~, lt.opts.midLines] = unique(corrClusterId_nanpairSorted(rowIds));
+    lt.opts.tableCaption = sprintf([...
+      'TSS %s feature properties (%d/%d). ', ...
+      'Features are grouped to 60 clusters according to k-medoid clustering ', ...
+      'using Schweizer-Wolf correlation distance. ', ...
+      'Medoid representatives are marked as gray lines. ', ...
+      'The dimPairs column shows the pairs of feature dimensions not rejecting the independence of median feature values, ', ...
+      '\\ie where the Friedman post-hoc test on median values with the Bonferroni-Holm correction ', ...
+      'at the family-wise level 0.05 was not rejected.'...
+      ], tssList{tss}, p, pages);
+    lt.opts.tableLabel = 'featProp';
+    lt.opts.booktabs = 1;
+    % add gray background to medoid features
+    lt.colorizeRowsInGray(isMedSorted(rowIds));
+    lt.toFile(sprintf('%s_%d.tex', exp_smsp_corr_dim_table{tss}, p));
   end
-  % unite the rest
-  mftsSplit{m} = strjoin(mftsSplit{m}, '\\_');
+
+  % show tables with cluster differences
+  % diffIds = false(size(corrClusterId_all));
+  % for c = 1:k
+  %   if (range(corrClusterId_all(corrClusterId_pair==c)) > 0)
+  %     diffIds = diffIds | corrClusterId_pair==c;
+  %     corrClusterTable(corrClusterId_pair==c, :)
+  %   end
+  % end
 end
-tableMftsNotation = cellfun(...
-  @(x, y, z, w) sprintf('$\\tableFeat{\\texttt{%s}}{%s}{%s}{%s}$', x, y, z, w), ...
-  mftsSplit, setColumn, transColumn, classColumn, 'Uni', false);
 
-% table with correlation clustering ids
-corrClusterTable = table(dimCombsAccepted(sortClId), ...
-                         'RowNames', tableMftsNotation(sortClId), ...
-                         'VariableNames', {'dimPairs'});
-
-% print table to tex
-lt = LatexTable(corrClusterTable);
-lt.opts.tableColumnAlignment = num2cell('ll');
-[~, lt.opts.midLines] = unique(corrClusterId_nanpair(sortClId));
-lt.opts.tableCaption = [...
-  'Feature properties. ', ...
-  'Features are grouped to 60 clusters according to k-medoid clustering ', ...
-  'using Schweizer-Wolf correlation distance. ', ...
-  'Medoid representatives are marked as gray lines. ', ...
-  'The dimPairs column shows the pairs of feature dimensions not rejecting the independence of median feature values, ', ...
-  '\ie where the Friedman post-hoc test on median values with the Bonferroni-Holm correction ', ...
-  'at the family-wise level 0.05 was not rejected.'...
-  ];
-lt.opts.tableLabel = 'featProp';
-lt.opts.booktabs = 1;
-% add gray background to medoid features
-lt.colorizeRowsInGray(isMed(sortClId));
-lt.toFile(exp_smsp_corr_dim_table);
-
-% show tables with cluster differences
-% diffIds = false(size(corrClusterId_all));
-% for c = 1:k
-%   if (range(corrClusterId_all(corrClusterId_pair==c)) > 0)
-%     diffIds = diffIds | corrClusterId_pair==c;
-%     corrClusterTable(corrClusterId_pair==c, :)
-%   end
-% end
-
-clear c
+clear('c', 'm', 'nMfts', 'S_corr', 'S_dim_full', 'S_dim_tss')
 
 %% Feature means and variances
 % The following graphs show dependencies of feature means and variances on
