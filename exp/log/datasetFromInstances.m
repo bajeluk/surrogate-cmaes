@@ -455,20 +455,27 @@ function dataset = datasetFromInstances(exp_id, fun, dim, inst, id, varargin)
               % TODO: this cycle can be slow, on the other hand, ensures
               %       the same numbers of points in archives regardless
               %       duplicities
+              trials = 0;
+              sigma = cmaesState.sigma;
               while numel(archive{sai}.y) < sum(generations <= gi)
+                trials = trials + 1;
                 % get remaining ids of generated points
                 pId = pId(end) + (1:(sum(generations <= gi) - numel(archive{sai}.y)));
                 % in case of reaching the last point, generate new points
-                if any(pId > numel(y_smooth))
+                if any(pId > numel(y_smooth)) || trials > 10^4
                   pId = 1:(sum(generations <= gi) - numel(archive{sai}.y));
                   % Generate fresh CMA-ES' offspring
                   [~, X_smooth, ~] = sampleCmaesNoFitness( ...
-                    cmaesState.sigma, nSampleArchives*cmaesState.lambda, ...
+                    sigma, nSampleArchives*cmaesState.lambda, ...
                     cmaesState, sampleOpts);
                   y_smooth = fgeneric(X_smooth)';
+                  % double sigma for next cycle to ensure data generation
+                  sigma = 2*sigma;
                 end
                 % save original evaluated points
                 archive{sai}.save(X_smooth(:, pId)', y_smooth(pId), gi);
+                % uncomment for DEBUGGING:
+                % fprintf('id: %d gen: %d sai: %d arch: %d/%d\n', ii_id, gi, sai, numel(archive{sai}.y), sum(generations <= gi))
               end
             end
           end
