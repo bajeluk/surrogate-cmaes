@@ -14,6 +14,7 @@ if isfile(tmpFName)
   load(tmpFName);
 else
 
+
 %%
 
 % folders for results
@@ -51,6 +52,7 @@ exp_meta_minmax   = cellfun(@(x) fullfile(x, 'exp_DTSmeta_03_minmax.mat'),   exp
 exp_meta_inf      = cellfun(@(x) fullfile(x, 'exp_DTSmeta_03_inf.mat'),      exp_output, 'Uni', false);
 exp_meta_output   = cellfun(@(x) fullfile(x, 'exp_DTSmeta_03_res.mat'),      exp_output, 'Uni', false);
 exp_meta_quantile = cellfun(@(x) fullfile(x, 'exp_DTSmeta_03_quantile.mat'), exp_output, 'Uni', false);
+exp_meta_stats    = cellfun(@(x) fullfile(x, 'exp_DTSmeta_03_stats.mat'),    exp_output, 'Uni', false);
 exp_meta_dimgen   = fullfile(experimentFolder, 'exp_DTSmeta_03_dimgen.mat');
 printScriptMess = false;
 
@@ -58,6 +60,7 @@ printScriptMess = false;
 exp_smsp_dimension_test = cellfun(@(x) fullfile(x, 'exp_smsp_dimension_test.mat'), exp_output, 'Uni', false);
 exp_smsp_corr_test      = cellfun(@(x) fullfile(x, 'exp_smsp_corr_test.mat'),      exp_output, 'Uni', false);
 exp_smsp_corr_cluster   = cellfun(@(x) fullfile(x, 'exp_smsp_corr_cluster.mat'),   exp_output, 'Uni', false);
+exp_smsp_nan_anal       = cellfun(@(x) fullfile(x, 'exp_smsp_nan_anal.mat'),       exp_output, 'Uni', false);
 
 exp_smsp_corr_dim_table = cellfun(@(x) fullfile(tableFolder, ['corr_dim_', x]), tssList, 'Uni', false);
 
@@ -66,6 +69,9 @@ fileList = searchFile(fullfile(expfolder, exp_id, 'dataset', 'sampled_metafeatur
 nResFiles = numel(fileList);
 fileList_knn = searchFile(fullfile(expfolder, exp_id_knn, 'dataset', 'sampled_metafeatures'), '*.mat*');
 nResFiles_knn = numel(fileList_knn);
+
+% set random generator seed for replicability
+rng = 42;
 
 %%
 
@@ -212,6 +218,7 @@ for m = 1:numel(rem_mfts)
 end
 % mfts = mfts(:, ~mId);
 mfts_names = mfts_names(~removeId);
+mftsIds = ~removeId;
 % vars = vars(~removeId, :);
 % means = means(~removeId, :);
 
@@ -249,6 +256,8 @@ clear rem_mfts rem2_mfts rem3_mfts m ms mId mss
 
 % list of ids to reduce (exclude n.7)
 redIds = [1:6, 8:9];
+errListFile = '/tmp/errFileList';
+errListFile_knn = '/tmp/errFileList_knn';
 
 % reduce TSS nearest
 for fl = 1:nResFiles
@@ -266,7 +275,17 @@ for fl = 1:nResFiles
       fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
                'Saving %s\n'], fix(clock), reducedFilename_near)
     end
-    S = load(fileList{fl});
+    try
+      S = load(fileList{fl});
+    catch err
+      warning(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'File %s loading failed with the following error: %s'], fix(clock), fileList{fl}, err.message)
+      FID = fopen(errListFile, 'a');
+      fprintf(FID, '%s\n', fileList{fl});
+      fclose(FID);
+      clear FID
+      continue
+    end
     dim = S.dim;
     fun = S.fun;
     inst = S.inst;
@@ -279,21 +298,36 @@ for fl = 1:nResFiles
     mfts_names_red = mfts_names(lastArchFtId_red+1:end);
     save(reducedFilename_near, 'dim', 'fun', 'inst', 'id', 'mfts_names_red', 'mfts_values')
   elseif isfile(reducedFilename_full)
-    S = load(fileList{fl});
+%     S = load(fileList{fl});
   end
+end
 
+for fl = 1:nResFiles_knn
+  [~, actFile] = fileparts(fileList_knn{fl});
   % create reduced TSS knn results
   fileName_knn = fullfile(expfolder, exp_id_knn, 'dataset', 'sampled_metafeatures', [actFile, '.mat']);
   reducedFilename_knn = fullfile(exp_reduced_output{knnId}, [actFile, '_red.mat']);
-  if ~isfile(reducedFilename_knn) && isfile(fileName_knn) && ismember(id, redIds)
+  id_str = regexp(actFile, '_id(\d)_', 'tokens');
+  id = str2double(id_str{1});
+  if ~isfile(reducedFilename_knn) && ismember(id, redIds)
     if printScriptMess
       fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
                'Saving %s\n'], fix(clock), reducedFilename_knn)
     end
-    S_knn = load(fileName_knn);
-    dim = S.dim;
-    fun = S.fun;
-    inst = S.inst;
+    try
+      S_knn = load(fileList_knn{fl});
+    catch err
+      warning(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'File %s loading failed with the following error: %s'], fix(clock), fileList_knn{fl}, err.message)
+      FID = fopen(errListFile_knn, 'a');
+      fprintf(FID, '%s\n', fileList_knn{fl});
+      fclose(FID);
+      clear FID
+      continue
+    end
+    dim = S_knn.dim;
+    fun = S_knn.fun;
+    inst = S_knn.inst;
     % TSS knn
     mfts_values = S_knn.values(~removeId(lastArchFtId+1:end), :, :);
     mfts_names_red = mfts_names(lastArchFtId_red+1:end);
@@ -351,6 +385,9 @@ for tss = 1:nTSS
 %     ft_min = MM.ft_min;
 %     ft_min_ninf = MM.ft_min_ninf;
 %     ft_max_ninf = MM.ft_max_ninf;
+    fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'File with minimums and maximums for TSS %s already exists.\n'], ...
+              fix(clock), tssList{tss})
   else
     if printScriptMess
       fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
@@ -372,14 +409,14 @@ for tss = 1:nTSS
     % compare with the rest of results
     for fl = 1:numel(redFileList)
       fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
-               'MinMax TSS %s (%3d/%3d): %s\n'], ...
+               'MinMax TSS %s (%4d/%4d): %s\n'], ...
               fix(clock), tssList{tss}, ...
               fl, numel(redFileList), redFileList{fl})
       S = load(redFileList{fl}, 'mfts_values');
       ft_min = min(ft_min, min(min(S.mfts_values, [], 3), [], 2));
       ft_max = max(ft_max, max(max(S.mfts_values, [], 3), [], 2));
       % find non-inf min values
-      for ft = 1:find(isinf(ft_min))
+      for ft = find(isinf(ft_min))
         actMfts = S.mfts_values(ft, :, :);
         act_ft_min_ninf = min(actMfts(~isinf(actMfts)));
         if ~isempty(act_ft_min_ninf)
@@ -387,7 +424,7 @@ for tss = 1:nTSS
         end
       end
       % find non-inf max values
-      for ft = 1:find(isinf(ft_max))
+      for ft = find(isinf(ft_max))
         actMfts = S.mfts_values(ft, :, :);
         act_ft_max_ninf = max(actMfts(~isinf(actMfts)));
         if ~isempty(act_ft_max_ninf)
@@ -398,6 +435,10 @@ for tss = 1:nTSS
       ft_min_ninf = min(ft_min_ninf, S_ft_min_ninf);
       ft_max_ninf = max(ft_max_ninf, S_ft_max_ninf);
     end
+
+    % replace NaNs in non-inf metafeatures with real min and max
+    ft_min_ninf(~isinf(ft_min) & isnan(ft_min_ninf)) = ft_min(~isinf(ft_min));
+    ft_max_ninf(~isinf(ft_max) & isnan(ft_max_ninf)) = ft_max(~isinf(ft_max));
 
     % save inf and non-inf min and max
     save(exp_meta_minmax{tss}, 'ft_min', 'ft_max', 'ft_min_ninf', 'ft_max_ninf', ...
@@ -422,6 +463,9 @@ for tss = 1:nTSS
 %     MM = load(exp_meta_inf);
 %     inf_plus = MM.inf_plus;
 %     inf_min = MM.inf_min;
+    fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'File with infs for TSS %s already exists.\n'], ...
+              fix(clock), tssList{tss})
   else
     if printScriptMess
       fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
@@ -457,6 +501,70 @@ clear fl inf_plus inf_min MM redFileList S tss
 
 %%
 
+% feature quartiles
+
+% TSS loop
+for tss = 1:nTSS
+  % create list of files with reduced data
+  redFileList = searchFile(exp_reduced_output{tss}, '*.mat*');
+
+  if isfile(exp_meta_quantile{tss})
+    fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'File with quartiles for TSS %s already exists.\n'], ...
+              fix(clock), tssList{tss})
+  else
+    if printScriptMess
+      fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'Calculating feature quartiles\n'], fix(clock))
+    end
+
+    fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+             'Quartiles TSS %s (%3d/%3d): %s\n'], fix(clock), tssList{tss}, ...
+            1, numel(redFileList), redFileList{1})
+
+    S = load(redFileList{1}, 'mfts_values', 'mfts_names_red');
+    mfts_names_red = S.mfts_names_red;
+
+    nfts = numel(mfts_names_red);
+    kft = 20; % k features per iteration
+
+    ft_vals = NaN(kft, size(S.mfts_values, 2), size(S.mfts_values, 3), numel(redFileList));
+    quartiles = NaN(numel(mfts_names_red), 2);
+
+    % feature group cycle (groups according to kft value)
+    for ftg = 1:ceil(nfts/kft)
+      for fl = 1:numel(redFileList)
+        fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'Loading values for quartiles TSS %s feature group %d/%d (%3d/%3d): %s\n'], fix(clock), tssList{tss}, ...
+              ftg, ceil(nfts/kft), fl, numel(redFileList), redFileList{fl})
+        S = load(redFileList{fl}, 'mfts_values');
+        % check final feature index
+        lastFt = min(ftg*kft, nfts);
+        lastFtg = mod(lastFt, kft);
+        if lastFtg == 0
+          lastFtg = kft;
+        end
+        ft_vals(1:lastFtg, :, :, fl) = S.mfts_values(((ftg-1)*kft+1):lastFt, :, :);
+      end
+      for ft = 1:lastFtg
+        fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+               'Quartiles calculation TSS %s feature group %d/%d feature %d/%d\n'], fix(clock), tssList{tss}, ...
+              ftg, ceil(nfts/kft), ft, lastFtg)
+        act_ft_vals = ft_vals(ft, :, :, :);
+        % remove Infs
+        act_ft_vals = act_ft_vals(~isinf(act_ft_vals));
+        quartiles((ftg-1)*kft+ft, :) = quantile(act_ft_vals(:), [0.25, 0.75]);
+      end
+      % save quartiles
+      save(exp_meta_quantile{tss}, 'quartiles', 'mfts_names_red')
+    end
+  end
+end
+
+clear act_ft_vals fl ft ft_vals mfts_names_red redFileList S tss
+
+%%
+
 % load and normalize results
 
 % TSS loop
@@ -470,63 +578,85 @@ for tss = 1:nTSS
     error('There is %s missing.', exp_meta_minmax{tss})
   end
 
-  if ~isfile(exp_meta_output{tss})
+  if isfile(exp_meta_quantile{tss})
+    load(exp_meta_quantile{tss}, 'quartiles');
+  else
+    error('There is %s missing.', exp_meta_quantile{tss})
+  end
+
+  if isfile(exp_meta_output{tss})
+    fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'File with normalized results for TSS %s already exists.\n'], ...
+          fix(clock), tssList{tss})
+  else
     if printScriptMess
       fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
                'Loading metalearing results\n'], fix(clock))
     end
 
-    % init
-    observations = ([]); % expected range [0, 5000]
-    if tss == fullId
-      generations = ([]);  % expected range [0, 5000]
-      dimensions = ([]);    % expected range [2, 20]
-    end
-    vars = [];
-    means = [];
-    medians = [];
-    nans = ([]);     % expected range [0, 100]
-    inf_plus = ([]); % expected range [0, 100]
-    inf_mins = ([]); % expected range [0, 100]
-    norm_val = [];
+    % load first file to find sizes
+    S = load(redFileList{1}, 'mfts_values');
+    nSamples = size(S.mfts_values, 3);
+    nFiles = numel(redFileList);
+    nMfts = size(S.mfts_values, 1);
 
-    for fl = 1:numel(redFileList)
+    % init
+    observations = NaN(2, nFiles*nSamples); % expected range [0, 5000]
+    if tss == fullId
+      generations = NaN(1, nFiles*nSamples); % expected range [0, 5000]
+      dimensions  = NaN(1, nFiles*nSamples); % expected range [2, 20]
+    end
+    vars     = NaN(nMfts, nFiles*nSamples);
+    means    = NaN(nMfts, nFiles*nSamples);
+    medians  = NaN(nMfts, nFiles*nSamples);
+    nans     = NaN(nMfts, nFiles*nSamples); % expected range [0, 100]
+    inf_plus = NaN(nMfts, nFiles*nSamples); % expected range [0, 100]
+    inf_mins = NaN(nMfts, nFiles*nSamples); % expected range [0, 100]
+    norm_val = NaN(size(S.mfts_values));
+
+    for fl = 1:nFiles
       fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
-               'Normalization TSS %s (%3d/%3d): %s\n'], ...
+               'Normalization TSS %s (%4d/%4d): %s\n'], ...
               fix(clock), tssList{tss}, ...
-              fl, numel(redFileList), redFileList{fl})
+              fl, nFiles, redFileList{fl})
       S = load(redFileList{fl}, 'mfts_values');
 
       % normalize to [0,1]
       for ft = 1:size(S.mfts_values, 1)
         act_mfts_values = S.mfts_values(ft, :, :);
 
-        % linear transformation to [0, 1]
         if (ft_max_ninf(ft)-ft_min_ninf(ft)) == 0
           % constant feature
           norm_val(ft, :, :) = 0.5*ones(size(act_mfts_values));
         else
-          norm_val(ft, :, :) = (act_mfts_values - ft_min_ninf(ft))/(ft_max_ninf(ft)-ft_min_ninf(ft));
+          % linear transformation to [0, 1]
+          % norm_val(ft, :, :) = (act_mfts_values - ft_min_ninf(ft))/(ft_max_ninf(ft)-ft_min_ninf(ft));
+          % sigmoid transformation to [0, 1] tuned according to quartiles
+          norm_val(ft, :, :) = 1./(1+exp(log(3)* ...
+            (2*act_mfts_values - quartiles(ft, 1)-quartiles(ft, 2)) / ...
+            (quartiles(ft, 1)-quartiles(ft, 2))));
         end
       end
 
+      % row id for collection
+      colId = (fl-1)*nSamples+1 : fl*nSamples;
       % collect generations, numbers of points, and dimensions
-      observations = [observations, S.mfts_values(contains(mfts_names_red, 'observations'), :, 1)];
+      observations(:, colId) = S.mfts_values(contains(mfts_names_red, 'observations'), :, 1);
       if tss == fullId
-        generations  = [generations,  S.mfts_values(contains(mfts_names_red, 'generation'),   :, 1)];
-        dimensions   = [dimensions,   S.mfts_values(contains(mfts_names_red, 'dimension'),    :, 1)];
+        generations(:, colId) = S.mfts_values(contains(mfts_names_red, 'generation'),   :, 1);
+        dimensions(:, colId)  = S.mfts_values(contains(mfts_names_red, 'dimension'),    :, 1);
       end
 
       % collect nans and infs
-      nans = [nans, sum(isnan(norm_val), 3)];
-      inf_plus = [inf_plus, sum(isinf(norm_val) & norm_val > 0, 3)];
-      inf_mins = [inf_mins, sum(isinf(norm_val) & norm_val < 0, 3)];
+      nans(:, colId) = sum(isnan(norm_val), 3);
+      inf_plus(:, colId) = sum(isinf(norm_val) & norm_val > 0, 3);
+      inf_mins(:, colId) = sum(isinf(norm_val) & norm_val < 0, 3);
 
       % calculate statistics from non-inf and non-nan values
       norm_val(isinf(norm_val)) = NaN;
-      vars  = [vars,  nanvar(norm_val, 0, 3)];
-      means = [means, nanmean(norm_val, 3)];
-      medians = [medians, nanmedian(norm_val, 3)];
+      vars(:, colId)  = nanvar(norm_val, 0, 3);
+      means(:, colId) = nanmean(norm_val, 3);
+      medians(:, colId) = nanmedian(norm_val, 3);
 
       % save results after each 100 files
       if mod(fl, 100) == 0
@@ -553,7 +683,29 @@ for tss = 1:nTSS
   end
 end
 
-clear actualFolder articleFolder fl ft i infBound logscale norm_val S act_ft_min act_ft_max act_mfts_values
+clear actualFolder articleFolder fl ft i infBound logscale norm_val S act_ft_min act_ft_max act_mfts_values rowId
+
+%%
+
+% calculate simple stats
+for tss = 1:nTSS
+
+  % load results
+  if isfile(exp_meta_output{tss})
+    S = load(exp_meta_output{tss}, 'nans', 'inf_plus', 'inf_mins', 'mfts_names_red');
+  else
+    error('There is %s missing.', exp_meta_output{tss})
+  end
+  mfts_names_red = S.mfts_names_red;
+
+  nan_perc = sum(S.nans, 2)/size(S.nans, 2);
+  nan_break = sum(S.inf_mins+S.inf_plus, 2)/size(S.nans, 2);
+
+  % save stats
+  save(exp_meta_stats{tss}, 'inf_perc', 'nan_perc', 'mfts_names_red')
+end
+
+clear inf_perc nan_perc S tss
 
 %%
 
@@ -721,10 +873,17 @@ for tss = 1:nTSS
 
     % Friedman's test
     mat_meds = [];
+    % find median sizes
+    dimSizes = arrayfun(@(x) sum(x == dimensions), dims);
+    minDimSize = min(dimSizes);
+    if any(dimSizes ~= minDimSize)
+      warning('The size of results in different dimensions are not the same for %s. Reducing to he lowest size.', tssList{tss})
+    end
     % cat medians for individual dimensions (number of data for each
     % dimension must be identical)
     for d = 1:numel(dims)
-      mat_meds = [mat_meds, act_meds(dims(d) == dimensions)'];
+      mat_meds_act = act_meds(dims(d) == dimensions)';
+      mat_meds = [mat_meds, mat_meds_act(1:minDimSize)];
     end
     % remove NaN's
     mat_meds(any(isnan(mat_meds), 2), :) = [];
@@ -779,9 +938,98 @@ clear('alpha', 'medtest_meds_p', ...
     'friedman_meds_p', 'stats_meds', 'multcomp_meds', 'friedman_meds_p_bh', ...
     'tss')
 
+%% Analyse NaN values
+% Calculate numbers of NaNs over the number of evaluations for each
+% feature. Find the number when the majority of feature values can be
+% calculated (99%).
+
+nan_threshold = 0.01;
+
+% TSS loop
+for tss = 1:nTSS
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Performing NaN feature values analysis on TSS %s\n'], ...
+          fix(clock), tssList{tss})
+
+  if isfile(exp_meta_output{tss})
+    S = load(exp_meta_output{tss}, 'observations', 'nans', 'mfts_names_red');
+  else
+    error('File %s is missing!', exp_meta_output{tss})
+  end
+
+  % set keyword according to TSS method
+  if tss == fullId
+    keyword = 'archive';
+  else
+    keyword = 'train';
+  end
+
+  % find unique observations values
+  obsUni{1} = unique(S.observations(1, :));
+  obsUni{2} = unique(S.observations(2, :));
+
+  % init
+  mfts_names_red = S.mfts_names_red;
+  nMfts = numel(mfts_names_red);
+  nan_break = zeros(nMfts, 1);
+  nan_meds = cell(nMfts, 1);
+  % feature loop
+  for ft = 1:nMfts
+
+    %%
+    close
+    fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Processing NaN feature analysis on TSS %s feature %3d/%d\n'], ...
+          fix(clock), tssList{tss}, ft, nMfts)
+    % find observation row
+    if contains(mfts_names_red{ft}, [keyword, 'test'])
+      obsId = 2;
+    elseif contains(mfts_names_red{ft}, keyword)
+      obsId = 1;
+    else
+      continue
+    end
+
+    % gather nan medians for unique observation values
+    for i = 1:numel(obsUni{obsId})
+      nan_meds{ft}(i) = median(S.nans(ft, obsUni{obsId}(i) == S.observations(obsId, :)));
+    end
+
+    % find the breaking point when the number of point is sufficient for
+    % 99% of data
+    nan_breakId = 1;
+    nan_break(ft) = obsUni{obsId}(nan_breakId);
+    while sum(S.nans(ft, S.observations(obsId, :) >= nan_break(ft)))/size(S.observations(obsId, :), 2)/100 > nan_threshold
+      nan_breakId = nan_breakId + 1;
+      nan_break(ft) = obsUni{obsId}(nan_breakId);
+    end
+
+    % plot resulting data
+    figure()
+    plot(obsUni{obsId}, nan_meds{ft})
+    hold on
+    scatter(nan_break(ft), 0, 200, 'r', '+')
+    title(['TSS ', num2str(tss), ': ', strrep(mfts_names_red{ft}, '_', '\_')])
+    legend('% of NaN', ['threshold: ', num2str(nan_break(ft)), ' points'])
+    hold off
+  end
+
+  % save results
+  save(exp_smsp_nan_anal{tss}, 'nan_break', 'nan_meds', 'nan_threshold', ...
+                               'mfts_names_red', 'obsUni')
+end
+
+clear('ft', 'i', 'mfts_names_red', 'nan_break', 'nan_breakId', ...
+      'nan_meds', 'nMfts', 'obsId', 'obsUni', 'tss')
+
+close
+
 %% Feature correlation analysis
 % Schweizer-Wolff correlation between each pair of available features used
 % to calculation of distances between features
+
+nPerms = 5;
+threshold = 0.25;
 
 for tss = 1:nTSS
   fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
@@ -789,13 +1037,20 @@ for tss = 1:nTSS
           fix(clock), tssList{tss})
   % for each TSS load data for TSS full
   if isfile(exp_meta_output{1})
-    S_full = load(exp_meta_output{1});
+    fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Correlation analysis on TSS %s - loading TSS full output\n'], ...
+          fix(clock), tssList{tss})
+    S_full = load(exp_meta_output{1}, ...
+                  'medians', 'inf_mins', 'inf_plus', 'mfts_names_red');
   else
     error('File %s is missing!', exp_meta_output{1})
   end
   % load minmax TSS full
   if isfile(exp_meta_minmax{1})
-    S_mm_full = load(exp_meta_minmax{1});
+    fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Correlation analysis on TSS %s - loading TSS full minmax\n'], ...
+          fix(clock), tssList{tss})
+    S_mm_full = load(exp_meta_minmax{1}, 'ft_min_ninf', 'ft_max_ninf');
   else
     error('File %s is missing!', exp_meta_minmax{1})
   end
@@ -803,13 +1058,20 @@ for tss = 1:nTSS
   if tss > 1
     % load output
     if isfile(exp_meta_output{tss})
-      S_tss = load(exp_meta_output{tss});
+      fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Correlation analysis on TSS %s - loading TSS %s output\n'], ...
+          fix(clock), tssList{tss}, tssList{tss})
+      S_tss = load(exp_meta_output{tss}, ...
+                  'medians', 'inf_mins', 'inf_plus', 'mfts_names_red');
     else
       error('File %s is missing!', exp_meta_output{tss})
     end
     % load minmax
     if isfile(exp_meta_minmax{tss})
-      S_mm_tss = load(exp_meta_minmax{tss});
+      fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Correlation analysis on TSS %s - loading minmax\n'], ...
+          fix(clock), tssList{tss})
+      S_mm_tss = load(exp_meta_minmax{tss}, 'ft_min_ninf', 'ft_max_ninf');
     else
       error('File %s is missing!', exp_meta_minmax{tss})
     end
@@ -818,14 +1080,20 @@ for tss = 1:nTSS
     S_tss.inf_mins = [];
     S_tss.inf_plus = [];
     S_tss.mfts_names_red = {};
+    S_tss.generations = [];
     S_mm_tss.ft_min_ninf = [];
     S_mm_tss.ft_max_ninf = [];
   end
 
   % concatenate results from TSS full and actual TSS
-  medians = [S_full.medians; S_tss.medians];
-  inf_mins = [S_full.inf_mins; S_tss.inf_mins];
-  inf_plus = [S_full.inf_plus; S_tss.inf_plus];
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+       'Correlation analysis on TSS %s - cat results with TSS full\n'], ...
+      fix(clock), tssList{tss})
+  % TODO: precise solution for different numbers of results
+  sameId = 1:(min(size(S_full.medians, 2), size(S_tss.medians, 2)));
+  medians = [S_full.medians; S_tss.medians(:, sameId)];
+  inf_mins = [S_full.inf_mins; S_tss.inf_mins(:, sameId)];
+  inf_plus = [S_full.inf_plus; S_tss.inf_plus(:, sameId)];
   ft_min_ninf = [S_mm_full.ft_min_ninf; S_mm_tss.ft_min_ninf];
   ft_max_ninf = [S_mm_full.ft_max_ninf; S_mm_tss.ft_max_ninf];
   mfts_names_red = [S_full.mfts_names_red; S_tss.mfts_names_red];
@@ -833,36 +1101,69 @@ for tss = 1:nTSS
 
   medians_minmax = medians;
   % replace NaN's with max or min values, where NaN was placed due to Inf
-  % value
+  % value (should not be necessary when using sigmoid normalization)
   for m = 1:nMfts
     medians_minmax(m, inf_mins(m, :) > 49) = ft_min_ninf(m);
     medians_minmax(m, inf_plus(m, :) > 49) = ft_max_ninf(m);
   end
 
-  % calculate Schweizer-Wolff correlations excluding NaN values pairwise
+  % clear all unnecessary variables to free memory
+  clear('S_full',  'S_tss', 'S_mm_full', 'S_mm_tss', ...
+        'medians', 'inf_mins', 'inf_plus', 'ft_min_ninf', 'ft_max_ninf')
+
+  % calculate Schweizer-Wolff correlations including NaN values pairwise
   % med_corr = corrSchweizer(medians_minmax', 'rows', 'pairwise');
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+       'Correlation analysis on TSS %s - calculating SW correlation\n'], ...
+      fix(clock), tssList{tss})
   [med_sim, med_corr, med_2reals, med_2nans] = ...
     nancorr(medians_minmax', 'rows', 'pairwise', 'type', 'Schweizer');
 
   % create dendrogram from similarity distance (1 - sim) => 0
-  med_link = linkage(squareform(1 - med_sim));
-  % plot dendrogram with red line marking 0.2 distance threshold
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+       'Correlation analysis on TSS %s - dendrogram\n'], ...
+      fix(clock), tssList{tss})
+  % permutation cycle
+  for p = 1:nPerms
+    med_perm{p} = randperm(nMfts);
+    med_link{p} = linkage(squareform(1 - med_sim(med_perm{p}, med_perm{p})));
+    med_k_threshold(p) = sum(med_link{p}(:, 3) > threshold);
+  end
+  % plot dendrogram with red line marking 0.25 distance threshold only for
+  % the first permutation
   h_dendr = figure();
-  med_dendr = dendrogram(med_link, 0);
+  med_dendr = dendrogram(med_link{1}, 0);
   hold on
-  line([0, nMfts+1], [0.25, 0.25], 'Color', 'r')
+  line([0, nMfts+1], [threshold, threshold], 'Color', 'r')
   hold off
 
   % save testing results
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+       'Correlation analysis on TSS %s - saving results\n'], ...
+      fix(clock), tssList{tss})
   save(exp_smsp_corr_test{tss}, 'medians_minmax', 'mfts_names_red', ...
                            'med_corr', 'med_2reals', 'med_2nans', 'med_sim', ...
-                           'med_link', 'h_dendr')
+                           'med_link', 'med_perm', 'med_k_threshold', 'h_dendr')
+end
+
+% find number of clusters for next clustering
+k = [];
+for tss = 1:nTSS
+  S = load(exp_smsp_corr_test{tss}, 'med_k_threshold');
+  k = [k, S.med_k_threshold];
+end
+k_res = floor(mean(k));
+fprintf('Resulting k = %f', k_res)
+
+% save resulting k to test files
+for tss = 1:nTSS
+  save(exp_smsp_corr_test{tss}, 'k_res', '-append')
 end
 
 clear('m', 'medians', 'medians_minmax', 'nMfts', ...
       'med_sim', 'med_corr', 'med_2reals', 'med_2nans', ...
       'med_link', 'med_dendr', ...
-      'S_full',  'S_tss', 'S_mm_full', 'S_mm_tss')
+      'S_full',  'S_tss', 'S_mm_full', 'S_mm_tss', 'sameId')
 
 %% Feature correlation clustering
 % Cluster features using k-medoids and results from hierarchical clustering
@@ -883,34 +1184,34 @@ for tss = 1:nTSS
   nMfts = numel(mfts_names_red);
 
   % set number of clusters
-  k = 60;
+  k = S.k_res;
   % set Schweizer-Wolf distance
   corrSWdist = @(x,y) 1-corrSchweizer(x', y', 'rows', 'pairwise');
   % set Schweizer-Wolf distance taking NaNs into account
   corrNanSWdist = @(x,y) 1-nancorr(x', y', 'rows', 'pairwise', 'type', 'Schweizer');
 
-  % clustering to 60 clusters using k-medoids with wasnan (line 217) set to
-  % false, i.e. NaNs will be removed pairwise
-  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
-           'Running k-medoids - NaNs removed pairwise\n'], fix(clock))
-  [corrClusterId_pair, ~, ~, ~, corrMedoidId_pair] = kmedoids2(medians_minmax, k, 'Distance', corrSWdist);
+  % % clustering to 60 clusters using k-medoids with wasnan (line 217) set to
+  % % false, i.e. NaNs will be removed pairwise
+  % fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+  %          'Running k-medoids - NaNs removed pairwise\n'], fix(clock))
+  % [corrClusterId_pair, ~, ~, ~, corrMedoidId_pair] = kmedoids2(medians_minmax, k, 'Distance', corrSWdist);
 
-  % remove NaN columns
-  nanCols = any(isnan(medians_minmax), 1);
-  if size(medians_minmax(:, ~nanCols), 2) > 0
-    % clustering to 60 clusters using k-medoids without columns containing
-    % at least one NaN
-    fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
-             'Running k-medoids - without columns with NaN\n'], fix(clock))
-    [corrClusterId_all, ~, ~, ~, corrMedoidId_all] = kmedoids(medians_minmax(:, ~nanCols), k, 'Distance', corrSWdist);
-  else
-    fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
-             'Omitting k-medoids - without columns with NaN ', ...
-             'because each column contains NaN\n'], fix(clock))
-    % each column contains NaN
-    corrClusterId_all = [];
-    corrMedoidId_all = [];
-  end
+  % % remove NaN columns
+  % nanCols = any(isnan(medians_minmax), 1);
+  % if size(medians_minmax(:, ~nanCols), 2) > 0
+  %   % clustering to 60 clusters using k-medoids without columns containing
+  %   % at least one NaN
+  %   fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+  %            'Running k-medoids - without columns with NaN\n'], fix(clock))
+  %   [corrClusterId_all, ~, ~, ~, corrMedoidId_all] = kmedoids(medians_minmax(:, ~nanCols), k, 'Distance', corrSWdist);
+  % else
+  %   fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+  %            'Omitting k-medoids - without columns with NaN ', ...
+  %            'because each column contains NaN\n'], fix(clock))
+  %   % each column contains NaN
+  %   corrClusterId_all = [];
+  %   corrMedoidId_all = [];
+  % end
 
   % clustering to 60 clusters using k-medoids with wasnan (line 217) set to
   % false, i.e. NaNs will be taken into account pairwise
@@ -919,17 +1220,23 @@ for tss = 1:nTSS
           fix(clock))
   [corrClusterId_nanpair, ~, ~, ~, corrMedoidId_nanpair] = kmedoids2(medians_minmax, k, 'Distance', corrNanSWdist);
 
-  % count loss of data in 'all' k-medoids strategy
-  dataLoss_all = sum(nanCols)/numel(nanCols);
+  % % count loss of data in 'all' k-medoids strategy
+  % dataLoss_all = sum(nanCols)/numel(nanCols);
   % count loss of data in 'pairwise' k-medoids strategy
   dataLoss_pair = sum(sort(sum(isnan(medians_minmax), 2))'.*(0:(nMfts-1))) / nchoosek(nMfts,2) / numel(nanCols);
 
+  % identify selected medoids in mfts list
+  mftsIds_red = find(mftsIds);
+  mftsMedoidIds = mftsIds_red(corrMedoidId_nanpair);
+
   save(exp_smsp_corr_cluster{tss}, 'k', 'corrSWdist', 'corrNanSWdist', ...
-                              'corrClusterId_pair', 'corrMedoidId_pair', ...
-                              'corrClusterId_all', 'corrMedoidId_all', ...
                               'corrClusterId_nanpair', 'corrMedoidId_nanpair', ...
-                              'dataLoss_all', 'dataLoss_pair', ...
-                              'mfts_names_red')
+                              'dataLoss_pair', ...
+                              'mfts_names_red', 'mftsMedoidIds', ...
+                              'lastArchFtId')
+  %                             'corrClusterId_pair', 'corrMedoidId_pair', ...
+  %                             'corrClusterId_all', 'corrMedoidId_all', ...
+  %                             'dataLoss_all',
 end
 
 clear('corrSWdist', 'corrNaNSWdist', ...
@@ -942,6 +1249,7 @@ clear('corrSWdist', 'corrNaNSWdist', ...
 %% Feature correlation clustering analysis
 % Analyse results of feature clustering
 
+% maximal number of features in table per page
 maxFtsPerPage = 40;
 
 % TSS loop
@@ -950,6 +1258,25 @@ for tss = 1:nTSS
     S_corr = load(exp_smsp_corr_cluster{tss});
   else
     error('File %s is missing!', exp_smsp_corr_cluster{tss})
+  end
+
+  % load TSS full simple stats
+  if isfile(exp_smsp_nan_anal{fullId})
+    S_nan_full = load(exp_smsp_nan_anal{fullId});
+  else
+    error('File %s is missing!', exp_smsp_nan_anal{fullId})
+  end
+  % add actual TSS results
+  if tss ~= fullId
+    if isfile(exp_smsp_nan_anal{tss})
+      S_nan_tss = load(exp_smsp_nan_anal{tss});
+      % cat TSS full and actual TSS results
+      nan_break = [S_nan_full.nan_break(:); S_nan_tss.nan_break(:)];
+    else
+      error('File %s is missing!', exp_smsp_nan_anal{tss})
+    end
+  else
+    nan_break = S_nan_full.nan_break(:);
   end
 
   % TODO: dimension test was probably performed without TSS full and actual
@@ -1085,6 +1412,7 @@ for tss = 1:nTSS
     mftsSplit, setColumn, transColumn, classColumn, 'Uni', false);
 
   % sort table variables
+  nan_break = nan_break(sortClId);
   dimCombsAccSorted = dimCombsAccepted(sortClId);
   tableMftsNotationSorted = tableMftsNotation(sortClId);
   corrClusterId_nanpairSorted = S_corr.corrClusterId_nanpair(sortClId);
@@ -1094,23 +1422,27 @@ for tss = 1:nTSS
   for p = 1:pages
     rowIds = (p-1)*maxFtsPerPage+1 : min(p*maxFtsPerPage, nMfts);
     % table with correlation clustering ids
-    corrClusterTable = table(dimCombsAccSorted(rowIds), ...
-                             'RowNames', tableMftsNotationSorted(rowIds), ...
-                             'VariableNames', {'dimPairs'});
+    corrClusterTable = table(...
+                             nan_break(rowIds), ...
+                             dimCombsAccSorted(rowIds), ...
+                             'RowNames', tableMftsNotationSorted(rowIds));
 
     % print table to tex
     lt = LatexTable(corrClusterTable);
-    lt.opts.tableColumnAlignment = num2cell('ll');
+    lt.opts.tableColumnAlignment = num2cell('lrl');
+    lt.setHeaderRow({'', '$N_\nanout$', '$(\dm_i, \dm_j)$'});
+    lt.setColumnFormat({'%d', []});
     [~, lt.opts.midLines] = unique(corrClusterId_nanpairSorted(rowIds));
     lt.opts.tableCaption = sprintf([...
       'TSS %s feature properties (%d/%d). ', ...
-      'Features are grouped to 60 clusters according to k-medoid clustering ', ...
+      'Features are grouped to %d clusters according to k-medoid clustering ', ...
       'using Schweizer-Wolf correlation distance. ', ...
       'Medoid representatives are marked as gray lines. ', ...
-      'The dimPairs column shows the pairs of feature dimensions not rejecting the independence of median feature values, ', ...
+      '$N_\nanout$ denotes the lowest measured number of points from which 99% of feature calculations did not resulted in $\nanout$.', ...
+      'The $(\\dm_i, \\dm_j)$ column shows the pairs of feature dimensions not rejecting the independence of median feature values, ', ...
       '\\ie where the Friedman post-hoc test on median values with the Bonferroni-Holm correction ', ...
       'at the family-wise level 0.05 was not rejected.'...
-      ], tssList{tss}, p, pages);
+      ], tssList{tss}, p, pages, S_corr.k);
     lt.opts.tableLabel = 'featProp';
     lt.opts.booktabs = 1;
     % add gray background to medoid features
