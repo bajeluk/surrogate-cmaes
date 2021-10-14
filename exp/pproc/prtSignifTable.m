@@ -1,5 +1,15 @@
 function prtSignifTable(data, varargin)
-% significanceTable(data, varargin)
+% prtSignifTable(data, settings)
+%
+% Input:
+%   data     - table significance values | double array
+%   settings - pairs of property (string) and value, or struct with
+%              properties as fields:
+%     'FirstCell' - text in the first cell | string | default:
+%                   '\textbf{$\cov$}'
+%     'HeadColWidth' - width of head column | string | default: '1.5cm'
+%     'OneColumn' - print table to one column in a two column paper
+%                   settings | logical scalar | default: 'false'
 
   if nargin < 1 || isempty(data)
     help prtSignifTable
@@ -15,6 +25,8 @@ function prtSignifTable(data, varargin)
   par.colValName = defopts(settings, 'ColValName', '');
   par.colGroups = defopts(settings, 'ColGroups', {});
   par.colGroupNum = defopts(settings, 'ColGroupNum', []);
+  par.headColWidth = defopts(settings, 'HeadColWidth', '1.5cm');
+  par.firstCell = defopts(settings, 'FirstCell', '\textbf{$\cov$}');
   defResultFolder = fullfile('exp', 'pproc', 'tex');
   resultFile = defopts(settings, 'ResultFile', ...
                        fullfile(defResultFolder, 'signifTable.tex'));
@@ -78,7 +90,7 @@ function printTableTex(FID, data, par)
   fprintf(FID, '\\setlength{\\savetabcolsep}{\\tabcolsep}\n');
   fprintf(FID, '\\setlength{\\savecmidrulekern}{\\cmidrulekern}\n');
   fprintf(FID, '\n');
-  fprintf(FID, '\\setlength{\\headcolw}{1.5cm}\n');
+  fprintf(FID, '\\setlength{\\headcolw}{%s}\n', par.headColWidth);
   fprintf(FID, '\\setlength{\\groupheadcolw}{0.8cm}\n');
   fprintf(FID, '\\setlength{\\tabcolsep}{0pt}\n');
   fprintf(FID, '\\setlength{\\cmidrulekern}{2pt}\n');
@@ -98,7 +110,7 @@ function printTableTex(FID, data, par)
   fprintf(FID, '\\toprule\n');
   
   % first table cells
-  fprintf(FID, '{} & \\textbf{%s} & ', '$\cov$');
+  fprintf(FID, '{} & %s & ', par.firstCell);
 
   % existing column groups
   if nColGroups > 0
