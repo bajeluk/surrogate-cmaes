@@ -722,26 +722,39 @@ for tss = 1:nTSS
                'Simple stats of TSS %s\n'], ...
               fix(clock), tssList{tss})
 
-  % load results
+  % load results separately due to memory requirements
   if isfile(exp_meta_output{tss})
-    S = load(exp_meta_output{tss}, 'nans', 'inf_plus', 'inf_mins', 'mfts_names_red');
+    S = load(exp_meta_output{tss}, 'nans', 'inf_plus', 'inf_mins', ...
+                                   'mfts_names_red');
   else
     error('There is %s missing.', exp_meta_output{tss})
   end
   mfts_names_red = S.mfts_names_red;
+  nCases = size(S.nans, 2);
 
-  nan_perc = sum(S.nans, 2)/size(S.nans, 2);
-  inf_perc = sum(S.inf_mins+S.inf_plus, 2)/size(S.nans, 2);
-
-  % save stats
-  save(exp_meta_stats{tss}, 'inf_perc', 'nan_perc', 'mfts_names_red')
+  nan_perc = sum(S.nans, 2) / nCases;
+  inf_perc = sum(S.inf_mins+S.inf_plus, 2) / nCases;
   
+  % clear nan and inf results and load min max results
+  clear S
+  S = load(exp_meta_output{tss}, 'quantiles_99');
+
+  qDiff = S.quantiles_99(:, :, 2) - S.quantiles_99(:, :, 1);
+  maxmin_perc = (sum(~(qDiff > 0.05), 2) - sum(isnan(qDiff), 2)) ./ sum(~isnan(qDiff), 2);
+
   % mark features with high NaN percentage
   mftsLowNaN = nan_perc < 25;
-  save(exp_meta_output{tss}, 'mftsLowNaN', '-append')
+  mftsLowErr = maxmin_perc > 0.9;
+
+  maxmin_perc_rel = maxmin_perc(mftsLowNaN & mftsLowErr);
+  % save stats
+  save(exp_meta_stats{tss}, 'inf_perc', 'nan_perc', 'maxmin_perc', ...
+                            'mftsLowNaN', 'mftsLowErr', ...
+                            'maxmin_perc_rel', 'mfts_names_red')
 end
 
-clear inf_perc nan_perc S tss
+clear('inf_perc', 'nan_perc', 'maxmin_perc', 'maxmin_perc_rel', ...
+      'mftsLowNaN', 'mftsLowErr', 'nCases', 'qDiff',  'S', 'tss')
 
 %%
 
@@ -877,14 +890,15 @@ for tss = 1:nTSS
           fix(clock), tssList{tss})
 
   if isfile(exp_meta_output{tss})
-    load(exp_meta_output{tss})
+    S = load(exp_meta_output{tss}, 'dimensions', 'medians', ...
+                                   'mfts_names_red');
   else
     error('File %s is missing!', exp_meta_output{tss})
   end
   
-  % use only features with low number of NaNs
-  mfts_names_red = mfts_names_red(mftsLowNaN);
-  medians = medians(mftsLowNaN, :);
+  % use all features
+  mfts_names_red = S.mfts_names_red;
+  medians = S.medians;
 
   nMfts = numel(mfts_names_red);
   % medtest_meds_p = zeros(nMfts, nchoosek(numel(dims), 2));
@@ -914,7 +928,7 @@ for tss = 1:nTSS
     % Friedman's test
     mat_meds = [];
     % find median sizes
-    dimSizes = arrayfun(@(x) sum(x == dimensions), dims);
+    dimSizes = arrayfun(@(x) sum(x == S.dimensions), dims);
     minDimSize = min(dimSizes);
     if any(dimSizes ~= minDimSize)
       warning('The size of results in different dimensions are not the same for %s. Reducing to the lowest size.', tssList{tss})
@@ -922,7 +936,7 @@ for tss = 1:nTSS
     % cat medians for individual dimensions (number of data for each
     % dimension must be identical)
     for d = 1:numel(dims)
-      mat_meds_act = act_meds(dims(d) == dimensions)';
+      mat_meds_act = act_meds(dims(d) == S.dimensions)';
       mat_meds = [mat_meds, mat_meds_act(1:minDimSize)];
     end
     % remove NaN's
@@ -944,8 +958,8 @@ for tss = 1:nTSS
         for d2 = d+1 : numel(dims)
           % increase counter
           j = j+1;
-          meds_pair = [act_meds(dims(d) == dimensions); ...
-                       act_meds(dims(d2) == dimensions)];
+          meds_pair = [act_meds(dims(d) == S.dimensions); ...
+                       act_meds(dims(d2) == S.dimensions)];
           % Wilcoxon test on all non-nan median values of dimension pair
           wilcoxon_meds_p(m, j) = signrank(meds_pair(1, all(~isnan(meds_pair))), ...
                                            meds_pair(2, all(~isnan(meds_pair))));
@@ -1009,9 +1023,10 @@ for tss = 1:nTSS
            'Performing NaN values analysis on TSS %s\n'], ...
           fix(clock), tssList{tss})
 
+  % load results
   if isfile(exp_meta_output{tss})
     S = load(exp_meta_output{tss}, 'observations', ...
-             'nans', 'mftsLowNaN', ...
+             'nans', ...
              'mfts_names_red');
   else
     error('File %s is missing!', exp_meta_output{tss})
@@ -1028,9 +1043,8 @@ for tss = 1:nTSS
   obsUni{1} = unique(S.observations(1, :));
   obsUni{2} = unique(S.observations(2, :));
 
-  % use only features with low number of NaNs
-  mfts_names_red = S.mfts_names_red(S.mftsLowNaN);
-  S.nans = S.nans(S.mftsLowNaN, :);
+  % use all features
+  mfts_names_red = S.mfts_names_red;
   
   % init
   nMfts = numel(mfts_names_red);
@@ -1088,6 +1102,58 @@ clear('ft', 'i', 'mfts_names_red', 'nan_break', 'nan_breakId', ...
 
 close
 
+%% Reliability threshold table
+% Print table with the numbers of reliable features according to the
+% reliability threshold.
+
+thresholds = [0.5:0.1:0.9, 0.99]';
+
+for tss = 1:nTSS
+  % load stats
+  if isfile(exp_meta_stats{tss})
+    S = load(exp_meta_stats{tss}, 'maxmin_perc', 'mftsLowNaN');
+    maxmin_perc{tss} = S.maxmin_perc(S.mftsLowNaN);
+  else
+    error('File %s is missing!', exp_meta_stats{tss})
+  end
+end
+
+% calculate numbers of features reliable at least as a defined threshold
+tableBase = cellfun(@(perc) ...
+                      arrayfun(@(x) sum(~(perc < x)), thresholds), ...
+                    maxmin_perc, 'Uni', false);
+relTable = table();
+for tss = 1:nTSS
+  if tss == 1
+    relTable.(tssList{tss}) = arrayfun(@(x) sprintf('\\textbf{%d}', x), ...
+                                tableBase{tss}, 'Uni', false);
+  else
+    relTable.(tssList{tss}) = arrayfun(@(x, y) sprintf('%d (\\textbf{%d})', x, y), ...
+                                tableBase{tss}, tableBase{tss} + tableBase{fullId}, ...
+                                'Uni', false);
+  end
+end
+relTable.Properties.RowNames = arrayfun(@num2str, thresholds, 'Uni', false);
+
+% print table to tex
+lt = LatexTable(relTable);
+lt.opts.tableColumnAlignment = num2cell('lrrr');
+lt.setHeaderRow({'threshold', 'TSS full', 'TSS nearest', 'TSS knn'});
+% lt.setColumnFormat({'%s', '%2.2f', []});
+lt.opts.tableCaption = [...
+  'Number of features for individual TSS with reliability greater or equal to the threshold in the first ', ...
+  'column.', ...
+  'The numbers in brackets represent the resulting all available features ', ...
+  'for given TSS (given TSS + TSS full) utilized for the following process.'];
+lt.opts.tableLabel = 'featProp';
+lt.opts.booktabs = 1;
+% add gray background to medoid features
+lt.colorizeRowsInGray(5);
+lt.toFile(fullfile(tableFolder, 'relTable.tex'));
+
+clear('lt', 'maxmin_perc', 'mftsLowNaN', 'relTable', 'S', 'tableBase', ...
+      'tss')
+
 %% Analyse feature reliability
 % If the features should be reliable on 90% (99%?) for further
 % calculations, each feature should be reliable on
@@ -1103,13 +1169,13 @@ for tss = 1:nTSS
            'Performing feature reliability analysis on TSS %s\n'], ...
           fix(clock), tssList{tss})
 
-  if isfile(exp_meta_output{tss})
+ if isfile(exp_meta_output{tss})
     S = load(exp_meta_output{tss}, 'observations', ...
-             'quantiles_90', 'quantiles_99', 'quantile_to_calc', ...
+             'quantiles_99', ...
              'mfts_names_red');
   else
     error('File %s is missing!', exp_meta_output{tss})
-  end
+ end
 
   % set keyword according to TSS method
   if tss == fullId
@@ -1123,21 +1189,19 @@ for tss = 1:nTSS
   obsUni{2} = unique(S.observations(2, :));
 
   % use only features with low number of NaNs
-  mfts_names_red = S.mfts_names_red(S.mftsLowNaN);
-  S.quantiles_90 = S.quantiles_90(S.mftsLowNaN, :, :);
-  S.quantiles_99 = S.quantiles_99(S.mftsLowNaN, :, :);
+  mfts_names_red = S.mfts_names_red;
   
   % init
   nMfts = numel(mfts_names_red);
-  quan_90_diff_break = zeros(nMfts, 1);
-  quan_90_diff_meds = cell(nMfts, 1);
+  % quan_90_diff_break = zeros(nMfts, 1);
+  % quan_90_diff_meds = cell(nMfts, 1);
   quan_99_diff_break = zeros(nMfts, 1);
   quan_99_diff_meds = cell(nMfts, 1);
+  maxmin_diff_99 = cell(nMfts, 1);
+  lowErr_max_int = NaN(nMfts, 2);
 
   % feature loop
   for ft = 1:nMfts
-
-    %%
     close
     fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
            'Processing feature reliability analysis on TSS %s feature %3d/%d\n'], ...
@@ -1154,30 +1218,77 @@ for tss = 1:nTSS
     % gather quantile differences medians for unique observation values
     for i = 1:numel(obsUni{obsId})
       uniObsId = obsUni{obsId}(i) == S.observations(obsId, :);
-      quan_90_diff_meds{ft}(i) = median(...
-        S.quantiles_90(ft, uniObsId, 2) - S.quantiles_90(ft, uniObsId, 1));
+      % quan_90_diff_meds{ft}(i) = median(...
+      %   S.quantiles_90(ft, uniObsId, 2) - S.quantiles_90(ft, uniObsId, 1));
       quan_99_diff_meds{ft}(i) = median(...
         S.quantiles_99(ft, uniObsId, 2) - S.quantiles_99(ft, uniObsId, 1));
+      maxmin_diff_99{ft}(i) = quantile(...
+        S.quantiles_99(ft, uniObsId, 2) - S.quantiles_99(ft, uniObsId, 1), 0.99);
     end
 
-    % plot resulting data
-    figure()
-    plot(obsUni{obsId}, quan_90_diff_meds{ft})
-    hold on
-    plot(obsUni{obsId}, quan_99_diff_meds{ft})
-    line([0, obsUni{obsId}(end)], [reliability_threshold, reliability_threshold], 'Color', 'r')
-    title(['TSS ', num2str(tss), ': ', strrep(mfts_names_red{ft}, '_', '\_')])
-    legend('Quantile diff (90%)', 'Quantile diff (99%)', '0.05 reliability threshold')
-    hold off
-  end
+    % find the largest interval where the feature error is below 0.05 in
+    % 99% cases (quan_99_diff should be identical to max-min)
+    lowErr = maxmin_diff_99{ft} < reliability_threshold;
+%     if all(lowErr)
+%       lowErr_max_int(ft, :) = [obsUni{obsId}(1), obsUni{obsId}(end)];
+%     elseif any(lowErr)
+%       lowErr_i = find(diff(lowErr));
+%       lowErr_n = [lowErr_i, numel(lowErr)] - [0, lowErr_i];
+%       [~, lowErr_n_id] = max(lowErr_n(((lowErr(1) == 0)+1) : 2 : end));
+%       lowErr_2n_id = lowErr_n_id*2 - (lowErr(1) == 1);
+%       if lowErr_2n_id == 1
+%         lowErr_max_int(ft, :) = [1, obsUni{obsId}(lowErr_i(lowErr_2n_id))];
+%       else
+%         lowErr_max_int(ft, :) = [obsUni{obsId}(lowErr_i(lowErr_2n_id - 1) + 1), ...
+%                                  obsUni{obsId}(lowErr_i(lowErr_2n_id))];
+%       end
+%     end
+    
+%     rel_breakId = 1;
+%     rel_break(ft) = obsUni{obsId}(rel_breakId);
+%     relObsId = rel_break(ft) <= S.observations(obsId, :);
+%     while (sum(S.quantiles_99(ft, relObsId, 2) - S.quantiles_99(ft, relObsId, 1) < reliability_threshold)...
+%           / size(S.quantiles_99, 2)) < 0.99 && rel_breakId < numel(obsUni{obsId})
+% %       fprintf('Feature %d num of points: %4d\n', ft, rel_break(ft))
+%       rel_breakId = rel_breakId + 1;
+%       rel_break(ft) = obsUni{obsId}(rel_breakId);
+%       relObsId = rel_break(ft) <= S.observations(obsId, :);
+%     end
 
+    % plot resulting data
+    han = figure();
+%     plot(obsUni{obsId}, quan_99_diff_meds{ft})
+    plot(obsUni{obsId}, maxmin_diff_99{ft})
+    hold on
+    % plot(obsUni{obsId}, quan_90_diff_meds{ft})
+    % plot reliability threshold
+    line([0, obsUni{obsId}(end)], [reliability_threshold, reliability_threshold], 'Color', 'r')
+    % plot reliable points
+    scatter(obsUni{obsId}(lowErr), reliability_threshold*ones(1, sum(lowErr)), 1, 'g', 'filled')
+%     line([lowErr_max_int(1), lowErr_max_int(2)], [reliability_threshold, reliability_threshold], 'Color', [0.4940 0.1840 0.5560])
+    xlabel('Number of observations')
+    ylabel('max - min')
+    title(['TSS ', num2str(tss), ': ', strrep(mfts_names_red{ft}, '_', '\_')])
+    legend('max-min Q(0.99)', '0.05 reliability threshold', ...
+           'reliable num of points')
+%            ['reliable interval [', num2str(lowErr_max_int(1)), ', ', num2str(lowErr_max_int(2)), ']']...
+    hold off
+    
+    % print plot to file
+    plotName = fullfile(plotResultsFolder, ['maxmin_tss', num2str(tss), '_ft', num2str(ft)]);
+    print2pdf(han, plotName, 1)
+%     close
+  end
+  
   % save results
-  save(exp_smsp_quant_anal{tss}, 'nan_break', 'nan_meds', 'nan_threshold', ...
-                               'mfts_names_red', 'obsUni')
+  save(exp_smsp_quant_anal{tss}, 'reliability_threshold', ...
+                                 'lowErr_max_int', ...
+                                 'mfts_names_red', 'obsUni')
 end
 
-clear('ft', 'i', 'mfts_names_red', 'nan_break', 'nan_breakId', ...
-      'nan_meds', 'nMfts', 'obsId', 'obsUni', 'tss')
+clear('ft', 'i', 'S', 'rel_breakId', ...
+      'rel_break', 'relObsId', 'reliability_threshold', ...
+      'mfts_names_red', 'obsUni')
 
 close
 
@@ -1186,55 +1297,70 @@ close
 % to calculation of distances between features
 
 nPerms = 5;
-threshold = 0.25;
+threshold = 0.1;
 
 for tss = 1:nTSS
   fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
            'Performing feature correlation analysis on TSS %s\n'], ...
           fix(clock), tssList{tss})
+
+  % load stats
+  if isfile(exp_meta_stats{fullId})
+    S_stats_full = load(exp_meta_stats{fullId}, 'mftsLowNaN', 'mftsLowErr');
+    useFullId = S_stats_full.mftsLowNaN & S_stats_full.mftsLowErr;
+  else
+    error('File %s is missing!', exp_meta_stats{fullId})
+  end
+ 
   % for each TSS load data for TSS full
-  if isfile(exp_meta_output{1})
+  if isfile(exp_meta_output{fullId})
     fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
            'Correlation analysis on TSS %s - loading TSS full output\n'], ...
           fix(clock), tssList{tss})
-    S_full = load(exp_meta_output{1}, ...
-                  'medians', 'inf_mins', 'inf_plus', 'mfts_names_red', ...
-                  'mftsLowNaN');
+    S_full = load(exp_meta_output{fullId}, ...
+                  'medians', 'inf_mins', 'inf_plus', 'mfts_names_red');
     % use only features with low number of NaNs
-    S_full.mfts_names_red = S_full.mfts_names_red(S_full.mftsLowNaN);
-    S_full.medians = S_full.medians(S_full.mftsLowNaN, :);
-    S_full.inf_mins = S_full.inf_mins(S_full.mftsLowNaN, :);
-    S_full.inf_plus = S_full.inf_plus(S_full.mftsLowNaN, :);
+    S_full.mfts_names_red = S_full.mfts_names_red(useFullId);
+    S_full.medians = S_full.medians(useFullId, :);
+    S_full.inf_mins = S_full.inf_mins(useFullId, :);
+    S_full.inf_plus = S_full.inf_plus(useFullId, :);
   else
-    error('File %s is missing!', exp_meta_output{1})
+    error('File %s is missing!', exp_meta_output{fullId})
   end
   % load minmax TSS full
-  if isfile(exp_meta_minmax{1})
+  if isfile(exp_meta_minmax{fullId})
     fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
            'Correlation analysis on TSS %s - loading TSS full minmax\n'], ...
           fix(clock), tssList{tss})
-    S_mm_full = load(exp_meta_minmax{1}, 'ft_min_ninf', 'ft_max_ninf');
+    S_mm_full = load(exp_meta_minmax{fullId}, 'ft_min_ninf', 'ft_max_ninf');
     % use only features with low number of NaNs
-    S_mm_full.ft_min_ninf = S_mm_full.ft_min_ninf(S_full.mftsLowNaN);
-    S_mm_full.ft_max_ninf = S_mm_full.ft_max_ninf(S_full.mftsLowNaN);
+    S_mm_full.ft_min_ninf = S_mm_full.ft_min_ninf(useFullId);
+    S_mm_full.ft_max_ninf = S_mm_full.ft_max_ninf(useFullId);
   else
-    error('File %s is missing!', exp_meta_minmax{1})
+    error('File %s is missing!', exp_meta_minmax{fullId})
   end
 
   if tss > 1
+      % load stats
+      if isfile(exp_meta_stats{tss})
+        S_stats_tss = load(exp_meta_stats{tss}, 'mftsLowNaN', 'mftsLowErr');
+        useTSSId = S_stats_tss.mftsLowNaN & S_stats_tss.mftsLowErr;
+      else
+        error('File %s is missing!', exp_meta_stats{tss})
+      end
+
     % load output
     if isfile(exp_meta_output{tss})
       fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
            'Correlation analysis on TSS %s - loading TSS %s output\n'], ...
           fix(clock), tssList{tss}, tssList{tss})
       S_tss = load(exp_meta_output{tss}, ...
-                  'medians', 'inf_mins', 'inf_plus', 'mfts_names_red', ...
-                  'mftsLowNaN');
+                  'medians', 'inf_mins', 'inf_plus', 'mfts_names_red');
       % use only features with low number of NaNs
-      S_tss.mfts_names_red = S_tss.mfts_names_red(S_tss.mftsLowNaN);
-      S_tss.medians = S_tss.medians(S_tss.mftsLowNaN, :);
-      S_tss.inf_mins = S_tss.inf_mins(S_tss.mftsLowNaN, :);
-      S_tss.inf_plus = S_tss.inf_plus(S_tss.mftsLowNaN, :);
+      S_tss.mfts_names_red = S_tss.mfts_names_red(useTSSId);
+      S_tss.medians = S_tss.medians(useTSSId, :);
+      S_tss.inf_mins = S_tss.inf_mins(useTSSId, :);
+      S_tss.inf_plus = S_tss.inf_plus(useTSSId, :);
     else
       error('File %s is missing!', exp_meta_output{tss})
     end
@@ -1245,8 +1371,8 @@ for tss = 1:nTSS
           fix(clock), tssList{tss})
       S_mm_tss = load(exp_meta_minmax{tss}, 'ft_min_ninf', 'ft_max_ninf');
       % use only features with low number of NaNs
-      S_mm_tss.ft_min_ninf = S_mm_tss.ft_min_ninf(S_tss.mftsLowNaN);
-      S_mm_tss.ft_max_ninf = S_mm_tss.ft_max_ninf(S_tss.mftsLowNaN);
+      S_mm_tss.ft_min_ninf = S_mm_tss.ft_min_ninf(useTSSId);
+      S_mm_tss.ft_max_ninf = S_mm_tss.ft_max_ninf(useTSSId);
     else
       error('File %s is missing!', exp_meta_minmax{tss})
     end
@@ -1256,7 +1382,8 @@ for tss = 1:nTSS
     S_tss.inf_plus = [];
     S_tss.mfts_names_red = {};
     S_tss.generations = [];
-    S_tss.mftsLowNaN = [];
+    S_stats_tss.mftsLowNaN = [];
+    S_stats_tss.mftsLowErr = [];
     S_mm_tss.ft_min_ninf = [];
     S_mm_tss.ft_max_ninf = [];
   end
@@ -1273,7 +1400,8 @@ for tss = 1:nTSS
   ft_min_ninf = [S_mm_full.ft_min_ninf; S_mm_tss.ft_min_ninf];
   ft_max_ninf = [S_mm_full.ft_max_ninf; S_mm_tss.ft_max_ninf];
   mfts_names_red = [S_full.mfts_names_red; S_tss.mfts_names_red];
-  mftsLowNaN = [S_full.mftsLowNaN; S_tss.mftsLowNaN];
+  mftsLowNaN = [S_stats_full.mftsLowNaN; S_stats_tss.mftsLowNaN];
+  mftsLowErr = [S_stats_full.mftsLowErr; S_stats_tss.mftsLowErr];
   nMfts = numel(mfts_names_red);
 
   medians_minmax = medians;
@@ -1319,7 +1447,7 @@ for tss = 1:nTSS
        'Correlation analysis on TSS %s - saving results\n'], ...
       fix(clock), tssList{tss})
   save(exp_smsp_corr_test{tss}, 'medians_minmax', 'mfts_names_red', ...
-                           'mftsLowNaN', ...
+                           'mftsLowNaN', 'mftsLowErr', ...
                            'med_corr', 'med_2reals', 'med_2nans', 'med_sim', ...
                            'med_link', 'med_perm', 'med_k_threshold', 'h_dendr')
 end
@@ -1406,7 +1534,7 @@ for tss = 1:nTSS
   % identify selected medoids in mfts list
   mftsIds_red = find(mftsIds);
   % use only features with low number of NaNs
-  mftsIds_red = mftsIds_red(logical(S.mftsLowNaN));
+  mftsIds_red = mftsIds_red(logical(S.mftsLowNaN & S.mftsLowErr));
   mftsMedoidIds = mftsIds_red(corrMedoidId_nanpair);
 
   save(exp_smsp_corr_cluster{tss}, 'k', 'corrSWdist', 'corrNanSWdist', ...
@@ -1441,6 +1569,30 @@ for tss = 1:nTSS
   end
 
   % load TSS full simple stats
+  if isfile(exp_meta_stats{fullId})
+    S_stats_full = load(exp_meta_stats{fullId}, ...
+                        'mftsLowNaN', 'mftsLowErr', 'maxmin_perc_rel');
+    useFullId = S_stats_full.mftsLowNaN & S_stats_full.mftsLowErr;
+  else
+    error('File %s is missing!', exp_meta_stats{fullId})
+  end
+  % add actual TSS results
+  if tss ~= fullId
+    if isfile(exp_meta_stats{tss})
+      S_stats_tss = load(exp_meta_stats{tss}, ...
+                        'mftsLowNaN', 'mftsLowErr', 'maxmin_perc_rel');
+      useTSSId = S_stats_tss.mftsLowNaN & S_stats_tss.mftsLowErr;
+      % cat TSS full and actual TSS results
+      maxmin_perc = [S_stats_full.maxmin_perc_rel(:); S_stats_tss.maxmin_perc_rel(:)];
+    else
+      error('File %s is missing!', exp_meta_stats{tss})
+    end
+  else
+    maxmin_perc = S_stats_full.maxmin_perc_rel(:);
+    useTSSId = [];
+  end
+
+  % load TSS full NaN analysis
   if isfile(exp_smsp_nan_anal{fullId})
     S_nan_full = load(exp_smsp_nan_anal{fullId});
   else
@@ -1451,26 +1603,30 @@ for tss = 1:nTSS
     if isfile(exp_smsp_nan_anal{tss})
       S_nan_tss = load(exp_smsp_nan_anal{tss});
       % cat TSS full and actual TSS results
-      nan_break = [S_nan_full.nan_break(:); S_nan_tss.nan_break(:)];
+      nan_break = [S_nan_full.nan_break(useFullId); ...
+                   S_nan_tss.nan_break(useTSSId)];
     else
       error('File %s is missing!', exp_smsp_nan_anal{tss})
     end
   else
-    nan_break = S_nan_full.nan_break(:);
+    nan_break = S_nan_full.nan_break(useFullId);
   end
-
+  
   % TODO: dimension test was probably performed without TSS full and actual
   % TSS unification => check and perhaps unify here
   % TSS full dimension test result
   if isfile(exp_smsp_dimension_test{fullId})
-    S_dim_full = load(exp_smsp_dimension_test{fullId});
+    S_dim_full = load(exp_smsp_dimension_test{fullId}, ...
+                      'dims', ...
+                      'wilcoxon_uniq_combs', 'wilcoxon_uniq_combs_id');
   else
     error('File %s is missing!', exp_smsp_dimension_test{fullId})
   end
   % add actual TSS results
   if tss ~= fullId
     if isfile(exp_smsp_dimension_test{tss})
-      S_dim_tss = load(exp_smsp_dimension_test{tss});
+      S_dim_tss = load(exp_smsp_dimension_test{tss}, ...
+                      'wilcoxon_uniq_combs', 'wilcoxon_uniq_combs_id');
     else
       error('File %s is missing!', exp_smsp_dimension_test{tss})
     end
@@ -1498,8 +1654,8 @@ for tss = 1:nTSS
         ), ...
       ',' ...
     ), ...
-    1:size(S_dim_full.wilcoxon_uniq_combs_id, 1), ...
-    'UniformOutput', false)';
+    find(useFullId), ...
+    'UniformOutput', false);
   % add actual TSS combinations
   dimCombsAccepted = [dimCombsAccepted; ...
     arrayfun(@(x) ...
@@ -1511,8 +1667,8 @@ for tss = 1:nTSS
           ), ...
         ',' ...
       ), ...
-      1:size(S_dim_tss.wilcoxon_uniq_combs_id, 1), ...
-      'UniformOutput', false)' ...
+      find(useTSSId), ...
+      'UniformOutput', false) ...
     ];
 
   % sort metafeatures to clusters
@@ -1593,6 +1749,7 @@ for tss = 1:nTSS
 
   % sort table variables
   nan_break = nan_break(sortClId);
+  maxmin_perc = 100*maxmin_perc(sortClId);
   dimCombsAccSorted = dimCombsAccepted(sortClId);
   tableMftsNotationSorted = tableMftsNotation(sortClId);
   corrClusterId_nanpairSorted = S_corr.corrClusterId_nanpair(sortClId);
@@ -1604,14 +1761,15 @@ for tss = 1:nTSS
     % table with correlation clustering ids
     corrClusterTable = table(...
                              nan_break(rowIds), ...
+                             maxmin_perc(rowIds), ...
                              dimCombsAccSorted(rowIds), ...
                              'RowNames', tableMftsNotationSorted(rowIds));
 
     % print table to tex
     lt = LatexTable(corrClusterTable);
-    lt.opts.tableColumnAlignment = num2cell('lrl');
-    lt.setHeaderRow({'', '$N_\nanout$', '$(\dm_i, \dm_j)$'});
-    lt.setColumnFormat({'%d', []});
+    lt.opts.tableColumnAlignment = num2cell('lrll');
+    lt.setHeaderRow({'', '$N_\nanout$', 'rel.(\%)', '$(\dm_i, \dm_j)$'});
+    lt.setColumnFormat({'%d', '%2.2f', []});
     [~, lt.opts.midLines] = unique(corrClusterId_nanpairSorted(rowIds));
     lt.opts.tableCaption = sprintf([...
       'TSS %s feature properties (%d/%d). ', ...
