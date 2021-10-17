@@ -417,7 +417,7 @@ end
 % prepare label coordinates
 labelCoor = ind2coor(find(~cellfun(@isempty, modelLabels)), size(modelLabels));
 
-% TSS cycle
+  % TSS cycle
 for tss = 1:nTSS
   if isfile(exp_smsp_corr_cluster{tss})
     S_cl = load(exp_smsp_corr_cluster{tss}, ...
@@ -426,55 +426,62 @@ for tss = 1:nTSS
     error('File %s is missing!', exp_smsp_corr_cluster{tss})
   end
 
-  ksRdeTabSet.ResultFile = fullfile(tableFolder, ['ksTable_rde_', tssList{tss}, '.tex']);
-  ksMseTabSet.ResultFile = fullfile(tableFolder, ['ksTable_mse_', tssList{tss}, '.tex']);
-  if tss == knnId
-    ksRdeTabSet.ColGroups = {'lmm'};
-    ksRdeTabSet.ColGroupNum = 1;
-  else
-    ksRdeTabSet.ColGroups = {'GP', 'RF', 'lmm', 'lq'};
-    ksRdeTabSet.ColGroupNum = [8, 9, 1, 1];
-  end
-  ksRdeTabSet.ColValName = 'settings';
-  ksRdeTabSet.HeadColWidth = '3.5cm';
-  % tssLabelIds = find 
-  currentLabels = modelLabels(tss, :, :);
-  [ksRdeTabSet.ColNames, colNamesId{tss}] = sort(cellfun(@(x) ['$', x, '$'], ...
-    currentLabels(~cellfun(@isempty, currentLabels)), 'Uni', false));
-  % sort features
-  tabMftsNot{tss} = S_cl.tableMftsNotation(S_cl.corrMedoidId_nanpair);
-  ftsInside = cellfun(@(x) extractBetween(x, '{', '}'), ...
-                      tabMftsNot{tss}, 'Uni', false);
-  [~, ftsOrdering{tss}] = sort(cellfun(@(x) strjoin(x(end:-1:1), ','), ...
-                                  ftsInside, 'Uni', false));
-  ksRdeTabSet.RowNames = cellfun(@(x) strrep(x, '\', '\\'), ...
-                                 tabMftsNot{tss}(ftsOrdering{tss}), 'Uni', false);
-  % TODO: group features according to classes
-  ksRdeTabSet.RowGroups = {tssList{tss}};
-  ksRdeTabSet.RowGroupNum = [14];
-  ksRdeTabSet.RowValName = 'TSS';
-  ksRdeTabSet.FirstCell = '$\model$';
- 
-  ksRdeTabSet.Caption = ['The p-values of the Kolmogorov-Smirnov test comparing the equality of ',...
-        'probability distributions of individual TSS ', tssList{tss}, ...
-        ' feature representatives on all data ', ...
-        'and on those data on which a particular model setting scored best. ', ...
-        'P-values denote KS test results ', ...
-        'rejecting the equality of both distributions with the Holm ', ...
-        'correction at the family-wise significance level $\alpha=0.05$, ', ...
-        'otherwise, p-values are not shown. ', ...
-        'Zeros indicate p-values below the smallest double precision number. ', ...
-        '$\featMM$ notation: \texttt{l} -- \texttt{lin}, \texttt{q} -- \texttt{quad}, \texttt{s} -- \texttt{simple}, ', ...
-        '\texttt{i} -- \texttt{interact}, \texttt{c} -- \texttt{coef}.'];
+  % error cycle
+  for err = {'mse', 'rde'}
+    ksTabSet.ResultFile = fullfile(tableFolder, ['ksTable_', err{1}, '_', tssList{tss}, '.tex']);
+    if tss == knnId
+      ksTabSet.ColGroups = {'lmm'};
+      ksTabSet.ColGroupNum = 1;
+    else
+      ksTabSet.ColGroups = {'GP', 'RF', 'lmm', 'lq'};
+      ksTabSet.ColGroupNum = [8, 9, 1, 1];
+    end
+    ksTabSet.ColValName = 'settings';
+    ksTabSet.HeadColWidth = '2.4cm';
 
-  % get actual table
-  actualTable = S_ks.ks_rde_p(:, labelCoor(:, 1) == tss);
-  % reorder table
-  reorderedTable{tss} = actualTable(ftsOrdering{tss}, colNamesId{tss});
-  % print ks table in the right ordering
-  prtSignifTable(reorderedTable{tss}, ksRdeTabSet)
-  % prepare for image
-  mNames{tss} = ksRdeTabSet.ColNames;
+    currentLabels = modelLabels(tss, :, :);
+    [ksTabSet.ColNames, colNamesId{tss}] = sort(cellfun(@(x) ['$', x, '$'], ...
+      currentLabels(~cellfun(@isempty, currentLabels)), 'Uni', false));
+    % sort features
+    tabMftsNot{tss} = S_cl.tableMftsNotation(S_cl.corrMedoidId_nanpair);
+    ftsInside = cellfun(@(x) extractBetween(x, '{', '}'), ...
+                        tabMftsNot{tss}, 'Uni', false);
+    [~, ftsOrdering{tss}] = sort(cellfun(@(x) strjoin(x(end:-1:1), ','), ...
+                                    ftsInside, 'Uni', false));
+    ksTabSet.RowNames = cellfun(@(x) strrep(x, '\', '\\'), ...
+                                   tabMftsNot{tss}(ftsOrdering{tss}), 'Uni', false);
+    % TODO: group features according to classes
+    ksTabSet.RowGroups = {tssList{tss}};
+    ksTabSet.RowGroupNum = [14];
+    ksTabSet.RowValName = 'TSS';
+    ksTabSet.FirstCell = '$\model$';
+
+    ksTabSet.Caption = ['The p-values of the Kolmogorov-Smirnov test comparing the equality of ',...
+          'probability distributions of individual TSS ', tssList{tss}, ...
+          ' feature representatives on all data ', ...
+          'and on those data on which a particular model setting scored best in ', upper(err{1}), ...
+          '. ', ...
+          'P-values denote KS test results ', ...
+          'rejecting the equality of both distributions with the Holm ', ...
+          'correction at the family-wise significance level $\alpha=0.05$, ', ...
+          'otherwise, p-values are not shown. ', ...
+          'Zeros indicate p-values below the smallest double precision number. '];%, ...
+          % '$\featMM$ notation: \texttt{l} -- \texttt{lin}, \texttt{q} -- \texttt{quad}, \texttt{s} -- \texttt{simple}, ', ...
+          % '\texttt{i} -- \texttt{interact}, \texttt{c} -- \texttt{coef}.'];
+
+    % get actual table
+    if strcmp(err{1}, 'rde')
+      actualTable = S_ks.ks_rde_p(:, labelCoor(:, 1) == tss);
+    else
+      actualTable = S_ks.ks_mse_p(:, labelCoor(:, 1) == tss);
+    end
+    % reorder table
+    reorderedTable{tss}.(err{1}) = actualTable(ftsOrdering{tss}, colNamesId{tss});
+    % print ks table in the right ordering
+    prtSignifTable(reorderedTable{tss}.(err{1}), ksTabSet)
+    % prepare for image
+    mNames{tss} = ksTabSet.ColNames;
+  end
 end
 
 %% 
@@ -482,11 +489,11 @@ end
 close all
 
 % image settings
-sizeY = 17;
-sizeX = 34;
+sizeY = 16;
+sizeX = 16;
+sizeYknn = 8;
+sizeXknn = 6.7;
 labelRot = 60;
-
-plotNames = {fullfile(plotResultsFolder, 'ks_fig.pdf')};
 
 % image model labels
 imgModelLabels = {'   GP', '   RF', '  lmm', '    lq'};
@@ -527,7 +534,7 @@ end
 % create labels identical to the rest of the paper
 imgFeatNamesParts = extractBetween(imgFeatNames, '{', '}');
 for i = 1:numel(imgFeatNames)
-  imgFeatNames{i} = ['$\varphi_', imgFeatNamesParts{i, 1}, '}'];
+  imgFeatNames{i} = ['$\varphi_\texttt{', imgFeatNamesParts{i, 1}, '}'];
   switch imgFeatNamesParts{i, 2}
     case '\archive'
       imgFeatNames{i} = [imgFeatNames{i}, '(\mathcal{A}'];
@@ -539,7 +546,7 @@ for i = 1:numel(imgFeatNames)
       imgFeatNames{i} = [imgFeatNames{i}, '(\mathcal{T}_\mathcal{P}'];
   end
   if strcmp(imgFeatNamesParts{i, 3}, '\transcma')
-    imgFeatNames{i} = [imgFeatNames{i}, '^{{}^\textrm{CMA}}'];
+    imgFeatNames{i} = [imgFeatNames{i}, '^{{}_\top}'];
   end
   if ~isempty(imgFeatNamesParts{i, 2})
     imgFeatNames{i} = [imgFeatNames{i}, ')'];
@@ -549,47 +556,78 @@ end
 % create same lengths
 % imgFeatNames = cellfun(@(x) sprintf('%30s', x), imgFeatNames, 'UniformOutput', false);
 
-% draw coeffs without colorbar
-han{1} = figure('Units', 'centimeters', ...
-                'Position', [1 1 sizeX sizeY], ...
-                'PaperSize', [sizeX + 2, sizeY + 2]);
+for err = {'mse', 'rde'}
+  for tss = 1:nTSS
+    % draw coeffs without colorbar
+    if tss == knnId
+      han{1} = figure('Units', 'centimeters', ...
+                      'Position', [1 1 sizeXknn sizeYknn], ...
+                      'PaperSize', [sizeXknn + 2, sizeYknn + 2]);
+    else
+      han{1} = figure('Units', 'centimeters', ...
+                      'Position', [1 1 sizeX sizeY], ...
+                      'PaperSize', [sizeX + 2, sizeY + 2]);
+    end
 
-% adjust data
-plotData = [reorderedTable{1}; reorderedTable{2}; [NaN(14, 17), reorderedTable{3}, NaN(14, 1)]]';
+    % adjust data
+    if tss == knnId
+      plotData = reorderedTable{tss}.(err{1});
+    else
+      plotData = reorderedTable{tss}.(err{1})';
+    end
 
+    % non-significant data
+    inSignifId = plotData > 0.05;
+    % data closest to significance level
+    secondSignifVal = 1e-6;
+    closeData = plotData > secondSignifVal & plotData <= 0.05;
+    % change values to preserve one color for insignificant data
+    plotData(closeData) = secondSignifVal;
 
-% non-significant data
-inSignifId = plotData > 0.05;
-% data closest to significance level
-secondSignifVal = 9e-6;
-closeData = plotData > secondSignifVal & plotData <= 0.05;
-% change values to preserve one color for insignificant data
-plotData(closeData) = secondSignifVal;
+    % draw image
+    hold on
+    imagesc(log10(plotData), 'AlphaData',~isnan(plotData))
+    colorbar('Ticks', [-300, -250, -200, -150, -100, -50, -5],...
+             'TickLabels', {'10^{-300}', '10^{-250}', '10^{-200}', ...
+                            '10^{-150}', '10^{-100}', '10^{-50}', '0.05'})
 
-% draw image
-hold on
-imagesc(log10(plotData), 'AlphaData',~isnan(plotData))
-colorbar('Ticks', [-300, -250, -200, -150, -100, -50, -5],...
-         'TickLabels', {'10^{-300}', '10^{-250}', '10^{-200}', ...
-                        '10^{-150}', '10^{-100}', '10^{-50}', '0.05'})
+    % axis square
+    ax = gca;
+    ax.XTick = 1:size(plotData, 2);
+    if tss == knnId
+      ax.XTickLabel = '';
+    else
+      ax.XTickLabel = imgFeatNames((tss-1)*14 + (1:14));
+    end
+    ax.YTick = 1:size(plotData, 1);
+    if tss == knnId
+      ax.YTickLabel = imgFeatNames((tss-1)*14 + (1:14));
+    else
+      ax.YTickLabel = modelSetNames;
+    end
+    ax.XTickLabelRotation = labelRot;
+    ax.TickLabelInterpreter = 'latex';
+    if tss == knnId
+      xlabel(upper(err{1}), 'Interpreter', 'latex')
+      ylabel('TSS knn', 'Interpreter', 'latex')
+    else
+      ylabel(upper(err{1}), 'Interpreter', 'latex')
+    end
+    grid off
+    % set(ax, 'visible', 'off')
+    % set(findall(ax, 'type', 'text'), 'visible', 'on')
 
-% axis square
-ax = gca;
-ax.XTick = 1:size(plotData, 2);
-ax.XTickLabel = imgFeatNames;
-ax.YTick = 1:size(plotData, 1);
-ax.YTickLabel = modelSetNames;
-ax.XTickLabelRotation = labelRot;
-ax.TickLabelInterpreter = 'latex';
-grid off
-% set(ax, 'visible', 'off')
-% set(findall(ax, 'type', 'text'), 'visible', 'on')
+    % change insignificant data to red
+    han{1}.Colormap(end, :) = [1 0 0];
 
-% change insignificant data to red
-han{1}.Colormap(end, :) = [1 0 0];
+    hold off
 
-hold off
-print2pdf(han, plotNames, 1)
+    % print figure to pdf
+    plotNames = {fullfile(plotResultsFolder, ...
+                   sprintf('ks_%s_%s.pdf', tssList{tss}, err{1}))};
+    print2pdf(han, plotNames, 1)
+  end
+end
 
 %% Distribution plots
 

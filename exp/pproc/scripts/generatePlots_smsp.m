@@ -1125,11 +1125,17 @@ tableBase = cellfun(@(perc) ...
 relTable = table();
 for tss = 1:nTSS
   if tss == 1
-    relTable.(tssList{tss}) = arrayfun(@(x) sprintf('\\textbf{%d}', x), ...
+    relTable.(tssList{tss}) = arrayfun(@(x) ...
+                                sprintf('\\textbf{%3d}/%3d', ...
+                                  x, numel(maxmin_perc{tss})), ...
                                 tableBase{tss}, 'Uni', false);
   else
-    relTable.(tssList{tss}) = arrayfun(@(x, y) sprintf('%d (\\textbf{%d})', x, y), ...
-                                tableBase{tss}, tableBase{tss} + tableBase{fullId}, ...
+    relTable.(tssList{tss}) = arrayfun(@(x, y) ...
+                                sprintf('%3d/%3d (\\textbf{%3d}/%3d)', ...
+                                  x, numel(maxmin_perc{tss}), ...
+                                  y, numel(maxmin_perc{tss}) + numel(maxmin_perc{fullId})), ...
+                                tableBase{tss}, ...
+                                tableBase{tss} + tableBase{fullId}, ...
                                 'Uni', false);
   end
 end
@@ -1716,24 +1722,24 @@ for tss = 1:nTSS
         {'cmaes', 'dispersion', 'ela', 'infocontent', 'nearest'}))
        switch mftsSplit{m}{1}
          case 'cmaes'
-           classColumn{m} = '\featCMA';
+           classColumn{m} = '\text{\ftCMA}';
          case 'dispersion'
-           classColumn{m} = '\featDisp';
+           classColumn{m} = '\text{\ftDisp}';
          case 'ela'
            switch mftsSplit{m}{2}
              case 'distribution'
-               classColumn{m} = '\featyDis';
+               classColumn{m} = '\text{\ftyDis}';
              case 'levelset'
-               classColumn{m} = '\featLevel';
+               classColumn{m} = '\text{\ftLevel}';
              case 'metamodel'
-               classColumn{m} = '\featMM';
+               classColumn{m} = '\text{\ftMM}';
            end
            % remove ela set notation
            mftsSplit{m}(1) = [];
          case 'infocontent'
-           classColumn{m} = '\featInfo';
+           classColumn{m} = '\text{\ftInfo}';
          case 'nearest'
-           classColumn{m} = '\featNBC';
+           classColumn{m} = '\text{\ftNBC}';
            % remove 'nearest' part of set notation
            mftsSplit{m}(1) = [];
        end
@@ -1744,7 +1750,7 @@ for tss = 1:nTSS
     mftsSplit{m} = strjoin(mftsSplit{m}, '\\_');
   end
   tableMftsNotation = cellfun(...
-    @(x, y, z, w) sprintf('$\\tableFeat{\\texttt{%s}}{%s}{%s}{%s}$', x, y, z, w), ...
+    @(x, y, z, w) sprintf('$\\tableFeat{%s}{%s}{%s}{%s}$', x, y, z, w), ...
     mftsSplit, setColumn, transColumn, classColumn, 'Uni', false);
 
   % sort table variables
