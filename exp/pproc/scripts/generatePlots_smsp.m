@@ -63,6 +63,7 @@ exp_smsp_corr_cluster   = cellfun(@(x) fullfile(x, 'exp_smsp_corr_cluster.mat'),
 exp_smsp_nan_anal       = cellfun(@(x) fullfile(x, 'exp_smsp_nan_anal.mat'),       exp_output, 'Uni', false);
 exp_smsp_quant_anal     = cellfun(@(x) fullfile(x, 'exp_smsp_quant_anal.mat'),     exp_output, 'Uni', false);
 
+exp_smsp_feat_table     = cellfun(@(x) fullfile(tableFolder, ['feat_', x]), tssList, 'Uni', false);
 exp_smsp_corr_dim_table = cellfun(@(x) fullfile(tableFolder, ['corr_dim_', x]), tssList, 'Uni', false);
 
 % file lists
@@ -906,6 +907,8 @@ for tss = 1:nTSS
   stats_meds = cell(nMfts, 1);
   multcomp_meds = cell(nMfts, 1);
   friedman_meds_p_bh = NaN(nMfts, nchoosek(numel(dims), 2));
+  wilcoxon_meds_p    = NaN(nMfts, nchoosek(numel(dims), 2));
+  wilcoxon_meds_p_bh = NaN(nMfts, nchoosek(numel(dims), 2));
   for m = 1:nMfts
     act_meds = medians(m, :);
   %   j = 0;
@@ -1577,7 +1580,8 @@ for tss = 1:nTSS
   % load TSS full simple stats
   if isfile(exp_meta_stats{fullId})
     S_stats_full = load(exp_meta_stats{fullId}, ...
-                        'mftsLowNaN', 'mftsLowErr', 'maxmin_perc_rel');
+                        'mftsLowNaN', 'mftsLowErr', 'maxmin_perc_rel', ...
+                        'maxmin_perc', 'mfts_names_red');
     useFullId = S_stats_full.mftsLowNaN & S_stats_full.mftsLowErr;
   else
     error('File %s is missing!', exp_meta_stats{fullId})
@@ -1586,16 +1590,21 @@ for tss = 1:nTSS
   if tss ~= fullId
     if isfile(exp_meta_stats{tss})
       S_stats_tss = load(exp_meta_stats{tss}, ...
-                        'mftsLowNaN', 'mftsLowErr', 'maxmin_perc_rel');
+                        'mftsLowNaN', 'mftsLowErr', 'maxmin_perc_rel', ...
+                        'maxmin_perc', 'mfts_names_red');
       useTSSId = S_stats_tss.mftsLowNaN & S_stats_tss.mftsLowErr;
       % cat TSS full and actual TSS results
-      maxmin_perc = [S_stats_full.maxmin_perc_rel(:); S_stats_tss.maxmin_perc_rel(:)];
+      maxmin_perc = [S_stats_full.maxmin_perc(:); S_stats_tss.maxmin_perc(:)];
+      maxmin_perc_rel = [S_stats_full.maxmin_perc_rel(:); S_stats_tss.maxmin_perc_rel(:)];
+      mfts_names_red = [S_stats_full.mfts_names_red; S_stats_tss.mfts_names_red];
     else
       error('File %s is missing!', exp_meta_stats{tss})
     end
   else
-    maxmin_perc = S_stats_full.maxmin_perc_rel(:);
-    useTSSId = [];
+    maxmin_perc = S_stats_full.maxmin_perc(:);
+    maxmin_perc_rel = S_stats_full.maxmin_perc_rel(:);
+    mfts_names_red = S_stats_full.mfts_names_red;
+    useTSSId = logical([]);
   end
 
   % load TSS full NaN analysis
@@ -1609,13 +1618,16 @@ for tss = 1:nTSS
     if isfile(exp_smsp_nan_anal{tss})
       S_nan_tss = load(exp_smsp_nan_anal{tss});
       % cat TSS full and actual TSS results
-      nan_break = [S_nan_full.nan_break(useFullId); ...
-                   S_nan_tss.nan_break(useTSSId)];
+      nan_break = [S_nan_full.nan_break; ...
+                   S_nan_tss.nan_break];
+      nan_break_rel = [S_nan_full.nan_break(useFullId); ...
+                       S_nan_tss.nan_break(useTSSId)];
     else
       error('File %s is missing!', exp_smsp_nan_anal{tss})
     end
   else
-    nan_break = S_nan_full.nan_break(useFullId);
+    nan_break = S_nan_full.nan_break;
+    nan_break_rel = S_nan_full.nan_break(useFullId);
   end
   
   % TODO: dimension test was probably performed without TSS full and actual
@@ -1643,7 +1655,8 @@ for tss = 1:nTSS
   % prepare necessary variables and concatenate actual TSS and TSS full
   % dimensional testing results
   dims = S_dim_full.dims;
-  nMfts = numel(S_corr.mfts_names_red);
+  nMfts = numel(mfts_names_red);
+  nMfts_rel = numel(S_corr.mfts_names_red);
   
   % dimension test results
   dimCombs = nchoosek(dims, 2);
@@ -1660,8 +1673,8 @@ for tss = 1:nTSS
         ), ...
       ',' ...
     ), ...
-    find(useFullId), ...
-    'UniformOutput', false);
+    1:numel(S_dim_full.wilcoxon_uniq_combs_id), ...
+    'UniformOutput', false)';
   % add actual TSS combinations
   dimCombsAccepted = [dimCombsAccepted; ...
     arrayfun(@(x) ...
@@ -1673,21 +1686,16 @@ for tss = 1:nTSS
           ), ...
         ',' ...
       ), ...
-      find(useTSSId), ...
-      'UniformOutput', false) ...
+      1:numel(S_dim_tss.wilcoxon_uniq_combs_id), ...
+      'UniformOutput', false)' ...
     ];
 
-  % sort metafeatures to clusters
-  [~, sortClId] = sort(S_corr.corrClusterId_nanpair);
-
-  % is medoid id
-  isMed = ismember((1:nMfts)', S_corr.corrMedoidId_nanpair);
-
   % table mfts notation
-  mftsSplit = cellfun(@(x) strsplit(x, '_'), S_corr.mfts_names_red, 'Uni', false);
+  mftsSplit = cellfun(@(x) strsplit(x, '_'), mfts_names_red, 'Uni', false);
   setColumn   = cell(nMfts, 1);
   transColumn = cell(nMfts, 1);
   classColumn = cell(nMfts, 1);
+  classStarts = [];
   for m = 1:nMfts
     % set notation
     if any(strcmp(mftsSplit{m}{1}, ...
@@ -1748,67 +1756,98 @@ for tss = 1:nTSS
     end
     % unite the rest
     mftsSplit{m} = strjoin(mftsSplit{m}, '\\_');
+    % mark different classes
+    if m > 1 && ~isequal(classColumn{m}, classColumn{m-1})
+      classStarts(end+1) = m;
+    end
   end
   tableMftsNotation = cellfun(...
     @(x, y, z, w) sprintf('$\\tableFeat{%s}{%s}{%s}{%s}$', x, y, z, w), ...
     mftsSplit, setColumn, transColumn, classColumn, 'Uni', false);
 
-  % sort table variables
-  nan_break = nan_break(sortClId);
-  maxmin_perc = 100*maxmin_perc(sortClId);
-  dimCombsAccSorted = dimCombsAccepted(sortClId);
-  tableMftsNotationSorted = tableMftsNotation(sortClId);
-  corrClusterId_nanpairSorted = S_corr.corrClusterId_nanpair(sortClId);
-  isMedSorted = isMed(sortClId);
-  % page cycle
+  % all feature properties page cycle
   pages = ceil(nMfts/maxFtsPerPage);
+  useInTSS = [useFullId; useTSSId];
   for p = 1:pages
     rowIds = (p-1)*maxFtsPerPage+1 : min(p*maxFtsPerPage, nMfts);
     % table with correlation clustering ids
-    corrClusterTable = table(...
+    featurePropTable = table(...
                              nan_break(rowIds), ...
-                             maxmin_perc(rowIds), ...
-                             dimCombsAccSorted(rowIds), ...
-                             'RowNames', tableMftsNotationSorted(rowIds));
+                             100*maxmin_perc(rowIds), ...
+                             dimCombsAccepted(rowIds), ...
+                             'RowNames', tableMftsNotation(rowIds));
 
     % print table to tex
-    lt = LatexTable(corrClusterTable);
-    lt.opts.tableColumnAlignment = num2cell('lrll');
+    lt = LatexTable(featurePropTable);
+    lt.opts.tableColumnAlignment = num2cell('lrrl');
     lt.setHeaderRow({'', '$N_\nanout$', 'rel.(\%)', '$(\dm_i, \dm_j)$'});
     lt.setColumnFormat({'%d', '%2.2f', []});
-    [~, lt.opts.midLines] = unique(corrClusterId_nanpairSorted(rowIds));
+    lt.opts.midLines = [1, ... % first line
+                        classStarts(classStarts < max(rowIds) & ...
+                                    classStarts > min(rowIds)) ...
+                          - min(rowIds) + 1];
     lt.opts.tableCaption = sprintf([...
       'TSS %s feature properties (%d/%d). ', ...
-      'Features are grouped to %d clusters according to k-medoid clustering ', ...
-      'using Schweizer-Wolf correlation distance. ', ...
-      'Medoid representatives are marked as gray lines in clusters divided by horizontal lines. ', ...
-      'If no gray line is present, the cluster is divided between two tables. ', ...
+      'Features are grouped according to their feature classes (divided by horizontal lines). ', ...
+      'Features, where less than 0.25 of values were $\\nanout$ and reliability was greater than 0.9, are marked as gray lines. ', ...
       '$N_\\nanout$ denotes the lowest measured number of points from which 0.01 of feature calculations resulted in $\\nanout$ at maximum. ', ...
       'The $(\\dm_i, \\dm_j)$ column shows the pairs of feature dimensions not rejecting the independence of median feature values, ', ...
       '\\ie where the two-sided Wilcoxon signed rank test on median values with the Bonferroni-Holm correction ', ...
       'at the family-wise level 0.05 was not rejected.'...
-      ], tssList{tss}, p, pages, S_corr.k);
-    lt.opts.tableLabel = 'featProp';
+      ], tssList{tss}, p, pages);
+    lt.opts.tableLabel = sprintf('featProp_%s_%d', tssList{tss}, p);
     lt.opts.booktabs = 1;
     % add gray background to medoid features
-    lt.colorizeRowsInGray(isMedSorted(rowIds));
-    lt.toFile(sprintf('%s_%d.tex', exp_smsp_corr_dim_table{tss}, p));
+    lt.colorizeRowsInGray(useInTSS(rowIds));
+    lt.toFile(sprintf('%s_%d.tex', exp_smsp_feat_table{tss}, p));
   end
   
+  % reduce features to clustered features
+  tableMftsNotation_red = tableMftsNotation([useFullId; useTSSId]);
+  
+  % sort metafeatures to clusters
+%   [~, ia, ic] = unique(S_corr.corrClusterId_nanpair);
+  [~, sortClId] = sort(S_corr.corrClusterId_nanpair);
+
+  % is medoid id
+  isMed = ismember((1:nMfts_rel)', S_corr.corrMedoidId_nanpair);
+
+  % sort table variables
+  nan_break_rel = nan_break_rel(sortClId);
+  maxmin_perc_rel = 100*maxmin_perc_rel(sortClId);
+  tableMftsNotationSorted = tableMftsNotation_red(sortClId);
+  corrClusterId_nanpairSorted = S_corr.corrClusterId_nanpair(sortClId);
+  isMedSorted = isMed(sortClId);
+
+  % page cycle
+  maxFtsPerColumn = ceil(nMfts_rel/2);
+  columns = ceil(nMfts_rel/maxFtsPerColumn);
+  for c = 1:columns
+    rowIds = (c-1)*maxFtsPerColumn+1 : min(c*maxFtsPerColumn, nMfts_rel);
+    % table with correlation clustering ids
+    corrClusterTable = table(...
+                             nan_break(rowIds), ...
+                             maxmin_perc_rel(rowIds), ...
+                             'RowNames', tableMftsNotationSorted(rowIds));
+
+    % print table to tex
+    lt = LatexTable(corrClusterTable);
+    lt.opts.tableColumnAlignment = num2cell('lrr');
+    lt.setHeaderRow({'', '$N_\nanout$', 'rel.(\%)'});
+    lt.setColumnFormat({'%d', '%2.2f'});
+    [~, lt.opts.midLines] = unique(corrClusterId_nanpairSorted(rowIds));
+    lt.opts.booktabs = 1;
+    lt.opts.latexHeader = false;
+    % add gray background to medoid features
+    lt.colorizeRowsInGray(isMedSorted(rowIds));
+    lt.toFile(sprintf('%s_%d.tex', exp_smsp_corr_dim_table{tss}, c));
+  end
+
   % save mfts notation
   save(exp_smsp_corr_cluster{tss}, 'tableMftsNotation', '-append')
-
-  % show tables with cluster differences
-  % diffIds = false(size(corrClusterId_all));
-  % for c = 1:k
-  %   if (range(corrClusterId_all(corrClusterId_pair==c)) > 0)
-  %     diffIds = diffIds | corrClusterId_pair==c;
-  %     corrClusterTable(corrClusterId_pair==c, :)
-  %   end
-  % end
 end
 
-clear('c', 'm', 'nMfts', 'S_corr', 'S_dim_full', 'S_dim_tss')
+clear('c', 'm', 'nMfts', 'S_dim_full', 'S_dim_tss')
 
 %% Feature means and variances
 % The following graphs show dependencies of feature means and variances on

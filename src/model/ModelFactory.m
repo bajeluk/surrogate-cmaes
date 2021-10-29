@@ -42,7 +42,7 @@ classdef ModelFactory
           obj = RegModel(modelOptions, xMean);
         case 'lmm'
           obj = LmmModel(modelOptions, xMean);
-        case 'hansen'
+        case {'lq', 'hansen'}
           obj = HansenModel(modelOptions, xMean);
         case 'modelpool'
           % use the supplied 'oldModel' if exists

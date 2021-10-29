@@ -281,8 +281,12 @@ existSetId = find(~cellfun(@isempty, modelLabels));
 settingsLabels = modelLabels(existSetId);
 nSettings = numel(existSetId);
 settingCombs = cell(nchoosek(nSettings, 2), 2);
-wilcoxon_rde_p = NaN(1, nchoosek(nSettings, 2));
-wilcoxon_mse_p = NaN(1, nchoosek(nSettings, 2));
+wilcoxon_rde_p = NaN(nSettings);
+wilcoxon_mse_p = NaN(nSettings);
+wilcoxon_rde_p_bh = NaN(nSettings);
+wilcoxon_mse_p_bh = NaN(nSettings);
+duel_rde = NaN(nSettings);
+duel_mse = NaN(nSettings);
 
 fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
          'Performing Friedman test on errors\n'], ...
@@ -318,40 +322,120 @@ if size(rde_data, 1) > 1 && size(rde_data, 2) > 1
       for ms2 = ms+1:nSettings
         % increase counter
         j = j+1;
+        % prepare pair data
         rde_pair = [rde{existSetId(ms)}(:), rde{existSetId(ms2)}(:)];
         mse_pair = [mse{existSetId(ms)}(:), mse{existSetId(ms2)}(:)];
+        pairRowIds_rde = all(~isnan(rde_pair), 2);
+        pairRowIds_mse = all(~isnan(mse_pair), 2);
+        rde_1 = rde_pair(pairRowIds_rde, 1);
+        rde_2 = rde_pair(pairRowIds_rde, 2);
+        mse_1 = mse_pair(pairRowIds_mse, 1);
+        mse_2 = mse_pair(pairRowIds_mse, 2);
         % Wilcoxon test on all non-nan error values of a pair of settings
-        wilcoxon_rde_p(1, j) = signrank(rde_pair(all(~isnan(rde_pair), 2), 1), ...
-                                        rde_pair(all(~isnan(rde_pair), 2), 2));
-        wilcoxon_mse_p(1, j) = signrank(mse_pair(all(~isnan(mse_pair), 2), 1), ...
-                                        mse_pair(all(~isnan(mse_pair), 2), 2));
+        wilcoxon_rde_p(ms, ms2) = signrank(rde_1, rde_2);
+        wilcoxon_mse_p(ms, ms2) = signrank(mse_1, mse_2);
+        % number of wins in lower errors
+        duel_rde(ms, ms2) = sum(rde_1 < rde_2);
+        duel_rde(ms2, ms) = sum(rde_1 > rde_2);
+        duel_mse(ms, ms2) = sum(mse_1 < mse_2);
+        duel_mse(ms2, ms) = sum(mse_1 > mse_2);
         % save settings combinations
         settingCombs(j, :) = {modelLabels{existSetId(ms)}, modelLabels{existSetId(ms2)}};
       end
     end
     % p-values using Bonferroni-Holm correction on the alpha level
-    wilcoxon_rde_p_bh = bonfHolm(wilcoxon_rde_p, alpha);
-    wilcoxon_mse_p_bh = bonfHolm(wilcoxon_rde_p, alpha);
+    [wilcoxon_rde_p_bh(~isnan(wilcoxon_rde_p)), wilcoxon_rde_bh_h] = ...
+      bonfHolm(wilcoxon_rde_p(~isnan(wilcoxon_rde_p)), alpha);
+    [wilcoxon_mse_p_bh(~isnan(wilcoxon_mse_p)), wilcoxon_mse_bh_h] = ...
+      bonfHolm(wilcoxon_mse_p(~isnan(wilcoxon_mse_p)), alpha);
   end
 end
 
-acceptedPairs_rde = settingCombs(S.wilcoxon_rde_p_bh > alpha, :);
-acceptedPairs_mse = settingCombs(S.wilcoxon_mse_p_bh > alpha, :);
+% not significant pair results
+acceptedPairs_rde = settingCombs(~wilcoxon_rde_bh_h, :);
+acceptedPairs_mse = settingCombs(~wilcoxon_mse_bh_h, :);
+% make matrices with p-values symmetrical
+wilcoxon_rde_p = triu(wilcoxon_rde_p) + triu(wilcoxon_rde_p)';
+wilcoxon_mse_p = triu(wilcoxon_mse_p) + triu(wilcoxon_mse_p)';
+wilcoxon_rde_p_bh = triu(wilcoxon_rde_p_bh) + triu(wilcoxon_rde_p_bh)';
+wilcoxon_mse_p_bh = triu(wilcoxon_mse_p_bh) + triu(wilcoxon_mse_p_bh)';
+% calculate percentages of duels
+duel_rde_perc = duel_rde./(duel_rde + duel_rde');
+duel_mse_perc = duel_mse./(duel_mse + duel_mse');
   
 % save testing results
 save(exp_journal_friedman, ...
     'alpha', 'settingsLabels', 'settingCombs', ...
-    'friedman_rde_p', 'friedman_stats_rde', 'wilcoxon_rde_p', 'wilcoxon_rde_p_bh', ...
-    'friedman_mse_p', 'friedman_stats_mse', 'wilcoxon_mse_p', 'wilcoxon_mse_p_bh', ...
-    'acceptedPairs_rde', 'acceptedPairs_mse')
+    'friedman_rde_p', 'friedman_stats_rde', ...
+    'friedman_mse_p', 'friedman_stats_mse', ...
+    'wilcoxon_rde_p', 'wilcoxon_rde_p_bh', 'wilcoxon_rde_bh_h', ...
+    'wilcoxon_mse_p', 'wilcoxon_mse_p_bh', 'wilcoxon_mse_bh_h', ...
+    'acceptedPairs_rde', 'acceptedPairs_mse', ...
+    'duel_rde', 'duel_mse', 'duel_rde_perc', 'duel_mse_perc')
 
 % clear variables saved in exp_journal_friedman
 clear('alpha', 'j', 'ms', 'mse_data', 'rde_data', ...
-    'friedman_rde_p', 'friedman_stats_rde', 'wilcoxon_rde_p', 'wilcoxon_rde_p_bh', ...
-    'friedman_mse_p', 'friedman_stats_mse', 'wilcoxon_mse_p', 'wilcoxon_mse_p_bh', ...
-    'rde_pair', 'mse_pair', ...
-    'acceptedPairs_rde', 'acceptedPairs_mse')
-  
+    'friedman_rde_p', 'friedman_stats_rde', ...
+    'friedman_mse_p', 'friedman_stats_mse', ...
+    'wilcoxon_rde_p', 'wilcoxon_rde_p_bh', 'wilcoxon_rde_bh_h', ...
+    'wilcoxon_mse_p', 'wilcoxon_mse_p_bh', 'wilcoxon_mse_bh_h', ...
+    'rde_pair', 'mse_pair', 'pairRowIds_rde', 'pairRowIds_mse', ...
+    'rde_1', 'rde_2', 'mse_1', 'mse_2', ...
+    'acceptedPairs_rde', 'acceptedPairs_mse', ...
+    'duel_rde', 'duel_mse', 'duel_rde_perc', 'duel_mse_perc')
+
+%% Table of pairwise differences in model error's
+
+% load WCX test results
+if isfile(exp_journal_friedman)
+  S_wcx = load(exp_journal_friedman);
+else
+  error('File %s is missing!', exp_journal_friedman)
+end
+
+% ordering according to TSS
+labelTSSOrder = [1:2:6, 8:2:39, ...
+                 2:2:6, 9:2:39, ...
+                 7];
+tableModelLabelsBase = S_wcx.settingsLabels(labelTSSOrder);
+
+tableModelLabels = {};
+tableModelLabelsId = [];
+for tss = 1:nTSS
+  labCoor = ((tss-1)*19+1) : min(tss*19, numel(labelTSSOrder));
+  currentLabels = tableModelLabelsBase(labCoor);
+  [  tableModelLabels(labCoor), tableModelLabelsId(labCoor)] = ...
+     sort(cellfun(@(x) ['$', x, '$'], currentLabels, 'Uni', false));
+   tableModelLabelsId(labCoor) = tableModelLabelsId(labCoor) + 19*(tss-1);
+end
+% prepare for sprintf
+tableModelLabels = cellfun(@(x) strrep(x, '\', '\\'), ...
+                     tableModelLabels, 'Uni', false);
+
+% error cycle
+for err = {'mse', 'rde'}
+  tableData = round(100*S_wcx.(['duel_', err{1}, '_perc']));
+  % add decimals to 50% values
+  tableData(tableData == 50) = 100*S_wcx.(['duel_', err{1}, '_perc'])(tableData == 50);
+  % order table data
+  tableData = tableData(labelTSSOrder(tableModelLabelsId), labelTSSOrder(tableModelLabelsId));
+  pvals = S_wcx.(['wilcoxon_', err{1}, '_p_bh'])(labelTSSOrder(tableModelLabelsId), labelTSSOrder(tableModelLabelsId));
+
+  % print duel table
+  wcxDuelTable(tableData, pvals, ...
+                  'DataCaption', upper(err{1}), ...
+                  'DataDims', 2, ...
+                  'DataNames', {'GP', 'RF', 'lq', 'lmm', 'GP', 'RF', 'lq', 'lmm', 'lmm'}, ...
+                  'DefFile', fullfile(tableFolder, 'defFile.tex'), ...
+                  'Evaluations', tableModelLabels, ...
+                  'HeadColW', '0.8cm', ...
+                  'Mode', 'model', ...
+                  'ResultFile', fullfile(tableFolder, ['duelTable_', err{1}, '.tex']), ...
+                  'TssList', tssList, ...
+                  'TssNums', [19, 19, 1], ...
+                  'Vertical', true);
+end
+
 %% Kolmogorov-Smirnov test
 % Kolmogorov-Smirnov test testing equality of distribution of an individual
 % feature values calculated on the datasets where the model error is the
