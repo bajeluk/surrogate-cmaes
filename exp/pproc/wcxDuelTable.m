@@ -533,8 +533,11 @@ function printModelTableTex(FID, table, pVals, settings)
         if mod(dt(i, j), 1) == 0
           % whole number
           fprintf(FID, '%d', dt(i, j));
+        elseif abs(dt(i, j) - 50) <= 0.05
+          % rational number with 2 digits precision
+          fprintf(FID, '%0.2f', dt(i, j));
         else
-          % rational number
+          % rational number with 1 digit precision
           fprintf(FID, '%0.1f', dt(i, j));
         end
         % finish significance
