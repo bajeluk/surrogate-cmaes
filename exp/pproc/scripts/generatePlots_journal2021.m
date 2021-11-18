@@ -56,6 +56,7 @@ knnId  = find(strcmp(tssList, 'knn'));
 
 % results of feature testing
 exp_output = cellfun(@(x) fullfile(experimentFolder, x), tssList, 'Uni', false);
+exp_meta_quantile       = cellfun(@(x) fullfile(x, 'exp_DTSmeta_03_quantile.mat'), exp_output, 'Uni', false);
 exp_smsp_corr_cluster   = cellfun(@(x) fullfile(x, 'exp_smsp_corr_cluster.mat'),   exp_output, 'Uni', false);
 
 % results of statistical testing
@@ -85,6 +86,13 @@ mftsFileList_knn = searchFile(exp_mfts_knn_folder, '*.mat*');
 
 % init
 mfts = cell(nTSS, 1);
+mftsNotation = cell(nTSS, 1);
+tableMftsNotation = cell(nTSS, 1);
+ftsOrdering = cell(nTSS, 1);
+ftQuantiles = cell(nTSS, 1);
+
+norm_sigm = @(x, q1, q2, q_val) ...
+              1./(1+exp(log((1-q_val)/q_val)* (2*x - q1-q2) / (q1-q2)));
 
 % TSS loop
 for tss = 1:nTSS
@@ -98,8 +106,19 @@ for tss = 1:nTSS
   % extract ids for metafeatures in sorted order
   mftsIds = sort(S_sample.mftsMedoidIds);
   % extract table names in sorted order
-  tableMftsNotation{tss} = ...
+  mftsNotation{tss} = ...
     S_sample.mfts_names_red(sort(S_sample.corrMedoidId_nanpair));
+  % sort features
+  tableMftsNotation{tss} = S_sample.tableMftsNotation_red(sort(S_sample.corrMedoidId_nanpair));
+  ftsInside = cellfun(@(x) extractBetween(x, '{', '}'), ...
+                      tableMftsNotation{tss}, 'Uni', false);
+  [~, ftsOrdering{tss}] = sort(cellfun(@(x) strjoin(x(end:-1:1), ','), ...
+                                  ftsInside, 'Uni', false));
+  % reorder features
+  mftsNotation{tss} = mftsNotation{tss}(ftsOrdering{tss});
+  tableMftsNotation{tss} = tableMftsNotation{tss}(ftsOrdering{tss});
+  mftsIds = mftsIds(ftsOrdering{tss});
+
   % number of features
   nMfts = numel(mftsIds);
   % extract last archive feature id
@@ -133,6 +152,39 @@ for tss = 1:nTSS
     % cat file results to the rest
     mfts{tss}(dId, fId, instId, idId, 1:nGen, 1:nMfts) = ...
       reshape(vals(mftsIds, :)', [1, 1, 1, 1, nGen, nMfts]);
+  end
+
+  % get quantiles for normalization
+  if isfile(exp_meta_quantile{fullId})
+    S_q_full = load(exp_meta_quantile{fullId});
+    quantileBase = S_q_full.quantile_vals(1);
+  else
+    error('There is %s missing.', exp_meta_quantile{fullId})
+  end
+  if (tss == nearId || tss == knnId)
+    if isfile(exp_meta_quantile{tss})
+      S_q_tss = load(exp_meta_quantile{tss});
+    else
+      error('There is %s missing.', exp_meta_quantile{tss})
+    end
+  else
+    S_q_tss.mfts_names_red = {};
+    S_q_tss.quantiles = [];
+  end
+
+  ftIds_full = ismember(S_q_full.mfts_names_red, mftsNotation{tss});
+  ftIds_tss  = ismember(S_q_tss.mfts_names_red,  mftsNotation{tss});
+  ftQuantiles{tss} = [S_q_full.quantiles(ftIds_full, :); S_q_tss.quantiles(ftIds_tss, :)];
+  % fix ordering
+  ftQuantiles{tss} = ftQuantiles{tss}(ftsOrdering{tss}, :);
+  % normalize metafeatures
+  for ft = 1:size(ftQuantiles{tss}, 1)
+    % for debugging uncomment the following row
+    % fprintf('%42s: %10.2g %10.2g\n', mftsNotation{tss}{ft}, ftQuantiles{tss}(ft, 1), ftQuantiles{tss}(ft, 2))
+    mfts{tss}(:, :, :, :, :, ft) = ...
+      1./(1+exp(log((1-quantileBase)/quantileBase)* ...
+                  (2*mfts{tss}(:, :, :, :, :, ft) - ftQuantiles{tss}(ft, 1)-ftQuantiles{tss}(ft, 2)) / ...
+                  (ftQuantiles{tss}(ft, 1)-ftQuantiles{tss}(ft, 2))));
   end
 end
 
@@ -223,36 +275,49 @@ clear('addTSS', 'modelFolder', 'mt', 'settingsDir', 'settingsList', 'tss', ...
 
 % create model labels
 
-modelLabels = cell(size(rde));
-% base GP and RF settings labels
-gpModelLabelBase = {'NN', 'SE', 'LIN', 'Q', ...
-                 'Mat', 'RQ', 'SE+Q', 'Gibbs'};
+% GP and RF settings base original ordering
+[gpModelLabelBase, gpModelOrder] = sort({'NN', 'SE', 'LIN', 'Q', ...
+                                    'Mat', 'RQ', 'SE+Q', 'Gibbs'});
 rfModelLabelBase = {'{Axis}_\text{MSE}', '{Axis}_\text{RDE}', ...
                  '{Gauss}_\text{MSE}', '{Gauss}_\text{RDE}', ...
                  '{Hill}', ...
                  '{Pair}_\text{MSE}', '{Pair}_\text{RDE}', ...
                  '{Res}_\text{MSE}', '{Res}_\text{RDE}'};
-% add GP and RF model labels
-gpModelLabels = cellfun(@(x) ['{{{}}}^\text{', x, '}'], gpModelLabelBase, 'Uni', false);
-rfModelLabels = cellfun(@(x) ['{{}}^\text', x, ''], rfModelLabelBase, 'Uni', false);
-% TSS full GP model
-modelLabels(1, 1, 1:8) = gpModelLabels;
-% TSS nearest GP model
-modelLabels(2, 1, 1:8) = gpModelLabels;
-% TSS full RF model
-modelLabels(1, 2, 1:9) = rfModelLabels([1, 2, 6, 4, 3, 8, 7, 5, 9]);
+[~, rfModelOrderFull] = sort([1, 2, 6, 4, 3, 8, 7, 5, 9]);
                         % {'Axis_{MSE}', 'Axis_{RDE}', 'Pair_{MSE}', ...
                         % 'Gauss_{RDE}', 'Gauss_{MSE}', 'Res_{MSE}', ...
                         % 'Pair_{RDE}', 'Hill', 'Res_{RDE}'};
-% TSS nearest RF model
-modelLabels(2, 2, 1:9) = rfModelLabels([1, 2, 6, 3, 4, 7, 5, 9, 8]);
+[~, rfModelOrderNear] = sort([1, 2, 6, 3, 4, 7, 5, 9, 8]);
                         % {'Axis_{MSE}', 'Axis_{RDE}', 'Pair_{MSE}', ...
                         % 'Gauss_{MSE}', 'Gauss_{RDE}', 'Pair_{RDE}', ...
                         % 'Hill', 'Res_{RDE}', 'Res_{MSE}'};
+% add GP and RF model labels
+gpModelLabels = cellfun(@(x) ['{{{}}}^\text{', x, '}'], gpModelLabelBase, 'Uni', false);
+nGPLabels = numel(gpModelLabels);
+rfModelLabels = cellfun(@(x) ['{{}}^\text', x, ''], rfModelLabelBase, 'Uni', false);
+nRFLabels = numel(rfModelLabels);
+% new labels in sorted order
+modelLabels = cell(nTSS, nModels, max(nGPLabels, nRFLabels));
+% TSS full GP model
+modelLabels(fullId, 1, 1:nGPLabels) = gpModelLabels;
+rde(fullId, 1, 1:nGPLabels) = rde(fullId, 1, gpModelOrder);
+mse(fullId, 1, 1:nGPLabels) = mse(fullId, 1, gpModelOrder);
+% TSS nearest GP model
+modelLabels(nearId, 1, 1:nGPLabels) = gpModelLabels;
+rde(nearId, 1, 1:nGPLabels) = rde(nearId, 1, gpModelOrder);
+mse(nearId, 1, 1:nGPLabels) = mse(nearId, 1, gpModelOrder);
+% TSS full RF model
+modelLabels(fullId, 2, 1:nRFLabels) = rfModelLabels;
+rde(fullId, 1, 1:nRFLabels) = rde(fullId, 1, rfModelOrderFull);
+mse(fullId, 1, 1:nRFLabels) = mse(fullId, 1, rfModelOrderFull);
+% TSS nearest RF model
+modelLabels(nearId, 2, 1:nRFLabels) = rfModelLabels;
+rde(nearId, 1, 1:nRFLabels) = rde(nearId, 1, rfModelOrderFull);
+mse(nearId, 1, 1:nRFLabels) = mse(nearId, 1, rfModelOrderFull);
 % all TSS lmm model
-modelLabels(1:3, 3, 1) = {'{}'};
+modelLabels(:, 3, 1) = {'{}'};
 % all TSS lq model
-modelLabels(1:2, 4, 1) = {'{}'};
+modelLabels([fullId, nearId], 4, 1) = {'{}'};
 
 % add TSS labels
 for tss = 1:nTSS
@@ -425,7 +490,7 @@ for err = {'mse', 'rde'}
   wcxDuelTable(tableData, pvals, ...
                   'DataCaption', upper(err{1}), ...
                   'DataDims', 2, ...
-                  'DataNames', {'GP', 'RF', 'lq', 'lmm', 'GP', 'RF', 'lq', 'lmm', 'lmm'}, ...
+                  'DataNames', {'GP', 'RF', 'lmm', 'lq', 'GP', 'RF', 'lmm', 'lq', 'lmm'}, ...
                   'DefFile', fullfile(tableFolder, 'defFile.tex'), ...
                   'Evaluations', tableModelLabels, ...
                   'HeadColW', '0.8cm', ...
@@ -435,6 +500,85 @@ for err = {'mse', 'rde'}
                   'TssNums', [19, 19, 1], ...
                   'Vertical', true);
 end
+
+%% Table of model failures in prediction
+% The number of cases (or percentage) when the model did not provided
+% prediction.
+
+percOfNaN = cellfun(@(x) sum(isnan(x(:))), rde)./cellfun(@numel, rde);
+modelNums = [8, 9, 1, 1];
+
+% sort model settings
+currentLabels = shiftdim(modelLabels(fullId, :, :), 2);
+settingsNames = cellfun(@(x) strrep(['$', x, '$'], '\', '\\'), ...
+  currentLabels(~cellfun(@isempty, currentLabels(:))), 'Uni', false);
+
+% open file
+FID = fopen(fullfile(tableFolder, 'modelNanTable.tex'), 'w');
+% print table
+fprintf(FID, '\\begin{table}[t]\n');
+fprintf(FID, '\n');
+% print settings
+fprintf(FID, '\\setlength{\\savetabcolsep}{\\tabcolsep}\n');
+fprintf(FID, '\\setlength{\\savecmidrulekern}{\\cmidrulekern}\n');
+fprintf(FID, '\n');
+fprintf(FID, '\\setlength{\\headcolw}{0.85cm}\n');
+fprintf(FID, '\\setlength{\\tabcolsep}{0pt}\n');
+fprintf(FID, '\\setlength{\\cmidrulekern}{2pt}\n');
+fprintf(FID, '\\setlength{\\dueltabcolw}{%0.1f\\textwidth-\\headcolw}\n', ...
+             1.0);
+fprintf(FID, '\\setlength{\\dueltabcolw}{\\dueltabcolw/%d}\n', sum(modelNums));
+fprintf(FID, '\n');
+fprintf(FID, '\\centering\n');
+% caption
+fprintf(FID, '\\caption{\n');
+fprintf(FID, ['  Percentages of cases when the model did not provide usable\n', ...
+      'prediction (model not trained, its prediction failed, or prediction is constant).']);
+fprintf(FID, '}\n\n');
+fprintf(FID, '\\label{tab:modelNanTable}\n');
+fprintf(FID, '\n');
+% table itself
+fprintf(FID, '\\begin{tabular}{H%s}\n', repmat('R', 1, sum(modelNums)));
+% first top (thick) line
+fprintf(FID, '\\toprule\n');
+fprintf(FID, ' &');
+% header with TSS
+modelLine = @(x, y) sprintf('\\\\multicolumn{%d}{l}{\\\\parbox{%d\\\\dueltabcolw}{\\\\centering %s}}', x, x, y{1});
+fprintf(FID, strjoin(arrayfun(modelLine, modelNums, {'GP', 'RF', 'lmm', 'lq'}, 'Uni', false), ' & '));
+fprintf(FID, '\\\\\n');
+% data columns mid-lines
+cmidruleCols = [0, cumsum(modelNums), sum(modelNums)];
+for i = 2:numel(modelNums)+1
+  fprintf(FID, '\\cmidrule(lr){%d-%d}\n', cmidruleCols(i-1)+2, cmidruleCols(i)+1);
+end
+% header with model settings
+fprintf(FID, 'TSS & ');
+fprintf(FID, strjoin(settingsNames, ' & ')); % numOfData + 1
+fprintf(FID, '\\\\\n');
+fprintf(FID, '\\midrule\n');
+% percentage values
+for tss = 1:nTSS
+  fprintf(FID, '%s', tssList{tss});
+  for m = 1:numel(modelNums)
+    for i = 1:modelNums(m)
+      if isnan(percOfNaN(tss, m, i))
+        fprintf(FID, ' & ---');
+      else
+        fprintf(FID, ' & %2.1f', 100*percOfNaN(tss, m, i));
+      end
+    end
+  end
+  fprintf(FID, '\\\\\n');
+end
+fprintf(FID, '\\end{tabular}\n');
+
+fprintf(FID, '\\setlength{\\tabcolsep}{\\savetabcolsep}\n');
+fprintf(FID, '\\setlength{\\cmidrulekern}{\\savecmidrulekern}\n');
+fprintf(FID, '\\end{table}\n');
+% close file
+fclose(FID);
+
+clear FID
 
 %% Kolmogorov-Smirnov test
 % Kolmogorov-Smirnov test testing equality of distribution of an individual
@@ -503,12 +647,12 @@ labelCoor = ind2coor(find(~cellfun(@isempty, modelLabels)), size(modelLabels));
 
   % TSS cycle
 for tss = 1:nTSS
-  if isfile(exp_smsp_corr_cluster{tss})
-    S_cl = load(exp_smsp_corr_cluster{tss}, ...
-                'tableMftsNotation', 'corrMedoidId_nanpair');
-  else
-    error('File %s is missing!', exp_smsp_corr_cluster{tss})
-  end
+%   if isfile(exp_smsp_corr_cluster{tss})
+%     S_cl = load(exp_smsp_corr_cluster{tss}, ...
+%                 'tableMftsNotation', 'corrMedoidId_nanpair');
+%   else
+%     error('File %s is missing!', exp_smsp_corr_cluster{tss})
+%   end
 
   % error cycle
   for err = {'mse', 'rde'}
@@ -526,14 +670,8 @@ for tss = 1:nTSS
     currentLabels = modelLabels(tss, :, :);
     [ksTabSet.ColNames, colNamesId{tss}] = sort(cellfun(@(x) ['$', x, '$'], ...
       currentLabels(~cellfun(@isempty, currentLabels)), 'Uni', false));
-    % sort features
-    tabMftsNot{tss} = S_cl.tableMftsNotation(S_cl.corrMedoidId_nanpair);
-    ftsInside = cellfun(@(x) extractBetween(x, '{', '}'), ...
-                        tabMftsNot{tss}, 'Uni', false);
-    [~, ftsOrdering{tss}] = sort(cellfun(@(x) strjoin(x(end:-1:1), ','), ...
-                                    ftsInside, 'Uni', false));
     ksTabSet.RowNames = cellfun(@(x) strrep(x, '\', '\\'), ...
-                                   tabMftsNot{tss}(ftsOrdering{tss}), 'Uni', false);
+                                   tableMftsNotation{tss}, 'Uni', false);
     % TODO: group features according to classes
     ksTabSet.RowGroups = {tssList{tss}};
     ksTabSet.RowGroupNum = [14];
@@ -560,13 +698,15 @@ for tss = 1:nTSS
       actualTable = S_ks.ks_mse_p(:, labelCoor(:, 1) == tss);
     end
     % reorder table
-    reorderedTable{tss}.(err{1}) = actualTable(ftsOrdering{tss}, colNamesId{tss});
+    reorderedTable{tss}.(err{1}) = actualTable(:, colNamesId{tss});
     % print ks table in the right ordering
     prtSignifTable(reorderedTable{tss}.(err{1}), ksTabSet)
     % prepare for image
     mNames{tss} = ksTabSet.ColNames;
   end
 end
+
+clear actualTable tss
 
 %% 
 % KS test image
@@ -613,7 +753,7 @@ end
 % feature names
 imgFeatNames = [];
 for tss = 1:nTSS
-  imgFeatNames = [imgFeatNames; tabMftsNot{tss}(ftsOrdering{tss})];
+  imgFeatNames = [imgFeatNames; tableMftsNotation{tss}];
 end
 % create labels identical to the rest of the paper
 imgFeatNamesParts = extractBetween(imgFeatNames, '{', '}');
@@ -713,77 +853,122 @@ for err = {'mse', 'rde'}
   end
 end
 
-%% Distribution plots
+clear ax err han plotNames tss
 
-close all
-q_bound = [0.05, 0.95];
+%% Classification tree analysis
+% For TSS full and nearest build a classification tree with models in
+% leaves and metafeatures in nodes according to both MSE and RDE. The RDE
+% is used as a primary measure. If the value is identical for more than one
+% model, MSE is utilized.
 
-for r = 2 % 2:4
-  for c = 20% 1:53 + 5*sign(4-r)
-    distr_all = ks_res.Distributions{r,c};
-    q_d_all = quantile(distr_all, q_bound);
-    
-    d_all_show = distr_all(distr_all > q_d_all(1) & distr_all < q_d_all(2));
-    % x values for plot
-    x_val = linspace(min(d_all_show), max(d_all_show));
-%     x_val = logspace(log10(-min(d_all_show)), log10(-max(d_all_show)));
-    pdca_all = fitdist(d_all_show, 'Kernel');    
-    all_pdf = pdf(pdca_all, x_val);
-    
-          han = figure('Units', 'centimeters', ...
-                   'Position', [1, 1, 16, 20], ...
-                   'PaperSize', [16, 20]);
-    
-    % model loop
-    for m = 1:nModel
-      % values of covariance and sample set for distribution
-      distr_cov = ks_res.ReorderedTable(~isnan(ks_res.ReorderedTable(:, c+14+(r-2)*58)) & ...
-                                   ks_res.Best(:, m), c+14+(r-2)*58);
-    
-      q_d_cov = quantile(distr_cov, q_bound);  
-      % range
-      d_cov_show = distr_cov(distr_cov > q_d_cov(1) & distr_cov < q_d_cov(2));
-    
-      % fit probability distribution
-      pdca_cov = fitdist(d_cov_show, 'Kernel');    
-      cov_pdf = pdf(pdca_cov, x_val);
-    
-%       han(m) = figure('PaperSize', [14, 12]);
-      subplot(nModel/2, 2, m) 
-      area(x_val, all_pdf, 'LineWidth', 2, ...
-                           'FaceColor', 'r', ...
-                           'EdgeColor', 'r', ...
-                           'FaceAlpha', 0.2 ...
-          )
-      hold on
-      area(x_val, cov_pdf, 'LineWidth', 2, ...
-                           'FaceColor', 'b', ...
-                           'EdgeColor', 'b', ...
-                           'FaceAlpha', 0.2 ...
-          )
-      gca_act = gca;
-      axis([min(d_all_show), max(d_all_show), 0, 0.25])
-      if mod(m, 2) == 1
-        ylabel('PDF', 'Interpreter', 'latex')
-      end
-%       title([ks_res.MetafeatureNames{r, c}, ' for ', modelLabels{m}])
-      title(modelLabels{m}, 'Interpreter', 'latex')
-      legend({'all', modelLabels{m}}, 'Interpreter', 'latex')
-      hold off
+fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+         'Performing classification tree analysis\n'], ...
+        fix(clock))
+
+% model settings names
+settingsNames(1:8) = cellfun(@(x) ['\text{GP}_\text{', x, '}'], gpModelLabelBase, 'Uni', false);
+settingsNames(9:17) = cellfun(@(x) ['\text{RF}^\text', x, ''], rfModelLabelBase, 'Uni', false);
+settingsNames{18} = '\text{lmm}';
+settingsNames{19} = '\text{lq}';
+
+for tss = [fullId, nearId]
+  % init
+  nMfts = size(mfts{tss}, 6);
+  nDataRows = numel(mfts{tss})/nMfts;
+
+  % prepare metafeatures
+  mfts_act = reshape(mfts{tss}, [nDataRows, nMfts]);
+
+  % prepare labels
+  rde_act = rde(tss, :, :);
+  mse_act = mse(tss, :, :);
+
+  existSetId = find(~cellfun(@isempty, rde_act));
+  nSettings = numel(existSetId);
+
+  % reshape cell array to double array (last dimension corresponds to
+  % individual settings)
+  rdeMat = cell2mat(reshape(rde_act(existSetId), [1, 1, 1, 1, 1, nSettings]));
+  mseMat = cell2mat(reshape(mse_act(existSetId), [1, 1, 1, 1, 1, nSettings]));
+  % reshape again to the number of cases x number of models shape
+  rdeMat = reshape(rdeMat, [nDataRows, nSettings]);
+  mseMat = reshape(mseMat, [nDataRows, nSettings]);
+  % find lowest RDE
+  bestSet_rde = min(rdeMat, [], 2);
+  % remove rows where lowest RDE is NaN
+  mfts_act(isnan(bestSet_rde), :) = [];
+  rdeMat(  isnan(bestSet_rde), :) = [];
+  mseMat(  isnan(bestSet_rde), :) = [];
+  bestSet_rde(isnan(bestSet_rde)) = [];
+  % ids of the settings with the lowest RDE
+  % get all the mins, where the error is the same
+  bestSet_rdeId = rdeMat == repmat(bestSet_rde, [1, nSettings]);
+  % replace MSE, where RDE was not lowest with Inf
+  mseMat(~bestSet_rdeId) = Inf;
+  [~, bestSetId] = min(mseMat, [], 2);
+
+  % low memory limit
+  lowMemLimit = min(10^7, numel(bestSetId));
+  numOfTreeLevels = 10;
+  % tree training
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Tree training for TSS %s start\n'], ...
+          fix(clock), tssList{tss})
+  CT = fitctree(mfts_act(1:lowMemLimit, :), ...
+                settingsNames(bestSetId(1:lowMemLimit)), ...
+                'PredictorNames', tableMftsNotation{tss}, ...
+                'MinLeafSize', 2000, ...
+                'Categorical', 1);
+  % tree pruning
+%   fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+%            'Pruning trained tree for TSS %s\n'], ...
+%           fix(clock), tssList{tss})
+%   CT = CT.prune('Level', ...
+%             min(max(CT.PruneList), max(CT.PruneList) - numOfTreeLevels));
+
+  % export tree
+  settings.LeafProperties = @(a) struct('shape', 'box', 'fillcolor', 'LeafColor', 'style', 'filled');
+  settings.LeafFormat = '$%s$';
+  settings.InnerNodeProperties = @(a) struct('fillcolor', 'InnerNodeColor', 'style', 'filled');
+  settings.InnerNodeFormat = '%s';
+  % denormalize thresholds
+  settings.CutPoint = CT.CutPoint;
+  for cp = 1:numel(CT.CutPredictor)
+    ftId = ismember(tableMftsNotation{tss}, CT.CutPredictor(cp));
+    if any(ftId)
+      settings.CutPoint(cp) = 1/2*(ftQuantiles{tss}(ftId, 1) + ftQuantiles{tss}(ftId, 2) + ...
+                                   (ftQuantiles{tss}(ftId, 1) - ftQuantiles{tss}(ftId, 2)) * ...
+                                   log(1/CT.CutPoint(cp) - 1) / ...
+                                   log((1-quantileBase)/quantileBase));
+      settings.CutCategories(cp, :) = cellfun(@(x) ...
+                             1/2*(ftQuantiles{tss}(ftId, 1) + ftQuantiles{tss}(ftId, 2) + ...
+                                   (ftQuantiles{tss}(ftId, 1) - ftQuantiles{tss}(ftId, 2)) * ...
+                                   log(1./x - 1) / ...
+                                   log((1-quantileBase)/quantileBase)), CT.CutCategories(cp, :), ...
+                                   'Uni', false);
     end
-%     h_cov = histfit(distr_cov(distr_cov > q_d_cov(1) & distr_cov < q_d_cov(2)), ...
-%                     100, 'kernel');
-%     h_all = histfit(distr_all(distr_all > q_d_all(1) & distr_all < q_d_all(2)), ...
-%                     100, 'kernel');
-%     figure(4)
-    
+    % observations are natural numbers
+    if find(ftId) == 2
+      settings.CutPoint(cp) = round(settings.CutPoint(cp));
+    else
+      % round to 2 numbers after decimal point
+      settings.CutPoint(cp) = round(settings.CutPoint(cp)*100)/100;
+    end
   end
+
+  % naming edit
+  settings.CutPredictor = cellfun(@(x) strrep(x, '\', '\\'), ...
+                                      CT.CutPredictor, 'Uni', false);
+  treeGVFile = fullfile(plotResultsFolder, ['tree_', tssList{tss}, '_ecml.gv']);
+  FID = fopen(treeGVFile, 'w');
+  tree2dot(FID, CT, settings);
+  fclose(FID);
+  fprintf(['[ %d-%.2d-%.2d %.2d:%.2d:%.2d ] ', ...
+           'Tree for TSS %s saved to %s\n'], ...
+          fix(clock), tssList{tss}, treeGVFile)
 end
 
-% distrFigNames = cellfun(@(x) fullfile(plotResultsFolder, ['skew_', x, '.pdf']), ...
-%                         modelLabels, 'UniformOutput', false);
-distrFigNames = {fullfile(plotResultsFolder, 'archive_skewness.pdf')};
-print2pdf(han, distrFigNames, 1)
+clear cp FID ftId settings tss
 
 %%
 

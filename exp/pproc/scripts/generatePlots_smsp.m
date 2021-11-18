@@ -1844,7 +1844,8 @@ for tss = 1:nTSS
   end
 
   % save mfts notation
-  save(exp_smsp_corr_cluster{tss}, 'tableMftsNotation', '-append')
+  save(exp_smsp_corr_cluster{tss}, ...
+         'tableMftsNotation', 'tableMftsNotation_red', '-append')
 end
 
 clear('c', 'm', 'nMfts', 'S_dim_full', 'S_dim_tss')
