@@ -1820,10 +1820,28 @@ for tss = 1:nTSS
   isMedSorted = isMed(sortClId);
 
   % page cycle
-  maxFtsPerColumn = ceil(nMfts_rel/2);
-  columns = ceil(nMfts_rel/maxFtsPerColumn);
+  switch tss
+    case fullId
+      rowIdsTss = {[30:33, 4:17], [18:29, 1:3]};
+    case nearId
+      rowIdsTss = {2:25, [26:45, 1], [59:60, 46:50], 51:58};
+    case knnId
+      rowIdsTss = {[1:24, 53:55, 27:30], [31:52, 25:26, 56:59]};
+  end
+%   if tss == nearId
+%     ftsPerColumn = [25, 20, 7, 8];
+%   else
+%     ftsPerColumn = [ceil(nMfts_rel/2), ...
+%                    floor(nMfts_rel/2)];
+%   end
+  columns = numel(rowIdsTss);
   for c = 1:columns
-    rowIds = (c-1)*maxFtsPerColumn+1 : min(c*maxFtsPerColumn, nMfts_rel);
+    rowIds = rowIdsTss{c};
+%     if c == 1
+%       rowIds = 1:ftsPerColumn(1);
+%     else
+%       rowIds = sum(ftsPerColumn(1:c-1))+1 : sum(ftsPerColumn(1:c));
+%     end
     % table with correlation clustering ids
     corrClusterTable = table(...
                              nan_break(rowIds), ...
