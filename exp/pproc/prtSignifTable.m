@@ -7,6 +7,8 @@ function prtSignifTable(data, varargin)
 %              properties as fields:
 %     'FirstCell' - text in the first cell | string | default:
 %                   '\textbf{$\cov$}'
+%     'GroupHeadColWidth - width of group head column | string | default:
+%                          '0.8cm'
 %     'HeadColWidth' - width of head column | string | default: '1.5cm'
 %     'OneColumn' - print table to one column in a two column paper
 %                   settings | logical scalar | default: 'false'
@@ -26,6 +28,7 @@ function prtSignifTable(data, varargin)
   par.colGroups = defopts(settings, 'ColGroups', {});
   par.colGroupNum = defopts(settings, 'ColGroupNum', []);
   par.headColWidth = defopts(settings, 'HeadColWidth', '1.5cm');
+  par.groupHeadColWidth = defopts(settings, 'GroupHeadColWidth', '0.8cm');
   par.firstCell = defopts(settings, 'FirstCell', '\textbf{$\cov$}');
   defResultFolder = fullfile('exp', 'pproc', 'tex');
   resultFile = defopts(settings, 'ResultFile', ...
@@ -91,7 +94,7 @@ function printTableTex(FID, data, par)
   fprintf(FID, '\\setlength{\\savecmidrulekern}{\\cmidrulekern}\n');
   fprintf(FID, '\n');
   fprintf(FID, '\\setlength{\\headcolw}{%s}\n', par.headColWidth);
-  fprintf(FID, '\\setlength{\\groupheadcolw}{0.8cm}\n');
+  fprintf(FID, '\\setlength{\\groupheadcolw}{%s}\n', par.groupHeadColWidth);
   fprintf(FID, '\\setlength{\\tabcolsep}{0pt}\n');
   fprintf(FID, '\\setlength{\\cmidrulekern}{2pt}\n');
   fprintf(FID, '\\setlength{\\tabcolw}{%s-\\groupheadcolw-\\headcolw-%d\\tabcolsep}\n', par.tableWidth, 2*(nCols+1));
