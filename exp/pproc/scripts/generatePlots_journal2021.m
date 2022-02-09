@@ -651,7 +651,8 @@ end
 labelCoor = ind2coor(find(~cellfun(@isempty, modelLabels)), size(modelLabels));
 
 % TSS cycle for TSS full and nearest
-for tss = [fullId, nearId]
+% Note: TSS knn included due to reorderedTable variable
+for tss = 1:nTSS
   % error cycle
   for err = {'mse', 'rde'}
     ksTabSet.ResultFile = fullfile(tableFolder, ['ksTable_', err{1}, '_', tssList{tss}, '.tex']);
@@ -669,7 +670,8 @@ for tss = [fullId, nearId]
       '. ', ...
       'The p-values are after the Holm correction and they are shown only if the KS test ', ...
       'rejects the equality of both distributions ', ...
-      'at the family-wise significance level $\alpha=0.05$. ', ...
+      'at the family-wise significance level $\alpha=0.05$, ', ...
+      'non-rejecting the equality hypothesis is indicated with ---. ', ...
       'Zeros indicate p-values below the smallest double precision number. '];
     ksTabSet.RowValName = ''; % 'TSS';
     
@@ -731,7 +733,7 @@ latexRows = [...
               '\newcolumntype{R}{>{\raggedleft\arraybackslash}m{0.75cm}}'}; ...
              lt.toStringRows; ...
              {'\setlength{\tabcolsep}{\savetabcolsep}'}];
-% save the r[esult in the file
+% save the result to the file
 fid = fopen(fullfile(tableFolder, 'ksTable_mse_knn.tex'), 'w');
 for i = 1:length(latexRows)
   fprintf(fid, '%s\n', latexRows{i});
@@ -755,11 +757,11 @@ labelRot = 60;
 imgModelLabels = {'   GP', '   RF', '  lmm', '    lq'};
 nModelSettings = [8, 9, 1, 1];
 rfModelLabelBase2 = rfModelLabelBase;
-rfModelLabelBase2(strcmp(rfModelLabelBase2, 'Hill')) = {'{Hill}_\textrm{\ \ \ }'};
+rfModelLabelBase2(strcmp(rfModelLabelBase2, '{OC1}')) = {'{OC1}_\textrm{\hspace{5ex}}'};
 gpModelLabels_ks = cellfun(@(x) ['\textrm{', x, '}'], ...
                      sort(gpModelLabelBase), 'Uni', false);
 rfModelLabels_ks = cellfun(@(x) ['\textrm', strrep(x, '\text{', '\textrm{'), ''], ...
-                     sort(rfModelLabelBase), 'Uni', false);
+                     sort(rfModelLabelBase2), 'Uni', false);
 simpleModelNames = [gpModelLabels_ks, rfModelLabels_ks, {'\quad', '\quad'}];
 
 % create combinations cov x set
@@ -769,13 +771,17 @@ for m = 1:numel(imgModelLabels)
     actMName = simpleModelNames{numel(modelSetNames)+1};
     % middle member
     if m2 == round(nModelSettings(m)/2)
-      modelSetNames{end+1} = [imgModelLabels{m}, ' \qquad\qquad$', actMName, '$' ];
+      if strcmp(imgModelLabels{m}, '   RF')
+        modelSetNames{end+1} = [imgModelLabels{m}, ' \quad$', actMName, '$' ];
+      else
+        modelSetNames{end+1} = [imgModelLabels{m}, ' \qquad\qquad$', actMName, '$' ];
+      end
     % last member gp
     elseif m2 == nModelSettings(m) && m == 1
       modelSetNames{end+1} = ['$\overline{\phantom{AAAA}}\qquad', actMName, '$' ];
     % last member rf
     elseif m2 == nModelSettings(m) && m == 2
-      modelSetNames{end+1} = ['$\overline{\phantom{AAAA}}\quad', actMName, '$' ];
+      modelSetNames{end+1} = ['$\overline{\phantom{AAAA}}', actMName, '$' ];
     else
       modelSetNames{end+1} = ['$', actMName, '$'];
     end
@@ -885,6 +891,57 @@ for err = {'mse', 'rde'}
   end
 end
 
+%% one plot for TSS full and nearest MSE and RDE
+
+close all
+
+han{1} = figure('Units', 'centimeters', ...
+                'Position', [1 1 1.5*sizeX 1.5*sizeY], ...
+                'PaperSize', [1.5*sizeX + 2, 1.5*sizeY + 2]);
+[rTrows, rTcols] = size(reorderedTable{fullId}.('mse')');
+plotData = [reorderedTable{fullId}.('mse')', NaN(rTrows, 1), reorderedTable{nearId}.('mse')'; ...
+            NaN(1, 2*rTcols + 1); ...
+            reorderedTable{fullId}.('rde')', NaN(rTrows, 1), reorderedTable{nearId}.('rde')'];
+          
+% non-significant data
+inSignifId = plotData > 0.05;
+% data closest to significance level
+secondSignifVal = 1e-6;
+closeData = plotData > secondSignifVal & plotData <= 0.05;
+% change values to preserve one color for insignificant data
+plotData(closeData) = secondSignifVal;
+
+% draw image
+hold on
+imagesc(log10(plotData), 'AlphaData',~isnan(plotData))
+colorbar('Ticks', [-300, -250, -200, -150, -100, -50, -5],...
+         'TickLabels', {'10^{-300}', '10^{-250}', '10^{-200}', ...
+                        '10^{-150}', '10^{-100}', '10^{-50}', '0.05'})
+
+% axis square
+ax = gca;
+ax.XTick = 1:size(plotData, 2);
+ax.XTickLabel = [imgFeatNames(1:14); {''}; imgFeatNames(15:28)];
+ax.YTick = 1:size(plotData, 1);
+ax.YTickLabel = [modelSetNames, {''}, modelSetNames];
+ax.XTickLabelRotation = labelRot;
+ax.TickLabelInterpreter = 'latex';
+xlabel('TSS full\hspace{6.5cm}TSS nearest', 'Interpreter', 'latex')
+ylabel('RDE\hspace{7.5cm}MSE', 'Interpreter', 'latex')
+grid off
+% set(ax, 'visible', 'off')
+% set(findall(ax, 'type', 'text'), 'visible', 'on')
+% line([0,0], [100, 100], 'Color', 'b', 'LineWidth', 10)
+
+% change insignificant data to red
+han{1}.Colormap(end, :) = [1 0 0];
+
+hold off
+
+% print figure to pdf
+plotNames = {fullfile(plotResultsFolder, 'ks_comb.pdf')};
+print2pdf(han, plotNames, 1)
+
 clear ax err han plotNames tss
 
 %% Classification tree analysis
@@ -949,7 +1006,7 @@ for tss = [fullId, nearId]
   CT = fitctree(mfts_act(1:lowMemLimit, :), ...
                 settingsNames(bestSetId(1:lowMemLimit)), ...
                 'PredictorNames', tableMftsNotation{tss}, ...
-                'MinLeafSize', 4000, ...
+                'MinLeafSize', 5000, ...
                 'SplitCriterion', 'twoing', ...
                 'Categorical', 1);
   % tree pruning
